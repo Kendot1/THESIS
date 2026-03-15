@@ -25,15 +25,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      # 3️⃣ Install dependencies inside the scraper folder
+      # 3️⃣ Install dependencies
       - name: Install dependencies
-        run: |
-          cd scraper
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      # 4️⃣ Run the scraper from the scraper folder
+        run: pip install -r scraper/requirements.txt
+      
+      # 4️⃣ Run scraper
       - name: Run scraper
-        run: |
-          cd scraper
-          python main.py
+        run: python scraper/main.py
