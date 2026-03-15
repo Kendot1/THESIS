@@ -28,10 +28,13 @@ jobs:
       # 3️⃣ Install dependencies inside scraper folder
       - name: Install dependencies
         run: |
+          cd scraper
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
+      
       # 4️⃣ Run the scraper from scraper folder
       - name: Run scraper
-        run: python main.py
-        
+        run: |
+          cd scraper
+          python main.py
+              
