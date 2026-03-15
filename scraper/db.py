@@ -8,6 +8,6 @@ supabase = create_client(
 
 def insert_prices(rows):
 
-    for r in rows:
+    for row in rows:
 
-        supabase.table("food_prices").insert(r).execute()
+        supabase.table("food_prices").insert(row).execute()

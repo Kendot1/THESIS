@@ -1,26 +1,35 @@
 import requests
+from datetime import datetime, timedelta
 
-API_URL = "https://www.da.gov.ph/wp-json/wp/v2/media?per_page=100"
+BASE_URL = "https://www.da.gov.ph/wp-content/uploads"
 
 def get_pdf_links():
 
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
-
-    response = requests.get(API_URL, headers=headers)
-
-    print("Status:", response.status_code)
-
-    data = response.json()
-
     pdf_links = []
 
-    for item in data:
+    start_date = datetime(2026, 2, 1)
+    end_date = datetime.today()
 
-        file_url = item.get("source_url")
+    current = start_date
 
-        if file_url and file_url.endswith(".pdf"):
-            pdf_links.append(file_url)
+    while current <= end_date:
+        
+        year = current.year
+        month = current.strftime("%m")
+        month_name = current.strftime("%B")
+        day = current.day
+
+        filename = f"Price-Monitoring-{month_name}-{day}-{year}.pdf"
+
+        url = f"{BASE_URL}/{year}/{month}/{filename}"
+
+        try:
+            response = requests.get(url, stream=True, timeout=5)
+            if response.status_code == 200:
+                pdf_links.append(url)
+        except requests.RequestException:
+            pass
+
+        current += timedelta(days=1)
 
     return pdf_links
