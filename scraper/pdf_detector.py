@@ -1,24 +1,26 @@
 import requests
-from bs4 import BeautifulSoup
 
-URL = "https://www.da.gov.ph/price-monitoring/"
+API_URL = "https://www.da.gov.ph/wp-json/wp/v2/media?per_page=100"
 
 def get_pdf_links():
 
-    response = requests.get(URL)
-    soup = BeautifulSoup(response.text, "html.parser")
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    response = requests.get(API_URL, headers=headers)
+
+    print("Status:", response.status_code)
+
+    data = response.json()
 
     pdf_links = []
 
-    for link in soup.find_all("a"):
+    for item in data:
 
-        href = link.get("href")
+        file_url = item.get("source_url")
 
-        if href and "Daily-Retail-Price-Range" in href and href.endswith(".pdf"):
-
-            if href.startswith("/"):
-                href = "https://www.da.gov.ph" + href
-
-            pdf_links.append(href)
+        if file_url and file_url.endswith(".pdf"):
+            pdf_links.append(file_url)
 
     return pdf_links

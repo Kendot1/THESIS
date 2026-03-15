@@ -19,5 +19,7 @@ def run():
 
         print("Rows extracted:", len(rows))
 
+        insert_prices(rows)
+
 if __name__ == "__main__":
     run()
