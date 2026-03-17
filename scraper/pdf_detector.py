@@ -7,7 +7,7 @@ def get_pdf_links():
 
     pdf_links = []
 
-    start_date = datetime(2026, 2, 1)
+    start_date = datetime(2026, 3, 15)
     end_date = datetime.today()
 
     current = start_date

@@ -5,38 +5,75 @@ from io import BytesIO
 from statistics import mean
 from utils import extract_date_from_url
 
-def parse_price_numbers(s):
-    """Extract all numbers from a string and convert to float."""
-    numbers = re.findall(r"\d+\.?\d*", s.replace(",", ""))
-    return [float(n) for n in numbers]
+CATEGORY_KEYWORDS = {
+    "RICE": "Rice",
+    "CORN": "Corn",
+    "LIVESTOCK": "Livestock",
+    "POULTRY": "Poultry",
+    "FISH": "Fish",
+    "LOWLAND VEGETABLES": "Vegetables",
+    "HIGHLAND VEGETABLES": "Vegetables",
+    "VEGETABLES": "Vegetables",
+    "FRUITS": "Fruits",
+    "SUGAR": "Sugar",
+    "OIL": "Oils"
+}
 
-def clean_product_name(name):
-    # Remove units like (per kg), (per piece), etc.
-    name = re.sub(r"\(per [^)]+\)", "", name, flags=re.IGNORECASE)
-    # Remove extra spaces
+def get_product_category(raw_name, current_category):
+    lower_name = raw_name.lower()
+    if "egg" in lower_name:
+        return "Poultry"
+    if "chicken" in lower_name and "egg" not in lower_name:
+        return "Livestock"
+    return current_category
+
+def parse_price_numbers(text):
+    return [float(n) for n in re.findall(r"\d+\.?\d*", text.replace(",", ""))]
+
+def normalize_product_name(raw_name):
+    # Special case: Chicken Egg -> keep as "Chicken Egg"
+    if "egg" in raw_name.lower():
+        return "Chicken Egg"
+    # Remove variant and origin labels
+    name = re.sub(r"\(([^)]+)\)", "", raw_name)
+    name = re.sub(r"\b(Local|Imported)\b", "", name, flags=re.IGNORECASE)
     return name.strip()
 
+def extract_variant(raw_name):
+    match = re.search(r"\(([^)]+)\)", raw_name)
+    return match.group(1) if match else None
+
+def extract_origin(raw_name):
+    return "Imported" if "imported" in raw_name.lower() else "Local"
+
+def normalize_unit(raw_name, detected_unit):
+    lower_name = raw_name.lower()
+    if any(word in lower_name for word in ["beef", "pork", "chicken", "egg", "livestock"]):
+        return "kg"
+    return detected_unit.lower() if detected_unit else None
+
+def extract_unit(line):
+    match = re.search(r"\(per ([^)]+)\)", line, re.IGNORECASE)
+    return match.group(1).lower() if match else None
+
 def is_valid_line(text):
+    upper = text.upper()
     skip_keywords = [
         "COMMODITIES", "SOURCE", "DISCLAIMER", "PREVAILING",
-        "VEGETABLES", "RICE", "CORN", "LIVESTOCK", "POULTRY", "FISH", "OILS",
-        "MARKET", "SATURDAY", "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY",
-        "THURSDAY", "FRIDAY", "GRACE MARKETPLACE", "KAMUNING", "AGORA", "ALABANG"
+        "MARKET", "SATURDAY", "SUNDAY", "MONDAY", "TUESDAY",
+        "WEDNESDAY", "THURSDAY", "FRIDAY",
+        "GRACE MARKETPLACE", "KAMUNING", "AGORA", "ALABANG",
+        "PRODUCTS", "SPICES", "COMMERCIAL", "CORN", "VEGETABLES", "FRUITS", "LIVESTOCK", "POULTRY", "FISH", "RICE", "SUGAR", "OIL"
     ]
-    upper_text = text.upper()
-    if any(k in upper_text for k in skip_keywords):
+    if any(k in upper for k in skip_keywords):
         return False
     if re.search(r"\bMarket\b", text, re.IGNORECASE):
         return False
-    if "/" in text:  # likely a market name
+    if "/" in text or "available only in" in text.lower():
         return False
-    if re.search(r"\(.\) available only in", text, re.IGNORECASE):
+    if re.match(r"^\(.\)$", text.strip()):
         return False
-    if re.match(r"^\(.\)$", text.strip()):  # lone footnote symbol
-        return False
-    if not re.search(r"\d", text):  # must contain at least one number
-        return False
-    return True
+    return bool(re.search(r"\d", text))
 
 def parse_pdf(url):
     rows = []
@@ -52,28 +89,53 @@ def parse_pdf(url):
             if not text:
                 continue
 
-            lines = text.split("\n")
-            for line in lines:
+            current_category = None
+            current_unit = None
+
+            for line in text.split("\n"):
                 line = line.strip()
-                if not line or not is_valid_line(line):
+                if not line:
                     continue
 
-                # Split name and price part
+                upper = line.upper()
+
+                # Detect category headers
+                for key, value in CATEGORY_KEYWORDS.items():
+                    if upper.strip() == key:
+                        current_category = value
+                        break
+
+                # Detect unit-only lines
+                unit = extract_unit(line)
+                if unit:
+                    current_unit = unit
+                    continue
+
+                # Validate product line
+                if not is_valid_line(line):
+                    continue
+
+                # Split product name and prices
                 match = re.match(r"^(.*?)([\d,].*)$", line)
                 if not match:
                     continue
 
-                product_name = clean_product_name(match.group(1))
+                raw_name = match.group(1).strip()
                 price_part = match.group(2)
-                price_numbers = parse_price_numbers(price_part)
-                if not price_numbers:
+
+                prices = parse_price_numbers(price_part)
+                if not prices:
                     continue
 
-                avg_price = mean(price_numbers)
+                avg_price = mean(prices)
+                product_name = normalize_product_name(raw_name)
 
                 rows.append({
-                    "product_name": product_name,
-                    "product_type": None,
+                    "product_name": product_name,                                # Chicken Egg
+                    "product_category": get_product_category(raw_name, current_category),
+                    "product_variant": extract_variant(raw_name),               # White, Pewee
+                    "unit": normalize_unit(raw_name, current_unit),             # kg for poultry/livestock
+                    "origin": extract_origin(raw_name),                         # Local/Imported
                     "price_index": avg_price,
                     "report_date": report_date.isoformat(),
                     "source_pdf": url
