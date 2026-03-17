@@ -4,7 +4,7 @@ from db import insert_prices
 
 def run():
     pdf_links = get_pdf_links()
-    print("PDF links found:", len(pdf_links))
+    print(f"PDF links found: {len(pdf_links)}")
 
     for link in pdf_links:
         print("Processing:", link)
