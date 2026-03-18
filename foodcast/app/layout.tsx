@@ -13,8 +13,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FOODCAST",
-  description: "Food Forecast",
+  title: "FOODCAST — AI Food Price Forecasting",
+  description:
+    "AI-Based Forecasting and Market Analysis of Agri-Fishery Food Prices in NCR Markets using Algorithms. Check future prices of farm and fish products.",
+  keywords: "food price forecast, NCR markets, AI forecasting, agri-fishery, Philippines",
 };
 
 export default function RootLayout({
@@ -24,6 +26,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
