@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 BASE_URL = "https://www.da.gov.ph/wp-content/uploads"
 
-def get_pdf_links(start_date=datetime(2020, 01, 01)):
+def get_pdf_links(start_date=datetime(2020, 1, 1)):
     pdf_links = []
     end_date = datetime(2020, 12, 31)
     current = start_date
