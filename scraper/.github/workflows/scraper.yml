@@ -33,3 +33,6 @@ jobs:
       # 4️⃣ Run the scraper from scraper folder
       - name: Run scraper
         run: python scraper/main.py
+      - run: |
+          pwd
+          ls -R
