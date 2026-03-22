@@ -32,4 +32,7 @@ jobs:
           python -m pip install -r scraper/requirements.txt
       # 4️⃣ Run the scraper from scraper folder
       - name: Run scraper
-        run: python main.py
+        run: python scraper/main.py
+      - run: |
+          pwd
+          ls -R
