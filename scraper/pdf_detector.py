@@ -26,4 +26,4 @@ def get_pdf_links(start_date=datetime(2020, 1, 1)):
 
         current += timedelta(days=1)
 
-return pdf_links
+    return pdf_links
