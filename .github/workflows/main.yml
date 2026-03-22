@@ -1,0 +1,38 @@
+name: DA Price Scraper
+
+on:
+  schedule:
+    # Run every day at 1 AM UTC
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+
+    steps:
+      # 1️⃣ Checkout the repository
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # 2️⃣ Setup Python
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 3️⃣ Install dependencies inside scraper folder
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r scraper/requirements.txt
+      # 4️⃣ Run the scraper from scraper folder
+      - name: Run scraper
+        run: python scraper/main.py
+      - run: |
+          pwd
+          ls -R
