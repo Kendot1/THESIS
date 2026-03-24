@@ -15,7 +15,7 @@ export const products: Product[] = [
   {
     id: "premium-rice",
     name: "Premium Rice",
-    emoji: "🍚",
+    emoji: "",
     currentPrice: 45.0,
     predictedPrice: 47.34,
     confidence: 94,
@@ -38,7 +38,7 @@ export const products: Product[] = [
   {
     id: "tilapia",
     name: "Tilapia",
-    emoji: "🐟",
+    emoji: "",
     currentPrice: 140.0,
     predictedPrice: 145.8,
     confidence: 91,
@@ -61,7 +61,7 @@ export const products: Product[] = [
   {
     id: "onion",
     name: "Red Onion",
-    emoji: "🧅",
+    emoji: "",
     currentPrice: 80.0,
     predictedPrice: 75.5,
     confidence: 88,
@@ -84,7 +84,7 @@ export const products: Product[] = [
   {
     id: "tomato",
     name: "Tomato",
-    emoji: "🍅",
+    emoji: "",
     currentPrice: 60.0,
     predictedPrice: 63.2,
     confidence: 92,
@@ -107,7 +107,7 @@ export const products: Product[] = [
   {
     id: "bangus",
     name: "Bangus (Milkfish)",
-    emoji: "🐠",
+    emoji: "",
     currentPrice: 180.0,
     predictedPrice: 176.5,
     confidence: 89,
@@ -130,7 +130,7 @@ export const products: Product[] = [
   {
     id: "garlic",
     name: "Garlic",
-    emoji: "🧄",
+    emoji: "",
     currentPrice: 120.0,
     predictedPrice: 125.0,
     confidence: 86,
@@ -153,7 +153,7 @@ export const products: Product[] = [
   {
     id: "eggplant",
     name: "Eggplant",
-    emoji: "🍆",
+    emoji: "",
     currentPrice: 50.0,
     predictedPrice: 52.8,
     confidence: 90,
@@ -176,7 +176,7 @@ export const products: Product[] = [
   {
     id: "shrimp",
     name: "Shrimp",
-    emoji: "🦐",
+    emoji: "",
     currentPrice: 350.0,
     predictedPrice: 360.0,
     confidence: 87,
@@ -199,7 +199,7 @@ export const products: Product[] = [
   {
     id: "cabbage",
     name: "Cabbage",
-    emoji: "🥬",
+    emoji: "",
     currentPrice: 35.0,
     predictedPrice: 33.5,
     confidence: 93,
@@ -222,7 +222,7 @@ export const products: Product[] = [
   {
     id: "crab",
     name: "Crab",
-    emoji: "🦀",
+    emoji: "",
     currentPrice: 450.0,
     predictedPrice: 465.0,
     confidence: 85,

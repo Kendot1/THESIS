@@ -122,19 +122,8 @@ const Homepage = () => {
           </div>
         </div>
 
-        {/* Forecast Card */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: "8%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "85%",
-            maxWidth: 1200,
-            zIndex: 3,
-          }}
-          className="animate-fade-in-up delay-300"
-        >
+        {/* Forecast Card (in-flow wrapper to avoid absolute overlap) */}
+        <div className="forecast-card-wrapper animate-fade-in-up delay-300">
           <div className="forecast-card">
             <div className="forecast-card-header">
               <div className="forecast-card-title">
@@ -166,8 +155,6 @@ const Homepage = () => {
         </div>
       </section>
 
-      {/* Extra spacer for the forecast card overlap */}
-      <div style={{ height: 160 }} />
 
       {/* ===== WHY USE THIS PLATFORM ===== */}
       <section className="features-section features-section-alt">

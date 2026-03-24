@@ -74,98 +74,72 @@ const SearchPage = () => {
         </div>
       </section>
 
-      {/* ===== FEATURED FORECAST ===== */}
-      <section style={{ padding: "60px 48px 20px", maxWidth: 1400, margin: "0 auto" }}>
-        <div className="forecast-card animate-scale-in">
-          <div className="forecast-card-header">
-            <div className="forecast-card-title">
-              {featured.emoji} Premium Rice Market Forecast
-            </div>
-            <span
-              className={`trending-price-change ${featured.change >= 0 ? "up" : "down"}`}
-            >
-              {featured.change >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-              &nbsp;{featured.change >= 0 ? "+" : ""}{featured.change}%
-            </span>
-          </div>
-          <div className="forecast-metrics">
-            <div className="forecast-metric">
-              <span className="forecast-metric-label">Current Price</span>
-              <span className="forecast-metric-value current">
-                ₱{featured.currentPrice.toFixed(2)}
-              </span>
-            </div>
-            <div className="forecast-metric">
-              <span className="forecast-metric-label">Predicted Price</span>
-              <span className="forecast-metric-value predicted">
-                ₱{featured.predictedPrice.toFixed(2)}
-              </span>
-            </div>
-            <div className="forecast-metric">
-              <span className="forecast-metric-label">Confidence</span>
-              <span className="forecast-metric-value confidence">
-                {featured.confidence}%
-              </span>
-            </div>
-          </div>
-          <ForecastChart data={featured.chartData} height={220} />
-        </div>
-      </section>
-
-      {/* ===== TRENDING PRODUCT SIDEBAR ===== */}
-      <section style={{ padding: "20px 48px 0", maxWidth: 1400, margin: "0 auto" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: "var(--radius-lg)",
-              padding: 20,
-              width: 280,
-              boxShadow: "var(--shadow-sm)",
-              border: "1px solid var(--border-light)",
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "'Poppins', sans-serif",
-                fontWeight: 700,
-                fontSize: "0.9rem",
-                marginBottom: 12,
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <TrendingUp size={16} color="#7ED957" /> Trending Product
-            </div>
-            {products.slice(0, 5).map((p) => (
-              <div
-                key={p.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  padding: "8px 0",
-                  borderBottom: "1px solid #f3f4f6",
-                  fontSize: "0.85rem",
-                }}
-              >
-                <span>{p.emoji} {p.name}</span>
+      {/* ===== FEATURED FORECAST + RECOMMENDATIONS ===== */}
+      <section style={{ padding: "40px 48px", maxWidth: 1400, margin: "0 auto" }}>
+        <div className="search-forecast-grid">
+          <div className="forecast-column">
+            <div className="forecast-card animate-scale-in">
+              <div className="forecast-card-header">
+                <div className="forecast-card-title">
+                  {featured.emoji} Premium Rice Market Forecast
+                </div>
                 <span
-                  style={{
-                    color: p.change >= 0 ? "#7ED957" : "#FF6B6B",
-                    fontWeight: 600,
-                  }}
+                  className={`trending-price-change ${featured.change >= 0 ? "up" : "down"}`}
                 >
-                  {p.change >= 0 ? "+" : ""}{p.change}%
+                  {featured.change >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                  &nbsp;{featured.change >= 0 ? "+" : ""}{featured.change}%
                 </span>
               </div>
-            ))}
+              <div className="forecast-metrics">
+                <div className="forecast-metric">
+                  <span className="forecast-metric-label">Current Price</span>
+                  <span className="forecast-metric-value current">
+                    ₱{featured.currentPrice.toFixed(2)}
+                  </span>
+                </div>
+                <div className="forecast-metric">
+                  <span className="forecast-metric-label">Predicted Price</span>
+                  <span className="forecast-metric-value predicted">
+                    ₱{featured.predictedPrice.toFixed(2)}
+                  </span>
+                </div>
+                <div className="forecast-metric">
+                  <span className="forecast-metric-label">Confidence</span>
+                  <span className="forecast-metric-value confidence">
+                    {featured.confidence}%
+                  </span>
+                </div>
+              </div>
+              <ForecastChart data={featured.chartData} height={260} />
+            </div>
           </div>
+
+          <aside className="recommended-column">
+            <div className="recommended-panel">
+              <div className="recommended-panel-header">
+                Recommended
+              </div>
+              <div className="recommended-list">
+                {filteredProducts.slice(0, 6).map((p) => (
+                  <div className="recommended-item" key={p.id}>
+                    <div className="recommended-left">
+                      <div className="recommended-emoji">{p.emoji}</div>
+                      <div>
+                        <div className="recommended-name">{p.name}</div>
+                        <div className="recommended-sub">₱{p.currentPrice.toFixed(2)}</div>
+                      </div>
+                    </div>
+                    <div className={`recommended-change ${p.change >= 0 ? 'up' : 'down'}`}>
+                      {p.change >= 0 ? `+${p.change}%` : `${p.change}%`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <a href="#" className="view-trends-btn" style={{ marginTop: 12, display: 'block' }}>
+                View More →
+              </a>
+            </div>
+          </aside>
         </div>
       </section>
 

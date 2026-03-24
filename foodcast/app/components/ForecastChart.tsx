@@ -28,7 +28,7 @@ const ForecastChart = ({ data, height = 200, showGrid = true, showLegend = true 
   const transitionIndex = data.findIndex(d => d.predicted !== null && d.actual === null);
 
   return (
-    <div style={{ width: "100%", height }}>
+    <div className="forecast-chart-container" style={{ width: "100%", height }}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
           {showGrid && (
