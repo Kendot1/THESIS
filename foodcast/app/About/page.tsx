@@ -1,342 +1,327 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import {
+  Brain,
+  Database,
+  BarChart3,
+  Cpu,
+  LineChart,
+  Shield,
+  Users,
+  TrendingUp,
+  Layers,
+  Target,
+} from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import {
-  Database,
-  Brain,
-  LineChart as LineChartIcon,
-  BarChart3,
-  Layers,
-  Lightbulb,
-} from "lucide-react";
-
-const stats = [
-  { label: "Products Tracked", value: 12, suffix: "+" },
-  { label: "Market Sources", value: 5, suffix: "+" },
-  { label: "Accuracy Rate", value: 95, suffix: "%" },
-  { label: "Weekly Updates", value: 52, suffix: "/yr" },
-];
+import WaveDivider from "../components/WaveDivider";
+import ScrollReveal from "../components/ScrollReveal";
 
 const methodologySteps = [
   {
     step: 1,
-    title: "Data Preparation",
+    icon: <Database className="w-6 h-6" />,
+    title: "Data Collection",
     description:
-      "The dataset is cleaned, standardized, and organized by date to ensure consistent and reliable price records for modeling.",
-    icon: Database,
+      "Gathering historical price data from NCR markets including daily prices, supply volumes, weather patterns, and seasonal trends across multiple commodities.",
   },
   {
     step: 2,
-    title: "Feature Engineering",
+    icon: <Layers className="w-6 h-6" />,
+    title: "Data Preprocessing",
     description:
-      "Lag values, rolling statistics, and seasonal indicators are generated to capture price trends and patterns over time.",
-    icon: Layers,
+      "Cleaning, normalizing, and structuring raw market data. Handling missing values, outlier detection, and feature engineering to prepare the dataset for model training.",
   },
   {
     step: 3,
-    title: "Hybrid Model Training",
+    icon: <Cpu className="w-6 h-6" />,
+    title: "Model Training",
     description:
-      "LSTM learns temporal price movements, while LightGBM models feature relationships and refines predictions for higher accuracy.",
-    icon: Brain,
+      "Training machine learning algorithms including LSTM neural networks, ARIMA models, and ensemble methods on historical data to learn price patterns and correlations.",
   },
   {
     step: 4,
-    title: "Forecasting & Insights",
+    icon: <Target className="w-6 h-6" />,
+    title: "Validation & Testing",
     description:
-      "The system generates real-time price predictions and provides insights based on learned patterns from historical data.",
-    icon: Lightbulb,
+      "Rigorous cross-validation and backtesting against holdout data to ensure prediction accuracy and model reliability across different market conditions.",
+  },
+  {
+    step: 5,
+    icon: <LineChart className="w-6 h-6" />,
+    title: "Price Forecasting",
+    description:
+      "Generating future price predictions with confidence intervals, trend analysis, and market sentiment indicators for each tracked product.",
+  },
+  {
+    step: 6,
+    icon: <Shield className="w-6 h-6" />,
+    title: "Continuous Monitoring",
+    description:
+      "Real-time model performance monitoring, automatic retraining when needed, and drift detection to maintain forecast accuracy over time.",
   },
 ];
 
-const benchmarks = [
-  {
-    title: "Training Classification",
-    badge: "95% Accuracy",
-    description:
-      "During initial model training, our classifier achieved high accuracy and solid recall on historical labeled data.",
-    detail:
-      "The model is validated on held-out data to ensure the trend signal is learned and not only memorized.",
-    icon: LineChartIcon,
-  },
-  {
-    title: "Mean Absolute Percentage Error",
-    badge: "3.8% MAPE",
-    description:
-      "The ensemble records low average percentage errors across test products for week-ahead forecasts.",
-    detail:
-      "MAPE stays consistently low across vegetables, fish, and staple products under weekly evaluation.",
-    icon: Database,
-  },
-  {
-    title: "Forecast Window",
-    badge: "Daily · Weekly · Monthly",
-    description:
-      "We provide hourly predictions up to five days ahead to help planning and decisions.",
-    detail:
-      "Forecast output balances practical planning horizon and confidence stability for short-term use.",
-    icon: BarChart3,
-  },
-  {
-    title: "Response Time",
-    badge: "5-15s",
-    description:
-      "Model ensemble and inference pipeline are optimized for fast prediction latency.",
-    detail:
-      "Prediction requests are processed quickly so users can iterate product checks without waiting.",
-    icon: Brain,
-  },
+const stats = [
+  { value: "50+", label: "Products Tracked", icon: <BarChart3 className="w-5 h-5" /> },
+  { value: "98.5%", label: "Model Accuracy", icon: <Target className="w-5 h-5" /> },
+  { value: "10K+", label: "Data Points Analyzed", icon: <Database className="w-5 h-5" /> },
+  { value: "24/7", label: "Real-time Updates", icon: <TrendingUp className="w-5 h-5" /> },
 ];
 
-function AnimatedCounter({ target, suffix }: { target: number; suffix: string }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLDivElement>(null);
-  const [hasAnimated, setHasAnimated] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !hasAnimated) {
-          setHasAnimated(true);
-          let start = 0;
-          const duration = 2000;
-          const increment = target / (duration / 16);
-          const timer = setInterval(() => {
-            start += increment;
-            if (start >= target) {
-              setCount(target);
-              clearInterval(timer);
-            } else {
-              setCount(Math.floor(start));
-            }
-          }, 16);
-        }
-      },
-      { threshold: 0.5 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [target, hasAnimated]);
-
-  return (
-    <div ref={ref} className="about-stat-value">
-      {count}{suffix}
-    </div>
-  );
-}
-
-const AboutPage = () => {
-  const [activeBenchmark, setActiveBenchmark] = useState(0);
-  const [activeStep, setActiveStep] = useState(methodologySteps[0].step);
-  const ActiveBenchmarkIcon = benchmarks[activeBenchmark].icon;
-
+export default function AboutPage() {
   return (
     <>
       <Header />
-
-      {/* ===== ABOUT HERO ===== */}
-      <section className="about-hero">
-        <div className="about-hero-wave" />
-        <div style={{ position: "relative", zIndex: 2 }}>
-          <h1 className="animate-fade-in-up">About US</h1>
-          {/* <p className="animate-fade-in-up delay-100">
-            Lorem ipsum dolor sit amet. Et error dolor aut deserunt voluptas sit amet sit
-            natus quia et possibilia velit.
-          </p> */}
-        </div>
-      </section>
-      {/* ===== MODEL DETAILS & PERFORMANCE ===== */}
-      <section className="model-section">
-        <div className="methodology-content">
-          <h2 className="methodology-title animate-fade-in-up">MODEL DETAILS & PERFORMANCE</h2>
-          <p className="methodology-description animate-fade-in-up delay-100">
-            FOODCAST uses a hybrid modeling approach: an LSTM network to capture temporal
-            dynamics and a LightGBM model to learn feature interactions. The ensemble
-            combines both outputs to improve short-term price forecasting.
-          </p>
-
-          <div className="model-metrics">
-            {/* <div className="metric-card">
-              <div className="metric-label">Overall Accuracy</div>
-              <div className="metric-value">95%</div>
-              <div className="metric-note">Week-ahead classification accuracy</div>
-            </div> */}
-            <div className="metric-card">
-              <div className="metric-label">Mean Absolute Percentage Error</div>
-              <div className="metric-value">~3.8%</div>
-              <div className="metric-note">Average across tracked products</div>
-            </div>
-            <div className="metric-card">
-              <div className="metric-label">Model Type</div>
-              <div className="metric-value">LSTM + LightGBM</div>
-              <div className="metric-note">Temporal + tree-based feature model</div>
-            </div>
+      <main id="main-content" className="pt-20">
+        {/* ─── Hero ──────────────────────────────────── */}
+        <section className="relative bg-gradient-to-br from-primary-800 via-primary-800 to-primary-900 py-20 sm:py-28 overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+            <div className="absolute top-20 right-[20%] w-[500px] h-[500px] bg-accent/6 rounded-full blur-[120px]" />
+            <div className="absolute bottom-0 left-[10%] w-[350px] h-[350px] bg-orange/5 rounded-full blur-[90px]" />
           </div>
 
-          {/* System Benchmarks (visual cards) */}
-          <div className="bench-grid animate-fade-in-up delay-200">
-            {benchmarks.map((benchmark, index) => {
-              const Icon = benchmark.icon;
-              const isActive = activeBenchmark === index;
-              return (
-                <button
-                  type="button"
-                  key={benchmark.title}
-                  className={`bench-card ${isActive ? "active" : ""}`}
-                  onClick={() => setActiveBenchmark(index)}
-                  onMouseEnter={() => setActiveBenchmark(index)}
-                  onFocus={() => setActiveBenchmark(index)}
-                  aria-pressed={isActive}
-                >
-                  <div className="bench-icon">
-                    <Icon size={20} />
-                  </div>
-                  <div className="bench-badge">{benchmark.badge}</div>
-                  <h4 className="bench-title">{benchmark.title}</h4>
-                  <p className="bench-desc">{benchmark.description}</p>
-                </button>
-              );
-            })}
-          </div>
+          <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-accent/10 border border-accent/20 rounded-full mb-8">
+                <Brain className="w-4 h-4 text-accent" />
+                <span className="text-accent text-xs font-medium tracking-wide">
+                  About the Project
+                </span>
+              </div>
 
-        
+              <h1
+                className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-[1.1] mb-6"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                What is{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light">
+                  FOODCAST
+                </span>
+                ?
+              </h1>
 
-          {/* <h3 className="methodology-title small animate-fade-in-up delay-200">Automated vs No-Automation: Example Comparison</h3>
-          
-
-          <div className="comparison-card animate-fade-in-up delay-300">
-            <table className="comparison-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Actual</th>
-                  <th>No-Auto Pred.</th>
-                  <th>Automated Pred.</th>
-                  <th>No-Auto Error</th>
-                  <th>Automated Error</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  { d: '2026-03-01', a: 50.0, n: 51.2, m: 49.6 },
-                  { d: '2026-03-02', a: 49.5, n: 51.2, m: 49.8 },
-                  { d: '2026-03-03', a: 50.8, n: 51.2, m: 50.2 },
-                  { d: '2026-03-04', a: 51.0, n: 51.2, m: 50.9 },
-                  { d: '2026-03-05', a: 50.4, n: 51.2, m: 50.1 },
-                ].map((row) => {
-                  const noErr = Math.abs((row.n - row.a) / row.a) * 100;
-                  const autoErr = Math.abs((row.m - row.a) / row.a) * 100;
-                  return (
-                    <tr key={row.d}>
-                      <td>{row.d}</td>
-                      <td>₱{row.a.toFixed(2)}</td>
-                      <td>₱{row.n.toFixed(2)}</td>
-                      <td>₱{row.m.toFixed(2)}</td>
-                      <td className={noErr <= autoErr ? 'error-badge worse' : 'error-badge'}>
-                        {noErr.toFixed(1)}%
-                      </td>
-                      <td className={autoErr <= noErr ? 'error-badge better' : 'error-badge'}>
-                        {autoErr.toFixed(1)}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <div className="comparison-legend">
-              <span className="legend-item"><span className="dot better"/> Automated (lower error)</span>
-              <span className="legend-item"><span className="dot worse"/> No-Auto baseline</span>
+              <p className="text-white/55 text-lg sm:text-xl leading-relaxed max-w-2xl">
+                FOODCAST is an AI-Based Forecasting and Market Analysis system
+                for Agri-Fishery Food Prices in NCR (National Capital Region)
+                Markets. It leverages advanced machine learning algorithms to
+                predict future price movements and provide actionable market
+                intelligence.
+              </p>
             </div>
-          </div> */}
-        </div>
-      </section>
-
-      {/* ===== WHAT IS FOODCAST? ===== */}
-      <div className="about-content">
-        <div className="about-what animate-fade-in-up">
-          <div className="about-what-icon">
-            <BarChart3 size={48} color="var(--primary-green)" />
           </div>
-          <div className="about-what-text">
-            <h2>What is FOODCAST?</h2>
-            <p>
-              FoodCast is an AI-powered agri-fisheries price forecasting system designed to predict daily, weekly, and monthly price movements of essential food products across NCR. It analyzes historical market data to generate accurate forecasts, identify trends, and provide insights into the factors influencing price changes.
-            </p>
-          </div>
-        </div>
+        </section>
 
-        {/* ===== STATS COUNTERS ===== */}
-        <div className="about-stats">
-          {stats.map((stat) => (
-            <div className="about-stat-card" key={stat.label}>
-              <div className="about-stat-label">{stat.label}</div>
-              <AnimatedCounter target={stat.value} suffix={stat.suffix} />
-            </div>
-          ))}
-        </div>
-      </div>
+        <WaveDivider from="#0B3D2E" to="#FDFBF7" />
 
-      {/* ===== METHODOLOGY TIMELINE ===== */}
-      <section className="methodology-section">
-        <div className="methodology-content">
-          <h2 className="methodology-title animate-fade-in-up">METHODOLOGY</h2>
-          <p className="methodology-description animate-fade-in-up delay-100">
-            AI-Based Forecasting and Market Analysis of Agri-Fishery Food Prices in NCR Markets
-            using Algorithms.
-          </p>
-
-          <div className="methodology-timeline">
-            {methodologySteps.map((item, index) => {
-              const Icon = item.icon;
-              const delayClass = `delay-${(index + 2) * 100}`;
-              const isActive = activeStep === item.step;
-              return (
-                <div
-                  className={`timeline-item animate-fade-in-up ${delayClass} ${isActive ? "active" : ""}`}
-                  key={item.step}
-                  onClick={() => setActiveStep(item.step)}
-                  onMouseEnter={() => setActiveStep(item.step)}
-                  onFocus={() => setActiveStep(item.step)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setActiveStep(item.step);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={isActive}
-                >
-                  {/* Connector line (hidden for last item) */}
-                  {index < methodologySteps.length - 1 && (
-                    <div className="timeline-connector" />
-                  )}
-
-                  {/* Step number circle */}
-                  <div className="timeline-node">
-                    <span className="timeline-step-number">{item.step}</span>
-                  </div>
-
-                  {/* Content card */}
-                  <div className="timeline-card">
-                    <div className="timeline-card-icon">
-                      <Icon size={22} />
-                    </div>
-                    <div className="timeline-card-body">
-                      <h3>{item.title}</h3>
-                      <p>{item.description}</p>
-                    </div>
+        {/* ─── Mission / Overview ──────────────────────── */}
+        <section className="py-16 sm:py-20 bg-surface" aria-labelledby="mission-heading">
+          <div className="max-w-7xl mx-auto px-5 lg:px-10">
+            <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+              <ScrollReveal animation="slide-left">
+                <div>
+                  <h2
+                    id="mission-heading"
+                    className="text-2xl sm:text-3xl font-bold text-gray-900 mb-5"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    Empowering Smarter
+                    <br />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-800 to-primary-600">
+                      Market Decisions
+                    </span>
+                  </h2>
+                  <div className="space-y-4 text-gray-600 leading-relaxed">
+                    <p>
+                      The food supply chain in the Philippines, particularly in
+                      NCR markets, faces significant challenges with price
+                      volatility affecting both consumers and producers.
+                    </p>
+                    <p>
+                      FOODCAST addresses this by providing AI-powered price
+                      forecasting that helps stakeholders — from market vendors
+                      and buyers to researchers and policymakers — anticipate
+                      price changes and make informed decisions.
+                    </p>
+                    <p>
+                      Our system uses a combination of historical price data,
+                      seasonal patterns, supply-demand indicators, and advanced
+                      algorithms to generate accurate forecasts.
+                    </p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+              </ScrollReveal>
 
+              <ScrollReveal animation="slide-right" delay={200}>
+                <div className="grid grid-cols-2 gap-4">
+                  {stats.map((stat, i) => (
+                    <div
+                      key={stat.label}
+                      className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent mb-4">
+                        {stat.icon}
+                      </div>
+                      <div className="text-2xl sm:text-3xl font-bold text-primary-800 mb-1">
+                        {stat.value}
+                      </div>
+                      <div className="text-xs text-gray-500 font-medium">
+                        {stat.label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollReveal>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Methodology ─────────────────────────────── */}
+        <div className="bg-surface">
+          <WaveDivider from="#FDFBF7" to="#0B3D2E" />
+        </div>
+
+        <section
+          className="relative py-20 sm:py-28 bg-primary-800 overflow-hidden"
+          aria-labelledby="methodology-heading"
+        >
+          <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+            <div className="absolute -top-32 right-0 w-[600px] h-[600px] bg-accent/4 rounded-full blur-[150px]" />
+            <div className="absolute -bottom-32 left-0 w-[400px] h-[400px] bg-accent/3 rounded-full blur-[120px]" />
+          </div>
+
+          <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
+            <ScrollReveal>
+              <div className="text-center mb-16">
+                <h2
+                  id="methodology-heading"
+                  className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-5"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  Our{" "}
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light">
+                    Methodology
+                  </span>
+                </h2>
+                <p className="text-white/50 max-w-2xl mx-auto text-base sm:text-lg">
+                  A systematic, data-driven approach to food price forecasting
+                  using state-of-the-art AI techniques
+                </p>
+              </div>
+            </ScrollReveal>
+
+            {/* Vertical Timeline */}
+            <div className="relative max-w-3xl mx-auto">
+              {/* Timeline line */}
+              <div
+                className="absolute left-6 sm:left-8 top-0 bottom-0 w-px bg-gradient-to-b from-accent/40 via-accent/20 to-transparent"
+                aria-hidden="true"
+              />
+
+              <div className="space-y-10">
+                {methodologySteps.map((step, i) => (
+                  <ScrollReveal
+                    key={step.step}
+                    delay={i * 120}
+                    animation="fade-up"
+                  >
+                    <div className="relative flex gap-6 sm:gap-8">
+                      {/* Timeline node */}
+                      <div className="relative z-10 shrink-0">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent
+                          shadow-[0_0_20px_rgba(126,217,87,0.1)] transition-all duration-300 hover:bg-accent/20 hover:scale-105">
+                          {step.icon}
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 pb-2">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-xs font-semibold text-accent/60 uppercase tracking-widest">
+                            Step {step.step}
+                          </span>
+                        </div>
+                        <h3
+                          className="text-lg sm:text-xl font-bold text-white mb-2"
+                          style={{ fontFamily: "var(--font-display)" }}
+                        >
+                          {step.title}
+                        </h3>
+                        <p className="text-white/45 text-sm sm:text-base leading-relaxed">
+                          {step.description}
+                        </p>
+                      </div>
+                    </div>
+                  </ScrollReveal>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <WaveDivider from="#0B3D2E" to="#FDFBF7" />
+
+        {/* ─── Team / Attribution ──────────────────────── */}
+        <section className="py-16 sm:py-20 bg-surface" aria-labelledby="team-heading">
+          <div className="max-w-7xl mx-auto px-5 lg:px-10">
+            <ScrollReveal>
+              <div className="text-center mb-12">
+                <h2
+                  id="team-heading"
+                  className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  Built for the Filipino Market
+                </h2>
+                <p className="text-gray-500 max-w-xl mx-auto">
+                  FOODCAST is a thesis project designed to support smarter food
+                  market decisions through technology and data science.
+                </p>
+              </div>
+            </ScrollReveal>
+
+            <ScrollReveal animation="scale-in" delay={200}>
+              <div className="grid sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
+                {[
+                  {
+                    icon: <Users className="w-6 h-6" />,
+                    title: "Research-Backed",
+                    description:
+                      "Built on rigorous academic research and real-world market data from NCR.",
+                  },
+                  {
+                    icon: <Brain className="w-6 h-6" />,
+                    title: "AI-Powered",
+                    description:
+                      "Utilizes advanced ML algorithms for high-accuracy price prediction.",
+                  },
+                  {
+                    icon: <Shield className="w-6 h-6" />,
+                    title: "Open & Transparent",
+                    description:
+                      "Clear methodology. Reproducible results. Trustworthy forecasts.",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.title}
+                    className="bg-white rounded-2xl border border-gray-100 p-6 text-center shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-primary-50 flex items-center justify-center text-primary-800 mx-auto mb-4">
+                      {item.icon}
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-2 text-sm">
+                      {item.title}
+                    </h3>
+                    <p className="text-gray-500 text-xs leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </ScrollReveal>
+          </div>
+        </section>
+      </main>
       <Footer />
     </>
   );
-};
-
-export default AboutPage;
+}

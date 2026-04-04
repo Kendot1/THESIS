@@ -54,10 +54,13 @@ const ForecastChart = ({ data, height = 200, showGrid = true, showLegend = true 
               fontSize: 12,
               fontFamily: "'Inter', sans-serif",
             }}
-            formatter={(value: number, name: string) => [
-              `₱${value.toFixed(2)}`,
-              name === "actual" ? "Actual Price" : "Predicted Price",
-            ]}
+            formatter={(value, name) => {
+              const numValue = typeof value === "number" ? value : 0;
+              return [
+                `₱${numValue.toFixed(2)}`,
+                name === "actual" ? "Actual Price" : "Predicted Price",
+              ];
+            }}
           />
           {transitionIndex > 0 && (
             <ReferenceLine
