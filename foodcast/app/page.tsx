@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -10,29 +10,74 @@ import {
   ChevronRight,
   ArrowRight,
 } from "lucide-react";
-import Header from "./components/Header";
-import Footer from "./components/Footer";
-import WaveDivider from "./components/WaveDivider";
-import ProductCard from "./components/ProductCard";
-import ScrollReveal from "./components/ScrollReveal";
-import ForecastChart from "./components/ForecastChart";
+import Header from "./component/Header";
+import Footer from "./component/Footer";
+import WaveDivider from "./component/WaveDivider";
+import ProductCard from "./component/ProductCard";
+import DailyMoverCard from "./component/DailyMoverCard";
+import ScrollReveal from "./component/ScrollReveal";
 import { products } from "./lib/data";
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
+
+  /* ─── Daily Movers slider state ─────────────────── */
   const sliderRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const autoSlideTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  /* ─── Trending slider state ─────────────────────── */
+  const trendingRef = useRef<HTMLDivElement>(null);
+  const [trendCanLeft, setTrendCanLeft] = useState(false);
+  const [trendCanRight, setTrendCanRight] = useState(true);
 
   const trendingProducts = products.slice(0, 4);
   const allProducts = products;
 
+  /* ─── Scroll helpers ────────────────────────────── */
   const checkScroll = () => {
     const el = sliderRef.current;
     if (!el) return;
     setCanScrollLeft(el.scrollLeft > 10);
     setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
   };
+
+  const checkTrendingScroll = () => {
+    const el = trendingRef.current;
+    if (!el) return;
+    setTrendCanLeft(el.scrollLeft > 10);
+    setTrendCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  };
+
+  const scroll = (dir: "left" | "right") => {
+    const el = sliderRef.current;
+    if (!el) return;
+    const cardWidth = window.innerWidth < 640 ? 315 : window.innerWidth < 1024 ? 435 : 495;
+    el.scrollBy({ left: dir === "left" ? -cardWidth : cardWidth, behavior: "smooth" });
+  };
+
+  const scrollTrending = (dir: "left" | "right") => {
+    const el = trendingRef.current;
+    if (!el) return;
+    const cardWidth = window.innerWidth < 640 ? 200 : 260;
+    el.scrollBy({ left: dir === "left" ? -cardWidth : cardWidth, behavior: "smooth" });
+  };
+
+  /* ─── Auto-slide for Daily Movers ──────────────── */
+  const autoSlide = useCallback(() => {
+    const el = sliderRef.current;
+    if (!el || isPaused) return;
+
+    const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 10;
+    if (atEnd) {
+      el.scrollTo({ left: 0, behavior: "smooth" });
+    } else {
+      const cardWidth = window.innerWidth < 640 ? 315 : window.innerWidth < 1024 ? 435 : 495;
+      el.scrollBy({ left: cardWidth, behavior: "smooth" });
+    }
+  }, [isPaused]);
 
   useEffect(() => {
     checkScroll();
@@ -41,83 +86,103 @@ export default function HomePage() {
     return () => el?.removeEventListener("scroll", checkScroll);
   }, []);
 
-  const scroll = (dir: "left" | "right") => {
-    const el = sliderRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir === "left" ? -300 : 300, behavior: "smooth" });
-  };
+  useEffect(() => {
+    checkTrendingScroll();
+    const el = trendingRef.current;
+    if (el) el.addEventListener("scroll", checkTrendingScroll, { passive: true });
+    return () => el?.removeEventListener("scroll", checkTrendingScroll);
+  }, []);
+
+  // Auto-slide timer
+  useEffect(() => {
+    if (isPaused) {
+      if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
+      return;
+    }
+    autoSlideTimer.current = setInterval(autoSlide, 3500);
+    return () => {
+      if (autoSlideTimer.current) clearInterval(autoSlideTimer.current);
+    };
+  }, [isPaused, autoSlide]);
 
   return (
     <>
       <Header />
       <main id="main-content">
         {/* ─── Hero Section ────────────────────────────── */}
-        <section className="relative min-h-[85vh] flex items-center bg-gradient-to-br from-primary-800 via-primary-800 to-primary-900 overflow-hidden">
-          {/* Ambient orbs */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-            <div className="absolute top-20 right-[15%] w-[500px] h-[500px] bg-accent/8 rounded-full blur-[120px] animate-float" />
-            <div className="absolute bottom-10 left-[10%] w-[400px] h-[400px] bg-orange/6 rounded-full blur-[100px]" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent/4 rounded-full blur-[150px]" />
+        <section className="relative min-h-[85vh] flex items-center overflow-hidden shadow-xl/20">          {/* Ambient orbs */}
+          {/* Background Image */}
+          <div className="absolute inset-0 -z-10">
+            <img
+              src="/Bg-2.jpg"
+              alt="background"
+              className="w-full h-full object-cover blur-xs scale-105 "
+            />
+            <div className="absolute inset-0 bg-primary-900/70" />
           </div>
 
-          <div className="relative max-w-7xl mx-auto px-5 lg:px-10 w-full pt-32 pb-20">
+          <div className="relative max-w-7xl mx-auto px-5 lg:px-10 sm:px-5 pt-32 pb-20">
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
               {/* Left: Text Content */}
               <div className="max-w-xl">
                 {/* Badge */}
-                <div className="animate-fade-in-up inline-flex items-center gap-2 px-4 py-1.5 bg-accent/10 border border-accent/20 rounded-full mb-8">
+                <div className="animate-fade-in-up inline-flex items-center gap-1 px-2 py-1 bg-accent/10 border border-accent/20 rounded-full mb-8">
                   <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
-                  <span className="text-accent text-xs font-medium tracking-wide">
+                  <span className="text-white/80 text-xs tracking-wide">
                     AI-Powered Price Forecasting
                   </span>
                 </div>
 
-                <h1
-                  className="animate-fade-in-up delay-100 text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.1] mb-6"
+                <h2
+                  className="animate-fade-in-up delay-100 text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-surface leading-[1.1] mb-6 "
                   style={{ fontFamily: "var(--font-display)" }}
                 >
                   Know Tomorrow&apos;s
                   <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light">
+                  <span className="bg-gradient-to-r from-[#009966] via-[#BF7B16] to-[#FF984F] bg-clip-text text-transparent">
                     Food Prices
                   </span>
                   <br />
                   Today
-                </h1>
+                </h2>
 
-                <p className="animate-fade-in-up delay-200 text-white/55 text-lg sm:text-xl max-w-xl leading-relaxed mb-10">
+                <p className="animate-fade-in-up delay-200 text-white/65 text-xs 
+                sm:text-base max-w-xl leading-relaxed mb-10">
                   AI-Based Forecasting and Market Analysis of Agri-Fishery Food
                   Prices in NCR Markets. Make data-driven decisions.
                 </p>
 
                 {/* Search Bar */}
-                <div className="animate-fade-in-up delay-300">
+                <div className="animate-fade-in-up delay-300 min-w-[200px]">
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
                       if (searchQuery.trim())
-                        window.location.href = `/Search?q=${encodeURIComponent(searchQuery)}`;
+                        window.location.href = `/Predict?q=${encodeURIComponent(searchQuery)}`;
                     }}
                     className="relative max-w-lg"
                     role="search"
                     aria-label="Search food products"
                   >
-                    <div className="flex items-center bg-white/10 border border-white/15 rounded-2xl overflow-hidden backdrop-blur-sm transition-all duration-300 focus-within:border-accent/50 focus-within:bg-white/15 focus-within:shadow-[0_0_30px_rgba(126,217,87,0.1)]">
+                    <div className="flex items-center bg-white/60 border border-white/15 rounded-2xl 
+                    overflow-hidden backdrop-blur-sm transition-all duration-300 
+                    focus-within:border-accent/50 focus-within:bg-white/95 focus-within:shadow-[0_0_30px_rgba(126,217,87,0.1)]">
                       <Search
-                        className="w-5 h-5 text-white/40 ml-4 shrink-0"
+                        className="w-5 h-5 text-black/55 ml-4 shrink-0"
                         aria-hidden="true"
                       />
                       <input
                         type="text"
-                        placeholder="Search products, e.g. Rice, Onion..."
+                        placeholder="Search for a product"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="flex-1 px-3 py-4 bg-transparent text-white placeholder-white/35 text-sm focus:outline-none"
+                        className="flex-1 px-3 py-3 bg-transparent text-black placeholder-black/65 text-xs 
+                          sm:text-sm focus:outline-none"
                         aria-label="Search food products"
                       />
                       <button
                         type="submit"
-                        className="mr-2 px-6 py-2.5 bg-orange rounded-xl text-white font-semibold text-sm
+                        className="mr-2 px-6 py-2 bg-orange rounded-xl text-white text-xs sm:text-sm
                           transition-all duration-300 hover:bg-orange-light hover:shadow-[0_4px_16px_rgba(255,145,77,0.4)]
                           active:scale-95 shrink-0"
                       >
@@ -128,15 +193,18 @@ export default function HomePage() {
                 </div>
 
                 {/* Stats row */}
-                <div className="animate-fade-in-up delay-500 flex flex-wrap gap-8 mt-12">
+                <div className="animate-fade-in-up delay-500 flex flex-wrap gap-8 mt-10">
                   {[
                     { value: "50+", label: "Products Tracked" },
                     { value: "98.5%", label: "Model Accuracy" },
                     { value: "Real-time", label: "Data Updates" },
                   ].map((stat) => (
-                    <div key={stat.label}>
-                      <div className="text-2xl font-bold text-accent">{stat.value}</div>
-                      <div className="text-white/40 text-xs mt-1">{stat.label}</div>
+                    <div
+                      key={stat.label}
+                      className="transition-transform duration-300 transform hover:scale-105"
+                    >
+                      <div className="text-sm sm:text-xl text-accent-dark">{stat.value}</div>
+                      <div className="text-white/40 text-xs sm:text-sm mt-1">{stat.label}</div>
                     </div>
                   ))}
                 </div>
@@ -146,7 +214,7 @@ export default function HomePage() {
               <div className="hidden lg:block relative h-[520px] animate-fade-in-up delay-300">
                 {/* Main Dashboard Card */}
                 <div
-                  className="absolute top-0 right-0 w-[380px] bg-white/8 backdrop-blur-2xl rounded-3xl border border-white/12 shadow-[0_24px_64px_rgba(0,0,0,0.35)] overflow-hidden"
+                  className="absolute top-0 right-0 w-[380px] bg-primary-800/90 backdrop-blur-3xl rounded-3xl border border-white/12 shadow-[0_24px_64px_rgba(0,0,0,0.35)] overflow-hidden"
                   style={{ animation: "float 6s ease-in-out 0.5s infinite" }}
                 >
                   {/* Dashboard Header */}
@@ -156,18 +224,18 @@ export default function HomePage() {
                         <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
                         <span className="text-[11px] font-semibold text-white/70 tracking-wide uppercase">Market Pulse</span>
                       </div>
-                      <span className="text-[10px] text-white/30 tabular-nums">NCR Region</span>
+                      <span className="text-[10px] text-white/50 tabular-nums">NCR Region</span>
                     </div>
                   </div>
 
                   {/* Mini Sparkline Chart Area */}
                   <div className="px-5 pb-3">
-                    <div className="relative h-[100px] w-full rounded-xl bg-white/4 border border-white/6 overflow-hidden">
+                    <div className="relative h-[100px] w-full rounded-xl bg-white/8 border border-white/6 overflow-hidden">
                       {/* SVG mini chart */}
                       <svg viewBox="0 0 300 80" className="w-full h-full" preserveAspectRatio="none">
                         <defs>
                           <linearGradient id="heroChartGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#7ED957" stopOpacity="0.25" />
+                            <stop offset="0%" stopColor="#265c0fff" stopOpacity="0.25" />
                             <stop offset="100%" stopColor="#7ED957" stopOpacity="0" />
                           </linearGradient>
                         </defs>
@@ -180,7 +248,7 @@ export default function HomePage() {
                         <path
                           d="M0,60 Q30,55 60,48 T120,42 T180,35"
                           fill="none"
-                          stroke="#7ED957"
+                          stroke="orange"
                           strokeWidth="2.5"
                           strokeLinecap="round"
                         />
@@ -188,7 +256,7 @@ export default function HomePage() {
                         <path
                           d="M180,35 T240,28 T300,22"
                           fill="none"
-                          stroke="#7ED957"
+                          stroke="#FFB74D"
                           strokeWidth="2"
                           strokeDasharray="6 4"
                           strokeLinecap="round"
@@ -196,17 +264,17 @@ export default function HomePage() {
                         />
                         {/* Forecast divider */}
                         <line x1="180" y1="8" x2="180" y2="75" stroke="white" strokeWidth="0.5" strokeDasharray="3 3" opacity="0.2" />
-                        <text x="185" y="14" fill="white" fillOpacity="0.3" fontSize="7" fontFamily="Inter, sans-serif">Forecast →</text>
+                        <text x="185" y="14" fill="white" fillOpacity="0.4" fontSize="7" fontFamily="Inter, sans-serif">Forecast →</text>
                         {/* Dot at transition */}
-                        <circle cx="180" cy="35" r="3" fill="#7ED957" />
-                        <circle cx="180" cy="35" r="6" fill="#7ED957" opacity="0.2">
+                        <circle cx="180" cy="35" r="3" fill="#FF6900" />
+                        <circle cx="180" cy="35" r="6" fill="#FF6900" opacity="0.2">
                           <animate attributeName="r" values="4;8;4" dur="2s" repeatCount="indefinite" />
                           <animate attributeName="opacity" values="0.3;0.05;0.3" dur="2s" repeatCount="indefinite" />
                         </circle>
                       </svg>
                       {/* Y-axis labels */}
-                      <div className="absolute top-1 left-1.5 text-[8px] text-white/20 tabular-nums">₱55</div>
-                      <div className="absolute bottom-1 left-1.5 text-[8px] text-white/20 tabular-nums">₱48</div>
+                      <div className="absolute top-1 left-1.5 text-[8px] text-white/40 tabular-nums">₱55</div>
+                      <div className="absolute bottom-1 left-1.5 text-[8px] text-white/40 tabular-nums">₱48</div>
                     </div>
                     <div className="flex items-center gap-4 mt-2">
                       <div className="flex items-center gap-1.5">
@@ -286,45 +354,46 @@ export default function HomePage() {
           </div>
         </section>
 
-        <WaveDivider from="#0B3D2E" to="#FDFBF7" />
+        {/* <WaveDivider from="#0B3D2E" to="#FDFBF7" /> */}
 
         {/* ─── Daily Market Moves ──────────────────────── */}
-        <section className="py-16 sm:py-20 bg-surface" aria-labelledby="market-heading">
+        <section className="mt-15 py-5 sm:py-10 bg-surface" aria-labelledby="market-heading">
           <div className="max-w-7xl mx-auto px-5 lg:px-10">
             <ScrollReveal>
-              <div className="flex items-end justify-between mb-8">
+              <div className="flex items-end justify-between mb-6 sm:mb-8">
                 <div>
                   <h2
                     id="market-heading"
-                    className="text-2xl sm:text-3xl font-bold text-gray-900"
+                    className="flex items-center gap-2 text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900"
                     style={{ fontFamily: "var(--font-display)" }}
                   >
-                    Daily Market Moves
+                    <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
+                    Daily Market Movers
                   </h2>
-                  <p className="text-gray-500 mt-2 text-sm">
-                    Track today&apos;s price changes across NCR markets
+                  <p className="text-gray-500 mt-1 sm:mt-2 text-xs sm:text-sm">
+                    Biggest price changes today &bull; Live updates
                   </p>
                 </div>
-                <div className="hidden sm:flex items-center gap-2">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => scroll("left")}
                     disabled={!canScrollLeft}
-                    className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600
+                    className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
                       disabled:opacity-30 disabled:cursor-not-allowed
                       hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
                     aria-label="Scroll left"
                   >
-                    <ChevronLeft className="w-5 h-5" />
+                    <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                   <button
                     onClick={() => scroll("right")}
                     disabled={!canScrollRight}
-                    className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600
+                    className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
                       disabled:opacity-30 disabled:cursor-not-allowed
                       hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
                     aria-label="Scroll right"
                   >
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                 </div>
               </div>
@@ -332,15 +401,100 @@ export default function HomePage() {
 
             <div
               ref={sliderRef}
-              className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+              className="daily-movers-slider flex gap-3 sm:gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
               aria-label="Product carousel"
               role="region"
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+              onTouchStart={() => setIsPaused(true)}
+              onTouchEnd={() => {
+                setTimeout(() => setIsPaused(false), 5000);
+              }}
             >
               {allProducts.map((p, i) => (
                 <div
                   key={p.id}
-                  className="snap-start shrink-0 w-[280px]"
+                  className="snap-start shrink-0 w-[300px] sm:w-[420px] lg:w-[480px]"
                   style={{ animationDelay: `${i * 80}ms` }}
+                >
+                  <DailyMoverCard
+                    id={p.id}
+                    name={p.name}
+                    emoji={p.emoji}
+                    category={p.category}
+                    image={p.image}
+                    currentPrice={p.currentPrice}
+                    predictedPrice={p.predictedPrice}
+                    forecastData={p.forecastData}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Trending Products ───────────────────────── */}
+        <section className="py-5 sm:py-10 bg-surface " aria-labelledby="trending-heading">
+          <div className="max-w-7xl mx-auto px-5 lg:px-10">
+            <ScrollReveal>
+              <div className="flex items-end justify-between mb-5 sm:mb-8">
+                <div>
+                  <h2
+                    id="trending-heading"
+                    className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    Trending Products
+                  </h2>
+                  <p className="text-gray-500 mt-1 sm:mt-2 text-xs sm:text-sm">
+                    Most searched & volatile commodities this week
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Arrow buttons for mobile/tablet slider */}
+                  <div className="flex lg:hidden items-center gap-2">
+                    <button
+                      onClick={() => scrollTrending("left")}
+                      disabled={!trendCanLeft}
+                      className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
+                        disabled:opacity-30 disabled:cursor-not-allowed
+                        hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
+                      aria-label="Scroll trending left"
+                    >
+                      <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                    <button
+                      onClick={() => scrollTrending("right")}
+                      disabled={!trendCanRight}
+                      className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
+                        disabled:opacity-30 disabled:cursor-not-allowed
+                        hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
+                      aria-label="Scroll trending right"
+                    >
+                      <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                  </div>
+                  <Link
+                    href="/Table"
+                    className="hidden sm:flex items-center gap-1.5 text-xs sm:text-sm font-medium text-primary-800 hover:text-accent transition-colors"
+                  >
+                    View all <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  </Link>
+                </div>
+              </div>
+            </ScrollReveal>
+
+            {/* Mobile/Tablet: Horizontal slider */}
+            <div
+              ref={trendingRef}
+              className="flex lg:hidden gap-3 sm:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+              aria-label="Trending products slider"
+              role="region"
+            >
+              {trendingProducts.map((p, i) => (
+                <div
+                  key={p.id}
+                  className="snap-start shrink-0 w-[180px] sm:w-[240px]"
                 >
                   <ProductCard
                     id={p.id}
@@ -355,36 +509,9 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
 
-        {/* ─── Trending Products ───────────────────────── */}
-        <section className="py-16 sm:py-20 bg-surface" aria-labelledby="trending-heading">
-          <div className="max-w-7xl mx-auto px-5 lg:px-10">
-            <ScrollReveal>
-              <div className="flex items-end justify-between mb-8">
-                <div>
-                  <h2
-                    id="trending-heading"
-                    className="text-2xl sm:text-3xl font-bold text-gray-900"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    Trending Products
-                  </h2>
-                  <p className="text-gray-500 mt-2 text-sm">
-                    Most searched & volatile commodities this week
-                  </p>
-                </div>
-                <Link
-                  href="/Search"
-                  className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-primary-800 hover:text-accent transition-colors"
-                >
-                  View all <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </ScrollReveal>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Desktop: 4-column grid */}
+            <div className="hidden lg:grid grid-cols-4 gap-6">
               {trendingProducts.map((p, i) => (
                 <ScrollReveal key={p.id} delay={i * 100} animation="scale-in">
                   <ProductCard
@@ -399,16 +526,26 @@ export default function HomePage() {
                 </ScrollReveal>
               ))}
             </div>
+
+            {/* Mobile "View all" link */}
+            <div className="flex sm:hidden justify-center mt-4">
+              <Link
+                href="/Table"
+                className="flex items-center gap-1.5 text-xs font-medium text-primary-800 hover:text-accent transition-colors"
+              >
+                View all products <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
         </section>
 
         {/* ─── Wave + What is FOODCAST ──────────────────── */}
-        <div className="bg-surface">
+        <div className="bg-surface ">
           <WaveDivider from="#FDFBF7" to="#0B3D2E" />
         </div>
 
         <section
-          className="relative py-20 sm:py-28 bg-primary-800 overflow-hidden"
+          className="relative py-15 sm:py-28 bg-primary-800 overflow-hidden shadow-xl/30"
           aria-labelledby="about-heading"
         >
           <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
@@ -417,7 +554,7 @@ export default function HomePage() {
 
           <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
             <ScrollReveal>
-              <div className="text-center mb-16">
+              <div className="text-center mb-10">
                 <h2
                   id="about-heading"
                   className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-5"
@@ -429,7 +566,7 @@ export default function HomePage() {
                   </span>
                   ?
                 </h2>
-                <p className="text-white/50 max-w-2xl mx-auto text-base sm:text-lg leading-relaxed">
+                <p className="text-white/55 max-w-2xl mx-auto text-xs sm:text-base leading-relaxed">
                   An AI-powered platform that forecasts agri-fishery food prices
                   in National Capital Region (NCR) markets using advanced machine
                   learning algorithms.
@@ -440,38 +577,41 @@ export default function HomePage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
                 {
-                  icon: <Brain className="w-7 h-7" />,
+                  icon: <Brain className="w-5 h-5 sm:w-7 sm:h-7" />,
                   title: "AI-Driven Analysis",
                   description:
                     "Machine learning models trained on historical data to predict future price trends with high accuracy.",
                 },
                 {
-                  icon: <TrendingUp className="w-7 h-7" />,
+                  icon: <TrendingUp className="w-5 h-5 sm:w-7 sm:h-7" />,
                   title: "Real-Time Forecasting",
                   description:
                     "Get up-to-date predictions on agri-fishery product prices across major NCR markets.",
                 },
                 {
-                  icon: <BarChart3 className="w-7 h-7" />,
+                  icon: <BarChart3 className="w-5 h-5 sm:w-7 sm:h-7" />,
                   title: "Data Visualization",
                   description:
                     "Interactive charts and graphs that make complex market data easy to understand and act upon.",
                 },
               ].map((feature, i) => (
                 <ScrollReveal key={feature.title} delay={i * 150} animation="fade-up">
-                  <div className="group relative bg-white/5 border border-white/10 rounded-2xl p-7 transition-all duration-400 hover:bg-white/8 hover:border-accent/20 hover:shadow-[0_8px_32px_rgba(126,217,87,0.08)]">
-                    <div className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center text-accent mb-5 transition-all duration-300 group-hover:bg-accent/20 group-hover:scale-105">
-                      {feature.icon}
+                  <div className="group relative bg-primary-700/70 border border-white/10 rounded-2xl py-4 px-5 sm:p-7 transition-all duration-600 
+                    hover:scale-105 flex flex-col justify-start sm:min-h-[200px] ">
+                    <div className="flex flex-wrap items-center gap-x-4">
+                      <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl bg-accent/10 flex items-center justify-center text-accent mb-5">
+                        {feature.icon}
+                      </div>
+                      <h3
+                        className="text-base sm:text-lg font-semibold text-white mb-4 truncate"
+                        style={{ fontFamily: "var(--font-display)" }}
+                      >
+                        {feature.title}
+                      </h3>
+                      <p className="text-white/45 text-xs sm:text-sm leading-relaxed">
+                        {feature.description}
+                      </p>
                     </div>
-                    <h3
-                      className="text-lg font-semibold text-white mb-2"
-                      style={{ fontFamily: "var(--font-display)" }}
-                    >
-                      {feature.title}
-                    </h3>
-                    <p className="text-white/45 text-sm leading-relaxed">
-                      {feature.description}
-                    </p>
                   </div>
                 </ScrollReveal>
               ))}
@@ -479,60 +619,16 @@ export default function HomePage() {
           </div>
         </section>
 
-        <WaveDivider from="#0B3D2E" to="#FDFBF7" />
-
-        {/* ─── All Products ────────────────────────────── */}
-        <section className="py-16 sm:py-20 bg-surface" aria-labelledby="all-products-heading">
-          <div className="max-w-7xl mx-auto px-5 lg:px-10">
-            <ScrollReveal>
-              <div className="flex items-end justify-between mb-8">
-                <div>
-                  <h2
-                    id="all-products-heading"
-                    className="text-2xl sm:text-3xl font-bold text-gray-900"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    All Products
-                  </h2>
-                  <p className="text-gray-500 mt-2 text-sm">
-                    Browse our full catalog of tracked commodities
-                  </p>
-                </div>
-                <Link
-                  href="/Table"
-                  className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-primary-800 hover:text-accent transition-colors"
-                >
-                  Table view <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </ScrollReveal>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {allProducts.map((p, i) => (
-                <ScrollReveal key={p.id} delay={i * 80} animation="fade-up">
-                  <ProductCard
-                    id={p.id}
-                    name={p.name}
-                    emoji={p.emoji}
-                    category={p.category}
-                    image={p.image}
-                    currentPrice={p.currentPrice}
-                    predictedPrice={p.predictedPrice}
-                  />
-                </ScrollReveal>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* <WaveDivider from="#0B3D2E" to="#FDFBF7" /> */}
 
         {/* ─── CTA Banner ──────────────────────────────── */}
-        <section className="py-16 sm:py-20 bg-surface">
+        <section className="mt-20 py-5 sm:py-10 lg:py-15 bg-surface">
           <div className="max-w-7xl mx-auto px-5 lg:px-10">
             <ScrollReveal animation="scale-in">
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-800 via-primary-700 to-primary-800 p-10 sm:p-14 lg:p-20">
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#096] via-[#bf7b16] to-[#ff984f] p-8 sm:p-12 lg:p-16">
                 <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-                  <div className="absolute -top-20 -right-20 w-80 h-80 bg-accent/10 rounded-full blur-[80px]" />
-                  <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-orange/8 rounded-full blur-[60px]" />
+                  <div className="absolute -top-16 -right-16 w-80 h-80 bg-accent/10 rounded-full blur-[80px]" />
+                  <div className="absolute -bottom-16 -left-16 w-60 h-60 bg-orange/8 rounded-full blur-[60px]" />
                 </div>
 
                 <div className="relative text-center">
@@ -540,28 +636,25 @@ export default function HomePage() {
                     className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-5"
                     style={{ fontFamily: "var(--font-display)" }}
                   >
-                    Start Forecasting{" "}
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light">
-                      Today
-                    </span>
+                    Start Forecasting Today
                   </h2>
-                  <p className="text-white/50 max-w-lg mx-auto mb-10 text-base sm:text-lg">
+                  <p className="text-white/90 max-w-lg mx-auto mb-10 text-sm sm:text-base">
                     Access AI-driven food price predictions and make smarter
                     decisions for your market strategy.
                   </p>
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Link
-                      href="/Search"
-                      className="px-8 py-4 bg-accent text-primary-800 font-bold rounded-2xl text-base
-                        transition-all duration-300 hover:bg-accent-light hover:shadow-[0_6px_24px_rgba(126,217,87,0.4)] hover:-translate-y-0.5
+                      href="/Predict"
+                      className="px-8 py-3 bg-primary-600 text-white font-semibold rounded-2xl text-sm border border-primary-300
+                        transition-all duration-300 hover:bg-primary-500 hover:shadow-[0_6px_24px_rgba(126,217,87,0.4)] hover:-translate-y-0.5
                         active:translate-y-0 active:scale-[0.98]"
                     >
                       Explore Forecasts
                     </Link>
                     <Link
                       href="/About"
-                      className="px-8 py-4 bg-transparent border border-white/20 text-white font-semibold rounded-2xl text-base
-                        transition-all duration-300 hover:bg-white/10 hover:border-white/30"
+                      className="px-8 py-3 bg-transparent border border-white/20 text-white font-semibold rounded-2xl text-sm
+                        transition-all duration-300 hover:bg-white/25 hover:border-white/40"
                     >
                       Learn More
                     </Link>

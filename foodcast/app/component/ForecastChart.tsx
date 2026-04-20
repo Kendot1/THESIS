@@ -1,4 +1,5 @@
 "use client";
+import { useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -23,25 +24,36 @@ interface ForecastChartProps {
   showLegend?: boolean;
 }
 
-const ForecastChart = ({ data, height = 200, showGrid = true, showLegend = true }: ForecastChartProps) => {
+const ForecastChart = ({ data, showGrid = true, showLegend = true }: ForecastChartProps) => {
   // Find transition point
   const transitionIndex = data.findIndex(d => d.predicted !== null && d.actual === null);
 
+  // Compute Y-axis domain so the chart zooms to the data range instead of starting at 0
+  const [yMin, yMax] = useMemo(() => {
+    const allValues = data.flatMap(d => [d.actual, d.predicted]).filter((v): v is number => v !== null);
+    if (allValues.length === 0) return [0, 100];
+    const min = Math.min(...allValues);
+    const max = Math.max(...allValues);
+    const padding = (max - min) * 0.15 || 5; // 15% padding, minimum 5
+    return [Math.floor(min - padding), Math.ceil(max + padding)];
+  }, [data]);
+
   return (
-    <div className="forecast-chart-container" style={{ width: "100%", height }}>
+    <div className="w-full min-w-0 overflow-hidden h-[160px] sm:h-[200px] lg:h-[280px]" style={{ maxWidth: '100%' }}>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
           {showGrid && (
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
           )}
           <XAxis
             dataKey="name"
-            tick={{ fontSize: 11, fill: "#9CA3AF" }}
+            tick={{ fontSize: 9, fill: "#9CA3AF" }}
             axisLine={{ stroke: "#E5E7EB" }}
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: "#9CA3AF" }}
+            domain={[yMin, yMax]}
+            tick={{ fontSize: 9, fill: "#9CA3AF" }}
             axisLine={false}
             tickLine={false}
             tickFormatter={(v) => `₱${v}`}
@@ -51,7 +63,7 @@ const ForecastChart = ({ data, height = 200, showGrid = true, showLegend = true 
               borderRadius: 12,
               border: "none",
               boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
-              fontSize: 12,
+              fontSize: 10,
               fontFamily: "'Inter', sans-serif",
             }}
             formatter={(value, name) => {
@@ -71,7 +83,7 @@ const ForecastChart = ({ data, height = 200, showGrid = true, showLegend = true 
                 value: "Forecast",
                 position: "top",
                 fill: "#9CA3AF",
-                fontSize: 10,
+                fontSize: 9,
               }}
             />
           )}
@@ -89,7 +101,7 @@ const ForecastChart = ({ data, height = 200, showGrid = true, showLegend = true 
             type="monotone"
             dataKey="actual"
             stroke="#0B3B24"
-            strokeWidth={2.5}
+            strokeWidth={2}
             fill="url(#actualGradient)"
             dot={false}
             connectNulls={false}
@@ -98,7 +110,7 @@ const ForecastChart = ({ data, height = 200, showGrid = true, showLegend = true 
             type="monotone"
             dataKey="predicted"
             stroke="#7ED957"
-            strokeWidth={2.5}
+            strokeWidth={2}
             strokeDasharray="6 4"
             fill="url(#predictedGradient)"
             dot={false}
@@ -107,7 +119,7 @@ const ForecastChart = ({ data, height = 200, showGrid = true, showLegend = true 
         </AreaChart>
       </ResponsiveContainer>
       {showLegend && (
-        <div className="forecast-legend">
+        <div className="forecast-legend pt-2 sm:pt-0">
           <div className="forecast-legend-item">
             <div className="forecast-legend-dot" style={{ background: "#0B3B24" }} />
             Actual Price

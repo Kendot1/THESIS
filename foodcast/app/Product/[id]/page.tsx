@@ -10,11 +10,11 @@ import {
   Calendar,
   Layers,
 } from "lucide-react";
-import Header from "../../components/Header";
-import Footer from "../../components/Footer";
-import ForecastChart from "../../components/ForecastChart";
-import ProductCard from "../../components/ProductCard";
-import ScrollReveal from "../../components/ScrollReveal";
+import Header from "../../component/Header";
+import Footer from "../../component/Footer";
+import ForecastChart from "../../component/ForecastChart";
+import ProductCard from "../../component/ProductCard";
+import ScrollReveal from "../../component/ScrollReveal";
 import { products } from "../../lib/data";
 
 export default function ProductPage({
@@ -50,10 +50,10 @@ export default function ProductPage({
             The product you&apos;re looking for doesn&apos;t exist.
           </p>
           <Link
-            href="/Search"
+            href="/Predict"
             className="px-6 py-3 bg-primary-800 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors"
           >
-            Back to Search
+            Back to Predict
           </Link>
         </main>
         <Footer />
@@ -79,8 +79,8 @@ export default function ProductPage({
     product.sentiment === "Bullish"
       ? "text-positive bg-positive/10"
       : product.sentiment === "Bearish"
-      ? "text-negative bg-negative/10"
-      : "text-gray-600 bg-gray-100";
+        ? "text-negative bg-negative/10"
+        : "text-gray-600 bg-gray-100";
 
   return (
     <>
@@ -91,12 +91,12 @@ export default function ProductPage({
           <div className="max-w-7xl mx-auto px-5 lg:px-10 py-4">
             <div className="flex items-center gap-3">
               <Link
-                href="/Search"
+                href="/Predict"
                 className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-800 transition-colors"
-                aria-label="Back to search"
+                aria-label="Back to Predict"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Search
+                Back to Predict
               </Link>
               <span className="text-gray-300" aria-hidden="true">/</span>
               <span className="text-sm font-medium text-gray-900">
@@ -108,33 +108,43 @@ export default function ProductPage({
 
         <div className="max-w-7xl mx-auto px-5 lg:px-10 py-8 sm:py-12">
           {/* ─── Product Header ──────────────────────────── */}
-          <ScrollReveal>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center text-4xl shadow-sm">
-                {product.emoji}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h1
-                    className="text-3xl sm:text-4xl font-bold text-gray-900"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    {product.name}
-                  </h1>
-                  <span className="text-xs font-medium text-primary-600 bg-primary-50 px-3 py-1 rounded-full">
-                    {product.category}
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full ${sentimentColor}`}
-                  >
-                    {sentimentIcon}
-                    {product.sentiment}
-                  </span>
+          <ScrollReveal delay={200}>
+            <div className="relative bg-gradient-to-br from-primary-800 to-primary-900 mb-5 rounded-xl p-5">
+
+              {/* Top section */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center text-4xl shadow-sm">
+                  {product.emoji}
                 </div>
-                <p className="text-gray-500 mt-1">
-                  Price forecast and market analysis
-                </p>
+
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1
+                      className="text-3xl sm:text-4xl font-bold text-white"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      {product.name}
+                    </h1>
+
+                    <span className="text-xs font-medium text-primary-600 bg-primary-50 px-3 py-1 rounded-full">
+                      {product.category}
+                    </span>
+
+                    <span
+                      className={`inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full ${sentimentColor}`}
+                    >
+                      {sentimentIcon}
+                      {product.sentiment}
+                    </span>
+                  </div>
+                </div>
               </div>
+
+              {/* Description */}
+              <p className="text-gray-400 ml-24 text-sm sm:text-base max-w-2xl">
+                {product.description}
+              </p>
+
             </div>
           </ScrollReveal>
 
@@ -173,6 +183,102 @@ export default function ProductPage({
             </div>
           </ScrollReveal>
 
+          {/* ─── AI Market Pulse Insight ─────────────────── */}
+          <ScrollReveal delay={200}>
+            {(() => {
+              const isBullish = product.sentiment === "Bullish";
+              const isBearish = product.sentiment === "Bearish";
+              const insight = isBullish
+                ? {
+                  title: "Advantageous Procurement Window",
+                  message: `Current trends indicate a significant ${priceChangePercent.toFixed(1)}% price increase. Markets show signs of supply constriction.`,
+                  action: "Procure Early",
+                  recommendation: "Increase stock levels now to mitigate upcoming cost surges in local markets.",
+                  status: "Buy Now",
+                  statusBg: "bg-positive/10 text-positive",
+                  pulseColor: "bg-positive",
+                  glowColor: "from-positive/20 to-accent/5",
+                }
+                : isBearish
+                  ? {
+                    title: "Market Entry Wait Recommended",
+                    message: `Prices are projected to soften by ${Math.abs(priceChangePercent).toFixed(1)}% as supply stabilizes. High-volume availability is expected.`,
+                    action: "Defer Purchase",
+                    recommendation: "Wait for the projected dip to secure better margins. Avoid large-scale buying today.",
+                    status: "Wait",
+                    statusBg: "bg-negative/10 text-negative",
+                    pulseColor: "bg-negative",
+                    glowColor: "from-negative/20 to-accent/5",
+                  }
+                  : {
+                    title: "Stable Market Conditions Observed",
+                    message: "Price movements are within standard seasonal ranges with low volatility detected.",
+                    action: "Monitor Daily",
+                    recommendation: "Maintain standard procurement cycles. No immediate supply shocks are anticipated.",
+                    status: "Monitor",
+                    statusBg: "bg-gray-100 text-gray-600",
+                    pulseColor: "bg-gray-400",
+                    glowColor: "from-gray-200 to-transparent",
+                  };
+
+              return (
+                <div className="relative group mb-8">
+                  {/* Creative Background Glow */}
+                  <div className={`absolute inset-0 bg-gradient-to-tr ${insight.glowColor} opacity-30 transition-opacity duration-700`} />
+
+                  <div className="relative bg-white/40 backdrop-blur-xl border border-white/60 rounded-[2rem] p-6 sm:p-8 shadow-lg">
+                    <div className="flex flex-col lg:flex-row gap-8 items-start lg:items-center">
+                      {/* Pulse Indicator */}
+                      <div className="relative shrink-0">
+                        <div className={`w-16 h-16 rounded-full ${insight.pulseColor}/20 flex items-center justify-center animate-pulse`}>
+                          <div className={`w-8 h-8 rounded-full ${insight.pulseColor} shadow-[0_0_20px_rgba(0,0,0,0.1)] flex items-center justify-center`}>
+                            <TrendingUp className="w-4 h-4 text-white" />
+                          </div>
+                        </div>
+                        {/* Orbiting Ring */}
+                        <div className={`absolute inset-0 rounded-full border-2 border-dashed ${insight.pulseColor}/30 animate-spin-slow`} />
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-3 mb-3">
+                          <h3
+                            className="text-xl font-bold text-gray-900"
+                            style={{ fontFamily: "var(--font-display)" }}
+                          >
+                            {insight.title}
+                          </h3>
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ${insight.statusBg}`}>
+                            {insight.status}
+                          </span>
+                        </div>
+                        <p className="text-gray-600 text-sm sm:text-base leading-relaxed mb-4 max-w-3xl">
+                          {insight.message} <span className="font-semibold text-gray-900">{insight.recommendation}</span>
+                        </p>
+
+                        <div className="flex items-center gap-6">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Next Action:</span>
+                            <span className="text-[11px] font-black text-primary-800">{insight.action}</span>
+                          </div>
+                          <div className="h-4 w-px bg-gray-200" />
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Reliability:</span>
+                            <div className="flex gap-0.5">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <div key={s} className={`w-1.5 h-1.5 rounded-full ${s <= 4 ? "bg-accent" : "bg-gray-200"}`} />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </ScrollReveal>
+
           {/* ─── Price Overview Stats ────────────────────── */}
           <ScrollReveal delay={100}>
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -203,11 +309,11 @@ export default function ProductPage({
                   color: isUp ? "text-positive" : "text-negative",
                 },
                 {
-                  label: "Trading Volume",
-                  value: product.volume,
+                  label: "Market Volatility",
+                  value: isUp ? "Moderate" : "Low",
                   icon: <Layers className="w-4 h-4" />,
-                  sub: "Weekly average",
-                  color: "text-gray-900",
+                  sub: "Stability Index",
+                  color: "text-primary-700",
                 },
               ].map((stat) => (
                 <div
@@ -235,7 +341,7 @@ export default function ProductPage({
               <ScrollReveal>
                 <h2
                   id="suggested-heading"
-                  className="text-xl sm:text-2xl font-bold text-gray-900 mb-6"
+                  className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 mt-20"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
                   Suggested Products
@@ -249,10 +355,10 @@ export default function ProductPage({
                       id={p.id}
                       name={p.name}
                       emoji={p.emoji}
+                      image={p.image}
                       category={p.category}
                       currentPrice={p.currentPrice}
                       predictedPrice={p.predictedPrice}
-                      sparklineData={p.sparklineData}
                     />
                   </ScrollReveal>
                 ))}

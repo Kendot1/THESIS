@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  icons: {
+    icon: '/FoodcastIcon.svg'
+  },
   title: "FOODCAST — AI Food Price Forecasting",
   description:
     "AI-Based Forecasting and Market Analysis of Agri-Fishery Food Prices in NCR Markets using Machine Learning Algorithms. Check future prices of farm and fish products.",

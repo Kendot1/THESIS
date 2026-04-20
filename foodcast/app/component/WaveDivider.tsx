@@ -11,17 +11,16 @@ const WaveDivider = ({
 }: WaveDividerProps) => {
   return (
     <div
-      className={`relative w-full overflow-hidden leading-[0] ${
-        flip ? "rotate-180" : ""
-      }`}
+      className={`relative w-full overflow-hidden leading-[0] ${flip ? "rotate-180" : ""
+        }`}
       aria-hidden="true"
     >
       <svg
-        viewBox="0 0 1440 120"
+        viewBox="0 0 1440 80"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         preserveAspectRatio="none"
-        className="w-full h-[60px] sm:h-[80px] lg:h-[120px]"
+        className="w-full h-[50px] sm:h-[70px] lg:h-[90px]"
       >
         <path
           d="M0 40C240 100 480 0 720 60C960 120 1200 20 1440 80V120H0V40Z"
@@ -32,7 +31,7 @@ const WaveDivider = ({
           fill={to}
           fillOpacity="0.5"
         />
-        <rect width="1440" height="120" fill={from} fillOpacity="0" />
+        <rect width="1440" height="80" fill={from} fillOpacity="0" />
       </svg>
     </div>
   );

@@ -1,11 +1,11 @@
 "use client";
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, ArrowUpDown, Filter, Download, Eye } from "lucide-react";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import SparklineChart from "../components/SparklineChart";
-import ScrollReveal from "../components/ScrollReveal";
+import { Search, ArrowUpDown, Filter, Eye, ArrowLeft } from "lucide-react";
+import Header from "../component/Header";
+import Footer from "../component/Footer";
+import SparklineChart from "../component/SparklineChart";
+import ScrollReveal from "../component/ScrollReveal";
 import { products, categories } from "../lib/data";
 
 type SortKey = "name" | "currentPrice" | "predictedPrice" | "change" | "volume";
@@ -75,14 +75,13 @@ export default function TablePage() {
   }) => (
     <button
       onClick={() => toggleSort(sortKeyName)}
-      className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-primary-800 transition-colors group"
+      className="flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-primary-800 transition-colors group"
       aria-label={`Sort by ${label}`}
     >
       {label}
       <ArrowUpDown
-        className={`w-3 h-3 transition-colors ${
-          sortKey === sortKeyName ? "text-primary-800" : "text-gray-300 group-hover:text-gray-400"
-        }`}
+        className={`w-3 h-3 transition-colors ${sortKey === sortKeyName ? "text-primary-800" : "text-gray-300 group-hover:text-gray-400"
+          }`}
       />
     </button>
   );
@@ -90,15 +89,23 @@ export default function TablePage() {
   return (
     <>
       <Header />
-      <main id="main-content" className="pt-20 min-h-screen bg-surface">
+      <main id="main-content">
         {/* ─── Header ──────────────────────────────────── */}
-        <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-14 sm:py-16 overflow-hidden">
+        <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-12 sm:py-14 pt-28 sm:pt-30 overflow-hidden">
           <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
             <div className="absolute top-0 left-1/3 w-[400px] h-[400px] bg-accent/6 rounded-full blur-[100px]" />
           </div>
           <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
+            {/* Back to search link */}
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white/50 hover:text-white/80 transition-colors mb-4 sm:mb-5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              Back to Home
+            </Link>
             <h1
-              className="text-3xl sm:text-4xl font-bold text-white mb-2"
+              className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Market{" "}
@@ -106,18 +113,18 @@ export default function TablePage() {
                 Table View
               </span>
             </h1>
-            <p className="text-white/50 max-w-xl">
+            <p className="text-white/50 max-w-xl text-sm sm:text-base">
               Comprehensive data view of all tracked agri-fishery products
             </p>
           </div>
         </section>
 
-        <div className="max-w-7xl mx-auto px-5 lg:px-10 py-8 sm:py-10">
+        <div className="max-w-7xl mx-auto px-5 lg:px-10 py-6 sm:py-8 lg:py-10">
           {/* ─── Filters ─────────────────────────────────── */}
           <ScrollReveal>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
               {/* Search */}
-              <div className="relative flex-1 max-w-md">
+              <div className="relative flex-1 w-full sm:max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
@@ -132,17 +139,16 @@ export default function TablePage() {
               </div>
 
               {/* Category pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 w-full sm:w-auto">
                 <Filter className="w-4 h-4 text-gray-400 shrink-0" />
                 {categories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 ${
-                      selectedCategory === cat
-                        ? "bg-primary-800 text-white"
-                        : "bg-white border border-gray-200 text-gray-600 hover:border-primary-200 hover:text-primary-800"
-                    }`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 ${selectedCategory === cat
+                      ? "bg-primary-800 text-white"
+                      : "bg-white border border-gray-200 text-gray-600 hover:border-primary-200 hover:text-primary-800"
+                      }`}
                     aria-pressed={selectedCategory === cat}
                   >
                     {cat}
@@ -154,50 +160,38 @@ export default function TablePage() {
 
           {/* ─── Data Table ───────────────────────────────── */}
           <ScrollReveal>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
+            <div className="bg-white/40 backdrop-blur-md rounded-[2.5rem] border border-white/50 shadow-2xl overflow-hidden">
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full" role="grid" aria-label="Product prices table">
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left px-5 py-4">
+                    <tr className="border-b border-black/5 bg-white/30">
+                      <th className="text-left px-6 lg:px-8 py-5">
                         <SortHeader label="Product" sortKeyName="name" />
                       </th>
-                      <th className="text-left px-5 py-4">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <th className="text-left px-6 lg:px-8 py-5">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                           Category
                         </span>
                       </th>
-                      <th className="text-right px-5 py-4">
+                      <th className="text-right px-6 lg:px-8 py-5">
                         <SortHeader label="Current Price" sortKeyName="currentPrice" />
                       </th>
-                      <th className="text-right px-5 py-4">
+                      <th className="text-right px-6 lg:px-8 py-5">
                         <SortHeader label="Predicted" sortKeyName="predictedPrice" />
                       </th>
-                      <th className="text-right px-5 py-4">
+                      <th className="text-right px-6 lg:px-8 py-5">
                         <SortHeader label="Change" sortKeyName="change" />
                       </th>
-                      <th className="text-right px-5 py-4">
-                        <SortHeader label="Volume" sortKeyName="volume" />
-                      </th>
-                      <th className="text-center px-5 py-4">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Trend
-                        </span>
-                      </th>
-                      <th className="text-center px-5 py-4">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Sentiment
-                        </span>
-                      </th>
-                      <th className="text-center px-5 py-4">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <th className="text-center px-6 lg:px-8 py-5">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                           Action
                         </span>
                       </th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {sortedProducts.map((p, i) => {
+                  <tbody className="divide-y divide-black/5">
+                    {sortedProducts.map((p) => {
                       const change =
                         ((p.predictedPrice - p.currentPrice) /
                           p.currentPrice) *
@@ -207,98 +201,56 @@ export default function TablePage() {
                       return (
                         <tr
                           key={p.id}
-                          className="border-b border-gray-50 hover:bg-primary-50/40 transition-colors group"
+                          className="group transition-all duration-300 hover:bg-white/60"
                         >
-                          {/* Product */}
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <span className="text-xl">{p.emoji}</span>
-                              <span className="font-medium text-sm text-gray-900 group-hover:text-primary-800 transition-colors">
+                          <td className="px-6 lg:px-8 py-5">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 rounded-xl bg-white/80 shadow-sm flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-110">
+                                {p.emoji}
+                              </div>
+                              <span className="font-bold text-base text-gray-900 group-hover:text-primary-800 transition-colors">
                                 {p.name}
                               </span>
                             </div>
                           </td>
-
-                          {/* Category */}
-                          <td className="px-5 py-4">
-                            <span className="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
+                          <td className="px-6 lg:px-8 py-5">
+                            <span className="inline-block text-[10px] font-bold text-primary-700 bg-primary-100/50 backdrop-blur-sm px-2.5 py-1 rounded-lg">
                               {p.category}
                             </span>
                           </td>
-
-                          {/* Current Price */}
-                          <td className="px-5 py-4 text-right">
-                            <span className="text-sm font-semibold text-gray-900">
+                          <td className="px-6 lg:px-8 py-5 text-right">
+                            <span className="text-sm font-bold text-gray-900 tabular-nums">
                               ₱{p.currentPrice.toFixed(2)}
                             </span>
                           </td>
-
-                          {/* Predicted Price */}
-                          <td className="px-5 py-4 text-right">
+                          <td className="px-6 lg:px-8 py-5 text-right">
                             <span
-                              className={`text-sm font-semibold ${
-                                isUp ? "text-positive" : "text-negative"
-                              }`}
+                              className={`text-sm font-black tabular-nums transition-all ${isUp ? "text-positive group-hover:drop-shadow-[0_0_8px_rgba(46,125,50,0.3)]" : "text-negative group-hover:drop-shadow-[0_0_8px_rgba(198,40,40,0.3)]"
+                                }`}
                             >
                               ₱{p.predictedPrice.toFixed(2)}
                             </span>
                           </td>
-
-                          {/* Change */}
-                          <td className="px-5 py-4 text-right">
-                            <span
-                              className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                isUp
-                                  ? "text-positive bg-positive/10"
-                                  : "text-negative bg-negative/10"
-                              }`}
+                          <td className="px-6 lg:px-8 py-5 text-right">
+                            <div
+                              className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full transition-all duration-300 ${isUp
+                                ? "text-positive bg-positive/10 group-hover:bg-positive/20"
+                                : "text-negative bg-negative/10 group-hover:bg-negative/20"
+                                }`}
                             >
                               {isUp ? "▲" : "▼"}{" "}
                               {Math.abs(change).toFixed(1)}%
-                            </span>
-                          </td>
-
-                          {/* Volume */}
-                          <td className="px-5 py-4 text-right text-sm text-gray-600">
-                            {p.volume}
-                          </td>
-
-                          {/* Sparkline */}
-                          <td className="px-5 py-4">
-                            <div className="w-[80px] mx-auto">
-                              <SparklineChart
-                                data={p.sparklineData}
-                                color={isUp ? "#2E7D32" : "#C62828"}
-                                height={30}
-                              />
                             </div>
                           </td>
-
-                          {/* Sentiment */}
-                          <td className="px-5 py-4 text-center">
-                            <span
-                              className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                p.sentiment === "Bullish"
-                                  ? "text-positive bg-positive/10"
-                                  : p.sentiment === "Bearish"
-                                  ? "text-negative bg-negative/10"
-                                  : "text-gray-600 bg-gray-100"
-                              }`}
-                            >
-                              {p.sentiment}
-                            </span>
-                          </td>
-
-                          {/* Action */}
-                          <td className="px-5 py-4 text-center">
+                          <td className="px-6 lg:px-8 py-5 text-center">
                             <Link
                               href={`/Product/${p.id}`}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-primary-800 bg-primary-50 rounded-lg
-                                hover:bg-primary-100 transition-colors"
+                              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold text-white bg-primary-800 rounded-xl shadow-md 
+                                hover:bg-primary-700 hover:shadow-lg hover:shadow-primary-800/20 active:scale-95 transition-all duration-300"
                               aria-label={`View details for ${p.name}`}
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                              View
+                              <Eye className="w-4 h-4" />
+                              Details
                             </Link>
                           </td>
                         </tr>
@@ -308,24 +260,89 @@ export default function TablePage() {
                 </table>
               </div>
 
+              {/* Mobile Card Layout */}
+              <div className="md:hidden divide-y divide-black/5 bg-white/20">
+                {sortedProducts.map((p) => {
+                  const change =
+                    ((p.predictedPrice - p.currentPrice) / p.currentPrice) *
+                    100;
+                  const isUp = change >= 0;
+
+                  return (
+                    <div
+                      key={p.id}
+                      className="p-5 active:bg-white/40 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-2xl">
+                            {p.emoji}
+                          </div>
+                          <div>
+                            <div className="text-base font-bold text-gray-900">{p.name}</div>
+                            <span className="text-[10px] font-bold text-primary-700 bg-primary-100 px-2 py-0.5 rounded-lg">
+                              {p.category}
+                            </span>
+                          </div>
+                        </div>
+                        <div
+                          className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full ${isUp
+                              ? "text-positive bg-positive/10"
+                              : "text-negative bg-negative/10"
+                            }`}
+                        >
+                          {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 mb-5">
+                        <div className="bg-white/40 p-3 rounded-xl border border-white/60">
+                          <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
+                            Current
+                          </div>
+                          <div className="text-sm font-bold text-gray-900 tabular-nums">
+                            ₱{p.currentPrice.toFixed(2)}
+                          </div>
+                        </div>
+                        <div className="bg-white/40 p-3 rounded-xl border border-white/60">
+                          <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
+                            Predicted
+                          </div>
+                          <div className={`text-sm font-black tabular-nums ${isUp ? "text-positive" : "text-negative"}`}>
+                            ₱{p.predictedPrice.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                      <Link
+                        href={`/Product/${p.id}`}
+                        className="flex items-center justify-center gap-2 w-full py-3 text-xs font-bold text-white bg-primary-800 rounded-xl shadow-md active:scale-[0.98] transition-all"
+                        aria-label={`View details for ${p.name}`}
+                      >
+                        <Eye className="w-4 h-4" />
+                        View Full Analysis
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+
               {sortedProducts.length === 0 && (
-                <div className="text-center py-16">
-                  <div className="text-4xl mb-3">📊</div>
-                  <h3 className="text-base font-semibold text-gray-700 mb-1">
+                <div className="text-center py-12 sm:py-16">
+                  <div className="text-3xl sm:text-4xl mb-3">📊</div>
+                  <h3 className="text-sm sm:text-base font-semibold text-gray-700 mb-1">
                     No results found
                   </h3>
-                  <p className="text-gray-500 text-sm">
+                  <p className="text-gray-500 text-xs sm:text-sm">
                     Try different filters or search terms
                   </p>
                 </div>
               )}
 
               {/* Summary row */}
-              <div className="px-5 py-3 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-xs text-gray-500">
+              <div className="px-4 sm:px-5 py-3 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-[11px] sm:text-xs text-gray-500">
                   Showing {sortedProducts.length} of {products.length} products
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-[11px] sm:text-xs text-gray-400">
                   Data refreshed hourly
                 </span>
               </div>

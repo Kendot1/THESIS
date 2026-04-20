@@ -2,6 +2,7 @@
 export interface Product {
   id: string;
   name: string;
+  description: string;
   category: string;
   emoji: string;
   image: string;
@@ -22,6 +23,7 @@ export const products: Product[] = [
   {
     id: "premium-rice",
     name: "Premium Rice",
+    description: "A staple grain in Filipino households, premium rice is the most consumed food commodity in the NCR. Prices are influenced by importation policies, harvest seasons, and global supply chain trends.",
     category: "Grains",
     emoji: "🍚",
     image: "/products/premium-rice.png",
@@ -53,6 +55,7 @@ export const products: Product[] = [
   {
     id: "red-onion",
     name: "Red Onion",
+    description: "A key cooking ingredient across Filipino cuisine, red onion prices are highly volatile and sensitive to local harvest yields, weather disruptions, and import regulations in the NCR.",
     category: "Vegetables",
     emoji: "🧅",
     image: "/products/red-onion.png",
@@ -84,6 +87,7 @@ export const products: Product[] = [
   {
     id: "tomato",
     name: "Tomato",
+    description: "Widely used in Filipino dishes like sinigang and adobo, tomatoes experience seasonal price swings driven by typhoon damage, dry spells, and transportation costs from major growing regions.",
     category: "Vegetables",
     emoji: "🍅",
     image: "/products/tomato.png",
@@ -115,6 +119,7 @@ export const products: Product[] = [
   {
     id: "galunggong",
     name: "Galunggong",
+    description: "Known as the 'poor man's fish,' galunggong is one of the most affordable and widely consumed fish in the Philippines. Its price serves as an economic indicator for lower-income food accessibility.",
     category: "Fishery",
     emoji: "🐟",
     image: "/products/galunggong.png",
@@ -146,6 +151,7 @@ export const products: Product[] = [
   {
     id: "cabbage",
     name: "Cabbage",
+    description: "Primarily sourced from highland farms in Benguet and Mountain Province, cabbage prices in the NCR are affected by weather conditions in northern Luzon and transport logistics.",
     category: "Vegetables",
     emoji: "🥬",
     image: "/products/cabbage.png",
@@ -177,6 +183,7 @@ export const products: Product[] = [
   {
     id: "garlic",
     name: "Garlic",
+    description: "An essential spice in Filipino cooking, most garlic consumed in the NCR is imported. Prices are driven by international trade policies, tariffs, and seasonal demand spikes.",
     category: "Spices",
     emoji: "🧄",
     image: "/products/garlic.png",
@@ -208,6 +215,7 @@ export const products: Product[] = [
   {
     id: "tilapia",
     name: "Tilapia",
+    description: "A popular freshwater fish farmed extensively in Central Luzon and Calabarzon. Tilapia is a protein staple for many Filipino families, with prices affected by feed costs and aquaculture output.",
     category: "Fishery",
     emoji: "🐠",
     image: "/products/tilapia.png",
@@ -239,6 +247,7 @@ export const products: Product[] = [
   {
     id: "eggplant",
     name: "Eggplant",
+    description: "A versatile vegetable commonly used in tortang talong and pinakbet. Eggplant is grown year-round in the Philippines, but prices fluctuate with monsoon seasons and pest infestations.",
     category: "Vegetables",
     emoji: "🍆",
     image: "/products/eggplant.png",
@@ -270,6 +279,7 @@ export const products: Product[] = [
   {
     id: "bangus",
     name: "Bangus",
+    description: "The national fish of the Philippines, bangus (milkfish) is farmed in fishponds and pens across the country. Prices are influenced by feed costs, weather patterns, and holiday demand surges.",
     category: "Fishery",
     emoji: "🐟",
     image: "/products/bangus.png",
