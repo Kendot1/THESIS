@@ -6,8 +6,8 @@ from fill_missing_days import fill_missing_days
 
 def run():
     # --- Step 1: Scrape & insert PDF data ---
-    start_date = datetime(2026, 2, 27)
-    end_date = datetime(2026, 3, 3)
+    start_date = datetime(2026, 1, 21)
+    end_date = datetime(2026, 1, 26)
 
     pdf_links = get_pdf_links(start_date, end_date)
     print(f"PDF links found: {len(pdf_links)}")
