@@ -31,43 +31,43 @@ const methodologySteps = [
   {
     step: 2,
     icon: <Layers className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Data Preprocessing",
+    title: "Data Preparation",
     description:
-      "Cleaning, normalizing, and structuring raw market data. Handling missing values, outlier detection, and feature engineering to prepare the dataset for model training.",
+      "Cleaning and organizing raw market data. We handle missing information and identify key factors to prepare the data for the AI system.",
   },
   {
     step: 3,
     icon: <Cpu className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Model Training",
+    title: "AI Analysis",
     description:
-      "Training machine learning algorithms including LSTM neural networks, ARIMA models, and ensemble methods on historical data to learn price patterns and correlations.",
+      "Using advanced forecasting technology and market pattern recognition to analyze historical data and identify reliable price trends.",
   },
   {
     step: 4,
     icon: <Target className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Validation & Testing",
+    title: "Accuracy Testing",
     description:
-      "Rigorous cross-validation and backtesting against holdout data to ensure prediction accuracy and model reliability across different market conditions.",
+      "Thoroughly testing the system against past market data to ensure our predictions are reliable and accurate across different market conditions.",
   },
   {
     step: 5,
     icon: <LineChart className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Price Forecasting",
+    title: "Price Predictions",
     description:
-      "Generating future price predictions with confidence intervals, trend analysis, and market sentiment indicators for each tracked product.",
+      "Creating future price forecasts with expected ranges and trend directions for every product we track.",
   },
   {
     step: 6,
     icon: <Shield className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Continuous Monitoring",
+    title: "Daily Updates",
     description:
-      "Real-time model performance monitoring, automatic retraining when needed, and drift detection to maintain forecast accuracy over time.",
+      "Continuously checking system performance and updating our data every day to maintain high accuracy as the market changes.",
   },
 ];
 
 const stats = [
   { value: "50+", label: "Products Tracked", icon: <BarChart3 className="w-5 h-5" /> },
-  { value: "98.5%", label: "Model Accuracy", icon: <Target className="w-5 h-5" /> },
+  { value: "98.5%", label: "Prediction Success", icon: <Target className="w-5 h-5" /> },
   { value: "10K+", label: "Data Points Analyzed", icon: <Database className="w-5 h-5" /> },
   { value: "24/7", label: "Real-time Updates", icon: <TrendingUp className="w-5 h-5" /> },
 ];
@@ -84,8 +84,8 @@ export default function AboutPage() {
         const pillarData = [
           {
             icon: <Users className="w-7 h-7" />,
-            title: "Research-Backed",
-            subtitle: "Market Intelligence",
+            title: "Data-Driven",
+            subtitle: "Market Insights",
             description:
               "Built on rigorous academic research and real-world market data from NCR to ensure local relevance.",
             gradient: "from-accent/[0.03] to-accent/[0.08]",
@@ -96,9 +96,9 @@ export default function AboutPage() {
           {
             icon: <Brain className="w-7 h-7" />,
             title: "AI-Powered",
-            subtitle: "Smart Algorithms",
+            subtitle: "Smart Predictions",
             description:
-              "Utilizes advanced ML models like LSTM and ARIMA for high-accuracy price predictions and trend analysis.",
+              "Uses advanced AI technology to analyze price trends and provide clear forecasts for users.",
             gradient: "from-accent/[0.06] to-accent/[0.12]",
             activeColor: "text-accent",
             activeBg: "bg-primary-900",
@@ -145,18 +145,16 @@ export default function AboutPage() {
                     style={{ fontFamily: "var(--font-display)" }}
                   >
                     What is{" "}
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light">
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-dark to-accent-light">
                       FOODCAST
                     </span>
                     ?
                   </h1>
 
                   <p className="text-white/55 text-xs sm:text-base leading-relaxed text-justify max-w-2xl">
-                    FOODCAST is an AI-Based Forecasting and Market Analysis system
-                    for Agri-Fishery Food Prices in NCR (National Capital Region)
-                    Markets. It leverages advanced machine learning algorithms to
-                    predict future price movements and provide actionable market
-                    intelligence.
+                    FOODCAST is an AI-powered system that predicts prices and analyzes the market 
+                    for farm and fishery products in Metro Manila (NCR). It uses smart technology 
+                    to show where prices are going, helping you make better decisions.
                   </p>
                 </div>
               </div>
@@ -181,15 +179,13 @@ export default function AboutPage() {
                       </h2>
                       <div className="space-y-4 text-xs sm:text-base text-gray-600 text-justify leading-relaxed">
                         <p>
-                          The food supply chain in the Philippines, particularly in
-                          NCR markets, faces significant challenges with price
-                          volatility affecting both consumers and producers.
+                          The food market in the Philippines often faces sharp price 
+                          changes that affect everyone.
                         </p>
                         <p>
-                          FOODCAST addresses this by providing AI-powered price
-                          forecasting that helps stakeholders — from market vendors
-                          and buyers to researchers and policymakers — anticipate
-                          price changes and make informed decisions.
+                          FOODCAST helps by providing AI price forecasts that let 
+                          buyers and sellers see what's coming next, making it 
+                          easier to plan ahead.
                         </p>
                         <p>
                           Our system uses a combination of historical price data,
@@ -246,14 +242,13 @@ export default function AboutPage() {
                       className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-5"
                       style={{ fontFamily: "var(--font-display)" }}
                     >
-                      Our{" "}
+                      How It{" "}
                       <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light">
-                        Methodology
+                        Works
                       </span>
                     </h2>
                     <p className="text-white/50 max-w-2xl mx-auto text-base sm:text-lg">
-                      A systematic, data-driven approach to food price forecasting
-                      using state-of-the-art AI techniques
+                      A simple, data-driven approach to price prediction using smart technology.
                     </p>
                   </div>
                 </ScrollReveal>
@@ -408,8 +403,8 @@ export default function AboutPage() {
                       Built for the Filipino Market
                     </h2>
                     <p className="text-gray-600 text-xs sm:text-base max-w-2xl mx-auto leading-relaxed">
-                      FOODCAST is a mission-driven system designed to support smarter food
-                      market decisions through technology, transparency, and data science.
+                      FOODCAST is a community-focused system designed to help you make 
+                      better market choices through technology and clear data.
                     </p>
                   </div>
                 </ScrollReveal>

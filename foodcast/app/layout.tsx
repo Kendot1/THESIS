@@ -40,7 +40,7 @@ export default function RootLayout({
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body className="antialiased">
+      <body className="antialiased selection:bg-accent/30 selection:text-primary-900">
         <a
           href="#main-content"
           className="visually-hidden focus:!clip-auto focus:!w-auto focus:!h-auto focus:fixed focus:top-4 focus:left-4 focus:z-[9999] focus:bg-accent focus:text-primary-800 focus:px-4 focus:py-2 focus:rounded-lg focus:font-semibold"

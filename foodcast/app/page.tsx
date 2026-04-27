@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -20,6 +20,16 @@ import { products } from "./lib/data";
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  const searchSuggestions = useMemo(() => {
+    if (!searchQuery || searchQuery.length < 1) return [];
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.category.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 5);
+  }, [searchQuery]);
 
   /* ─── Daily Movers slider state ─────────────────── */
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -153,7 +163,7 @@ export default function HomePage() {
                 </p>
 
                 {/* Search Bar */}
-                <div className="animate-fade-in-up delay-300 min-w-[200px]">
+                <div className="animate-fade-in-up delay-300 min-w-[200px] relative z-20">
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
@@ -176,9 +186,12 @@ export default function HomePage() {
                         placeholder="Search for a product"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
+                        onFocus={() => setIsSearchFocused(true)}
+                        onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
                         className="flex-1 px-3 py-3 bg-transparent text-black placeholder-black/65 text-xs 
                           sm:text-sm focus:outline-none"
                         aria-label="Search food products"
+                        autoComplete="off"
                       />
                       <button
                         type="submit"
@@ -189,6 +202,41 @@ export default function HomePage() {
                         Search
                       </button>
                     </div>
+
+                    {/* Suggestions Dropdown */}
+                    {isSearchFocused && searchSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border 
+                      border-gray-100 shadow-[0_12px_48px_rgba(0,0,0,0.15)] overflow-hidden z-50 animate-fade-in">
+                        <div className="px-3 py-2 border-b border-gray-100">
+                          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Suggestions</span>
+                        </div>
+                        {searchSuggestions.map((p) => {
+                          const change = p.currentPrice === 0 ? 0 : ((p.predictedPrice - p.currentPrice) / p.currentPrice) * 100;
+                          const isUp = change >= 0;
+                          return (
+                            <Link
+                              key={p.id}
+                              href={`/Product/${p.id}`}
+                              className="flex items-center gap-3 px-4 py-3 hover:bg-primary-50/60 transition-colors duration-200 border-b border-gray-50 last:border-0"
+                            >
+                              <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center shrink-0 border border-gray-100">
+                                <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                              </div>
+                              <div className="flex-1 min-w-0 text-left">
+                                <div className="text-sm font-semibold text-gray-900 truncate">{p.name}</div>
+                                <div className="text-[10px] text-gray-400">{p.category}</div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-xs font-bold text-gray-900 tabular-nums">₱{p.currentPrice.toFixed(2)}</div>
+                                <div className={`text-[10px] font-bold tabular-nums ${isUp ? "text-positive" : "text-negative"}`}>
+                                  {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
+                                </div>
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
                   </form>
                 </div>
 
@@ -196,7 +244,7 @@ export default function HomePage() {
                 <div className="animate-fade-in-up delay-500 flex flex-wrap gap-8 mt-10">
                   {[
                     { value: "50+", label: "Products Tracked" },
-                    { value: "98.5%", label: "Model Accuracy" },
+                    { value: "98.5%", label: "Prediction Success" },
                     { value: "Real-time", label: "Data Updates" },
                   ].map((stat) => (
                     <div
@@ -295,8 +343,8 @@ export default function HomePage() {
                       const isUp = change > 0;
                       return (
                         <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-white/4 border border-white/5 hover:bg-white/8 transition-all duration-300">
-                          <div className="w-8 h-8 rounded-lg bg-white/8 flex items-center justify-center text-base shrink-0">
-                            {p.emoji}
+                          <div className="w-10 h-10 rounded-lg bg-white/10 overflow-hidden flex items-center justify-center shrink-0 border border-white/10">
+                            <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-semibold text-white truncate">{p.name}</div>
@@ -325,7 +373,7 @@ export default function HomePage() {
                   <div className="flex items-center gap-2.5">
                     <Brain className="w-5 h-5 text-accent" />
                     <div>
-                      <div className="text-xs font-bold text-white">ML Model</div>
+                      <div className="text-xs font-bold text-white">AI Smart System</div>
                       <div className="text-[10px] text-white/35">Active & Learning</div>
                     </div>
                   </div>
@@ -401,7 +449,7 @@ export default function HomePage() {
 
             <div
               ref={sliderRef}
-              className="daily-movers-slider flex gap-3 sm:gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+              className="daily-movers-slider flex gap-3 sm:gap-5 overflow-x-auto pt-6 pb-12 px-10 -mt-6 -mx-10 scroll-px-10 snap-x snap-mandatory scrollbar-hide"
               aria-label="Product carousel"
               role="region"
               onMouseEnter={() => setIsPaused(true)}
@@ -447,7 +495,7 @@ export default function HomePage() {
                     Trending Products
                   </h2>
                   <p className="text-gray-500 mt-1 sm:mt-2 text-xs sm:text-sm">
-                    Most searched & volatile commodities this week
+                    Most searched & active items this week
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -487,7 +535,7 @@ export default function HomePage() {
             {/* Mobile/Tablet: Horizontal slider */}
             <div
               ref={trendingRef}
-              className="flex lg:hidden gap-3 sm:gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+              className="flex lg:hidden gap-3 sm:gap-4 overflow-x-auto pt-6 pb-12 px-10 -mt-6 -mx-10 scroll-px-10 snap-x snap-mandatory scrollbar-hide"
               aria-label="Trending products slider"
               role="region"
             >

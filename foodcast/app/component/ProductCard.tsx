@@ -87,13 +87,13 @@ const ProductCard = ({
             <img
               src={image}
               alt={name}
-              className="w-full h-full object-contain p-3 transition-transform duration-500 group-hover:scale-110"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               onError={() => setImgError(true)}
             />
           ) : (
-            <span className="text-5xl transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[6deg]">
-              {emoji}
-            </span>
+            <div className="flex flex-col items-center justify-center text-center p-4">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Image Loading...</span>
+            </div>
           )}
         </div>
 

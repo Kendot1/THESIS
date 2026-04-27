@@ -31,10 +31,8 @@ const Header = () => {
     <header role="banner">
       <nav
         aria-label="Main navigation"
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out ${scrolled
-          ? "py-4 bg-surface/90 backdrop-blur-2xl shadow-[0_1px_24px_rgba(0,0,0,0.15)]"
-          : "py-4 bg-surface/90 backdrop-blur-xl"
-          }`}
+        className={`fixed top-0 left-0 right-0 z-50 shadow-[0_1px_24px_rgba(0,0,0,0.15)] transition-all duration-500 ease-out ${scrolled
+          ? "py-4 bg-surface/90 backdrop-blur-2xl" : "py-4 bg-surface backdrop-blur-xl"}`}
       >
         <div className="max-w-7xl mx-auto px-5 lg:px-10 flex items-center justify-between">
           {/* Logo */}

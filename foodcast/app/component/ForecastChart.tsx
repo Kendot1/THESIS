@@ -1,5 +1,5 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   AreaChart,
   Area,
@@ -24,7 +24,13 @@ interface ForecastChartProps {
   showLegend?: boolean;
 }
 
-const ForecastChart = ({ data, showGrid = true, showLegend = true }: ForecastChartProps) => {
+const ForecastChart = ({ data, height, showGrid = true, showLegend = true }: ForecastChartProps) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Find transition point
   const transitionIndex = data.findIndex(d => d.predicted !== null && d.actual === null);
 
@@ -38,98 +44,120 @@ const ForecastChart = ({ data, showGrid = true, showLegend = true }: ForecastCha
     return [Math.floor(min - padding), Math.ceil(max + padding)];
   }, [data]);
 
+  if (!mounted) {
+    return <div className="w-full h-[160px] sm:h-[200px] lg:h-[280px] bg-gray-50/50 animate-pulse rounded-xl" />;
+  }
+
   return (
-    <div className="w-full min-w-0 overflow-hidden h-[160px] sm:h-[200px] lg:h-[280px]" style={{ maxWidth: '100%' }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-          {showGrid && (
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-          )}
-          <XAxis
-            dataKey="name"
-            tick={{ fontSize: 9, fill: "#9CA3AF" }}
-            axisLine={{ stroke: "#E5E7EB" }}
-            tickLine={false}
-          />
-          <YAxis
-            domain={[yMin, yMax]}
-            tick={{ fontSize: 9, fill: "#9CA3AF" }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={(v) => `₱${v}`}
-          />
-          <Tooltip
-            contentStyle={{
-              borderRadius: 12,
-              border: "none",
-              boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
-              fontSize: 10,
-              fontFamily: "'Inter', sans-serif",
+    <div
+      className="w-full min-w-0"
+      style={{
+        height: height ? `${height}px` : 'auto',
+        maxHeight: '100%'
+      }}
+    >
+      <div className={!height ? "h-[180px] sm:h-[240px] lg:h-[360px]" : "h-full w-full"}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart
+            data={data}
+            margin={{
+              top: height ? 20 : 20,
+              right: height ? 15 : 15,
+              left: height ? 0 : 0,
+              bottom: height ? 0 : 20
             }}
-            formatter={(value, name) => {
-              const numValue = typeof value === "number" ? value : 0;
-              return [
-                `₱${numValue.toFixed(2)}`,
-                name === "actual" ? "Actual Price" : "Predicted Price",
-              ];
-            }}
-          />
-          {transitionIndex > 0 && (
-            <ReferenceLine
-              x={data[transitionIndex - 1]?.name}
-              stroke="#9CA3AF"
-              strokeDasharray="5 5"
-              label={{
-                value: "Forecast",
-                position: "top",
-                fill: "#9CA3AF",
-                fontSize: 9,
+          >
+            {showGrid && (
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+            )}
+            <XAxis
+              dataKey="name"
+              hide={height ? height < 120 : false}
+              tick={{ fontSize: 10, fill: "#9CA3AF" }}
+              axisLine={{ stroke: "#E5E7EB" }}
+              tickLine={false}
+              dy={10}
+            />
+            <YAxis
+              domain={[yMin, yMax]}
+              tick={{ fontSize: 9, fill: "#9CA3AF" }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => `₱${v}`}
+              width={height ? 35 : 40}
+            />
+            <Tooltip
+              contentStyle={{
+                borderRadius: 12,
+                border: "none",
+                boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
+                fontSize: 10,
+                fontFamily: "'Inter', sans-serif",
+              }}
+              formatter={(value, name) => {
+                const numValue = typeof value === "number" ? value : 0;
+                return [
+                  `₱${numValue.toFixed(2)}`,
+                  name === "actual" ? "Actual Price" : "Predicted Price",
+                ];
               }}
             />
-          )}
-          <defs>
-            <linearGradient id="actualGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#7ED957" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#7ED957" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="predictedGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#7ED957" stopOpacity={0.15} />
-              <stop offset="95%" stopColor="#7ED957" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <Area
-            type="monotone"
-            dataKey="actual"
-            stroke="#0B3B24"
-            strokeWidth={2}
-            fill="url(#actualGradient)"
-            dot={false}
-            connectNulls={false}
-          />
-          <Area
-            type="monotone"
-            dataKey="predicted"
-            stroke="#7ED957"
-            strokeWidth={2}
-            strokeDasharray="6 4"
-            fill="url(#predictedGradient)"
-            dot={false}
-            connectNulls={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-      {showLegend && (
-        <div className="forecast-legend pt-2 sm:pt-0">
-          <div className="forecast-legend-item">
-            <div className="forecast-legend-dot" style={{ background: "#0B3B24" }} />
-            Actual Price
-          </div>
-          <div className="forecast-legend-item">
-            <div className="forecast-legend-dot" style={{ background: "#7ED957" }} />
-            Predicted Price
-          </div>
+            {transitionIndex > 0 && (
+              <ReferenceLine
+                x={data[transitionIndex - 1]?.name}
+                stroke="#9CA3AF"
+                strokeDasharray="5 5"
+                label={{
+                  value: "Forecast",
+                  position: "top",
+                  fill: "#9CA3AF",
+                  fontSize: 9,
+                }}
+              />
+            )}
+            <defs>
+              <linearGradient id="actualGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#7ED957" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#7ED957" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="predictedGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#7ED957" stopOpacity={0.15} />
+                <stop offset="95%" stopColor="#7ED957" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <Area
+              type="monotone"
+              dataKey="actual"
+              stroke="#0B3B24"
+              strokeWidth={2}
+              fill="url(#actualGradient)"
+              dot={false}
+              connectNulls={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="predicted"
+              stroke="#7ED957"
+              strokeWidth={2}
+              strokeDasharray="6 4"
+              fill="url(#predictedGradient)"
+              dot={false}
+              connectNulls={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+      {/* Legend */}
+      <div className="flex items-center gap-6 mt-4 -mb-1 ml-2">
+        <div className="flex items-center gap-2">
+          <div className="forecast-legend-dot" style={{ background: "#0B3B24" }} />
+          <span className="text-[10px] font-medium text-gray-900">Actual Price</span>
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <div className="forecast-legend-dot" style={{ background: "#7ED957" }} />
+          <span className="text-[10px] font-medium text-gray-900">Predicted Price</span>
+        </div>
+      </div>
     </div>
   );
 };

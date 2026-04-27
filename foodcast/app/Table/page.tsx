@@ -75,13 +75,13 @@ export default function TablePage() {
   }) => (
     <button
       onClick={() => toggleSort(sortKeyName)}
-      className="flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-primary-800 transition-colors group"
+      className="flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-white uppercase tracking-wider 
+      hover:text-primary-400 transition-colors group"
       aria-label={`Sort by ${label}`}
     >
       {label}
       <ArrowUpDown
-        className={`w-3 h-3 transition-colors ${sortKey === sortKeyName ? "text-primary-800" : "text-gray-300 group-hover:text-gray-400"
-          }`}
+        className={`w-3 h-3 transition-colors ${sortKey === sortKeyName ? "text-primary-400" : "text-white"}`}
       />
     </button>
   );
@@ -160,31 +160,31 @@ export default function TablePage() {
 
           {/* ─── Data Table ───────────────────────────────── */}
           <ScrollReveal>
-            <div className="bg-white/40 backdrop-blur-md rounded-[2.5rem] border border-white/50 shadow-2xl overflow-hidden">
+            <div className="bg-white/40 backdrop-blur-md rounded-[2.5rem] border border-white/50 shadow-xl overflow-hidden">
               {/* Desktop Table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full" role="grid" aria-label="Product prices table">
                   <thead>
-                    <tr className="border-b border-black/5 bg-white/30">
+                    <tr className="border-b border-black/5 text-white bg-primary-700 ">
                       <th className="text-left px-6 lg:px-8 py-5">
                         <SortHeader label="Product" sortKeyName="name" />
                       </th>
-                      <th className="text-left px-6 lg:px-8 py-5">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      <th className="text-left px-6 lg:px-8 py-5 ">
+                        <span className="text-[10px] font-bold uppercase tracking-widest">
                           Category
                         </span>
                       </th>
-                      <th className="text-right px-6 lg:px-8 py-5">
+                      <th className="text-center px-6 py-5">
                         <SortHeader label="Current Price" sortKeyName="currentPrice" />
                       </th>
-                      <th className="text-right px-6 lg:px-8 py-5">
+                      <th className=" text-center px-6 py-5">
                         <SortHeader label="Predicted" sortKeyName="predictedPrice" />
                       </th>
-                      <th className="text-right px-6 lg:px-8 py-5">
+                      <th className="text-center px-6 py-5">
                         <SortHeader label="Change" sortKeyName="change" />
                       </th>
-                      <th className="text-center px-6 lg:px-8 py-5">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      <th className="text-center px-6 py-5">
+                        <span className="text-[10px] font-bold uppercase tracking-widest">
                           Action
                         </span>
                       </th>
@@ -213,17 +213,17 @@ export default function TablePage() {
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 lg:px-8 py-5">
+                          <td className="px-6 lg:px-8 py-5 text-left">
                             <span className="inline-block text-[10px] font-bold text-primary-700 bg-primary-100/50 backdrop-blur-sm px-2.5 py-1 rounded-lg">
                               {p.category}
                             </span>
                           </td>
-                          <td className="px-6 lg:px-8 py-5 text-right">
+                          <td className="px-6 lg:px-8 py-5 text-left">
                             <span className="text-sm font-bold text-gray-900 tabular-nums">
                               ₱{p.currentPrice.toFixed(2)}
                             </span>
                           </td>
-                          <td className="px-6 lg:px-8 py-5 text-right">
+                          <td className="px-6 lg:px-8 py-5 text-left">
                             <span
                               className={`text-sm font-black tabular-nums transition-all ${isUp ? "text-positive group-hover:drop-shadow-[0_0_8px_rgba(46,125,50,0.3)]" : "text-negative group-hover:drop-shadow-[0_0_8px_rgba(198,40,40,0.3)]"
                                 }`}
@@ -231,7 +231,7 @@ export default function TablePage() {
                               ₱{p.predictedPrice.toFixed(2)}
                             </span>
                           </td>
-                          <td className="px-6 lg:px-8 py-5 text-right">
+                          <td className="px-6 lg:px-8 py-5 text-left">
                             <div
                               className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full transition-all duration-300 ${isUp
                                 ? "text-positive bg-positive/10 group-hover:bg-positive/20"
@@ -287,8 +287,8 @@ export default function TablePage() {
                         </div>
                         <div
                           className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full ${isUp
-                              ? "text-positive bg-positive/10"
-                              : "text-negative bg-negative/10"
+                            ? "text-positive bg-positive/10"
+                            : "text-negative bg-negative/10"
                             }`}
                         >
                           {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%

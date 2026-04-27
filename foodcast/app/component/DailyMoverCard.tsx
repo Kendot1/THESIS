@@ -56,13 +56,13 @@ const DailyMoverCard = ({
   return (
     <Link
       href={`/Product/${id}`}
-      className="daily-mover-card group relative block bg-white rounded-2xl sm:rounded-3xl border border-gray-100/80 overflow-hidden
+      className="daily-mover-card group relative block bg-white/90 rounded-2xl sm:rounded-3xl border border-gray-100/80
         transition-all duration-500 ease-out
         hover:shadow-[0_12px_48px_rgba(11,61,46,0.12)] hover:-translate-y-1
         focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
     >
       {/* Top gradient wave decoration */}
-      <div className="absolute top-0 left-0 right-0 h-16 sm:h-20 overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 h-16 sm:h-20">
         <svg
           viewBox="0 0 500 80"
           className="w-full h-full"
@@ -87,8 +87,8 @@ const DailyMoverCard = ({
         {/* Row 1: Header — icon, name, category, change badge */}
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-primary-50 to-primary-100/60 flex items-center justify-center text-base sm:text-xl shrink-0 shadow-sm">
-              {emoji}
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 shrink-0 shadow-sm">
+              <img src={image} alt={name} className="w-full h-full object-cover" />
             </div>
             <div className="min-w-0">
               <h3
@@ -101,11 +101,10 @@ const DailyMoverCard = ({
             </div>
           </div>
           <span
-            className={`inline-flex items-center gap-0.5 text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl transition-all duration-300 shrink-0 ${
-              isUp
-                ? "text-positive bg-positive/8 group-hover:bg-positive/15"
-                : "text-negative bg-negative/8 group-hover:bg-negative/15"
-            }`}
+            className={`inline-flex items-center gap-0.5 text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl transition-all duration-300 shrink-0 ${isUp
+              ? "text-positive bg-positive/8 group-hover:bg-positive/15"
+              : "text-negative bg-negative/8 group-hover:bg-negative/15"
+              }`}
           >
             {isUp ? "Increase" : "Decrease"}{" "}
             {isUp ? (
@@ -142,11 +141,10 @@ const DailyMoverCard = ({
           </div>
 
           {/* Price Change */}
-          <div className={`rounded-lg sm:rounded-xl p-2 sm:p-3 border ${
-            isUp 
-              ? "bg-positive/5 border-positive/10" 
-              : "bg-negative/5 border-negative/10"
-          }`}>
+          <div className={`rounded-lg sm:rounded-xl p-2 sm:p-3 border ${isUp
+            ? "bg-positive/5 border-positive/10"
+            : "bg-negative/5 border-negative/10"
+            }`}>
             <div className="text-[8px] sm:text-[10px] text-gray-400 uppercase tracking-wider font-semibold mb-0.5">
               Price Change
             </div>
@@ -162,7 +160,7 @@ const DailyMoverCard = ({
         {/* Row 3: Line Chart */}
         <div className="bg-gray-50/50 rounded-lg sm:rounded-xl border border-gray-100/60 p-2 sm:p-3">
           <div className="h-[120px] sm:h-[160px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
                 <defs>
                   <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
