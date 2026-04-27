@@ -1,0 +1,36 @@
+{
+  "version": "v011_2026-04-27T06-28-51",
+  "created_at": "2026-04-27T06:28:51.346897+00:00",
+  "metrics": {
+    "lgbm": {
+      "rmse": 3.73566985821632,
+      "mae": 2.1214583359849586,
+      "mape": 1.7318184443171685
+    },
+    "lstm": {
+      "rmse": 0.40915655309099835,
+      "mae": 0.27301316818331595,
+      "mape": 0.21031854000497444
+    },
+    "lgbm_residual": {
+      "rmse": 0.354857831687186,
+      "mae": 0.21896533748919658
+    },
+    "ensemble": {
+      "rmse": 0.35485783168718854,
+      "mae": 0.21896533748919694,
+      "mape": 0.16200605849591437
+    },
+    "timestamp": "2026-04-27T06:28:51.325262+00:00",
+    "data_rows": 9946,
+    "mode": "full"
+  },
+  "notes": "Full training on 9946 rows",
+  "files": [
+    "lightgbm_model.txt",
+    "lstm_model.pt",
+    "lstm_scaler.npz",
+    "ensemble_meta_model.pkl",
+    "categorical_mappings.json"
+  ]
+}
