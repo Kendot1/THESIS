@@ -66,13 +66,14 @@ class LightGBMModel:
                          (warm start). Requires a previously saved model.
         """
         self._feature_names = list(X_train.columns)
+        cat_cols = [c for c in self._feature_names if c.endswith("_encoded")]
 
-        train_set = lgb.Dataset(X_train, label=y_train)
+        train_set = lgb.Dataset(X_train, label=y_train, categorical_feature=cat_cols)
         valid_sets = [train_set]
         valid_names = ["train"]
 
         if X_val is not None and y_val is not None:
-            val_set = lgb.Dataset(X_val, label=y_val, reference=train_set)
+            val_set = lgb.Dataset(X_val, label=y_val, reference=train_set, categorical_feature=cat_cols)
             valid_sets.append(val_set)
             valid_names.append("val")
 
@@ -138,12 +139,13 @@ class LightGBMModel:
             y_residual_val:   Validation residuals
         """
         self._residual_feature_names = list(X_train.columns)
+        cat_cols = [c for c in self._residual_feature_names if c.endswith("_encoded")]
 
-        train_set = lgb.Dataset(X_train, label=y_residual_train)
+        train_set = lgb.Dataset(X_train, label=y_residual_train, categorical_feature=cat_cols)
         valid_sets = [train_set]
 
         if X_val is not None and y_residual_val is not None:
-            val_set = lgb.Dataset(X_val, label=y_residual_val, reference=train_set)
+            val_set = lgb.Dataset(X_val, label=y_residual_val, reference=train_set, categorical_feature=cat_cols)
             valid_sets.append(val_set)
 
         callbacks = [lgb.log_evaluation(period=50)]
@@ -196,10 +198,11 @@ class LightGBMModel:
             params.pop("metric", None)
             params["metric"] = "quantile"
 
-            train_set = lgb.Dataset(X_train, label=y_train)
+            cat_cols = [c for c in X_train.columns if c.endswith("_encoded")]
+            train_set = lgb.Dataset(X_train, label=y_train, categorical_feature=cat_cols)
             valid_sets = [train_set]
             if X_val is not None and y_val is not None:
-                valid_sets.append(lgb.Dataset(X_val, label=y_val, reference=train_set))
+                valid_sets.append(lgb.Dataset(X_val, label=y_val, reference=train_set, categorical_feature=cat_cols))
 
             callbacks = [lgb.log_evaluation(period=0)]
             if X_val is not None:
@@ -231,10 +234,11 @@ class LightGBMModel:
             params.pop("metric", None)
             params["metric"] = "quantile"
 
-            train_set = lgb.Dataset(X_train, label=y_train)
+            cat_cols = [c for c in X_train.columns if c.endswith("_encoded")]
+            train_set = lgb.Dataset(X_train, label=y_train, categorical_feature=cat_cols)
             valid_sets = [train_set]
             if X_val is not None and y_val is not None:
-                valid_sets.append(lgb.Dataset(X_val, label=y_val, reference=train_set))
+                valid_sets.append(lgb.Dataset(X_val, label=y_val, reference=train_set, categorical_feature=cat_cols))
 
             callbacks = [lgb.log_evaluation(period=0)]
             if X_val is not None:

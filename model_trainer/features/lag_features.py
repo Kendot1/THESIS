@@ -1,6 +1,6 @@
 """
 Lag features & rolling window statistics.
-Computed per product group to avoid data leakage.
+Computed per product+variant group to avoid data leakage.
 """
 
 import pandas as pd
@@ -12,10 +12,18 @@ from utils.logger import get_logger
 
 log = get_logger(__name__)
 
+# Must match the series key used in the preprocessor
+SERIES_KEY = ["product_category", "product_name", "product_variant", "origin"]
+
+
+def _group_col(df: pd.DataFrame) -> list:
+    """Return the groupby columns that exist in the DataFrame."""
+    return [c for c in SERIES_KEY if c in df.columns]
+
 
 class LagFeatures:
     """
-    Build lag and rolling-window features grouped by product_name.
+    Build lag and rolling-window features grouped by product_name + product_variant.
     All features use only past data (no future leakage).
     """
 
@@ -34,8 +42,10 @@ class LagFeatures:
         and price momentum features.
         """
         df = df.copy()
-        df = df.sort_values(["product_name", "report_date"]).reset_index(drop=True)
-        grouped = df.groupby("product_name")["price_index"]
+        group_cols = _group_col(df)
+        sort_cols = group_cols + ["report_date"]
+        df = df.sort_values(sort_cols).reset_index(drop=True)
+        grouped = df.groupby(group_cols)["price_index"]
 
         # ── Lag features ──
         for lag in self.lag_days:
@@ -124,7 +134,8 @@ class LagFeatures:
         df["price_macd"] = grouped.transform(lambda s: _compute_macd(s.shift(1)))
         
         # MACD Signal (9-day EMA of MACD)
-        df["price_macd_signal"] = df.groupby("product_name")["price_macd"].transform(
+        macd_grouped = df.groupby(group_cols)["price_macd"]
+        df["price_macd_signal"] = macd_grouped.transform(
             lambda s: s.ewm(span=9, adjust=False, min_periods=1).mean()
         )
 

@@ -93,55 +93,77 @@ class ReasoningGenerator:
     def _extract_data_factors(
         self, df: pd.DataFrame, predicted_price: float
     ) -> List[str]:
-        """Extract data-driven factors from price history."""
+        """Extract data-driven factors from price history with specific values."""
         factors = []
         prices = df["price_index"].values
-        current = prices[-1]
+        current = float(prices[-1])
 
-        # Short-term movement (5-day)
+        # Short-term movement (5-day) — include actual prices
         if len(prices) >= 5:
-            recent_change = (prices[-1] - prices[-5]) / prices[-5] * 100
+            price_5d_ago = float(prices[-5])
+            recent_change = (current - price_5d_ago) / price_5d_ago * 100
             if abs(recent_change) > 1:
                 direction = "increased" if recent_change > 0 else "decreased"
                 factors.append(
-                    f"Price has {direction} by {abs(recent_change):.1f}% over the past 5 days"
+                    f"Price has {direction} by {abs(recent_change):.1f}% over the past 5 days "
+                    f"(₱{price_5d_ago:.2f} → ₱{current:.2f})"
                 )
 
         # Medium-term movement (30-day)
         if len(prices) >= 30:
-            monthly_change = (prices[-1] - prices[-30]) / prices[-30] * 100
+            price_30d_ago = float(prices[-30])
+            monthly_change = (current - price_30d_ago) / price_30d_ago * 100
             if abs(monthly_change) > 3:
                 direction = "risen" if monthly_change > 0 else "fallen"
                 factors.append(
-                    f"Monthly trend shows price has {direction} {abs(monthly_change):.1f}% over 30 days"
+                    f"Monthly trend shows price has {direction} {abs(monthly_change):.1f}% over 30 days "
+                    f"(₱{price_30d_ago:.2f} → ₱{current:.2f})"
                 )
 
         # Volatility
         if len(prices) >= 7:
-            std_7d = np.std(prices[-7:])
-            mean_7d = np.mean(prices[-7:])
+            std_7d = float(np.std(prices[-7:]))
+            mean_7d = float(np.mean(prices[-7:]))
             cv = std_7d / mean_7d if mean_7d > 0 else 0
             if cv > 0.05:
-                factors.append(f"High price volatility detected ({cv:.1%} coefficient of variation)")
+                factors.append(
+                    f"High price volatility detected — 7-day range: "
+                    f"₱{float(np.min(prices[-7:])):.2f} to ₱{float(np.max(prices[-7:])):.2f} "
+                    f"({cv:.1%} coefficient of variation)"
+                )
             elif cv < 0.01:
-                factors.append("Low volatility in recent data suggests stable pricing")
+                factors.append(
+                    f"Low volatility — price has stayed near ₱{mean_7d:.2f} over the past week"
+                )
 
-        # Deviation from predicted
-        if current > 0:
+        # Deviation from predicted — include actual values
+        if current > 0 and predicted_price > 0:
             pred_change = (predicted_price - current) / current * 100
             if abs(pred_change) > 1:
                 direction = "increase" if pred_change > 0 else "decrease"
                 factors.append(
-                    f"Model predicts a {abs(pred_change):.1f}% {direction} from current price"
+                    f"Model predicts a {abs(pred_change):.1f}% {direction} from current ₱{current:.2f} "
+                    f"to approximately ₱{predicted_price:.2f}"
+                )
+            elif abs(pred_change) <= 1:
+                factors.append(
+                    f"Model predicts price will remain near current level (₱{current:.2f})"
                 )
 
-        # Historical comparison
+        # Historical comparison with values
         if len(prices) >= 30:
-            avg_30 = np.mean(prices[-30:])
+            avg_30 = float(np.mean(prices[-30:]))
+            deviation_pct = (current - avg_30) / avg_30 * 100
             if current > avg_30 * 1.1:
-                factors.append("Current price is above the 30-day average, suggesting elevated levels")
+                factors.append(
+                    f"Current price (₱{current:.2f}) is {abs(deviation_pct):.1f}% above the "
+                    f"30-day average of ₱{avg_30:.2f}, suggesting elevated levels"
+                )
             elif current < avg_30 * 0.9:
-                factors.append("Current price is below the 30-day average, suggesting a dip")
+                factors.append(
+                    f"Current price (₱{current:.2f}) is {abs(deviation_pct):.1f}% below the "
+                    f"30-day average of ₱{avg_30:.2f}, suggesting a dip"
+                )
 
         # Seasonal context
         if "report_date" in df.columns:
@@ -149,12 +171,12 @@ class ReasoningGenerator:
             month = latest_date.month if hasattr(latest_date, "month") else None
             if month:
                 if month in [6, 7, 8, 9, 10, 11]:
-                    factors.append("Currently in wet season -- supply disruptions are more likely")
+                    factors.append("Currently in wet season — supply disruptions are more likely")
                 if month in [11, 12]:
                     factors.append("Christmas season typically drives higher demand and prices")
 
         if not factors:
-            factors.append("Price has been relatively stable in recent observations")
+            factors.append(f"Price has been relatively stable near ₱{current:.2f} in recent observations")
 
         return factors
 
@@ -211,33 +233,66 @@ class ReasoningGenerator:
         """Build a summary confidence explanation."""
         parts = []
 
-        # Trend description
+        # Trend description with strength indicator
         trend_map = {
             "increasing": "upward",
             "decreasing": "downward",
             "stable": "stable",
         }
-        parts.append(f"Historical data shows a {trend_map.get(trend, 'mixed')} trend")
+        trend_word = trend_map.get(trend, 'mixed')
 
-        # News alignment
+        # Determine confidence level from factor count
+        data_count = len(data_factors)
+        if data_count >= 4:
+            confidence = "strong"
+        elif data_count >= 2:
+            confidence = "moderate"
+        else:
+            confidence = "limited"
+
+        parts.append(
+            f"Prediction confidence is {confidence} — "
+            f"historical data shows a {trend_word} trend"
+        )
+
+        # News alignment with specifics
         if news_factors:
-            negative_news = sum(1 for f in news_factors if "price increase" in f.lower() or "negative" in f.lower())
-            positive_news = sum(1 for f in news_factors if "price decrease" in f.lower() or "positive" in f.lower())
+            negative_news = sum(
+                1 for f in news_factors
+                if "price increase" in f.lower() or "negative" in f.lower()
+            )
+            positive_news = sum(
+                1 for f in news_factors
+                if "price decrease" in f.lower() or "positive" in f.lower()
+            )
+            total_news = len(news_factors)
 
             if negative_news > positive_news:
                 if trend == "increasing":
-                    parts.append("reinforced by negative supply/price news")
+                    parts.append(
+                        f"reinforced by {negative_news} of {total_news} "
+                        f"recent news articles signaling supply concerns"
+                    )
                 else:
-                    parts.append("with some contradicting negative news signals")
+                    parts.append(
+                        f"with {negative_news} contradicting negative news signal(s) "
+                        f"that may push prices up"
+                    )
             elif positive_news > negative_news:
                 if trend == "decreasing":
-                    parts.append("supported by positive supply news")
+                    parts.append(
+                        f"supported by {positive_news} of {total_news} "
+                        f"positive supply/demand news articles"
+                    )
                 else:
-                    parts.append("with some positive news suggesting potential relief")
+                    parts.append(
+                        f"with {positive_news} positive news signal(s) "
+                        f"suggesting potential price relief"
+                    )
             else:
-                parts.append("with mixed news signals")
+                parts.append(f"with mixed signals from {total_news} recent news articles")
         else:
-            parts.append("with no significant recent news events")
+            parts.append("with no significant recent news events to validate or contradict")
 
         return ", ".join(parts) + "."
 

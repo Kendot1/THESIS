@@ -29,11 +29,14 @@ log = get_logger(__name__)
 # Minimal feature set for LSTM — sequential features it excels at
 LSTM_FEATURE_COLS = [
     # Short lags (sequential context the LSTM naturally uses)
-    "price_lag_1d", "price_lag_7d",
+    "price_lag_1d", "price_lag_7d", "price_lag_30d",
     # Rolling averages (smooth trend signals)
     "price_rolling_mean_7d", "price_rolling_mean_30d",
-    # Momentum (direction of change - available same day)
-    "price_pct_change_1d",
+    # Momentum and Technical Indicators (strong trend signals)
+    "price_pct_change_1d", "price_pct_change_7d",
+    "price_rsi_14d", "price_macd", "price_macd_signal",
+    # Volatility signals to prevent flat-line predictions
+    "price_rolling_std_7d", "price_rolling_std_30d",
     # Temporal (cyclical — helps with seasonality)
     "month_sin", "month_cos", "dow_sin", "dow_cos",
 ]
@@ -98,8 +101,8 @@ class _LSTMNetwork(nn.Module):
         )
 
         self.fc = nn.Sequential(
-            nn.LayerNorm(hidden_size),
-            nn.Linear(hidden_size, 64),
+            nn.LayerNorm(hidden_size * 2),  # concatenated context + last state
+            nn.Linear(hidden_size * 2, 64),
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(64, 32),
@@ -116,7 +119,11 @@ class _LSTMNetwork(nn.Module):
         attn_weights = torch.softmax(attn_weights, dim=1)
         context = (lstm_out * attn_weights).sum(dim=1)  # (batch, hidden)
 
-        return self.fc(context)
+        # Concatenate context with the final timestep to preserve immediate short-term volatility
+        last_out = lstm_out[:, -1, :]
+        combined = torch.cat((context, last_out), dim=1)
+
+        return self.fc(combined)
 
 
 # ──────────────────────────────────────────────
@@ -161,6 +168,19 @@ class LSTMModel:
     # ──────────────────────────────────────────────
     # Sequence building (multi-feature)
     # ──────────────────────────────────────────────
+    @staticmethod
+    def _series_key(row_or_group_key) -> str:
+        """Build a composite key for product+variant."""
+        if isinstance(row_or_group_key, tuple):
+            return "||".join(str(k) for k in row_or_group_key)
+        return str(row_or_group_key)
+
+    @staticmethod
+    def _group_cols(df: pd.DataFrame) -> list:
+        """Return series groupby columns present in the DataFrame."""
+        candidates = ["product_category", "product_name", "product_variant", "origin"]
+        return [c for c in candidates if c in df.columns]
+
     def build_sequences(
         self, df: pd.DataFrame, target_col: str = "price_index"
     ) -> Tuple[np.ndarray, np.ndarray]:
@@ -179,11 +199,13 @@ class LSTMModel:
             self._feature_cols = [target_col]
             self._n_features = 1
 
-        df = df.sort_values(["product_name", "report_date"]).reset_index(drop=True)
+        grp_cols = self._group_cols(df)
+        sort_cols = grp_cols + ["report_date"]
+        df = df.sort_values(sort_cols).reset_index(drop=True)
 
         for col in self._feature_cols:
             if col in df.columns:
-                df[col] = df.groupby("product_name")[col].transform(
+                df[col] = df.groupby(grp_cols)[col].transform(
                     lambda s: s.ffill().bfill().fillna(0)
                 )
 
@@ -195,19 +217,20 @@ class LSTMModel:
             if "price" in c and "pct" not in c
         ]
 
-        for product, group in df.groupby("product_name"):
+        for group_key, group in df.groupby(grp_cols):
+            series_key = self._series_key(group_key)
             if len(group) <= self._seq_len:
                 continue
 
             features = group[self._feature_cols].values.astype(np.float64)
             targets = group[target_col].values.astype(np.float64)
 
-            # Static mean scaling per product
+            # Static mean scaling per product+variant
             prod_mean = targets.mean()
             if prod_mean == 0 or np.isnan(prod_mean):
                 prod_mean = 1.0
             
-            self._product_means[product] = float(prod_mean)
+            self._product_means[series_key] = float(prod_mean)
 
             features_scaled = features.copy()
             # Divide ONLY price columns by the mean
@@ -249,6 +272,7 @@ class LSTMModel:
                 df[col] = 0.0
             df[col] = df[col].fillna(0.0)
 
+        grp_cols = self._group_cols(df)
         all_seqs, all_targets, all_indices, all_products, all_anchors = [], [], [], [], []
 
         price_cols_idx = [
@@ -256,11 +280,12 @@ class LSTMModel:
             if "price" in c and "pct" not in c
         ]
 
-        for product, group in df.groupby("product_name"):
-            if len(group) <= self._seq_len or product not in self._product_means:
+        for group_key, group in df.groupby(grp_cols):
+            series_key = self._series_key(group_key)
+            if len(group) <= self._seq_len or series_key not in self._product_means:
                 continue
 
-            prod_mean = self._product_means[product]
+            prod_mean = self._product_means[series_key]
 
             features = group[self._feature_cols].values.astype(np.float64)
             targets = group[target_col].values.astype(np.float64)
@@ -284,7 +309,7 @@ class LSTMModel:
                 all_seqs.append(seq)
                 all_targets.append(target_pct)
                 all_indices.append(indices[i])
-                all_products.append(product)
+                all_products.append(series_key)
                 all_anchors.append(current_price)
                 
 
@@ -347,9 +372,9 @@ class LSTMModel:
             val_loader = DataLoader(val_ds, batch_size=self._batch_size, shuffle=False)
 
         optimizer = torch.optim.AdamW(
-            self._model.parameters(), lr=lr, weight_decay=1e-4
+            self._model.parameters(), lr=lr, weight_decay=1e-5
         )
-        criterion = nn.SmoothL1Loss(reduction='none')  # per-element loss
+        criterion = nn.L1Loss(reduction='none')  # L1 (MAE) encourages sharper, dynamic forecasts vs L2/SmoothL1
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='min', patience=8, factor=0.5, min_lr=1e-6
         )
@@ -359,6 +384,7 @@ class LSTMModel:
         step_weights = step_weights / step_weights.mean()  # normalize to mean=1
 
         best_val_loss = float("inf")
+        best_epoch = 0
         patience_counter = 0
 
         for epoch in range(1, epochs + 1):
@@ -395,20 +421,24 @@ class LSTMModel:
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
                     patience_counter = 0
+                    best_epoch = epoch
                     self.save()
                 else:
                     patience_counter += 1
 
-                if epoch % 10 == 0 or epoch == 1:
+                if epoch % 5 == 0 or epoch == 1:
                     current_lr = optimizer.param_groups[0]['lr']
                     log.info(
                         f"Epoch {epoch:>3}/{epochs}  "
                         f"train={train_loss:.6f}  val={val_loss:.6f}  "
-                        f"lr={current_lr:.2e}"
+                        f"lr={current_lr:.2e}  patience={patience_counter}/{self._patience}"
                     )
 
                 if patience_counter >= self._patience:
-                    log.info(f"Early stopping at epoch {epoch}")
+                    log.info(
+                        f"Early stopping at epoch {epoch} "
+                        f"(best epoch: {best_epoch}, best val_loss: {best_val_loss:.6f})"
+                    )
                     break
             else:
                 if epoch % 10 == 0 or epoch == 1:

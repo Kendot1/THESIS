@@ -184,12 +184,24 @@ async def predict(request: PredictionRequest):
 
         # Fetch product history
         history_df = fetcher.fetch_product_history(
-            request.product_name, product_variant=request.product_variant, limit=365
+            request.product_name, 
+            product_variant=request.product_variant, 
+            origin=request.origin,
+            product_category=request.product_category,
+            limit=365
         )
         if history_df.empty:
             raise HTTPException(404, f"No data found for '{request.product_name}'")
 
         history_df = preprocessor.validate(history_df)
+        
+        # If user didn't specify origin, fetcher might have returned multiple origins.
+        # We must isolate a single time series to forecast.
+        if request.origin is None and "origin" in history_df.columns and history_df["origin"].nunique() > 1:
+            last_origin = history_df.sort_values("report_date").iloc[-1]["origin"]
+            history_df = history_df[history_df["origin"] == last_origin].copy()
+            log.info(f"Multiple origins found for {request.product_name}. Defaulting to: {last_origin}")
+
         current_price = float(history_df["price_index"].iloc[-1])
 
         # ── Extract trend and anchor from REAL data (never from predictions) ──
@@ -250,24 +262,24 @@ async def predict(request: PredictionRequest):
             lowers = lower_prices[0]
             uppers = upper_prices[0]
             
-            # Stage 2: LightGBM residual correction
-            # Apply correction per step using the last known feature row
-            residual_correction = np.zeros(30)
+            # Stage 2: LightGBM residual forecast & Dynamic Shrinkage Ensemble
             try:
-                if registry.lgbm is not None:
+                if registry.lgbm is not None and registry.ensemble is not None:
                     last_features = featured_df.iloc[[-1]][feature_cols].copy()
-                    last_features["lstm_prediction"] = current_price  # Use current as anchor
-                    residual_point = registry.lgbm.predict_residual(last_features)
-                    # Apply the same correction to all steps (single-row estimate)
-                    residual_correction = np.full(30, residual_point[0])
-                    log.debug(f"Residual correction: {residual_point[0]:+.3f}")
+                    last_features["lstm_prediction"] = current_price
+                    
+                    lgbm_point, lgbm_lower, lgbm_upper = registry.lgbm.predict_residual_with_intervals(last_features)
+                    
+                    lgbm_points = np.full(30, lgbm_point[0])
+                    lgbm_lowers = np.full(30, lgbm_lower[0])
+                    lgbm_uppers = np.full(30, lgbm_upper[0])
+                    
+                    points, lowers, uppers = registry.ensemble.predict_with_intervals(
+                        points, lowers, uppers,
+                        lgbm_points, lgbm_lowers, lgbm_uppers
+                    )
             except (FileNotFoundError, Exception) as res_err:
-                log.debug(f"No residual correction available: {res_err}")
-            
-            # Hybrid: LSTM base + LightGBM residual correction
-            points = points + residual_correction
-            lowers = lowers + residual_correction
-            uppers = uppers + residual_correction
+                log.debug(f"No stacking ensemble available: {res_err}")
             
             # Slice to requested horizon
             points = points[:horizon_days]
@@ -344,6 +356,9 @@ async def predict(request: PredictionRequest):
         latest_version = versions[-1]["version"] if versions else None
         return PredictionResponse(
             product_name=request.product_name,
+            product_variant=request.product_variant,
+            origin=request.origin,
+            product_category=request.product_category,
             horizon=request.horizon,
             current_price=current_price,
             predictions=predictions,
@@ -359,15 +374,23 @@ async def predict(request: PredictionRequest):
 
 @router.get("/products")
 async def list_products():
-    """List all available products for prediction."""
+    """List all available products for prediction, including variant and origin."""
     try:
         fetcher = DataFetcher()
         df = fetcher.fetch_all()
         if df.empty:
             return {"products": []}
 
+        # Fill nulls so groupby doesn't drop them
+        for col in ["product_variant", "origin"]:
+            if col in df.columns:
+                df[col] = df[col].fillna("Unknown")
+
+        group_cols = ["product_category", "product_name", "product_variant", "origin"]
+        group_cols = [c for c in group_cols if c in df.columns]
+
         products = (
-            df.groupby(["product_name", "product_category"])
+            df.groupby(group_cols)
             .agg(
                 latest_price=("price_index", "last"),
                 data_points=("price_index", "count"),

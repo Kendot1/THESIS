@@ -63,7 +63,7 @@ class DataFetcher:
         return None
 
     def fetch_product_history(
-        self, product_name: str, product_variant: Optional[str] = None, limit: int = 365
+        self, product_name: str, product_variant: Optional[str] = None, origin: Optional[str] = None, product_category: Optional[str] = None, limit: int = 365
     ) -> pd.DataFrame:
         """Fetch historical data for a specific product and variant."""
         query = self._client.table(self._table).select("*").eq("product_name", product_name)
@@ -72,6 +72,12 @@ class DataFetcher:
             query = query.eq("product_variant", product_variant)
         else:
             query = query.is_("product_variant", "null")
+            
+        if origin:
+            query = query.eq("origin", origin)
+            
+        if product_category:
+            query = query.eq("product_category", product_category)
             
         resp = (
             query

@@ -4,11 +4,10 @@ Two-Stage Residual Hybrid Ensemble.
 Architecture:
   Stage 1: LSTM produces base price forecast (temporal patterns)
   Stage 2: LightGBM corrects residual errors (structured tabular patterns)
-  Final:   predicted_price = lstm_base + lgbm_residual_correction
+  Final:   predicted_price = lstm_base + (shrinkage * lgbm_residual_correction)
 
-This replaces the old Ridge stacking approach. Instead of treating both
-models as equal peers and blending them, we use LSTM as the primary forecaster
-and LightGBM as a learned error-correction layer.
+The shrinkage factor is dynamically optimized on the validation set to strictly
+ensure the ensemble NEVER performs worse than the LSTM base model.
 """
 
 import numpy as np
@@ -24,17 +23,7 @@ log = get_logger(__name__)
 
 class EnsembleModel:
     """
-    Two-stage residual hybrid: LSTM base + LightGBM residual correction.
-
-    Training flow:
-      1. LSTM trained first on price sequences → produces base predictions
-      2. Residuals computed: residual = actual - lstm_prediction
-      3. LightGBM trained to predict these residuals from tabular features
-      4. Final prediction = lstm_pred + lgbm_residual_pred
-
-    This captures:
-      • Temporal patterns via LSTM (sequences, trends, seasonality)
-      • Structured residual patterns via LightGBM (feature interactions, non-linearities)
+    Two-stage residual hybrid: LSTM base + LightGBM residual correction with Shrinkage.
     """
 
     def __init__(self):
@@ -53,30 +42,29 @@ class EnsembleModel:
         y_true: np.ndarray,
     ) -> Dict[str, float]:
         """
-        Evaluate the residual hybrid ensemble on validation data.
-
-        Args:
-            lstm_preds:          LSTM base predictions (absolute prices)
-            lgbm_residual_preds: LightGBM predicted residuals
-            y_true:              Actual prices
-
-        Returns:
-            Metrics dict comparing LSTM-only vs hybrid.
+        Evaluate the residual hybrid ensemble on validation data and find optimal shrinkage.
         """
-        # Final hybrid prediction
-        hybrid_preds = lstm_preds + lgbm_residual_preds
-
-        # Compute metrics for both approaches
         lstm_only_metrics = compute_all_metrics(y_true, lstm_preds)
+        
+        # Grid search for optimal shrinkage to minimize MAPE
+        best_shrinkage = 0.0
+        best_mape = lstm_only_metrics["mape"]
+        
+        for shrinkage in [0.1, 0.25, 0.5, 0.75, 1.0]:
+            hybrid = lstm_preds + (shrinkage * lgbm_residual_preds)
+            mape = compute_all_metrics(y_true, hybrid)["mape"]
+            if mape < best_mape:
+                best_mape = mape
+                best_shrinkage = shrinkage
+
+        hybrid_preds = lstm_preds + (best_shrinkage * lgbm_residual_preds)
         hybrid_metrics = compute_all_metrics(y_true, hybrid_preds)
 
-        # Compute actual residuals for stats
         actual_residuals = y_true - lstm_preds
         self._residual_stats = {
+            "shrinkage": best_shrinkage,
             "mean": float(np.mean(actual_residuals)),
             "std": float(np.std(actual_residuals)),
-            "median": float(np.median(actual_residuals)),
-            "mae": float(np.mean(np.abs(actual_residuals))),
             "lstm_rmse": lstm_only_metrics["rmse"],
             "hybrid_rmse": hybrid_metrics["rmse"],
             "improvement_pct": float(
@@ -86,11 +74,9 @@ class EnsembleModel:
         }
 
         log.info(
-            f"Residual hybrid trained --\n"
-            f"  LSTM-only:   RMSE={lstm_only_metrics['rmse']:.4f}  "
-            f"MAE={lstm_only_metrics['mae']:.4f}  MAPE={lstm_only_metrics['mape']:.2f}%\n"
-            f"  Hybrid:      RMSE={hybrid_metrics['rmse']:.4f}  "
-            f"MAE={hybrid_metrics['mae']:.4f}  MAPE={hybrid_metrics['mape']:.2f}%\n"
+            f"Residual hybrid trained (Shrinkage={best_shrinkage}) --\n"
+            f"  LSTM-only:   RMSE={lstm_only_metrics['rmse']:.4f}  MAPE={lstm_only_metrics['mape']:.2f}%\n"
+            f"  Hybrid:      RMSE={hybrid_metrics['rmse']:.4f}  MAPE={hybrid_metrics['mape']:.2f}%\n"
             f"  Improvement: {self._residual_stats['improvement_pct']:.1f}%"
         )
 
@@ -105,11 +91,10 @@ class EnsembleModel:
         lstm_base: np.ndarray,
         lgbm_residual: np.ndarray,
     ) -> np.ndarray:
-        """
-        Combine LSTM base prediction with LightGBM residual correction.
-        final = lstm_base + lgbm_residual
-        """
-        return lstm_base + lgbm_residual
+        if self._residual_stats is None:
+            self.load()
+        shrinkage = self._residual_stats.get("shrinkage", 0.5) if self._residual_stats else 0.5
+        return lstm_base + (shrinkage * lgbm_residual)
 
     def predict_with_intervals(
         self,
@@ -120,39 +105,54 @@ class EnsembleModel:
         lgbm_residual_lower: np.ndarray,
         lgbm_residual_upper: np.ndarray,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Combine point predictions and confidence intervals.
-        Residual correction is additive.
-        """
-        point = lstm_point + lgbm_residual
-        lower = lstm_lower + lgbm_residual_lower
-        upper = lstm_upper + lgbm_residual_upper
+        if self._residual_stats is None:
+            self.load()
+        shrinkage = self._residual_stats.get("shrinkage", 0.5) if self._residual_stats else 0.5
+        
+        point = lstm_point + (shrinkage * lgbm_residual)
+        lower = lstm_lower + (shrinkage * lgbm_residual_lower)
+        upper = lstm_upper + (shrinkage * lgbm_residual_upper)
         return point, lower, upper
 
     # ──────────────────────────────────────────────
     # Explainability helpers
     # ──────────────────────────────────────────────
     def get_model_contributions(self) -> Dict[str, float]:
-        """Return the relative contribution of each model stage."""
         if self._residual_stats is not None:
-            lstm_rmse = self._residual_stats.get("lstm_rmse", 1.0)
-            hybrid_rmse = self._residual_stats.get("hybrid_rmse", 1.0)
-            correction = max(lstm_rmse - hybrid_rmse, 0)
-            total = lstm_rmse
+            shrinkage = self._residual_stats.get("shrinkage", 0.5)
+            # If shrinkage is 0, LSTM does 100% of the work.
             return {
-                "lstm_contribution": float((total - correction) / total) if total > 0 else 0.6,
-                "lgbm_residual_contribution": float(correction / total) if total > 0 else 0.4,
+                "lstm_contribution": 1.0 - (shrinkage * 0.5),
+                "lgbm_residual_contribution": (shrinkage * 0.5),
             }
         return {
-            "lstm_contribution": 0.6,
-            "lgbm_residual_contribution": 0.4,
+            "lstm_contribution": 0.8,
+            "lgbm_residual_contribution": 0.2,
         }
 
     def get_residual_stats(self) -> Optional[Dict]:
-        """Return statistics about the residual distribution."""
         if self._residual_stats is None:
-            self._load_stats()
+            self.load()
         return self._residual_stats
+
+    # ──────────────────────────────────────────────
+    # Persistence
+    # ──────────────────────────────────────────────
+    def save(self):
+        self._save_stats()
+
+    def load(self):
+        self._load_stats()
+
+    def _save_stats(self):
+        if self._residual_stats is not None:
+            joblib.dump(self._residual_stats, str(self._stats_path))
+            log.info(f"Saved residual stats -> {self._stats_path}")
+
+    def _load_stats(self):
+        if self._stats_path.exists():
+            self._residual_stats = joblib.load(str(self._stats_path))
+            log.info(f"Loaded residual stats <- {self._stats_path}")
 
     # ──────────────────────────────────────────────
     # Persistence

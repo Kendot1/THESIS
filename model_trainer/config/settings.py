@@ -58,28 +58,28 @@ class Settings:
         "objective": "regression",
         "metric": ["rmse", "mae"],
         "boosting_type": "gbdt",
-        "num_leaves": 127,
-        "learning_rate": 0.005,          # Lower LR for better generalization
-        "feature_fraction": 0.75,
+        "num_leaves": 63,                # Reduced from 127 to prevent overfitting on subsets
+        "learning_rate": 0.01,           # Increased from 0.005 for faster convergence
+        "feature_fraction": 0.8,         # Slightly increased
         "bagging_fraction": 0.8,
         "bagging_freq": 5,
         "extra_trees": True,
-        "min_child_samples": 10,         # Prevent overfitting on tiny leaf nodes
-        "lambda_l1": 0.01,              # L1 regularization
-        "lambda_l2": 0.1,               # L2 regularization
+        "min_child_samples": 20,         # Increased from 10 to force more general leaves
+        "lambda_l1": 0.05,               # Tuned regularization
+        "lambda_l2": 0.2,                # Tuned regularization
         "verbose": -1,
-        "n_estimators": 2500,            # More estimators to compensate for lower LR
-        "early_stopping_rounds": 150,    # More patience for lower LR
+        "n_estimators": 1500,            # Adjusted for the new learning rate
+        "early_stopping_rounds": 100,    # Adjusted for the new learning rate
     })
 
     # ── LSTM Hyperparameters ──
-    lstm_hidden_size: int = 128
+    lstm_hidden_size: int = 64           # Reduced from 128 to prevent overfitting
     lstm_num_layers: int = 2
-    lstm_dropout: float = 0.2
-    lstm_learning_rate: float = 0.001
-    lstm_epochs: int = 200
-    lstm_batch_size: int = 32          # Larger batch for more stable gradients
-    lstm_patience: int = 25            # Early stopping patience
+    lstm_dropout: float = 0.1            # Reduced to 0.1 to prevent underfitting/flatness
+    lstm_learning_rate: float = 0.001    # Increased back to 0.001 for better local minima escape
+    lstm_epochs: int = 150
+    lstm_batch_size: int = 64
+    lstm_patience: int = 25              # Standardized patience
 
     # ── Ensemble ──
     ensemble_method: str = "stacking"  # "weighted_average" | "stacking"

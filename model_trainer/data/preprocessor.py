@@ -11,6 +11,16 @@ from utils.logger import get_logger
 
 log = get_logger(__name__)
 
+# The "series key" columns that uniquely identify a time series.
+# Every product_category + product_name + variant + origin combination
+# is its own independent series (e.g. "Tomato | Cherry | Local" ≠ "Tomato | Cherry | Imported").
+SERIES_KEY = ["product_category", "product_name", "product_variant", "origin"]
+
+
+def _series_group(df: pd.DataFrame) -> list:
+    """Return the groupby columns that exist in the DataFrame."""
+    return [c for c in SERIES_KEY if c in df.columns]
+
 
 class DataPreprocessor:
     """Clean and validate raw food_prices DataFrame."""
@@ -27,17 +37,29 @@ class DataPreprocessor:
         Run all validation / cleaning steps in sequence.
         Returns a clean DataFrame ready for feature engineering.
         """
-        log.info(f"Preprocessing {len(df):,} rows ...")
+        raw_count = len(df)
+        log.info(f"Preprocessing {raw_count:,} rows ...")
 
         df = self._check_required_columns(df)
         df = self._coerce_types(df)
         df = self._drop_invalid_rows(df)
-        df = self._handle_duplicates(df)
-        df = self._sort_and_index(df)
-        df = self._fill_missing(df)
-        df = self._remove_outliers(df)
+        log.info(f"  After drop_invalid: {len(df):,} rows ({raw_count - len(df):,} removed)")
 
-        log.info(f"Preprocessing complete -- {len(df):,} clean rows.")
+        before_dedup = len(df)
+        df = self._handle_duplicates(df)
+        log.info(f"  After dedup:        {len(df):,} rows ({before_dedup - len(df):,} merged)")
+
+        df = self._sort_and_index(df)
+
+        before_fill = len(df)
+        df = self._fill_missing(df)
+        log.info(f"  After fill_missing: {len(df):,} rows ({len(df) - before_fill:+,} interpolated)")
+
+        before_outlier = len(df)
+        df = self._remove_outliers(df)
+        log.info(f"  After outliers:     {len(df):,} rows ({before_outlier - len(df):,} removed)")
+
+        log.info(f"Preprocessing complete -- {len(df):,} clean rows (from {raw_count:,} raw).")
         return df
 
     # ──────────────────────────────────────────────
@@ -70,47 +92,72 @@ class DataPreprocessor:
 
     def _handle_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Ensure strict time series by aggregating to 1 row per product per date.
-        If a product has multiple variants/origins on the same day, take the mean price.
+        Ensure strict time series by aggregating to 1 row per
+        product + variant + date.
+
+        Each product_name + product_variant combination is treated as a
+        separate time series.  This preserves variant-level granularity
+        (e.g. "Tomato (Cherry)" vs "Tomato (Roma)") rather than averaging
+        them into a single "Tomato" row.
         """
         before = len(df)
-        
+
+        group_cols = _series_group(df) + ["report_date"]
+
         # Define aggregation functions
-        agg_funcs = {col: 'first' for col in df.columns if col not in ["product_name", "report_date", "price_index"]}
+        agg_funcs = {
+            col: 'first'
+            for col in df.columns
+            if col not in group_cols + ["price_index"]
+        }
         agg_funcs["price_index"] = "mean"
-        
-        df = df.groupby(["product_name", "report_date"], as_index=False).agg(agg_funcs)
-        
+
+        df = df.groupby(group_cols, as_index=False).agg(agg_funcs)
+
         dupes = before - len(df)
         if dupes > 0:
-            log.info(f"Aggregated {dupes} rows with duplicate product+date combinations.")
+            log.info(f"Aggregated {dupes} rows with duplicate product+variant+date combinations.")
         return df
 
     def _sort_and_index(self, df: pd.DataFrame) -> pd.DataFrame:
-        df = df.sort_values(["product_name", "report_date"]).reset_index(drop=True)
+        sort_cols = _series_group(df) + ["report_date"]
+        df = df.sort_values(sort_cols).reset_index(drop=True)
         return df
 
     def _fill_missing(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Ensure consistent time intervals (no gaps).
-        Reindex each product to a continuous daily frequency,
+        Reindex each product+variant series to a continuous daily frequency,
         interpolate missing values, and forward-fill.
         """
+        group_cols = _series_group(df)
         df = df.set_index("report_date")
-        
+
         resampled_groups = []
-        for name, group in df.groupby("product_name"):
-            idx = pd.date_range(start=group.index.min(), end=group.index.max(), freq='D')
+        for key, group in df.groupby(group_cols):
+            idx = pd.date_range(
+                start=group.index.min(), end=group.index.max(), freq='D'
+            )
             group = group.reindex(idx)
-            group["product_name"] = name
-            
+
+            # Restore the group key columns
+            if isinstance(key, str):
+                key = (key,)
+            for i, col in enumerate(group_cols):
+                group[col] = key[i]
+
             # Fill categorical/text columns with forward fill
             for col in group.columns:
                 if col != "price_index" and group[col].dtype == 'object':
                     group[col] = group[col].ffill().bfill()
-                    
+
             # Interpolate price, then ffill/bfill edges
-            group["price_index"] = group["price_index"].interpolate(method='time').ffill().bfill()
+            group["price_index"] = (
+                group["price_index"]
+                .interpolate(method='time')
+                .ffill()
+                .bfill()
+            )
             resampled_groups.append(group)
 
         df = pd.concat(resampled_groups)
@@ -120,14 +167,15 @@ class DataPreprocessor:
     def _remove_outliers(self, df: pd.DataFrame, z_threshold: float = 4.0) -> pd.DataFrame:
         """
         Remove rows where the price_index is more than *z_threshold*
-        standard deviations away from the product's mean.
+        standard deviations away from the product+variant's mean.
         Uses a generous threshold (4 sigma) to keep genuine spikes.
         """
         before = len(df)
+        group_cols = _series_group(df)
 
-        # Compute per-product mean and std
-        stats = df.groupby("product_name")["price_index"].agg(["mean", "std"])
-        df = df.merge(stats, on="product_name", how="left", suffixes=("", "_stat"))
+        # Compute per-series mean and std
+        stats = df.groupby(group_cols)["price_index"].agg(["mean", "std"])
+        df = df.merge(stats, on=group_cols, how="left", suffixes=("", "_stat"))
 
         # Compute z-scores
         df["_z"] = np.where(
@@ -148,13 +196,16 @@ class DataPreprocessor:
     # ──────────────────────────────────────────────
     @staticmethod
     def time_split(
-        df: pd.DataFrame, test_days: int = 30
+        df: pd.DataFrame, test_size: float = 0.15
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Split data chronologically: last *test_days* days → test,
+        Split data chronologically: last `test_size` fraction of unique dates → test,
         everything before → train.
         """
-        cutoff = df["report_date"].max() - pd.Timedelta(days=test_days)
-        train = df[df["report_date"] <= cutoff].copy()
-        test = df[df["report_date"] > cutoff].copy()
+        unique_dates = np.sort(df["report_date"].unique())
+        split_idx = int(len(unique_dates) * (1.0 - test_size))
+        cutoff = unique_dates[split_idx]
+        
+        train = df[df["report_date"] < cutoff].copy()
+        test = df[df["report_date"] >= cutoff].copy()
         return train, test

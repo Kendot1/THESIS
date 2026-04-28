@@ -158,7 +158,7 @@ class TrainingPipeline:
 
         # ── Step 3: Prepare datasets ──
         log.info("Step 3/8 -- Splitting data ...")
-        train_df, val_df = self._preprocessor.time_split(featured_df, test_days=30)
+        train_df, val_df = self._preprocessor.time_split(featured_df, test_size=0.15)
 
         # Drop rows with NaN from lag features (first rows of each product)
         train_df = train_df.dropna().reset_index(drop=True)
@@ -269,8 +269,8 @@ class TrainingPipeline:
             if not val_df.empty:
                 # Need lag history from train_df to build sequences that predict into val_df
                 seq_len = self._lstm._seq_len
-                train_tail = train_df.groupby("product_name").tail(seq_len - 1)
-                val_full_df = pd.concat([train_tail, val_df]).sort_values(["product_name", "report_date"]).reset_index(drop=True)
+                train_tail = train_df.groupby(["product_category", "product_name", "product_variant", "origin"]).tail(seq_len - 1)
+                val_full_df = pd.concat([train_tail, val_df]).sort_values(["product_category", "product_name", "product_variant", "origin", "report_date"]).reset_index(drop=True)
                 
                 X_val_seq, y_val_seq, val_indices, val_products, val_anchors = self._lstm.build_sequences_inference(val_full_df)
 
@@ -345,8 +345,8 @@ class TrainingPipeline:
 
             if not val_df.empty:
                 seq_len = self._lstm._seq_len
-                train_tail = train_df.groupby("product_name").tail(seq_len - 1)
-                val_full_df = pd.concat([train_tail, val_df]).sort_values(["product_name", "report_date"]).reset_index(drop=True)
+                train_tail = train_df.groupby(["product_category", "product_name", "product_variant", "origin"]).tail(seq_len - 1)
+                val_full_df = pd.concat([train_tail, val_df]).sort_values(["product_category", "product_name", "product_variant", "origin", "report_date"]).reset_index(drop=True)
 
                 X_val_seq, y_val_seq, val_indices, val_products, val_anchors = \
                     self._lstm.build_sequences_inference(val_full_df)
@@ -382,6 +382,75 @@ class TrainingPipeline:
             log.warning("Falling back to direct LightGBM price training.")
             return self._train_lgbm_direct(train_df, val_df, feature_cols, incremental)
 
+    def _train_lgbm_residual(
+        self,
+        train_df: pd.DataFrame,
+        val_df: pd.DataFrame,
+        feature_cols: list,
+        incremental: bool,
+    ) -> Dict:
+        """Train LightGBM to predict LSTM residuals."""
+        try:
+            # 1. Get LSTM predictions on training data
+            X_train_seq, y_train_seq, train_indices, train_products, train_anchors = \
+                self._lstm.build_sequences_inference(train_df)
+
+            if len(X_train_seq) == 0:
+                log.warning("No sequences for residual training. Skipping Stage 2.")
+                return {}
+
+            lstm_train_preds = self._lstm.predict(
+                X_train_seq, products=train_products, current_prices=train_anchors
+            )
+            y_train_actual = train_df["price_index"].values[train_indices]
+            train_residuals = y_train_actual - lstm_train_preds
+
+            log.info(
+                f"Residual stats (train) -- mean: {np.mean(train_residuals):.4f}, "
+                f"std: {np.std(train_residuals):.4f}, "
+                f"median: {np.median(train_residuals):.4f}"
+            )
+
+            # Build feature matrix for LightGBM (tabular features + lstm_prediction)
+            X_train_lgbm = train_df.iloc[train_indices][feature_cols].copy()
+            X_train_lgbm["lstm_prediction"] = lstm_train_preds
+
+            # Repeat for validation
+            X_val_lgbm = None
+            val_residuals = None
+
+            if not val_df.empty:
+                seq_len = self._lstm._seq_len
+                train_tail = train_df.groupby(["product_category", "product_name", "product_variant", "origin"]).tail(seq_len - 1)
+                val_full_df = pd.concat([train_tail, val_df]).sort_values(["product_category", "product_name", "product_variant", "origin", "report_date"]).reset_index(drop=True)
+
+                X_val_seq, y_val_seq, val_indices, val_products, val_anchors = \
+                    self._lstm.build_sequences_inference(val_full_df)
+
+                if len(X_val_seq) > 0:
+                    lstm_val_preds = self._lstm.predict(
+                        X_val_seq, products=val_products, current_prices=val_anchors
+                    )
+                    y_val_actual = val_full_df["price_index"].values[val_indices]
+                    val_residuals = y_val_actual - lstm_val_preds
+
+                    X_val_lgbm = val_full_df.iloc[val_indices][feature_cols].copy()
+                    X_val_lgbm["lstm_prediction"] = lstm_val_preds
+
+            # Train LightGBM on residuals
+            residual_metrics = self._lgbm.train_residual(
+                X_train_lgbm, train_residuals,
+                X_val_lgbm, val_residuals,
+            )
+
+            return residual_metrics
+
+        except Exception as e:
+            log.error(f"Stage 2 residual training failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return {}
+
     def _train_lgbm_direct(
         self,
         train_df: pd.DataFrame,
@@ -405,8 +474,8 @@ class TrainingPipeline:
         try:
             # Get LSTM predictions on validation
             seq_len = self._lstm._seq_len
-            train_tail = train_df.groupby("product_name").tail(seq_len - 1)
-            val_full_df = pd.concat([train_tail, val_df]).sort_values(["product_name", "report_date"]).reset_index(drop=True)
+            train_tail = train_df.groupby(["product_category", "product_name", "product_variant", "origin"]).tail(seq_len - 1)
+            val_full_df = pd.concat([train_tail, val_df]).sort_values(["product_category", "product_name", "product_variant", "origin", "report_date"]).reset_index(drop=True)
 
             X_val_seq, y_val_seq, val_indices, val_products, val_anchors = \
                 self._lstm.build_sequences_inference(val_full_df)

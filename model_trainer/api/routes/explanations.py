@@ -11,6 +11,7 @@ from api.schemas import (
     FeatureContribution, NewsEvidence,
 )
 from data.fetcher import DataFetcher
+from data.preprocessor import DataPreprocessor
 from pipeline.reasoning import ReasoningGenerator
 from utils.logger import get_logger
 
@@ -66,33 +67,75 @@ async def explain(request: ExplanationRequest):
     """Explain why a price is predicted to change."""
     try:
         fetcher = DataFetcher()
+        preprocessor = DataPreprocessor()
         reasoner = ReasoningGenerator()
 
-        # Get product data
+        # 1. Fetch real historical data to compute the trend
         history_df = fetcher.fetch_product_history(
-            request.product_name, product_variant=request.product_variant, limit=60
+            request.product_name, 
+            product_variant=request.product_variant,
+            origin=request.origin,
+            product_category=request.product_category,
+            limit=60
         )
         if history_df.empty:
-            raise HTTPException(404, f"No data for '{request.product_name}'")
+            raise HTTPException(404, f"No history found for '{request.product_name}'")
+            
+        if request.origin is None and "origin" in history_df.columns and history_df["origin"].nunique() > 1:
+            last_origin = history_df.sort_values("report_date").iloc[-1]["origin"]
+            history_df = history_df[history_df["origin"] == last_origin].copy()
 
-        # In the separate reasoning pipeline, we need the predicted price to compare against.
-        # Ideally, the user passes this, but for now we fetch a fresh prediction.
-        from api.routes.predictions import predict
-        from api.schemas import PredictionRequest
-        
+        history_df = preprocessor.validate(history_df)
+
+        # Get a predicted price for comparison.
+        # Try fetching a fresh prediction, but derive a trend-based estimate
+        # as fallback so reasoning is never based on "0% change".
         predicted_price = 0.0
+        prediction_source = "none"
+
         try:
+            from api.routes.predictions import predict
+            from api.schemas import PredictionRequest
+
             pred_resp = await predict(PredictionRequest(
                 product_name=request.product_name,
                 product_variant=request.product_variant,
+                origin=request.origin,
+                product_category=request.product_category,
                 horizon="daily"
             ))
             if pred_resp.predictions:
                 predicted_price = pred_resp.predictions[0].predicted_price
+                prediction_source = "model"
         except Exception as e:
             log.warning(f"Could not fetch prediction for reasoning: {e}")
-            if "price_index" in history_df.columns:
-                predicted_price = float(history_df.iloc[-1]["price_index"])
+
+        # Fallback: use trend-based estimate instead of just current price
+        if predicted_price == 0.0 and "price_index" in history_df.columns:
+            prices = history_df["price_index"].values
+            current = float(prices[-1])
+
+            if len(prices) >= 7:
+                # Compute recent trend and project 1 day forward
+                recent_7 = prices[-7:]
+                x = np.arange(len(recent_7), dtype=np.float64)
+                slope = float(np.polyfit(x, recent_7, 1)[0])
+                predicted_price = round(current + slope, 2)
+                prediction_source = "trend"
+                log.info(
+                    f"Using trend-based estimate for reasoning: "
+                    f"current=₱{current:.2f}, slope={slope:+.3f}/day, "
+                    f"predicted=₱{predicted_price:.2f}"
+                )
+            else:
+                # Very short history — use the last price's momentum
+                if len(prices) >= 2:
+                    delta = prices[-1] - prices[-2]
+                    predicted_price = round(current + delta, 2)
+                    prediction_source = "momentum"
+                else:
+                    predicted_price = current
+                    prediction_source = "current"
 
         reasoning_data = reasoner.generate(
             product_name=request.product_name,
@@ -101,7 +144,13 @@ async def explain(request: ExplanationRequest):
             product_variant=request.product_variant,
         )
 
-        return ExplanationResponse(reasoning=reasoning_data)
+        return ExplanationResponse(
+            product_name=request.product_name,
+            product_variant=request.product_variant,
+            origin=request.origin,
+            product_category=request.product_category,
+            reasoning=reasoning_data,
+        )
 
     except HTTPException:
         raise

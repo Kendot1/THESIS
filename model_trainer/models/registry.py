@@ -46,8 +46,6 @@ class ModelRegistry:
             self.lgbm.load()
         except FileNotFoundError:
             log.warning("LightGBM model not found on disk -- will use fallback.")
-            self.lgbm = None
-
         # Load residual model (Stage 2 of hybrid)
         if self.lgbm is not None:
             try:
