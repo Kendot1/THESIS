@@ -56,7 +56,7 @@ const ForecastChart = ({ data, height, showGrid = true, showLegend = true }: For
         maxHeight: '100%'
       }}
     >
-      <div className={!height ? "h-[180px] sm:h-[240px] lg:h-[360px]" : "h-full w-full"}>
+      <div className={!height ? "h-[220px] sm:h-[300px] lg:h-[400px]" : "h-full w-full"}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={data}
@@ -64,7 +64,7 @@ const ForecastChart = ({ data, height, showGrid = true, showLegend = true }: For
               top: height ? 20 : 20,
               right: height ? 15 : 15,
               left: height ? 0 : 0,
-              bottom: height ? 0 : 20
+              bottom: height ? 0 : 15
             }}
           >
             {showGrid && (

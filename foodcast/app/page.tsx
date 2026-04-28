@@ -408,7 +408,7 @@ export default function HomePage() {
         <section className="mt-15 py-5 sm:py-10 bg-surface" aria-labelledby="market-heading">
           <div className="max-w-7xl mx-auto px-5 lg:px-10">
             <ScrollReveal>
-              <div className="flex items-end justify-between mb-6 sm:mb-8">
+              <div className="flex items-end justify-between mb-2 sm:mb-4">
                 <div>
                   <h2
                     id="market-heading"
