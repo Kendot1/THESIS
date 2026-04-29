@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo, useEffect, Suspense, useDeferredValue } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, TrendingUp, Filter, X } from "lucide-react";
 import Header from "../components/Header";
@@ -7,30 +7,64 @@ import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
 import ForecastChart from "../components/ForecastChart";
 import ScrollReveal from "../components/ScrollReveal";
-import { products, categories } from "../lib/data";
+import { Product, fetchProducts, categories } from "../lib/data";
 
 function SearchPageContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [featuredProduct, setFeaturedProduct] = useState(products[0]);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  
+  const [products, setProducts] = useState<Product[]>([]);
+  const [featuredProduct, setFeaturedProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    fetchProducts().then(data => {
+      setProducts(data);
+      if (data.length > 0) setFeaturedProduct(data[0]);
+    });
+  }, []);
+  const deferredCategory = useDeferredValue(selectedCategory);
+  const deferredFeaturedProduct = useDeferredValue(featuredProduct);
+  const deferredQuery = useDeferredValue(query);
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
       const matchCategory =
-        selectedCategory === "All" || p.category === selectedCategory;
+        deferredCategory === "All" || p.category === deferredCategory;
       const matchQuery =
-        !query ||
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.category.toLowerCase().includes(query.toLowerCase());
+        !deferredQuery ||
+        p.name.toLowerCase().includes(deferredQuery.toLowerCase()) ||
+        p.category.toLowerCase().includes(deferredQuery.toLowerCase());
       return matchCategory && matchQuery;
     });
-  }, [query, selectedCategory]);
+  }, [deferredQuery, deferredCategory, products]);
 
-  const trendingProducts = products
-    .filter((p) => p.sentiment === "Bullish")
-    .slice(0, 4);
+  const trendingProducts = useMemo(() => {
+    const bullish = products.filter((p) => p.sentiment === "Bullish");
+    if (bullish.length > 0) return bullish.slice(0, 4);
+    
+    return [...products]
+      .sort((a, b) => {
+        const changeA = ((a.predictedPrice - a.currentPrice) / a.currentPrice) * 100;
+        const changeB = ((b.predictedPrice - b.currentPrice) / b.currentPrice) * 100;
+        return changeB - changeA;
+      })
+      .slice(0, 4);
+  }, [products]);
+
+  if (products.length === 0) {
+    return (
+      <>
+        <Header />
+        <main className="pt-20 min-h-screen bg-surface flex flex-col items-center justify-center">
+          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-800 rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-500 font-medium">Loading products...</p>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -104,52 +138,54 @@ function SearchPageContent() {
             {/* ─── Main Content ──────────────────────────── */}
             <div>
               {/* Featured Chart */}
-              <ScrollReveal>
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-8 shadow-sm">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="text-2xl">{featuredProduct.emoji}</span>
-                        <h2
-                          className="text-xl font-bold text-gray-900"
-                          style={{ fontFamily: "var(--font-display)" }}
+              {deferredFeaturedProduct && (
+                <ScrollReveal>
+                  <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-8 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <span className="text-2xl">{deferredFeaturedProduct.emoji}</span>
+                          <h2
+                            className="text-xl font-bold text-gray-900"
+                            style={{ fontFamily: "var(--font-display)" }}
+                          >
+                            {deferredFeaturedProduct.name}
+                          </h2>
+                          <span className="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
+                            {deferredFeaturedProduct.category}
+                          </span>
+                        </div>
+                        <p className="text-gray-500 text-sm">Price Market Forecast</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-gray-900">
+                          ₱{deferredFeaturedProduct.currentPrice.toFixed(2)}
+                        </div>
+                        <div
+                          className={`text-sm font-medium ${
+                            deferredFeaturedProduct.predictedPrice >=
+                            deferredFeaturedProduct.currentPrice
+                              ? "text-positive"
+                              : "text-negative"
+                          }`}
                         >
-                          {featuredProduct.name}
-                        </h2>
-                        <span className="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
-                          {featuredProduct.category}
-                        </span>
-                      </div>
-                      <p className="text-gray-500 text-sm">Price Market Forecast</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-gray-900">
-                        ₱{featuredProduct.currentPrice.toFixed(2)}
-                      </div>
-                      <div
-                        className={`text-sm font-medium ${
-                          featuredProduct.predictedPrice >=
-                          featuredProduct.currentPrice
-                            ? "text-positive"
-                            : "text-negative"
-                        }`}
-                      >
-                        {featuredProduct.predictedPrice >=
-                        featuredProduct.currentPrice
-                          ? "▲"
-                          : "▼"}{" "}
-                        ₱{featuredProduct.predictedPrice.toFixed(2)} predicted
+                          {deferredFeaturedProduct.predictedPrice >=
+                          deferredFeaturedProduct.currentPrice
+                            ? "▲"
+                            : "▼"}{" "}
+                          ₱{deferredFeaturedProduct.predictedPrice.toFixed(2)} predicted
+                        </div>
                       </div>
                     </div>
+                    <ForecastChart
+                      data={deferredFeaturedProduct.forecastData}
+                      height={280}
+                      showGrid
+                      showLegend
+                    />
                   </div>
-                  <ForecastChart
-                    data={featuredProduct.forecastData}
-                    height={280}
-                    showGrid
-                    showLegend
-                  />
-                </div>
-              </ScrollReveal>
+                </ScrollReveal>
+              )}
 
               {/* Category Filters */}
               <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
@@ -181,6 +217,8 @@ function SearchPageContent() {
                         emoji={p.emoji}
                         image={p.image}
                         category={p.category}
+                        variant={p.variant}
+                        origin={p.origin}
                         currentPrice={p.currentPrice}
                         predictedPrice={p.predictedPrice}
                       />
@@ -221,7 +259,7 @@ function SearchPageContent() {
                         key={p.id}
                         onClick={() => setFeaturedProduct(p)}
                         className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-250 text-left ${
-                          featuredProduct.id === p.id
+                          featuredProduct?.id === p.id
                             ? "bg-primary-50 border border-primary-100"
                             : "hover:bg-gray-50"
                         }`}

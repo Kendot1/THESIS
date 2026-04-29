@@ -18,24 +18,20 @@ const animationClasses = {
   "scale-in": "animate-scale-in",
 };
 
-type RevealCallback = (isIntersecting: boolean) => void;
-
-const observerMap = new Map<HTMLElement, RevealCallback>();
+const listeners = new WeakMap<Element, (isIntersecting: boolean) => void>();
 let sharedObserver: IntersectionObserver | null = null;
 
-function getSharedObserver() {
+function getObserver() {
   if (typeof window === "undefined") return null;
   if (!sharedObserver) {
     sharedObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          const callback = observerMap.get(entry.target as HTMLElement);
-          if (callback) {
-            callback(entry.isIntersecting);
-          }
+          const callback = listeners.get(entry.target);
+          if (callback) callback(entry.isIntersecting);
         });
       },
-      { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
+      { threshold: 0.1, rootMargin: "0px 0px -20px 0px" }
     );
   }
   return sharedObserver;
@@ -55,30 +51,26 @@ const ScrollReveal = ({
     const el = ref.current;
     if (!el) return;
 
-    const observer = getSharedObserver();
-    if (!observer) {
-      setIsVisible(true);
-      return;
-    }
+    const observer = getObserver();
+    if (!observer) return;
 
-    const callback = (isIntersecting: boolean) => {
+    listeners.set(el, (isIntersecting) => {
       if (isIntersecting) {
         setIsVisible(true);
         if (once) {
           observer.unobserve(el);
-          observerMap.delete(el);
+          listeners.delete(el);
         }
       } else if (!once) {
         setIsVisible(false);
       }
-    };
+    });
 
-    observerMap.set(el, callback);
     observer.observe(el);
 
     return () => {
-      observerMap.delete(el);
       observer.unobserve(el);
+      listeners.delete(el);
     };
   }, [once]);
 
