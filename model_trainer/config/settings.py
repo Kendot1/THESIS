@@ -73,13 +73,13 @@ class Settings:
     })
 
     # ── LSTM Hyperparameters ──
-    lstm_hidden_size: int = 64           # Reduced from 128 to prevent overfitting
+    lstm_hidden_size: int = 128          # Restored to 128 — orthogonal init + low dropout prevents overfitting
     lstm_num_layers: int = 2
-    lstm_dropout: float = 0.1            # Reduced to 0.1 to prevent underfitting/flatness
-    lstm_learning_rate: float = 0.001    # Increased back to 0.001 for better local minima escape
+    lstm_dropout: float = 0.1            # Low dropout to preserve temporal signal
+    lstm_learning_rate: float = 0.001
     lstm_epochs: int = 150
     lstm_batch_size: int = 64
-    lstm_patience: int = 25              # Standardized patience
+    lstm_patience: int = 25
 
     # ── Ensemble ──
     ensemble_method: str = "stacking"  # "weighted_average" | "stacking"

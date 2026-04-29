@@ -2,12 +2,13 @@
 LSTM model for time-series price forecasting using PyTorch.
 
 Key improvements over baseline:
-  • Multi-feature input: uses lag features, temporal features, and news sentiment
-  • PER-PRODUCT StandardScaler normalization (avoids mixing scales across products)
+  • Multi-feature input: uses lag features, temporal features, and volatility
+  • PER-PRODUCT mean scaling normalization (avoids mixing scales across products)
   • Proper time-based sequence construction (no temporal leakage)
   • Temporal Attention mechanism to focus on important timesteps
-  • SmoothL1 (Huber) loss for robustness to outliers
-  • Gradient clipping, LR scheduling, early stopping
+  • Orthogonal weight initialization (matches TF/Keras defaults for stable training)
+  • L1 (MAE) loss for sharper, more dynamic forecasts
+  • Cosine Annealing LR schedule, gradient clipping, early stopping
 """
 
 import torch
@@ -18,7 +19,6 @@ import joblib
 from pathlib import Path
 from typing import Optional, Dict, Tuple, List
 from torch.utils.data import Dataset, DataLoader
-from sklearn.preprocessing import StandardScaler
 
 from config.settings import get_settings
 from utils.logger import get_logger
@@ -26,7 +26,13 @@ from utils.metrics import compute_all_metrics
 
 log = get_logger(__name__)
 
-# Minimal feature set for LSTM — sequential features it excels at
+# ── Reproducibility ──
+torch.manual_seed(42)
+np.random.seed(42)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(42)
+
+# Feature set for LSTM — sequential features it excels at
 LSTM_FEATURE_COLS = [
     # Short lags (sequential context the LSTM naturally uses)
     "price_lag_1d", "price_lag_7d", "price_lag_30d",
@@ -64,13 +70,16 @@ class PriceSequenceDataset(Dataset):
 
 
 # ──────────────────────────────────────────────
-# Network with optional Attention
+# Network with Attention + Orthogonal Init
 # ──────────────────────────────────────────────
 class _LSTMNetwork(nn.Module):
     """
     Multi-layer LSTM with temporal attention and a fully-connected head.
+    Uses orthogonal initialization for recurrent weights (matching TF/Keras
+    defaults) to prevent vanishing/exploding gradients over long sequences.
+
     Input:  (batch, seq_len, n_features)
-    Output: (batch, 1)
+    Output: (batch, horizon)
     """
 
     def __init__(
@@ -78,7 +87,7 @@ class _LSTMNetwork(nn.Module):
         input_size: int = 1,
         hidden_size: int = 128,
         num_layers: int = 2,
-        dropout: float = 0.3,
+        dropout: float = 0.1,
         horizon: int = 30,
     ):
         super().__init__()
@@ -100,15 +109,48 @@ class _LSTMNetwork(nn.Module):
             nn.Linear(hidden_size // 2, 1),
         )
 
+        # Concatenate attention context + last hidden state for richer representation
         self.fc = nn.Sequential(
-            nn.LayerNorm(hidden_size * 2),  # concatenated context + last state
+            nn.LayerNorm(hidden_size * 2),
             nn.Linear(hidden_size * 2, 64),
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(64, 32),
             nn.GELU(),
-            nn.Linear(32, horizon),  # Predict 30 future steps
+            nn.Linear(32, horizon),
         )
+
+        # Apply orthogonal initialization to all weights
+        self._init_weights()
+
+    def _init_weights(self):
+        """
+        Apply orthogonal initialization to LSTM recurrent weights and
+        Xavier uniform to linear layers. This matches TensorFlow/Keras
+        defaults and is critical for stable LSTM training.
+        """
+        for name, param in self.lstm.named_parameters():
+            if "weight_ih" in name:
+                nn.init.xavier_uniform_(param.data)
+            elif "weight_hh" in name:
+                nn.init.orthogonal_(param.data)
+            elif "bias" in name:
+                param.data.fill_(0.0)
+                # Set forget gate bias to 1.0 for better long-term memory
+                n = param.size(0)
+                param.data[n // 4 : n // 2].fill_(1.0)
+
+        for module in self.fc:
+            if isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+
+        for module in self.attention:
+            if isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
 
     def forward(self, x):
         # x: (batch, seq_len, features)
@@ -119,7 +161,7 @@ class _LSTMNetwork(nn.Module):
         attn_weights = torch.softmax(attn_weights, dim=1)
         context = (lstm_out * attn_weights).sum(dim=1)  # (batch, hidden)
 
-        # Concatenate context with the final timestep to preserve immediate short-term volatility
+        # Concatenate context with the final timestep to preserve short-term volatility
         last_out = lstm_out[:, -1, :]
         combined = torch.cat((context, last_out), dim=1)
 
@@ -135,8 +177,8 @@ class LSTMModel:
 
     Handles:
       • Building multi-feature sequences from engineered DataFrames
-      • Per-product StandardScaler normalization
-      • Training with early stopping, LR scheduling, gradient clipping
+      • Per-product mean scaling normalization
+      • Training with early stopping, Cosine Annealing LR, gradient clipping
       • Prediction with denormalization
       • MC Dropout uncertainty estimation
       • Auto-regressive multi-step forecasting
@@ -162,7 +204,6 @@ class LSTMModel:
 
         self._model_path = cfg.artifacts_dir / "lstm_model.pt"
         self._product_means_path = cfg.artifacts_dir / "lstm_product_means.pkl"
-        self._meta_path = cfg.artifacts_dir / "lstm_meta.npz"
         self._meta_path = cfg.artifacts_dir / "lstm_meta.npz"
 
     # ──────────────────────────────────────────────
@@ -337,7 +378,7 @@ class LSTMModel:
         val_anchors: Optional[np.ndarray] = None,
         incremental: bool = False,
     ) -> Dict[str, float]:
-        """Train the LSTM with early stopping, LR scheduling, and gradient clipping."""
+        """Train the LSTM with early stopping, Cosine Annealing LR, and gradient clipping."""
         if len(X_train) == 0:
             log.warning("No training sequences — skipping LSTM training.")
             return {}
@@ -367,21 +408,19 @@ class LSTMModel:
 
         val_loader = None
         if X_val is not None and y_val is not None and len(X_val) > 0:
-            # Note: y_val contains 30-dim targets
             val_ds = PriceSequenceDataset(X_val, y_val)
             val_loader = DataLoader(val_ds, batch_size=self._batch_size, shuffle=False)
 
         optimizer = torch.optim.AdamW(
             self._model.parameters(), lr=lr, weight_decay=1e-5
         )
-        criterion = nn.L1Loss(reduction='none')  # L1 (MAE) encourages sharper, dynamic forecasts vs L2/SmoothL1
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='min', patience=8, factor=0.5, min_lr=1e-6
-        )
+        # L1 (MAE) loss — encourages sharper, more dynamic forecasts
+        criterion = nn.L1Loss()
 
-        # Step-weighted loss: emphasize early steps (3x for step-1, 1x for step-30)
-        step_weights = torch.linspace(3.0, 1.0, self._horizon).to(self._device)
-        step_weights = step_weights / step_weights.mean()  # normalize to mean=1
+        # Cosine Annealing with Warm Restarts — better exploration of loss landscape
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer, T_0=20, T_mult=2, eta_min=1e-6
+        )
 
         best_val_loss = float("inf")
         best_epoch = 0
@@ -395,15 +434,15 @@ class LSTMModel:
                 optimizer.zero_grad()
                 preds = self._model(seqs)
                 
-                # Step-weighted loss: early steps matter more
-                per_element_loss = criterion(preds, targets)  # (batch, 30)
-                loss = (per_element_loss * step_weights).mean()
+                # Uniform loss across all 30 forecast steps — no step weighting
+                loss = criterion(preds, targets)
 
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self._model.parameters(), max_norm=1.0)
                 optimizer.step()
                 train_loss += loss.item() * len(targets)
             train_loss /= len(train_ds)
+            scheduler.step(epoch)
 
             val_loss = None
             if val_loader is not None:
@@ -413,10 +452,8 @@ class LSTMModel:
                     for seqs, targets in val_loader:
                         seqs, targets = seqs.to(self._device), targets.to(self._device)
                         preds = self._model(seqs)
-                        per_element = criterion(preds, targets)
-                        val_total += (per_element * step_weights).mean().item() * len(targets)
+                        val_total += criterion(preds, targets).item() * len(targets)
                 val_loss = val_total / len(val_ds)
-                scheduler.step(val_loss)
 
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss

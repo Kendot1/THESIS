@@ -131,6 +131,15 @@ def cmd_scrape(args):
     log.info(f"Scraping complete. Stats: {stats}")
 
 
+def cmd_predict(args):
+    """Batch-generate predictions for all products and write to Supabase."""
+    from pipeline.prediction_writer import PredictionWriter
+
+    writer = PredictionWriter()
+    stats = writer.run(horizon=args.horizon)
+    log.info(f"Prediction batch complete. Stats: {stats}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="foodcast-trainer",
@@ -169,6 +178,18 @@ def main():
     # scrape
     scrape_parser = subparsers.add_parser("scrape", help="Run the news scraping pipeline")
     scrape_parser.set_defaults(func=cmd_scrape)
+
+    # predict (batch → Supabase)
+    predict_parser = subparsers.add_parser(
+        "predict", help="Batch-generate predictions for all products and write to Supabase"
+    )
+    predict_parser.add_argument(
+        "--horizon",
+        choices=["daily", "weekly", "monthly"],
+        default="monthly",
+        help="Forecast horizon (default: monthly)",
+    )
+    predict_parser.set_defaults(func=cmd_predict)
 
     args = parser.parse_args()
 
