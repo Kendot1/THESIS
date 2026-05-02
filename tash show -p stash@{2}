@@ -1,0 +1,36 @@
+[1mdiff --git a/scraper/__pycache__/ai_parser.cpython-314.pyc b/scraper/__pycache__/ai_parser.cpython-314.pyc[m
+[1mdeleted file mode 100644[m
+[1mindex d7f6ac2..0000000[m
+Binary files a/scraper/__pycache__/ai_parser.cpython-314.pyc and /dev/null differ
+[1mdiff --git a/scraper/__pycache__/db.cpython-314.pyc b/scraper/__pycache__/db.cpython-314.pyc[m
+[1mdeleted file mode 100644[m
+[1mindex ad27866..0000000[m
+Binary files a/scraper/__pycache__/db.cpython-314.pyc and /dev/null differ
+[1mdiff --git a/scraper/__pycache__/downloader.cpython-311.pyc b/scraper/__pycache__/downloader.cpython-311.pyc[m
+[1mdeleted file mode 100644[m
+[1mindex 5eb6e92..0000000[m
+Binary files a/scraper/__pycache__/downloader.cpython-311.pyc and /dev/null differ
+[1mdiff --git a/scraper/__pycache__/downloader.cpython-314.pyc b/scraper/__pycache__/downloader.cpython-314.pyc[m
+[1mdeleted file mode 100644[m
+[1mindex 1a5e49b..0000000[m
+Binary files a/scraper/__pycache__/downloader.cpython-314.pyc and /dev/null differ
+[1mdiff --git a/scraper/__pycache__/parser.cpython-311.pyc b/scraper/__pycache__/parser.cpython-311.pyc[m
+[1mdeleted file mode 100644[m
+[1mindex 1e608f6..0000000[m
+Binary files a/scraper/__pycache__/parser.cpython-311.pyc and /dev/null differ
+[1mdiff --git a/scraper/__pycache__/parser.cpython-314.pyc b/scraper/__pycache__/parser.cpython-314.pyc[m
+[1mdeleted file mode 100644[m
+[1mindex 55883fa..0000000[m
+Binary files a/scraper/__pycache__/parser.cpython-314.pyc and /dev/null differ
+[1mdiff --git a/scraper/__pycache__/pdf_detector.cpython-311.pyc b/scraper/__pycache__/pdf_detector.cpython-311.pyc[m
+[1mdeleted file mode 100644[m
+[1mindex c0c83f4..0000000[m
+Binary files a/scraper/__pycache__/pdf_detector.cpython-311.pyc and /dev/null differ
+[1mdiff --git a/scraper/__pycache__/pdf_detector.cpython-314.pyc b/scraper/__pycache__/pdf_detector.cpython-314.pyc[m
+[1mdeleted file mode 100644[m
+[1mindex 2f0cad9..0000000[m
+Binary files a/scraper/__pycache__/pdf_detector.cpython-314.pyc and /dev/null differ
+[1mdiff --git a/scraper/__pycache__/utils.cpython-314.pyc b/scraper/__pycache__/utils.cpython-314.pyc[m
+[1mdeleted file mode 100644[m
+[1mindex 1284061..0000000[m
+Binary files a/scraper/__pycache__/utils.cpython-314.pyc and /dev/null differ

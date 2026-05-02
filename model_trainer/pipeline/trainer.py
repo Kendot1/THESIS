@@ -191,24 +191,17 @@ class TrainingPipeline:
         log.info("Step 5/8 -- Training LSTM (Stage 1: base temporal model) ...")
         lstm_metrics = self._train_lstm(train_df, val_df, incremental)
 
-        # ── Step 6: Compute residuals & train LightGBM residual corrector ──
-        log.info("Step 6/8 -- Training LightGBM residual correction (Stage 2) ...")
-        lgbm_residual_metrics = self._train_lgbm_residual(
-            train_df, val_df, feature_cols, incremental
-        )
-
-        # ── Step 7: Evaluate hybrid ensemble ──
-        log.info("Step 7/8 -- Evaluating hybrid ensemble ...")
+        # ── Step 6: Evaluate hybrid ensemble ──
+        log.info("Step 6/8 -- Evaluating blended hybrid ensemble ...")
         ensemble_metrics = {}
         if not val_df.empty and lstm_metrics:
             ensemble_metrics = self._evaluate_hybrid(train_df, val_df, feature_cols)
 
-        # ── Step 8: Version & store ──
-        log.info("Step 8/8 -- Saving model version ...")
+        # ── Step 7: Version & store ──
+        log.info("Step 7/8 -- Saving model version ...")
         combined_metrics = {
             "lgbm": lgbm_metrics,
             "lstm": lstm_metrics,
-            "lgbm_residual": lgbm_residual_metrics,
             "ensemble": ensemble_metrics,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "data_rows": len(clean_df),
@@ -427,18 +420,16 @@ class TrainingPipeline:
                 X_val_seq, products=val_products, current_prices=val_anchors
             )
 
-            # Get LightGBM residual predictions
+            # Get LightGBM Base predictions
             X_val_lgbm = val_full_df.iloc[val_indices][feature_cols].copy()
-            X_val_lgbm["lstm_prediction"] = lstm_preds
-
-            lgbm_residual_preds = self._lgbm.predict_residual(X_val_lgbm)
+            lgbm_preds = self._lgbm.predict(X_val_lgbm)
 
             # Get actual prices
             y_val_actual = val_full_df["price_index"].values[val_indices]
 
-            # Evaluate hybrid
-            return self._ensemble.train_residual_ensemble(
-                lstm_preds, lgbm_residual_preds, y_val_actual
+            # Evaluate blended hybrid
+            return self._ensemble.train_blended_ensemble(
+                lstm_preds, lgbm_preds, y_val_actual
             )
 
         except Exception as e:

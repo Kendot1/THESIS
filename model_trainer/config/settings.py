@@ -35,6 +35,13 @@ class Settings:
     # ── Groq ──
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
 
+    # ── Cloudflare R2 ──
+    cf_r2_account_id: str = os.getenv("CLOUDFLARE_R2_ACCOUNT_ID", "")
+    cf_r2_access_key_id: str = os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID", "")
+    cf_r2_secret_access_key: str = os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY", "")
+    cf_r2_bucket_name: str = os.getenv("CLOUDFLARE_R2_BUCKET_NAME", "")
+    cf_r2_public_url: str = os.getenv("CLOUDFLARE_R2_PUBLIC_URL", "")
+
     # ── Data ──
     food_prices_table: str = "food_prices"
     news_events_table: str = "stored_events"
@@ -75,11 +82,11 @@ class Settings:
     # ── LSTM Hyperparameters ──
     lstm_hidden_size: int = 128          # Restored to 128 — orthogonal init + low dropout prevents overfitting
     lstm_num_layers: int = 2
-    lstm_dropout: float = 0.1            # Low dropout to preserve temporal signal
+    lstm_dropout: float = 0.2            # Increased slightly to prevent overfitting with custom loss
     lstm_learning_rate: float = 0.001
-    lstm_epochs: int = 150
+    lstm_epochs: int = 200               # Increased epochs to give it time to learn directional signals
     lstm_batch_size: int = 64
-    lstm_patience: int = 25
+    lstm_patience: int = 35              # Increased patience
 
     # ── Ensemble ──
     ensemble_method: str = "stacking"  # "weighted_average" | "stacking"

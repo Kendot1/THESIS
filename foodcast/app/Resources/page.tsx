@@ -36,7 +36,7 @@ const resourceGroups = [
             { name: "PyTorch", description: "An open-source machine learning framework that accelerates the path from research prototyping to production.", icon: Flame, logo: "https://raw.githubusercontent.com/pytorch/pytorch/master/docs/source/_static/img/pytorch-logo-dark.png", link: "https://pytorch.org/" },
             { name: "NumPy", description: "The fundamental package for scientific computing with Python and large multi-dimensional arrays.", icon: Hash, logo: "https://upload.wikimedia.org/wikipedia/commons/3/31/NumPy_logo_2020.svg", link: "https://numpy.org/" },
             { name: "Joblib", description: "A set of tools to provide lightweight pipelining and disk-caching in Python.", icon: HardDrive, logo: null, link: "https://joblib.readthedocs.io/" },
-            { name: "Requests", description: "Simple, yet elegant, HTTP library for Python, built for human beings.", icon: ExternalLink, logo: "https://requests.readthedocs.io/en/latest/_static/requests-sidebar.png", link: "https://requests.readthedocs.io/" },
+            { name: "HTTPX", description: "A fully featured HTTP client for Python 3, which provides async APIs.", icon: ExternalLink, logo: null, link: "https://www.python-httpx.org/" },
         ]
     },
     {
@@ -62,6 +62,10 @@ const resourceGroups = [
             { name: "Vercel", description: "Platform for frontend frameworks and static sites, providing seamless deployment.", icon: Triangle, logo: "https://assets.vercel.com/image/upload/v1588805177/front/favicon/vercel/180x180.png", link: "https://vercel.com/" },
             { name: "GitHub", description: "Web-based version control and collaboration platform for software development.", icon: Github, logo: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png", link: "https://github.com/" },
             { name: "Antigravity", description: "AI-powered development assistant used to build and optimize the platform.", icon: Sparkles, logo: null, link: "https://antigravity.ai" },
+            { name: "Crawl4AI", description: "Open-source web crawling framework optimized for LLMs and AI applications.", icon: Bot, logo: null, link: "https://crawl4ai.com/" },
+            { name: "Tailwind CSS", description: "A utility-first CSS framework for rapidly building custom user interfaces.", icon: Sparkles, logo: "https://upload.wikimedia.org/wikipedia/commons/d/d5/Tailwind_CSS_Logo.svg", link: "https://tailwindcss.com/" },
+            { name: "TypeScript", description: "A strongly typed programming language that builds on JavaScript, ensuring type safety.", icon: FileCode, logo: "https://upload.wikimedia.org/wikipedia/commons/4/4c/Typescript_logo_2020.svg", link: "https://www.typescriptlang.org/" },
+            { name: "Recharts", description: "A composable and reliable charting library built on React components.", icon: Activity, logo: null, link: "https://recharts.org/" },
         ]
     }
 ];

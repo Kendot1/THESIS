@@ -29,6 +29,17 @@ export interface Product {
   }[];
 }
 
+export interface NewsArticle {
+  id: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  date: string;
+  image: string;
+  url: string;
+  source: string;
+}
+
 export const CATEGORY_EMOJI: Record<string, string> = {
   Rice: "🍚",
   Corn: "🌽",
@@ -424,3 +435,85 @@ function buildForecastData(
 
   return result;
 }
+
+let cachedNewsPromise: Promise<NewsArticle[]> | null = null;
+let lastNewsFetchTime = 0;
+
+export async function fetchNews(limit = 10, forceRefresh = false): Promise<NewsArticle[]> {
+  // 1. Memory Cache
+  if (!forceRefresh && cachedNewsPromise && Date.now() - lastNewsFetchTime < CACHE_DURATION_MS) {
+    return cachedNewsPromise;
+  }
+
+  // 2. LocalStorage Cache
+  if (!forceRefresh && typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("foodcast_news_cache");
+      const storedTime = localStorage.getItem("foodcast_news_time");
+      if (stored && storedTime && Date.now() - parseInt(storedTime) < CACHE_DURATION_MS * 12) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.length > 0) {
+          if (!cachedNewsPromise) {
+            cachedNewsPromise = Promise.resolve(parsed);
+            lastNewsFetchTime = parseInt(storedTime);
+            
+            // Silent background revalidation
+            _fetchNews(limit).then(freshData => {
+              localStorage.setItem("foodcast_news_cache", JSON.stringify(freshData));
+              localStorage.setItem("foodcast_news_time", Date.now().toString());
+              cachedNewsPromise = Promise.resolve(freshData);
+              lastNewsFetchTime = Date.now();
+            }).catch(console.error);
+          }
+          return cachedNewsPromise;
+        }
+      }
+    } catch (e) {
+      console.warn("LocalStorage news cache access failed", e);
+    }
+  }
+
+  // 3. Network Fetch Fallback
+  cachedNewsPromise = _fetchNews(limit).then(data => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("foodcast_news_cache", JSON.stringify(data));
+        localStorage.setItem("foodcast_news_time", Date.now().toString());
+      } catch (e) {}
+    }
+    return data;
+  });
+  
+  lastNewsFetchTime = Date.now();
+  return cachedNewsPromise;
+}
+
+async function _fetchNews(limit = 10): Promise<NewsArticle[]> {
+  try {
+    const { data, error } = await supabase
+      .from("news_articles")
+      .select("id, title, content, event_type, published_at, image_url, url, source")
+      .order("published_at", { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error("Error fetching news:", error);
+      return [];
+    }
+
+    return (data || []).map(article => ({
+      id: article.id,
+      title: article.title,
+      excerpt: article.content ? (article.content.substring(0, 150) + "...") : "",
+      category: (article.event_type || "News").replace(/_/g, ' '),
+      date: new Date(article.published_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+      image: article.image_url || "/news/market.png",
+      url: article.url,
+      source: article.source,
+    }));
+  } catch (e) {
+    console.error("Failed to fetch news:", e);
+    return [];
+  }
+}
+

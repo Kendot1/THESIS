@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useId } from "react";
+import React, { useMemo, useId } from "react";
 import Link from "next/link";
 import { ArrowUpRight, ArrowDownRight, TrendingUp } from "lucide-react";
 import { DEFAULT_PRODUCT_IMAGE } from "../lib/data";
@@ -238,4 +238,4 @@ const DailyMoverCard = ({
   );
 };
 
-export default DailyMoverCard;
+export default React.memo(DailyMoverCard);

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowUpRight, ArrowDownRight, Eye } from "lucide-react";
 import { DEFAULT_PRODUCT_IMAGE } from "../lib/data";
@@ -172,4 +172,4 @@ const ProductCard = ({
   );
 };
 
-export default ProductCard;
+export default React.memo(ProductCard);

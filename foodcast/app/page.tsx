@@ -17,10 +17,11 @@ import ProductCard from "./components/ProductCard";
 import DailyMoverCard from "./components/DailyMoverCard";
 import NewsCard from "./components/NewsCard";
 import ScrollReveal from "./components/ScrollReveal";
-import { Product, fetchProducts, DEFAULT_PRODUCT_IMAGE } from "./lib/data";
+import { Product, fetchProducts, DEFAULT_PRODUCT_IMAGE, NewsArticle, fetchNews } from "./lib/data";
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [newsList, setNewsList] = useState<NewsArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -29,6 +30,9 @@ export default function HomePage() {
     fetchProducts().then(data => {
       setProducts(data);
       setIsLoading(false);
+    });
+    fetchNews(10).then(data => {
+      setNewsList(data);
     });
   }, []);
 
@@ -44,102 +48,61 @@ export default function HomePage() {
 
   /* ─── Daily Movers slider state ─────────────────── */
   const sliderRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const autoSlideTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /* ─── Trending slider state ─────────────────────── */
   const trendingRef = useRef<HTMLDivElement>(null);
-  const [trendCanLeft, setTrendCanLeft] = useState(false);
-  const [trendCanRight, setTrendCanRight] = useState(true);
 
   const trendingProducts = products.slice(0, 4);
   const allProducts = products;
 
-  const newsData = [
-    {
-      id: "1",
-      title: "Rising Demand for Highland Vegetables in Metro Manila",
-      excerpt: "Recent market reports show a significant surge in demand for vegetables sourced from Benguet, leading to price shifts in major NCR trading centers.",
-      category: "Market Report",
-      date: "May 1, 2026",
-      image: "/news/market.png"
-    },
-    {
-      id: "2",
-      title: "New AI Models Improve Price Prediction Accuracy",
-      excerpt: "Foodcast's latest machine learning update integrates more variables, including weather patterns and fuel costs, to provide even more reliable forecasts.",
-      category: "Technology",
-      date: "April 28, 2026",
-      image: "/news/smart-farming.png"
-    },
-    {
-      id: "3",
-      title: "Fishery Sector Sees Stable Supply Amid Seasonal Changes",
-      excerpt: "Local fishery experts predict a stable supply of tilapia and bangus for the upcoming month, keeping prices within expected ranges.",
-      category: "Fishery",
-      date: "April 25, 2026",
-      image: "/news/fishery.png"
-    },
-    {
-      id: "4",
-      title: "Understanding Price Volatility in Urban Markets",
-      excerpt: "A deep dive into why certain food products experience rapid price swings and how consumers can use data to plan their purchases.",
-      category: "Analysis",
-      date: "April 22, 2026",
-      image: "/news/prices.png"
-    }
-  ];
-
   /* ─── News slider state ─────────────────────────── */
   const newsRef = useRef<HTMLDivElement>(null);
-  const [newsCanLeft, setNewsCanLeft] = useState(false);
-  const [newsCanRight, setNewsCanRight] = useState(true);
   const [isNewsPaused, setIsNewsPaused] = useState(false);
   const newsAutoSlideTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /* ─── Scroll helpers ────────────────────────────── */
-  const checkScroll = () => {
-    const el = sliderRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 10);
-    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
-  };
-
-  const checkTrendingScroll = () => {
-    const el = trendingRef.current;
-    if (!el) return;
-    setTrendCanLeft(el.scrollLeft > 10);
-    setTrendCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
-  };
-
   const scroll = (dir: "left" | "right") => {
     const el = sliderRef.current;
     if (!el) return;
     const cardWidth = window.innerWidth < 640 ? 315 : window.innerWidth < 1024 ? 435 : 495;
-    el.scrollBy({ left: dir === "left" ? -cardWidth : cardWidth, behavior: "smooth" });
+    
+    if (dir === "left") {
+      if (el.scrollLeft <= 10) el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
+      else el.scrollBy({ left: -cardWidth, behavior: "smooth" });
+    } else {
+      if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 10) el.scrollTo({ left: 0, behavior: "smooth" });
+      else el.scrollBy({ left: cardWidth, behavior: "smooth" });
+    }
   };
 
   const scrollTrending = (dir: "left" | "right") => {
     const el = trendingRef.current;
     if (!el) return;
     const cardWidth = window.innerWidth < 640 ? 200 : 260;
-    el.scrollBy({ left: dir === "left" ? -cardWidth : cardWidth, behavior: "smooth" });
-  };
-
-  const checkNewsScroll = () => {
-    const el = newsRef.current;
-    if (!el) return;
-    setNewsCanLeft(el.scrollLeft > 10);
-    setNewsCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+    
+    if (dir === "left") {
+      if (el.scrollLeft <= 10) el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
+      else el.scrollBy({ left: -cardWidth, behavior: "smooth" });
+    } else {
+      if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 10) el.scrollTo({ left: 0, behavior: "smooth" });
+      else el.scrollBy({ left: cardWidth, behavior: "smooth" });
+    }
   };
 
   const scrollNews = (dir: "left" | "right") => {
     const el = newsRef.current;
     if (!el) return;
     const cardWidth = window.innerWidth < 640 ? 300 : 380;
-    el.scrollBy({ left: dir === "left" ? -cardWidth : cardWidth, behavior: "smooth" });
+    
+    if (dir === "left") {
+      if (el.scrollLeft <= 10) el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
+      else el.scrollBy({ left: -cardWidth, behavior: "smooth" });
+    } else {
+      if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 10) el.scrollTo({ left: 0, behavior: "smooth" });
+      else el.scrollBy({ left: cardWidth, behavior: "smooth" });
+    }
   };
 
   /* ─── Auto-slide for Daily Movers ──────────────── */
@@ -155,27 +118,6 @@ export default function HomePage() {
       el.scrollBy({ left: cardWidth, behavior: "smooth" });
     }
   }, [isPaused]);
-
-  useEffect(() => {
-    checkScroll();
-    const el = sliderRef.current;
-    if (el) el.addEventListener("scroll", checkScroll, { passive: true });
-    return () => el?.removeEventListener("scroll", checkScroll);
-  }, []);
-
-  useEffect(() => {
-    checkTrendingScroll();
-    const el = trendingRef.current;
-    if (el) el.addEventListener("scroll", checkTrendingScroll, { passive: true });
-    return () => el?.removeEventListener("scroll", checkTrendingScroll);
-  }, []);
-
-  useEffect(() => {
-    checkNewsScroll();
-    const el = newsRef.current;
-    if (el) el.addEventListener("scroll", checkNewsScroll, { passive: true });
-    return () => el?.removeEventListener("scroll", checkNewsScroll);
-  }, []);
 
   /* ─── Auto-slide for News ──────────────────────── */
   const autoSlideNews = useCallback(() => {
@@ -569,9 +511,7 @@ export default function HomePage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => scroll("left")}
-                    disabled={!canScrollLeft}
                     className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
-                      disabled:opacity-30 disabled:cursor-not-allowed
                       hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
                     aria-label="Scroll left"
                   >
@@ -579,9 +519,7 @@ export default function HomePage() {
                   </button>
                   <button
                     onClick={() => scroll("right")}
-                    disabled={!canScrollRight}
                     className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
-                      disabled:opacity-30 disabled:cursor-not-allowed
                       hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
                     aria-label="Scroll right"
                   >
@@ -647,9 +585,7 @@ export default function HomePage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => scrollNews("left")}
-                    disabled={!newsCanLeft}
                     className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
-                      disabled:opacity-30 disabled:cursor-not-allowed
                       hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
                     aria-label="Scroll news left"
                   >
@@ -657,9 +593,7 @@ export default function HomePage() {
                   </button>
                   <button
                     onClick={() => scrollNews("right")}
-                    disabled={!newsCanRight}
                     className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
-                      disabled:opacity-30 disabled:cursor-not-allowed
                       hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
                     aria-label="Scroll news right"
                   >
@@ -675,13 +609,13 @@ export default function HomePage() {
               onMouseEnter={() => setIsNewsPaused(true)}
               onMouseLeave={() => setIsNewsPaused(false)}
             >
-              {newsData.map((news, i) => (
+              {newsList.map((item, i) => (
                 <div
-                  key={news.id}
+                  key={item.id}
                   className="snap-start shrink-0 w-[280px] sm:w-[350px]"
                   style={{ animationDelay: `${i * 100}ms` }}
                 >
-                  <NewsCard {...news} />
+                  <NewsCard {...item} />
                 </div>
               ))}
             </div>
@@ -709,9 +643,7 @@ export default function HomePage() {
                   <div className="flex lg:hidden items-center gap-2">
                     <button
                       onClick={() => scrollTrending("left")}
-                      disabled={!trendCanLeft}
                       className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
-                        disabled:opacity-30 disabled:cursor-not-allowed
                         hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
                       aria-label="Scroll trending left"
                     >
@@ -719,9 +651,7 @@ export default function HomePage() {
                     </button>
                     <button
                       onClick={() => scrollTrending("right")}
-                      disabled={!trendCanRight}
                       className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
-                        disabled:opacity-30 disabled:cursor-not-allowed
                         hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
                       aria-label="Scroll trending right"
                     >

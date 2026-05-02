@@ -24,44 +24,44 @@ const methodologySteps = [
   {
     step: 1,
     icon: <Database className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Data Collection",
+    title: "Data Gathering & Sourcing",
     description:
-      "Gathering historical price data from NCR markets including daily prices, supply volumes, weather patterns, and seasonal trends across multiple commodities.",
+      "Collecting comprehensive historical price data from NCR agricultural markets and continuously scraping real-time market news and events to form a robust foundation.",
   },
   {
     step: 2,
     icon: <Layers className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Data Preparation",
+    title: "Data Cleaning & Preparation",
     description:
-      "Cleaning and organizing raw market data. We handle missing information and identify key factors to prepare the data for the AI system.",
+      "Sanitizing raw datasets by removing anomalies, interpolating missing values, and integrating news sentiment scores to ensure the data is perfectly structured for machine learning.",
   },
   {
     step: 3,
-    icon: <Cpu className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "AI Analysis",
+    icon: <Brain className="w-5 h-5 sm:w-6 sm:h-6" />,
+    title: "Deep Trend Analysis (LSTM)",
     description:
-      "Using advanced forecasting technology and market pattern recognition to analyze historical data and identify reliable price trends.",
+      "Processing the chronological data through our Long Short-Term Memory (LSTM) neural networks to recognize deep, long-term market trends and complex seasonal patterns.",
   },
   {
     step: 4,
     icon: <Target className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Accuracy Testing",
+    title: "Residual Correction (LightGBM)",
     description:
-      "Thoroughly testing the system against past market data to ensure our predictions are reliable and accurate across different market conditions.",
+      "Passing the initial LSTM predictions into an advanced gradient boosting model (LightGBM) designed specifically to correct short-term deviations, price shocks, and sudden volatility.",
   },
   {
     step: 5,
-    icon: <LineChart className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Price Predictions",
+    icon: <Cpu className="w-5 h-5 sm:w-6 sm:h-6" />,
+    title: "Hybrid Ensemble Optimization",
     description:
-      "Creating future price forecasts with expected ranges and trend directions for every product we track.",
+      "Combining both models using a dynamic shrinkage algorithm. This ensures our final hybrid forecast consistently outperforms traditional standalone models.",
   },
   {
     step: 6,
-    icon: <Shield className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Daily Updates",
+    icon: <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />,
+    title: "Continuous Learning",
     description:
-      "Continuously checking system performance and updating our data every day to maintain high accuracy as the market changes.",
+      "The pipeline automatically ingests new daily market prices and intelligence reports, continuously retraining its predictive weights to adapt to real-world market shifts.",
   },
 ];
 
@@ -221,168 +221,116 @@ export default function AboutPage() {
             </section>
 
             {/* ─── Methodology ─────────────────────────────── */}
-            <div className="bg-surface">
-              <WaveDivider from="#FDFBF7" to="#0B3D2E" />
-            </div>
-
             <section
-              className="relative py-10 sm:py-28 bg-primary-800 overflow-hidden"
+              className="relative py-20 bg-white overflow-hidden"
               aria-labelledby="methodology-heading"
             >
+              {/* Subtle Background Elements */}
               <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-                <div className="absolute -top-32 right-0 w-[600px] h-[600px] bg-accent/4 rounded-full blur-[150px]" />
-                <div className="absolute -bottom-32 left-0 w-[400px] h-[400px] bg-accent/3 rounded-full blur-[120px]" />
+                <div className="absolute top-0 right-0 w-80 h-80 bg-accent/5 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-80 h-80 bg-primary-50 rounded-full blur-3xl opacity-50 translate-y-1/2 -translate-x-1/2" />
               </div>
 
               <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
                 <ScrollReveal>
-                  <div className="text-center mb-10">
+                  <div className="text-center mb-16">
                     <h2
                       id="methodology-heading"
-                      className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-5"
+                      className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-5"
                       style={{ fontFamily: "var(--font-display)" }}
                     >
                       How It{" "}
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light">
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-700 to-accent">
                         Works
                       </span>
                     </h2>
-                    <p className="text-white/50 max-w-2xl mx-auto text-base sm:text-lg">
-                      A simple, data-driven approach to price prediction using smart technology.
+                    <p className="text-gray-600 max-w-2xl mx-auto text-base sm:text-lg">
+                      A rigorous, end-to-end machine learning pipeline that turns raw market data into actionable intelligence.
                     </p>
                   </div>
                 </ScrollReveal>
 
-                {/* Mobile View: Accordion List */}
-                <div className="md:hidden space-y-4 relative z-10 px-0">
-                  {methodologySteps.map((step, i) => {
-                    const isExpanded = selectedStep?.step === step.step;
+                {/* Interactive Split-Screen Dashboard */}
+                <div className="relative mt-16 max-w-6xl mx-auto">
+                  {(() => {
+                    const activeStep = selectedStep || methodologySteps[0];
                     return (
-                      <ScrollReveal
-                        key={step.step}
-                        delay={i * 80}
-                        animation="fade-up"
-                      >
-                        <button
-                          onClick={() => setSelectedStep(isExpanded ? null : step)}
-                          className={`relative overflow-hidden w-full text-left bg-primary-900/40 border-l-2 border-l-accent/40 rounded-r-xl transition-all duration-500 focus:outline-none ${isExpanded ? "bg-primary-900/60 border-l-accent ring-1 ring-white/10" : "hover:bg-primary-900/50"
-                            }`}
-                        >
-                          {/* Ghost Numbering: Large background numeral */}
-                          <div className={`absolute -top-4 -right-2 text-9xl font-black text-accent select-none pointer-events-none transition-all duration-1000 ease-out ${isExpanded ? "opacity-[0.08] translate-y-4 scale-110" : "opacity-[0.03] translate-y-0 scale-100"
-                            }`}>
-                            {step.step}
-                          </div>
-
-                          <div className="p-5 relative z-10">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-4">
-                                {/* Icon with Intersection Accent */}
-                                <div className="relative">
-                                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isExpanded ? "bg-accent text-primary-900 scale-105 shadow-[0_0_20px_rgba(126,217,87,0.2)]" : "bg-white/5 text-accent"
-                                    }`}>
-                                    {step.icon}
-                                  </div>
-                                  {/* Small vertical indicator sitting on the border */}
-                                  <div className={`absolute -left-[21px] top-1/2 -translate-y-1/2 w-1 h-8 rounded-full transition-all duration-500 ${isExpanded ? "bg-accent shadow-[0_0_12px_#7ED957] h-10" : "bg-accent/10 h-4"
-                                    }`} />
-                                </div>
-
-                                <div className="flex flex-col">
-                                  <div className="flex items-center gap-2 mb-0.5">
-                                    <span className={`text-[9px] font-bold uppercase tracking-[0.2em] transition-colors ${isExpanded ? "text-accent" : "text-accent/40"
-                                      }`}>
-                                      Step {step.step}
-                                    </span>
-                                    {isExpanded && <div className="h-px w-4 bg-accent/30 animate-scale-in" />}
-                                  </div>
-                                  <h3 className={`text-base font-bold transition-colors ${isExpanded ? "text-white" : "text-white/80"
-                                    }`}>
-                                    {step.title}
-                                  </h3>
-                                </div>
-                              </div>
-                              <ChevronRight className={`w-4 h-4 text-white/20 transition-transform duration-500 ${isExpanded ? "rotate-90 text-accent" : ""
-                                }`} />
-                            </div>
-
-                            <div className={`grid transition-all duration-300 ease-in-out ${isExpanded ? "grid-rows-[1fr] opacity-100 mt-4" : "grid-rows-[0fr] opacity-0"
-                              }`}>
-                              <div className="overflow-hidden">
-                                <p className="text-white/50 text-sm leading-relaxed text-justify border-t border-white/5 pt-4">
-                                  {step.description}
-                                </p>
-                                <div className="flex gap-4 mt-4">
-                                  <div className="flex-1 p-3 rounded-lg bg-white/5 border border-white/5">
-                                    <div className="text-[9px] font-bold text-accent/60 uppercase tracking-widest mb-0.5">Frequency</div>
-                                    <div className="text-white/80 text-xs font-medium">Daily</div>
-                                  </div>
-                                  <div className="flex-1 p-3 rounded-lg bg-white/5 border border-white/5">
-                                    <div className="text-[9px] font-bold text-accent/60 uppercase tracking-widest mb-0.5">System</div>
-                                    <div className="text-white/80 text-xs font-medium">AI Base</div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-                      </ScrollReveal>
-                    );
-                  })}
-                </div>
-
-                {/* Desktop View: High-Fidelity Vertical Timeline */}
-                <div className="hidden md:block relative max-w-4xl mx-auto py-5 pl-10">
-                  {/* Timeline line */}
-                  <div
-                    className="absolute left-17 top-0 bottom-0 w-0.5 bg-accent/20"
-                    aria-hidden="true"
-                  />
-
-                  <div className="space-y-10">
-                    {methodologySteps.map((step, i) => (
-                      <ScrollReveal
-                        key={step.step}
-                        delay={i * 120}
-                        animation="fade-up"
-                      >
-                        <div className="relative flex gap-12 items-center border-b border-white/5">
-                          {/* Timeline node - Boxed Icon */}
-                          <div className="relative z-10 shrink-0">
-                            <div className="w-15 h-15 rounded-[1.5rem] bg-accent/5 border border-accent/20 flex items-center justify-center text-accent
-                          backdrop-blur-sm transition-all duration-500 hover:bg-accent/15 hover:border-accent/50 hover:scale-105 group">
-                              {/* Inner glow effect */}
-                              <div className="absolute inset-0 rounded-[2rem] bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                              <div className="relative z-10 scale-125">
-                                {step.icon}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 max-w-2xl">
-                            <div className="flex flex-col">
-                              <div className="flex items-center gap-2 mb-2">
-                                <div className="h-px w-6 bg-accent/30" />
-                                <span className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] opacity-70">
-                                  Step {step.step}
-                                </span>
-                              </div>
-                              <h3
-                                className="text-xl font-bold text-white mb-3 tracking-tight"
-                                style={{ fontFamily: "var(--font-display)" }}
+                      <div className="flex flex-col lg:flex-row gap-8 lg:gap-16">
+                        
+                        {/* Left Column: Navigation Tabs */}
+                        <div className="lg:w-1/3 flex flex-col gap-3 z-10">
+                          {methodologySteps.map((step) => {
+                            const isActive = activeStep.step === step.step;
+                            return (
+                              <button
+                                key={step.step}
+                                onClick={() => setSelectedStep(step)}
+                                className={`group flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 text-left border-2
+                                  ${isActive 
+                                    ? "bg-white border-accent shadow-[0_8px_30px_rgba(126,217,87,0.15)] scale-[1.02]" 
+                                    : "bg-surface border-transparent hover:bg-white hover:border-gray-100 hover:shadow-sm"
+                                  }`}
                               >
-                                {step.title}
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0
+                                  ${isActive 
+                                    ? "bg-accent text-white" 
+                                    : "bg-gray-100 text-gray-400 group-hover:bg-accent/10 group-hover:text-accent"
+                                  }`}>
+                                  {step.icon}
+                                </div>
+                                <div>
+                                  <div className={`text-[10px] font-bold uppercase tracking-widest mb-1 transition-colors
+                                    ${isActive ? "text-accent" : "text-gray-400"}`}>
+                                    Phase 0{step.step}
+                                  </div>
+                                  <div className={`font-bold transition-colors
+                                    ${isActive ? "text-gray-900" : "text-gray-600 group-hover:text-gray-900"}`}>
+                                    {step.title}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Right Column: Active Step Showcase */}
+                        <div className="lg:w-2/3 relative z-10">
+                          <div className="sticky top-32 bg-white rounded-[2.5rem] p-8 lg:p-14 border border-gray-100 shadow-[0_20px_60px_rgba(11,61,46,0.06)] overflow-hidden h-full min-h-[400px] flex flex-col justify-center transition-all duration-500">
+                            
+                            {/* Decorative Background Elements */}
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2" />
+                            
+                            {/* Huge Ghost Number */}
+                            <div className="absolute -bottom-10 -right-4 text-[12rem] lg:text-[16rem] font-black text-gray-50 select-none pointer-events-none leading-none tracking-tighter">
+                              0{activeStep.step}
+                            </div>
+
+                            <div className="relative z-10 animate-fade-in" key={activeStep.step}>
+                              {/* Large Icon Header */}
+                              <div className="w-20 h-20 rounded-3xl bg-accent/10 flex items-center justify-center text-primary-700 mb-8 shadow-inner">
+                                <div className="scale-150">
+                                  {activeStep.icon}
+                                </div>
+                              </div>
+
+                              <div className="inline-block px-4 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-bold uppercase tracking-[0.2em] mb-4">
+                                Phase 0{activeStep.step}
+                              </div>
+
+                              <h3 className="text-3xl lg:text-4xl font-black text-gray-900 mb-6 tracking-tight leading-tight" style={{ fontFamily: "var(--font-display)" }}>
+                                {activeStep.title}
                               </h3>
-                              <p className="text-white/40 text-base leading-relaxed text-justify font-light mb-5">
-                                {step.description}
+
+                              <p className="text-gray-600 text-lg lg:text-xl leading-relaxed max-w-xl font-light">
+                                {activeStep.description}
                               </p>
                             </div>
                           </div>
                         </div>
-                      </ScrollReveal>
-                    ))}
-                  </div>
+
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </section>
