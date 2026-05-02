@@ -1,4 +1,6 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../../lib/supabase";
+
+export const DEFAULT_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&q=80&w=800";
 
 export interface Product {
   id: string;
@@ -27,7 +29,7 @@ export interface Product {
   }[];
 }
 
-const CATEGORY_EMOJI: Record<string, string> = {
+export const CATEGORY_EMOJI: Record<string, string> = {
   Rice: "🍚",
   Corn: "🌽",
   Vegetables: "🥬",

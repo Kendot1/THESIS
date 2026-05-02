@@ -1,4 +1,5 @@
 "use client";
+import { useMemo, useState, useEffect, useId } from "react";
 import {
   AreaChart,
   Area,
@@ -21,103 +22,158 @@ interface ForecastChartProps {
   height?: number;
   showGrid?: boolean;
   showLegend?: boolean;
+  productName?: string;
+  variantName?: string;
 }
 
-const ForecastChart = ({ data, height = 200, showGrid = true, showLegend = true }: ForecastChartProps) => {
+const ForecastChart = ({ 
+  data, 
+  height, 
+  showGrid = true, 
+  showLegend = true,
+  productName,
+  variantName
+}: ForecastChartProps) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const baseId = useId();
+  const actualGradientId = `actual-grad-${baseId.replace(/:/g, "")}`;
+  const predictedGradientId = `predicted-grad-${baseId.replace(/:/g, "")}`;
+
   // Find transition point
   const transitionIndex = data.findIndex(d => d.predicted !== null && d.actual === null);
 
+  // Compute Y-axis domain so the chart zooms to the data range instead of starting at 0
+  const [yMin, yMax] = useMemo(() => {
+    const allValues = data.flatMap(d => [d.actual, d.predicted]).filter((v): v is number => v !== null);
+    if (allValues.length === 0) return [0, 100];
+    const min = Math.min(...allValues);
+    const max = Math.max(...allValues);
+    const padding = (max - min) * 0.15 || 5; // 15% padding, minimum 5
+    return [Math.floor(min - padding), Math.ceil(max + padding)];
+  }, [data]);
+
+  if (!mounted) {
+    return <div className="w-full h-[160px] sm:h-[200px] lg:h-[280px] bg-gray-50/50 animate-pulse rounded-xl" />;
+  }
+
   return (
-    <div className="forecast-chart-container" style={{ width: "100%", height }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-          {showGrid && (
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-          )}
-          <XAxis
-            dataKey="name"
-            tick={{ fontSize: 11, fill: "#9CA3AF" }}
-            axisLine={{ stroke: "#E5E7EB" }}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: "#9CA3AF" }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={(v) => `₱${v}`}
-          />
-          <Tooltip
-            contentStyle={{
-              borderRadius: 12,
-              border: "none",
-              boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
-              fontSize: 12,
-              fontFamily: "'Inter', sans-serif",
-            }}
-            formatter={(value, name) => {
-              const numValue = typeof value === "number" ? value : 0;
-              return [
-                `₱${numValue.toFixed(2)}`,
-                name === "actual" ? "Actual Price" : "Predicted Price",
-              ];
-            }}
-          />
-          {transitionIndex > 0 && (
-            <ReferenceLine
-              x={data[transitionIndex - 1]?.name}
-              stroke="#9CA3AF"
-              strokeDasharray="5 5"
-              label={{
-                value: "Forecast",
-                position: "top",
-                fill: "#9CA3AF",
-                fontSize: 10,
-              }}
-            />
-          )}
-          <defs>
-            <linearGradient id="actualGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#7ED957" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#7ED957" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="predictedGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#7ED957" stopOpacity={0.15} />
-              <stop offset="95%" stopColor="#7ED957" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <Area
-            type="monotone"
-            dataKey="actual"
-            stroke="#0B3B24"
-            strokeWidth={2.5}
-            fill="url(#actualGradient)"
-            dot={false}
-            connectNulls={false}
-          />
-          <Area
-            type="monotone"
-            dataKey="predicted"
-            stroke="#7ED957"
-            strokeWidth={2.5}
-            strokeDasharray="6 4"
-            fill="url(#predictedGradient)"
-            dot={false}
-            connectNulls={false}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-      {showLegend && (
-        <div className="forecast-legend">
-          <div className="forecast-legend-item">
-            <div className="forecast-legend-dot" style={{ background: "#0B3B24" }} />
-            Actual Price
-          </div>
-          <div className="forecast-legend-item">
-            <div className="forecast-legend-dot" style={{ background: "#7ED957" }} />
-            Predicted Price
-          </div>
+    <div
+    >
+      {(productName) && (
+        <div className="flex items-center gap-2 mb-2 px-1">
+          <span className="text-[10px] font-bold text-gray-900 uppercase tracking-wider">
+            {productName}
+          </span>
         </div>
       )}
+      <div className={!height ? "h-[220px] sm:h-[300px] lg:h-[400px]" : "h-full w-full"}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart
+            data={data}
+            margin={{
+              top: height ? 20 : 20,
+              right: height ? 15 : 15,
+              left: height ? 0 : 0,
+              bottom: height ? 0 : 15
+            }}
+          >
+            {showGrid && (
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+            )}
+            <XAxis
+              dataKey="name"
+              hide={height ? height < 120 : false}
+              tick={{ fontSize: 10, fill: "#9CA3AF" }}
+              axisLine={{ stroke: "#E5E7EB" }}
+              tickLine={false}
+              dy={10}
+            />
+            <YAxis
+              domain={[yMin, yMax]}
+              tick={{ fontSize: 9, fill: "#9CA3AF" }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => `₱${v}`}
+              width={height ? 35 : 40}
+            />
+            <Tooltip
+              contentStyle={{
+                borderRadius: 12,
+                border: "none",
+                boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
+                fontSize: 10,
+                fontFamily: "'Inter', sans-serif",
+              }}
+              formatter={(value, name) => {
+                const numValue = typeof value === "number" ? value : 0;
+                const label = name === "actual" ? "Actual Price" : "Predicted Price";
+                return [
+                  `₱${numValue.toFixed(2)}`,
+                  `${productName} (${label})`,
+                ];
+              }}
+            />
+            {transitionIndex > 0 && (
+              <ReferenceLine
+                x={data[transitionIndex - 1]?.name}
+                stroke="#9CA3AF"
+                strokeDasharray="5 5"
+                label={{
+                  value: "Forecast",
+                  position: "top",
+                  fill: "#9CA3AF",
+                  fontSize: 9,
+                }}
+              />
+            )}
+            <defs>
+              <linearGradient id={actualGradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#7ED957" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#7ED957" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id={predictedGradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#7ED957" stopOpacity={0.15} />
+                <stop offset="95%" stopColor="#7ED957" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <Area
+              type="monotone"
+              dataKey="actual"
+              stroke="#0B3B24"
+              strokeWidth={2}
+              fill={`url(#${actualGradientId})`}
+              dot={false}
+              connectNulls={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="predicted"
+              stroke="#7ED957"
+              strokeWidth={2}
+              strokeDasharray="6 4"
+              fill={`url(#${predictedGradientId})`}
+              dot={false}
+              connectNulls={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+      {/* Legend */}
+      <div className="flex items-center gap-6 mt-4 -mb-1 ml-2">
+        <div className="flex items-center gap-2">
+          <div className="forecast-legend-dot" style={{ background: "#0B3B24" }} />
+          <span className="text-[10px] font-medium text-gray-900">Actual Price</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="forecast-legend-dot" style={{ background: "#7ED957" }} />
+          <span className="text-[10px] font-medium text-gray-900">Predicted Price</span>
+        </div>
+      </div>
     </div>
   );
 };

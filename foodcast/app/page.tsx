@@ -10,13 +10,14 @@ import {
   ChevronRight,
   ArrowRight,
 } from "lucide-react";
-import Header from "./component/Header";
-import Footer from "./component/Footer";
-import WaveDivider from "./component/WaveDivider";
-import ProductCard from "./component/ProductCard";
-import DailyMoverCard from "./component/DailyMoverCard";
-import ScrollReveal from "./component/ScrollReveal";
-import { Product, fetchProducts } from "./lib/data";
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import WaveDivider from "./components/WaveDivider";
+import ProductCard from "./components/ProductCard";
+import DailyMoverCard from "./components/DailyMoverCard";
+import NewsCard from "./components/NewsCard";
+import ScrollReveal from "./components/ScrollReveal";
+import { Product, fetchProducts, DEFAULT_PRODUCT_IMAGE } from "./lib/data";
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -36,7 +37,8 @@ export default function HomePage() {
     return products.filter(
       (p) =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(searchQuery.toLowerCase())
+        p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.variant && p.variant.toLowerCase().includes(searchQuery.toLowerCase()))
     ).slice(0, 5);
   }, [searchQuery, products]);
 
@@ -54,6 +56,48 @@ export default function HomePage() {
 
   const trendingProducts = products.slice(0, 4);
   const allProducts = products;
+
+  const newsData = [
+    {
+      id: "1",
+      title: "Rising Demand for Highland Vegetables in Metro Manila",
+      excerpt: "Recent market reports show a significant surge in demand for vegetables sourced from Benguet, leading to price shifts in major NCR trading centers.",
+      category: "Market Report",
+      date: "May 1, 2026",
+      image: "/news/market.png"
+    },
+    {
+      id: "2",
+      title: "New AI Models Improve Price Prediction Accuracy",
+      excerpt: "Foodcast's latest machine learning update integrates more variables, including weather patterns and fuel costs, to provide even more reliable forecasts.",
+      category: "Technology",
+      date: "April 28, 2026",
+      image: "/news/smart-farming.png"
+    },
+    {
+      id: "3",
+      title: "Fishery Sector Sees Stable Supply Amid Seasonal Changes",
+      excerpt: "Local fishery experts predict a stable supply of tilapia and bangus for the upcoming month, keeping prices within expected ranges.",
+      category: "Fishery",
+      date: "April 25, 2026",
+      image: "/news/fishery.png"
+    },
+    {
+      id: "4",
+      title: "Understanding Price Volatility in Urban Markets",
+      excerpt: "A deep dive into why certain food products experience rapid price swings and how consumers can use data to plan their purchases.",
+      category: "Analysis",
+      date: "April 22, 2026",
+      image: "/news/prices.png"
+    }
+  ];
+
+  /* ─── News slider state ─────────────────────────── */
+  const newsRef = useRef<HTMLDivElement>(null);
+  const [newsCanLeft, setNewsCanLeft] = useState(false);
+  const [newsCanRight, setNewsCanRight] = useState(true);
+  const [isNewsPaused, setIsNewsPaused] = useState(false);
+  const newsAutoSlideTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /* ─── Scroll helpers ────────────────────────────── */
   const checkScroll = () => {
@@ -81,6 +125,20 @@ export default function HomePage() {
     const el = trendingRef.current;
     if (!el) return;
     const cardWidth = window.innerWidth < 640 ? 200 : 260;
+    el.scrollBy({ left: dir === "left" ? -cardWidth : cardWidth, behavior: "smooth" });
+  };
+
+  const checkNewsScroll = () => {
+    const el = newsRef.current;
+    if (!el) return;
+    setNewsCanLeft(el.scrollLeft > 10);
+    setNewsCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  };
+
+  const scrollNews = (dir: "left" | "right") => {
+    const el = newsRef.current;
+    if (!el) return;
+    const cardWidth = window.innerWidth < 640 ? 300 : 380;
     el.scrollBy({ left: dir === "left" ? -cardWidth : cardWidth, behavior: "smooth" });
   };
 
@@ -112,6 +170,39 @@ export default function HomePage() {
     return () => el?.removeEventListener("scroll", checkTrendingScroll);
   }, []);
 
+  useEffect(() => {
+    checkNewsScroll();
+    const el = newsRef.current;
+    if (el) el.addEventListener("scroll", checkNewsScroll, { passive: true });
+    return () => el?.removeEventListener("scroll", checkNewsScroll);
+  }, []);
+
+  /* ─── Auto-slide for News ──────────────────────── */
+  const autoSlideNews = useCallback(() => {
+    const el = newsRef.current;
+    if (!el || isNewsPaused) return;
+
+    const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 10;
+    if (atEnd) {
+      el.scrollTo({ left: 0, behavior: "smooth" });
+    } else {
+      const cardWidth = window.innerWidth < 640 ? 300 : 380;
+      el.scrollBy({ left: cardWidth, behavior: "smooth" });
+    }
+  }, [isNewsPaused]);
+
+  // News auto-slide timer
+  useEffect(() => {
+    if (isNewsPaused) {
+      if (newsAutoSlideTimer.current) clearInterval(newsAutoSlideTimer.current);
+      return;
+    }
+    newsAutoSlideTimer.current = setInterval(autoSlideNews, 5000); // 5s for news
+    return () => {
+      if (newsAutoSlideTimer.current) clearInterval(newsAutoSlideTimer.current);
+    };
+  }, [isNewsPaused, autoSlideNews]);
+
   // Auto-slide timer
   useEffect(() => {
     if (isPaused) {
@@ -141,9 +232,9 @@ export default function HomePage() {
       <Header />
       <main id="main-content">
         {/* ─── Hero Section ────────────────────────────── */}
-        <section className="relative min-h-[85vh] flex items-center overflow-hidden shadow-xl/20">          {/* Ambient orbs */}
+        <section className="relative min-h-[85vh] flex items-center shadow-xl/20">          {/* Ambient orbs */}
           {/* Background Image */}
-          <div className="absolute inset-0 -z-10">
+          <div className="absolute inset-0 -z-10 overflow-hidden">
             <img
               src="/Bg-2.jpg"
               alt="background"
@@ -240,12 +331,32 @@ export default function HomePage() {
                               href={`/Product/${p.id}`}
                               className="flex items-center gap-3 px-4 py-3 hover:bg-primary-50/60 transition-colors duration-200 border-b border-gray-50 last:border-0"
                             >
-                              <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center shrink-0 border border-gray-100">
-                                <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                              <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl shrink-0">
+                                <img
+                                  src={p.image || DEFAULT_PRODUCT_IMAGE}
+                                  alt={p.name}
+                                  className="w-full h-full object-cover rounded-xl"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    if (target.src !== DEFAULT_PRODUCT_IMAGE) {
+                                      target.src = DEFAULT_PRODUCT_IMAGE;
+                                    }
+                                  }}
+                                />
                               </div>
                               <div className="flex-1 min-w-0 text-left">
-                                <div className="text-sm font-semibold text-gray-900 truncate">{p.name}</div>
-                                <div className="text-[10px] text-gray-400">{p.category}</div>
+                                <div className="text-sm font-semibold text-gray-900 truncate">
+                                  {p.variant && p.variant !== "Standard" ? `${p.variant} ${p.name}` : p.name}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-gray-400">{p.category}</span>
+                                  {p.origin && (
+                                    <>
+                                      <span className="text-[10px] text-gray-200">•</span>
+                                      <span className="text-[9px] font-bold text-primary-500 uppercase tracking-tight">{p.origin}</span>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                               <div className="text-right shrink-0">
                                 <div className="text-xs font-bold text-gray-900 tabular-nums">₱{p.currentPrice.toFixed(2)}</div>
@@ -365,10 +476,22 @@ export default function HomePage() {
                       return (
                         <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-white/4 border border-white/5 hover:bg-white/8 transition-all duration-300">
                           <div className="w-10 h-10 rounded-lg bg-white/10 overflow-hidden flex items-center justify-center shrink-0 border border-white/10">
-                            <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                            <img
+                              src={p.image || DEFAULT_PRODUCT_IMAGE}
+                              alt={p.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                if (target.src !== DEFAULT_PRODUCT_IMAGE) {
+                                  target.src = DEFAULT_PRODUCT_IMAGE;
+                                }
+                              }}
+                            />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-xs font-semibold text-white truncate">{p.name}</div>
+                            <div className="text-xs font-semibold text-white truncate">
+                              {p.variant ? `${p.variant} ${p.name}` : p.name}
+                            </div>
                             <div className="text-[10px] text-white/30">{p.category}</div>
                           </div>
                           <div className="text-right shrink-0">
@@ -470,7 +593,7 @@ export default function HomePage() {
 
             <div
               ref={sliderRef}
-              className="daily-movers-slider flex gap-3 sm:gap-5 overflow-x-auto pt-6 pb-12 px-10 -mt-6 -mx-10 scroll-px-10 snap-x snap-mandatory scrollbar-hide"
+              className="daily-movers-slider flex gap-3 sm:gap-5 overflow-x-auto py-6 px-10 -mt-6 -mx-10 scroll-px-10 snap-x snap-mandatory scrollbar-hide"
               aria-label="Product carousel"
               role="region"
               onMouseEnter={() => setIsPaused(true)}
@@ -495,6 +618,8 @@ export default function HomePage() {
                     currentPrice={p.currentPrice}
                     predictedPrice={p.predictedPrice}
                     forecastData={p.forecastData}
+                    variant={p.variant}
+                    origin={p.origin}
                   />
                 </div>
               ))}
@@ -502,9 +627,70 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ─── Trending Products ───────────────────────── */}
-        <section className="py-5 sm:py-10 bg-surface " aria-labelledby="trending-heading">
+        {/* ─── Latest News Section ────────────────────── */}
+        <section className="py-5 sm:py-10 bg-surface" aria-labelledby="news-heading">
           <div className="max-w-7xl mx-auto px-5 lg:px-10">
+            <ScrollReveal>
+              <div className="flex items-end justify-between mb-4 sm:mb-8">
+                <div>
+                  <h2
+                    id="news-heading"
+                    className="flex items-center gap-2 text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    Latest Market News
+                  </h2>
+                  <p className="text-gray-500 mt-1 sm:mt-2 text-xs sm:text-sm">
+                    Updates from the agri-fishery sector & NCR markets
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => scrollNews("left")}
+                    disabled={!newsCanLeft}
+                    className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
+                      disabled:opacity-30 disabled:cursor-not-allowed
+                      hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
+                    aria-label="Scroll news left"
+                  >
+                    <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                  <button
+                    onClick={() => scrollNews("right")}
+                    disabled={!newsCanRight}
+                    className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
+                      disabled:opacity-30 disabled:cursor-not-allowed
+                      hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
+                    aria-label="Scroll news right"
+                  >
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                </div>
+              </div>
+            </ScrollReveal>
+
+            <div
+              ref={newsRef}
+              className="news-slider flex gap-4 sm:gap-6 overflow-x-auto pt-6 pb-12 px-10 -mt-6 -mx-10 scroll-px-10 snap-x snap-mandatory scrollbar-hide"
+              onMouseEnter={() => setIsNewsPaused(true)}
+              onMouseLeave={() => setIsNewsPaused(false)}
+            >
+              {newsData.map((news, i) => (
+                <div
+                  key={news.id}
+                  className="snap-start shrink-0 w-[280px] sm:w-[350px]"
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  <NewsCard {...news} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── Trending Products ───────────────────────── */}
+        {/* <section className="py-5 sm:py-10 bg-surface " aria-labelledby="trending-heading">
+          <div className="max-w-7xl mx-auto px-5 lg:px-7">
             <ScrollReveal>
               <div className="flex items-end justify-between mb-5 sm:mb-8">
                 <div>
@@ -520,7 +706,6 @@ export default function HomePage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* Arrow buttons for mobile/tablet slider */}
                   <div className="flex lg:hidden items-center gap-2">
                     <button
                       onClick={() => scrollTrending("left")}
@@ -553,54 +738,89 @@ export default function HomePage() {
               </div>
             </ScrollReveal>
 
-            {/* Mobile/Tablet: Horizontal slider */}
             <div
               ref={trendingRef}
               className="flex lg:hidden gap-3 sm:gap-4 overflow-x-auto pt-6 pb-12 px-10 -mt-6 -mx-10 scroll-px-10 snap-x snap-mandatory scrollbar-hide"
               aria-label="Trending products slider"
               role="region"
             >
-              {trendingProducts.map((p, i) => (
-                <div
-                  key={p.id}
-                  className="snap-start shrink-0 w-[180px] sm:w-[240px]"
-                >
-                  <ProductCard
-                    id={p.id}
-                    name={p.name}
-                    emoji={p.emoji}
-                    category={p.category}
-                    variant={p.variant}
-                    origin={p.origin}
-                    image={p.image}
-                    currentPrice={p.currentPrice}
-                    predictedPrice={p.predictedPrice}
-                    compact
-                  />
-                </div>
-              ))}
+              {(() => {
+                const groupedMap = new Map<string, any>();
+
+                trendingProducts.forEach(p => {
+                  if (!groupedMap.has(p.name)) {
+                    groupedMap.set(p.name, {
+                      name: p.name,
+                      category: p.category,
+                      image: p.image,
+                      emoji: p.emoji,
+                      variants: []
+                    });
+                  }
+                  groupedMap.get(p.name).variants.push({
+                    id: p.id,
+                    variant: p.variant,
+                    origin: p.origin,
+                    currentPrice: p.currentPrice,
+                    predictedPrice: p.predictedPrice
+                  });
+                });
+
+                return Array.from(groupedMap.values()).map((product, i) => (
+                  <div
+                    key={i}
+                    className="snap-start shrink-0 w-[180px] sm:w-[240px]"
+                  >
+                    <ProductCard
+                      name={product.name}
+                      emoji={product.emoji}
+                      category={product.category}
+                      image={product.image}
+                      variants={product.variants}
+                      compact
+                    />
+                  </div>
+                ));
+              })()}
             </div>
 
-            {/* Desktop: 4-column grid */}
             <div className="hidden lg:grid grid-cols-4 gap-6">
-              {trendingProducts.map((p, i) => (
-                <ScrollReveal key={p.id} delay={i * 100} animation="scale-in">
-                  <ProductCard
-                    id={p.id}
-                    name={p.name}
-                    emoji={p.emoji}
-                    category={p.category}
-                    variant={p.variant}
-                    origin={p.origin}
-                    image={p.image}
-                    currentPrice={p.currentPrice}
-                    predictedPrice={p.predictedPrice}
-                  />
-                </ScrollReveal>
-              ))}
+              {(() => {
+                const groupedMap = new Map<string, any>();
+
+                trendingProducts.forEach(p => {
+                  if (!groupedMap.has(p.name)) {
+                    groupedMap.set(p.name, {
+                      name: p.name,
+                      category: p.category,
+                      image: p.image,
+                      emoji: p.emoji,
+                      variants: []
+                    });
+                  }
+                  groupedMap.get(p.name).variants.push({
+                    id: p.id,
+                    variant: p.variant,
+                    origin: p.origin,
+                    currentPrice: p.currentPrice,
+                    predictedPrice: p.predictedPrice
+                  });
+                });
+
+                return Array.from(groupedMap.values()).map((product, i) => (
+                  <ScrollReveal key={i} delay={i * 100} animation="scale-in">
+                    <ProductCard
+                      name={product.name}
+                      emoji={product.emoji}
+                      image={product.image}
+                      category={product.category}
+                      variants={product.variants}
+                    />
+                  </ScrollReveal>
+                ));
+              })()}
             </div>
 
-            {/* Mobile "View all" link */}
             <div className="flex sm:hidden justify-center mt-4">
               <Link
                 href="/Table"
@@ -610,7 +830,7 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
-        </section>
+        </section> */}
 
         {/* ─── Wave + What is FOODCAST ──────────────────── */}
         <div className="bg-surface ">

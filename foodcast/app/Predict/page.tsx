@@ -3,14 +3,22 @@ import { useState, useMemo, useRef, useEffect, Suspense, useDeferredValue } from
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, TrendingUp, Filter, X, ArrowRight, ChevronLeft, ChevronRight, ArrowRightLeft, Sparkles, AlertCircle, Bookmark, Share2, Grid, List, MoreHorizontal, Flame } from "lucide-react";
-import Header from "../component/Header";
-import Footer from "../component/Footer";
-import ProductCard from "../component/ProductCard";
-import ForecastChart from "../component/ForecastChart";
-import ScrollReveal from "../component/ScrollReveal";
-import { Product, fetchProducts, categories } from "../lib/data";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
+import ProductCard from "../components/ProductCard";
+import ForecastChart from "../components/ForecastChart";
+import ScrollReveal from "../components/ScrollReveal";
+import { Product, fetchProducts, categories, CATEGORY_EMOJI, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
 
-function SearchPageContent() {
+export default function PredictPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-surface flex items-center justify-center"><div className="w-8 h-8 border-3 border-accent border-t-transparent rounded-full animate-spin" /></div>}>
+      <PredictPageContent />
+    </Suspense>
+  );
+}
+
+function PredictPageContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
@@ -29,7 +37,7 @@ function SearchPageContent() {
   const featuredItems = useMemo(() => {
     const bullish = products.filter(p => p.sentiment === "Bullish");
     if (bullish.length > 0) return bullish.slice(0, 6);
-    
+
     // Fallback if no products are explicitly Bullish
     return [...products]
       .sort((a, b) => {
@@ -65,7 +73,9 @@ function SearchPageContent() {
       const matchQuery =
         !deferredQuery ||
         p.name.toLowerCase().includes(deferredQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(deferredQuery.toLowerCase());
+        p.category.toLowerCase().includes(deferredQuery.toLowerCase()) ||
+        (p.variant && p.variant.toLowerCase().includes(deferredQuery.toLowerCase())) ||
+        (p.origin && p.origin.toLowerCase().includes(deferredQuery.toLowerCase()));
       return matchCategory && matchQuery;
     });
   }, [deferredQuery, deferredCategory, products]);
@@ -100,7 +110,51 @@ function SearchPageContent() {
       .slice(0, 5);
   }, [products]);
 
-  const visibleCount = (showAllRows || query) ? filtered.length : 25; // Show all if searching or expanded
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { All: products.length };
+    products.forEach(p => {
+      counts[p.category] = (counts[p.category] || 0) + 1;
+    });
+    return counts;
+  }, [products]);
+
+  const groupedProducts = useMemo(() => {
+    const groupedMap = new Map<string, {
+      name: string;
+      category: string;
+      image: string;
+      emoji: string;
+      variants: {
+        id: string;
+        variant: string;
+        origin: string;
+        currentPrice: number;
+        predictedPrice: number;
+      }[];
+    }>();
+
+    filtered.forEach(p => {
+      if (!groupedMap.has(p.name)) {
+        groupedMap.set(p.name, {
+          name: p.name,
+          category: p.category,
+          image: p.image,
+          emoji: p.emoji,
+          variants: []
+        });
+      }
+      groupedMap.get(p.name)!.variants.push({
+        id: p.id,
+        variant: p.variant,
+        origin: p.origin,
+        currentPrice: p.currentPrice,
+        predictedPrice: p.predictedPrice
+      });
+    });
+    return Array.from(groupedMap.values());
+  }, [filtered]);
+
+  const visibleCount = (showAllRows || query) ? groupedProducts.length : 4;
 
   /* ─── Search Suggestions ────────────────────── */
   const searchSuggestions = useMemo(() => {
@@ -108,7 +162,8 @@ function SearchPageContent() {
     return products.filter(
       (p) =>
         p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.category.toLowerCase().includes(query.toLowerCase())
+        p.category.toLowerCase().includes(query.toLowerCase()) ||
+        (p.variant && p.variant.toLowerCase().includes(query.toLowerCase()))
     ).slice(0, 5);
   }, [query, products]);
 
@@ -127,12 +182,17 @@ function SearchPageContent() {
   return (
     <>
       <Header />
-      <main id="main-content" className="bg-surface min-h-screen">
+      <main id="main-content" className=" min-h-screen">
 
-        {/* ─── Search Hero (Restored) ────────────────── */}
-        <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-12 sm:py-15 pt-28 sm:pt-30">
-          <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-            <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-accent/6 rounded-full blur-[100px]" />
+        <section className="relative py-12 sm:py-15 pt-28 sm:pt-30">
+          {/* Background Image */}
+          <div className="absolute inset-0 -z-10">
+            <img
+              src="/Bg-5.jpg"
+              alt="background"
+              className="w-full h-full object-cover blur-[1px] "
+            />
+            <div className="absolute inset-0 bg-primary-900/80" />
           </div>
 
           <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
@@ -174,15 +234,31 @@ function SearchPageContent() {
                     return (
                       <Link key={p.id} href={`/Product/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-primary-50/60 transition-colors duration-200 border-b border-gray-50 last:border-0">
                         <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl shrink-0">
-                          {p.image ? (
-                            <img src={p.image} alt={p.name} className="w-full h-full object-cover rounded-xl" />
-                          ) : (
-                            <span>{p.emoji}</span>
-                          )}
+                          <img
+                            src={p.image || DEFAULT_PRODUCT_IMAGE}
+                            alt={p.name}
+                            className="w-full h-full object-cover rounded-xl"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              if (target.src !== DEFAULT_PRODUCT_IMAGE) {
+                                target.src = DEFAULT_PRODUCT_IMAGE;
+                              }
+                            }}
+                          />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-gray-900 truncate">{p.name}</div>
-                          <div className="text-[10px] text-gray-400">{p.category}</div>
+                          <div className="text-sm font-semibold text-gray-900 truncate">
+                            {p.variant && p.variant !== "Standard" ? `${p.variant} ${p.name}` : p.name}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-400">{p.category}</span>
+                            {p.origin && (
+                              <>
+                                <span className="text-[10px] text-gray-200">•</span>
+                                <span className="text-[9px] font-bold text-primary-500 uppercase tracking-tight">{p.origin}</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                         <div className="text-right shrink-0">
                           <div className="text-xs font-bold text-gray-900 tabular-nums">₱{p.currentPrice.toFixed(2)}</div>
@@ -209,25 +285,38 @@ function SearchPageContent() {
               onMouseEnter={() => setIsHoveringFeatured(true)}
               onMouseLeave={() => setIsHoveringFeatured(false)}
               className="lg:col-span-8 bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-xl 
-            flex flex-col group hover:shadow-2xl transition-all duration-500"
+                        flex flex-col group hover:shadow-2xl transition-all duration-500"
             >
               <div className="p-6 sm:p-8 flex-1 flex flex-col">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner flex items-center justify-center text-3xl">
-                      {featuredProduct.image ? (
-                        <img src={featuredProduct.image} alt={featuredProduct.name} className="w-full h-full object-cover rounded-xl" />
-                      ) : (
-                        <span>{featuredProduct.emoji}</span>
-                      )}
+                      <img
+                        src={featuredProduct.image || DEFAULT_PRODUCT_IMAGE}
+                        alt={featuredProduct.name}
+                        className="w-full h-full object-cover rounded-xl"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (target.src !== DEFAULT_PRODUCT_IMAGE) {
+                            target.src = DEFAULT_PRODUCT_IMAGE;
+                          }
+                        }}
+                      />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 text-primary-600 text-[10px] uppercase font-bold mb-1">
                         <span>Featured Market Pulse</span>
                       </div>
                       <h2 className="text-xl sm:text-3xl font-bold text-gray-900 leading-tight">
-                        {featuredProduct.name}
+                        {featuredProduct.variant && featuredProduct.variant !== "Standard" ? `${featuredProduct.variant} ${featuredProduct.name}` : featuredProduct.name}
                       </h2>
+                      {featuredProduct.origin && (
+                        <div className="mt-1">
+                          <span className="text-[10px] font-bold text-primary-400 uppercase tracking-widest bg-primary-50 px-2 py-0.5 rounded-md">
+                            {featuredProduct.origin}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -249,7 +338,13 @@ function SearchPageContent() {
 
                 {/* Retaining Previous Chart Design (with grid and legend) */}
                 <div className="mt-2">
-                  <ForecastChart data={featuredProduct.forecastData} showGrid={true} showLegend={true} />
+                  <ForecastChart
+                    data={featuredProduct.forecastData}
+                    showGrid={true}
+                    showLegend={true}
+                    productName={featuredProduct.name}
+                    variantName={featuredProduct.variant}
+                  />
                 </div>
               </div>
 
@@ -284,13 +379,19 @@ function SearchPageContent() {
                     hover:text-primary-800 transition-all active:scale-95"
                   >
                     <ChevronLeft className="w-3 h-3" />
-                    {featuredItems[(featuredIndex - 1 + featuredItems.length) % featuredItems.length]?.name}
+                    {(() => {
+                      const p = featuredItems[(featuredIndex - 1 + featuredItems.length) % featuredItems.length];
+                      return p?.variant && p.variant !== "Standard" ? `${p.variant} ${p.name}` : p?.name;
+                    })()}
                   </button>
                   <button
                     onClick={() => setFeaturedIndex((prev) => (prev + 1) % featuredItems.length)}
                     className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-600 hover:border-primary-200 hover:text-primary-800 transition-all active:scale-95"
                   >
-                    {featuredItems[(featuredIndex + 1) % featuredItems.length]?.name}
+                    {(() => {
+                      const p = featuredItems[(featuredIndex + 1) % featuredItems.length];
+                      return p?.variant && p.variant !== "Standard" ? `${p.variant} ${p.name}` : p?.name;
+                    })()}
                     <ChevronRight className="w-3 h-3" />
                   </button>
                 </div>
@@ -298,13 +399,13 @@ function SearchPageContent() {
             </div>
 
             {/* Sidebars */}
-            <div className="lg:col-span-4 flex flex-col gap-6">
+            <div className="lg:col-span-4 flex flex-col gap-6 self-start">
 
-              {/* Major Changes in Price */}
+              {/* Major Changes in Price
               <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                    Major changes in price <ArrowRight className="w-3 h-3 text-primary-400" />
+                    Major changes in price
                   </h3>
                 </div>
                 <div className="space-y-6">
@@ -313,7 +414,7 @@ function SearchPageContent() {
                       <span className="text-lg font-black text-gray-100 group-hover:text-primary-100 transition-colors leading-none">{i + 1}</span>
                       <div className="flex-1">
                         <h4 className="text-sm font-bold text-gray-800 group-hover:text-primary-800 transition-colors leading-tight mb-1 line-clamp-2">
-                          {p.name} price swing of {Math.abs(p.change).toFixed(0)}%?
+                          {p.variant && p.variant !== "Standard" ? `${p.variant} ${p.name}` : p.name} price swing of {Math.abs(p.change).toFixed(0)}%?
                         </h4>
                         <div className={`text-[10px] font-bold ${p.change >= 0 ? 'text-positive' : 'text-negative'} flex items-center gap-2`}>
                           <span className="px-2 py-0.5 bg-gray-50 rounded-md text-gray-500">Predicted</span>
@@ -321,17 +422,22 @@ function SearchPageContent() {
                             {p.change >= 0 ? '▲' : '▼'} {Math.abs(p.change).toFixed(1)}%
                           </span>
                         </div>
+                        {p.origin && (
+                          <div className="mt-1 text-[9px] font-bold text-primary-400/60 uppercase tracking-widest">
+                            {p.origin}
+                          </div>
+                        )}
                       </div>
                     </Link>
                   ))}
                 </div>
-              </div>
+              </div> */}
 
               {/* Trending Products */}
-              <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow flex-1">
-                <div className="flex items-center justify-between mb-6">
+              <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow h-fit">
+                <div className="mb-6">
                   <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                    Trending Products <ArrowRight className="w-3 h-3 text-primary-400" />
+                    Trending Products
                   </h3>
                 </div>
                 <div className="space-y-4">
@@ -339,9 +445,26 @@ function SearchPageContent() {
                     <Link key={p.id} href={`/Product/${p.id}`} className="flex items-center justify-between group p-2 -mx-2 rounded-xl hover:bg-gray-50 transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg overflow-hidden border border-gray-100 shrink-0">
-                          <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+                          <img
+                            src={p.image || DEFAULT_PRODUCT_IMAGE}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              if (target.src !== DEFAULT_PRODUCT_IMAGE) {
+                                target.src = DEFAULT_PRODUCT_IMAGE;
+                              }
+                            }}
+                          />
                         </div>
-                        <span className="text-sm font-bold text-gray-700 group-hover:text-primary-800 transition-colors">{p.name}</span>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-gray-700 group-hover:text-primary-800 transition-colors line-clamp-1">
+                            {p.variant && p.variant !== "Standard" ? `${p.variant} ${p.name}` : p.name}
+                          </span>
+                          {p.origin && (
+                            <span className="text-[9px] font-medium text-gray-400 uppercase tracking-tight">{p.origin}</span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
@@ -353,13 +476,10 @@ function SearchPageContent() {
                   ))}
                 </div>
               </div>
-
-              <button
-                onClick={scrollToAllMarkets}
-                className="w-full py-4 bg-primary-900 hover:bg-primary-800 text-white font-bold rounded-2xl transition-all shadow-lg shadow-primary-900/10 text-sm active:scale-[0.98]"
-              >
-                Explore all markets
-              </button>
+              <Link href="/Table"
+                className="block w-full max-h-13 py-4 bg-primary-900 hover:bg-primary-800 text-white text-center font-bold rounded-2xl transition-all shadow-lg shadow-primary-900/10 text-sm active:scale-[0.98]">
+                View Full Table
+              </Link>
             </div>
           </section>
 
@@ -373,48 +493,66 @@ function SearchPageContent() {
                 </div>
               </div>
 
-              {/* Category Tabs */}
-              <div className="flex items-center gap-1 sm:gap-3 scrollbar-hide mb-3 pb-2 px-1 sm:mx-0 sm:px-0">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-5 py-2 rounded-2xl text-[10px] sm:text-xs font-semibold transition-all whitespace-nowrap ${selectedCategory === cat
-                      ? "bg-primary-900 text-white"
-                      : "bg-white text-gray-500 border border-gray-100 hover:border-gray-300 hover:text-gray-700 shadow-sm"
-                      }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
+              {/* Category Tabs with Scroll-Snap and Gradient */}
+              <div className="relative mb-8">
+                <div className="flex items-center gap-2 overflow-x-auto pb-4 scroll-smooth snap-x snap-mandatory scrollbar-hide px-1">
+                  {categories.map((cat) => {
+                    const isActive = selectedCategory === cat;
+                    const count = categoryCounts[cat] || 0;
+
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`snap-start group flex items-center gap-1.5 px-5 py-3 rounded-2xl transition-all duration-300 whitespace-nowrap border ${isActive
+                          ? "bg-primary-900 border-primary-900 text-white shadow-md shadow-primary-900/20 scale-105"
+                          : "bg-white border-gray-100 text-gray-700 hover:border-primary-200 hover:bg-primary-50/30 hover:text-primary-800"
+                          }`}
+                      >
+                        <span className="text-xs font-bold">{cat}</span>
+                        <span className={`text-[10px] font-medium opacity-60 ${isActive ? "text-white" : "text-gray-400"}`}>
+                          ({count})
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Subtle gradient fade for horizontal overflow */}
+                <div className="absolute right-0 top-0 bottom-4 w-16 bg-gradient-to-l from-surface to-transparent pointer-events-none hidden sm:block" />
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-                {filtered.slice(0, visibleCount).map((p) => (
-                  <ProductCard
-                    key={p.id}
-                    id={p.id}
-                    name={p.name}
-                    emoji={p.emoji}
-                    image={p.image}
-                    category={p.category}
-                    variant={p.variant}
-                    origin={p.origin}
-                    currentPrice={p.currentPrice}
-                    predictedPrice={p.predictedPrice}
-                    compact
-                  />
-                ))}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                {groupedProducts.slice(0, visibleCount).map((product, idx) => {
+                  const bestVariant = product.variants.find((v: any) =>
+                    deferredQuery && (
+                      v.variant?.toLowerCase().includes(deferredQuery.toLowerCase()) ||
+                      v.origin?.toLowerCase().includes(deferredQuery.toLowerCase())
+                    )
+                  ) || product.variants[0];
+
+                  return (
+                    <ProductCard
+                      key={idx}
+                      name={product.name}
+                      emoji={product.emoji}
+                      image={product.image}
+                      category={product.category}
+                      variants={product.variants}
+                      initialVariantId={bestVariant.id}
+                      compact
+                    />
+                  );
+                })}
               </div>
 
-              {!showAllRows && !query && filtered.length > 25 && (
-                <div className="mt-16 text-center">
+              {!showAllRows && !query && groupedProducts.length > 4 && (
+                <div className="mt-10 text-center">
                   <button
                     onClick={() => setShowAllRows(true)}
-                    className="group relative px-12 py-4 bg-white border border-gray-200 rounded-2xl font-black text-gray-900 hover:border-accent hover:text-accent transition-all duration-300 shadow-sm hover:shadow-xl overflow-hidden"
+                    className="group relative px-6 py-3 bg-white border border-gray-200 rounded-2xl font-semibold text-gray-900 hover:border-accent hover:text-accent transition-all duration-300 shadow-sm hover:shadow-xl overflow-hidden"
                   >
                     <span className="relative z-10 flex items-center gap-2">
-                      Load More Markets <MoreHorizontal className="w-5 h-5" />
+                      Load More <MoreHorizontal className="w-5 h-5" />
                     </span>
                     <div className="absolute inset-0 bg-accent/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                   </button>
@@ -430,10 +568,3 @@ function SearchPageContent() {
   );
 }
 
-export default function SearchPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-surface flex items-center justify-center"><div className="w-8 h-8 border-3 border-accent border-t-transparent rounded-full animate-spin" /></div>}>
-      <SearchPageContent />
-    </Suspense>
-  );
-}

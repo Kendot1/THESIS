@@ -1,7 +1,8 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useId } from "react";
 import Link from "next/link";
 import { ArrowUpRight, ArrowDownRight, TrendingUp } from "lucide-react";
+import { DEFAULT_PRODUCT_IMAGE } from "../lib/data";
 import {
   AreaChart,
   Area,
@@ -25,9 +26,10 @@ interface DailyMoverCardProps {
     actual: number | null;
     predicted: number | null;
   }[];
+  variant?: string;
+  origin?: string;
 }
 
-let moverGradientCounter = 0;
 
 const DailyMoverCard = ({
   id,
@@ -38,11 +40,14 @@ const DailyMoverCard = ({
   currentPrice,
   predictedPrice,
   forecastData,
+  variant,
+  origin,
 }: DailyMoverCardProps) => {
   const change = ((predictedPrice - currentPrice) / currentPrice) * 100;
   const priceChange = predictedPrice - currentPrice;
   const isUp = change >= 0;
-  const gradientId = useMemo(() => `mover-grad-${++moverGradientCounter}`, []);
+  const baseId = useId();
+  const gradientId = `mover-grad-${baseId.replace(/:/g, "")}`;
 
   // Merge actual + predicted into a single continuous line for the chart
   const chartData = useMemo(() => {
@@ -65,15 +70,13 @@ const DailyMoverCard = ({
       <div className="absolute top-0 left-0 right-0 h-16 sm:h-20">
         <svg
           viewBox="0 0 500 80"
-          className="w-full h-full"
+          className="w-full h-full rounded-2xl sm:rounded-3xl"
           preserveAspectRatio="none"
         >
           <defs>
             <linearGradient id={`${gradientId}-wave`} x1="0" y1="0" x2="1" y2="0.5">
-              <stop offset="0%" stopColor="#0B3D2E" stopOpacity="0.08" />
-              <stop offset="40%" stopColor="#7ED957" stopOpacity="0.12" />
-              <stop offset="70%" stopColor="#0B3D2E" stopOpacity="0.06" />
-              <stop offset="100%" stopColor="#7ED957" stopOpacity="0.04" />
+              <stop offset="30%" stopColor="#1ec492ff" stopOpacity="0.08" />
+              <stop offset="100%" stopColor="#7ED957" stopOpacity="0.1" />
             </linearGradient>
           </defs>
           <path
@@ -88,22 +91,42 @@ const DailyMoverCard = ({
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 shrink-0 shadow-sm">
-              <img src={image} alt={name} className="w-full h-full object-cover" />
+              <img
+                src={image || DEFAULT_PRODUCT_IMAGE}
+                alt={name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (target.src !== DEFAULT_PRODUCT_IMAGE) {
+                    target.src = DEFAULT_PRODUCT_IMAGE;
+                  }
+                }}
+              />
             </div>
             <div className="min-w-0">
               <h3
                 className="font-bold text-gray-900 text-[13px] sm:text-[15px] leading-tight truncate group-hover:text-primary-800 transition-colors"
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                {name}
+                {variant ? `${variant} ${name}` : name}
               </h3>
-              <span className="text-[10px] sm:text-xs text-gray-400">{category}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] sm:text-xs text-gray-400">{category}</span>
+                {origin && (
+                  <>
+                    <span className="text-[10px] text-gray-300">•</span>
+                    <span className="text-[10px] sm:text-xs text-primary-600/60 font-medium truncate max-w-[80px]">
+                      {origin}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <span
             className={`inline-flex items-center gap-0.5 text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl transition-all duration-300 shrink-0 ${isUp
-              ? "text-positive bg-positive/8 group-hover:bg-positive/15"
-              : "text-negative bg-negative/8 group-hover:bg-negative/15"
+              ? "text-positive bg-positive/10 group-hover:bg-positive/15"
+              : "text-negative bg-negative/10 group-hover:bg-negative/15"
               }`}
           >
             {isUp ? "Increase" : "Decrease"}{" "}
@@ -192,7 +215,10 @@ const DailyMoverCard = ({
                     padding: "6px 10px",
                   }}
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={(value: any) => [`₱${Number(value).toFixed(2)}`, "Price"]}
+                  formatter={(value: any) => [
+                    `₱${Number(value).toFixed(2)}`,
+                    variant ? `${variant} ${name}` : name
+                  ]}
                 />
                 <Area
                   type="monotone"
