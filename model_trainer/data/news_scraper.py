@@ -8,10 +8,14 @@ import asyncio
 import hashlib
 import json
 import re
+import io
+import uuid
+import mimetypes
 from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
 from urllib.parse import urlparse, quote_plus
 
+import httpx
 from supabase import create_client, Client
 
 from config.settings import get_settings
@@ -319,10 +323,80 @@ class NewsScraper:
             log.info(f"  ✗ SKIP (duplicate content hash): {url[-60:]}")
             return None
 
-        # Extract title
+        # Extract title and image
         title = ""
+        published_at = ""
+        if result.metadata:
+            published_at = result.metadata.get("published_at", "")
+            
+        # Try extracting exact published date from meta tags
+        if not published_at and result.html:
+            pub_match = re.search(r'<meta[^>]+property=["\']article:published_time["\'][^>]+content=["\']([^"\']+)["\']', result.html, re.I)
+            if not pub_match:
+                pub_match = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']article:published_time["\']', result.html, re.I)
+            if pub_match:
+                published_at = pub_match.group(1)
+                
+        # Try extracting from JSON-LD
+        if not published_at and result.html:
+            ld_match = re.search(r'"datePublished"\s*:\s*"([^"]+)"', result.html, re.I)
+            if ld_match:
+                published_at = ld_match.group(1)
+                
+        # Fallback to URL date if present (e.g. /2026/4/28/)
+        if not published_at and result.url:
+            url_date_match = re.search(r'/(\d{4})/(\d{1,2})/(\d{1,2})/', result.url)
+            if url_date_match:
+                y, m, d = url_date_match.groups()
+                published_at = f"{y}-{int(m):02d}-{int(d):02d}T00:00:00Z"
+
+        image_url = ""
         if result.metadata:
             title = result.metadata.get("title", "") or ""
+            
+        # 1. Highest priority: editorImage (raw high-res embedded image)
+        if result.html:
+            # Allow spaces in the regex because ABS-CBN sometimes has spaces in the filename
+            editor_match = re.search(r'(https://[^"\'>]*?editorImage[^"\'>]+)', result.html)
+            if editor_match:
+                # Strip any query parameters or extra json escaping
+                raw_url = editor_match.group(1).split('?')[0].split('&')[0].replace('\\', '')
+                image_url = raw_url.replace(' ', '%20')
+                
+        # 2. Fallback: og:image or twitter:image
+        if not image_url and result.metadata:
+            image_url = result.metadata.get("og:image") or ""
+            
+        if not image_url and result.html:
+            og_match = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', result.html)
+            if not og_match:
+                og_match = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', result.html)
+            if og_match:
+                image_url = og_match.group(1).replace("&amp;", "&")
+            else:
+                tw_match = re.search(r'<meta[^>]+name=["\']twitter:image["\'][^>]+content=["\']([^"\']+)["\']', result.html)
+                if not tw_match:
+                    tw_match = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']twitter:image["\']', result.html)
+                if tw_match:
+                    image_url = tw_match.group(1).replace("&amp;", "&")
+                    
+        # Clean query parameters from og:image to prevent blurry/compressed thumbnails
+        if image_url and "od2-image-api" in image_url:
+            image_url = image_url.split('?')[0]
+                    
+        # Fallback to YouTube iframe thumbnail if no image is found
+        if not image_url and result.html:
+            yt_match = re.search(r'youtube\.com/embed/([a-zA-Z0-9_-]+)', result.html)
+            if yt_match:
+                yt_img = f"https://img.youtube.com/vi/{yt_match.group(1)}/maxresdefault.jpg"
+                image_url = self._verify_youtube_thumbnail(yt_img)
+                
+        # Fallback to video URL (if it's og:video)
+        if not image_url and result.html:
+            vid_match = re.search(r'<meta[^>]+property=["\']og:video["\'][^>]+content=["\']([^"\']+)["\']', result.html)
+            if vid_match:
+                image_url = vid_match.group(1).replace("&amp;", "&")
+            
         title = re.sub(r'\s*\|\s*ABS-CBN.*$', '', title).strip()
 
         # Extract source domain
@@ -360,12 +434,13 @@ class NewsScraper:
             "source": source,
             "url": url,
             "content_hash": content_hash,
-            "published_at": datetime.now(timezone.utc).isoformat(),
+            "published_at": published_at if published_at else datetime.now(timezone.utc).isoformat(),
             "created_at": datetime.now(timezone.utc).isoformat(),
             "sentiment_score": llm_result.get("sentiment_score", 0.0),
             "keywords": llm_result.get("keywords", []),
             "affected_products": llm_result.get("affected_products", []),
             "event_type": llm_result.get("event_type", "general"),
+            "image_url": image_url,
         }
 
     # ------------------------------------------------------------------
@@ -532,7 +607,7 @@ class NewsScraper:
     def _store_article(self, article: Dict[str, Any]) -> bool:
         """Store a processed article in Supabase."""
         try:
-            self._client.table(self._table).insert({
+            resp = self._client.table(self._table).insert({
                 "title": article["title"],
                 "content": article["content"],
                 "source": article["source"],
@@ -544,8 +619,29 @@ class NewsScraper:
                 "keywords": article["keywords"],
                 "affected_products": article["affected_products"],
                 "event_type": article["event_type"],
+                "image_url": article.get("image_url", ""),
             }).execute()
+            
+            if not resp.data:
+                log.warning("No data returned from article insert.")
+                return False
+            
+            log.info(f"  ✓ Article and image URL saved to Supabase.")
             return True
         except Exception as e:
             log.debug(f"Failed to store: {e}")
             return False
+
+    def _verify_youtube_thumbnail(self, image_url: str) -> str:
+        """Checks if maxresdefault exists and is valid, otherwise returns hqdefault."""
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+            # We do a GET to check size, since maxresdefault sometimes returns a tiny 120x90 200 OK image
+            resp = httpx.get(image_url, headers=headers, timeout=5.0)
+            if resp.status_code == 404 or len(resp.content) < 2000:
+                return image_url.replace("maxresdefault.jpg", "hqdefault.jpg")
+            return image_url
+        except Exception:
+            return image_url.replace("maxresdefault.jpg", "hqdefault.jpg")

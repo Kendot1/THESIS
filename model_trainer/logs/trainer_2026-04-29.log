@@ -1,0 +1,98 @@
+2026-04-29 16:14:10 [INFO] main - Running news scraping pipeline ...
+2026-04-29 16:14:14 [INFO] data.news_scraper - === NEWS SCRAPING PIPELINE (ABS-CBN) === LLM: Groq (llama-3.3-70b)
+2026-04-29 16:14:52 [INFO] data.news_scraper - Discovered 47 article URLs.
+2026-04-29 16:15:04 [INFO] data.news_scraper - 46 new URLs to process.
+2026-04-29 16:15:05 [INFO] data.news_scraper - [1/46] https://www.abs-cbn.com/news/regions/2026/4/25/2-patay-matapos-ma-trap-sa-treasure-hunting-tunnel-sa-panabo-city-1700
+2026-04-29 16:15:07 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): 2 patay matapos ma-trap sa 'treasure hunting' tunnel sa Pana
+2026-04-29 16:15:07 [INFO] data.news_scraper - [2/46] https://www.abs-cbn.com/news/nation/2026/4/29/-power-grab-afp-says-no-validated-destabilization-threat-1341
+2026-04-29 16:15:11 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Military power grab? AFP says no validated destabilization t
+2026-04-29 16:15:11 [INFO] data.news_scraper - [3/46] https://www.abs-cbn.com/news/business/2026/4/29/senator-questions-meralco-s-pass-through-charges-to-consumers-1446
+2026-04-29 16:15:13 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): Senator questions Meralco’s pass-through charges to consumer
+2026-04-29 16:15:13 [INFO] data.news_scraper - [4/46] https://www.abs-cbn.com/news/nation/2026/4/29/balikan-trahedya-sa-ozone-disco-night-club-1127
+2026-04-29 16:15:17 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): BALIKAN: Trahedya sa Ozone Disco Night Club
+2026-04-29 16:15:17 [INFO] data.news_scraper - [5/46] https://www.abs-cbn.com/news/regions/2026/4/27/cebu-about-80-percent-ready-for-asean-2026-1101
+2026-04-29 16:15:22 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Cebu about 80 percent ready for ASEAN 2026
+2026-04-29 16:15:22 [INFO] data.news_scraper - [6/46] https://www.abs-cbn.com/news/regions/2026/4/24/-tao-po-mga-taga-obando-bulacan-apektado-ng-sunog-sa-navotas-landfill-2112
+2026-04-29 16:15:30 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): ‘Tao Po’: Mga taga-Obando, Bulacan apektado ng sunog sa Navo
+2026-04-29 16:15:30 [INFO] data.news_scraper - [7/46] https://www.abs-cbn.com/news/regions/2026/4/27/philippines-says-two-us-citizens-among-19-killed-in-raid-0831
+2026-04-29 16:15:35 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Philippines says two US citizens among 19 killed in Negros r
+2026-04-29 16:15:35 [INFO] data.news_scraper - [8/46] https://www.abs-cbn.com/news/regions/2026/4/28/united-bangsamoro-justice-party-submits-docs-to-comelec-for-bangsamoro-polls-1710
+2026-04-29 16:15:37 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): United Bangsamoro Justice Party submits docs to Comelec for 
+2026-04-29 16:15:37 [INFO] data.news_scraper - [9/46] https://www.abs-cbn.com/news/nation/2026/4/29/ph-allies-conduct-refueling-drill-maritime-activity-off-bajo-de-masinloc-1138
+2026-04-29 16:15:41 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): PH, allies conduct refueling drill, maritime activity off Ba
+2026-04-29 16:15:41 [INFO] data.news_scraper - [10/46] https://www.abs-cbn.com/news/nation/2026/4/29/comelec-urged-to-resolve-barmm-party-accreditation-issues-ahead-of-coc-filing-1513
+2026-04-29 16:15:42 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): Comelec urged to resolve BARMM party accreditation issues ah
+2026-04-29 16:15:42 [INFO] data.news_scraper - [11/46] https://www.abs-cbn.com/news/regions/2026/4/27/palace-denies-leviste-s-claim-says-batangas-aid-was-not-politicized-1522
+2026-04-29 16:15:47 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Palace denies Leviste's claim, says Batangas aid was not pol
+2026-04-29 16:15:47 [INFO] data.news_scraper - [12/46] https://www.abs-cbn.com/news/regions/2026/4/26/tv-patrol-regional-april-26-2026-1730
+2026-04-29 16:15:48 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): TV Patrol Regional - April 26, 2026
+2026-04-29 16:15:48 [INFO] data.news_scraper - [13/46] https://www.abs-cbn.com/news/nation/2026/4/29/congressmen-told-to-avoid-pop-culture-references-in-vp-impeachment-hearing-1336
+2026-04-29 16:15:50 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): 'This is serious': Congressmen told to avoid pop culture ref
+2026-04-29 16:15:50 [INFO] data.news_scraper - [14/46] https://www.abs-cbn.com/news/nation/2026/4/29/remulla-says-crime-rate-has-dropped-by-50-under-safer-cities-initiative-1512
+2026-04-29 16:15:51 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): Remulla says crime rate has dropped by 50% under Safer Citie
+2026-04-29 16:15:51 [INFO] data.news_scraper - [15/46] https://www.abs-cbn.com/news/nation/2026/4/29/house-panel-votes-to-leave-opening-of-duterte-tax-records-to-senate-impeachment-court-1224
+2026-04-29 16:15:56 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): House panel holds off on opening Sara Duterte tax records
+2026-04-29 16:15:56 [INFO] data.news_scraper - [16/46] https://www.abs-cbn.com/news/business/2026/4/28/government-fintech-work-together-through-crisis-1229
+2026-04-29 16:16:00 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Government, fintech work together through crisis
+2026-04-29 16:16:00 [INFO] data.news_scraper - [17/46] https://www.abs-cbn.com/news/regions/2026/4/25/de-lima-seeks-urgent-probe-on-negros-military-operation-that-left-19-dead-1643
+2026-04-29 16:16:02 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): De Lima seeks urgent probe on Negros military operation that
+2026-04-29 16:16:02 [INFO] data.news_scraper - [18/46] https://www.abs-cbn.com/news/regions/2026/4/26/afp-handang-humarap-sa-anumang-imbestigasyon-kaugnay-ng-engkuwentro-sa-toboso-1923
+2026-04-29 16:16:09 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): AFP handang humarap sa anumang imbestigasyon kaugnay ng engk
+2026-04-29 16:16:09 [INFO] data.news_scraper - [19/46] https://www.abs-cbn.com/news/nation/2026/4/29/degamo-seeks-clarity-on-vp-duterte-s-alleged-visit-to-teves-1602
+2026-04-29 16:16:11 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): Degamo seeks clarity on VP Duterte's alleged visit to Teves
+2026-04-29 16:16:11 [INFO] data.news_scraper - [20/46] https://www.abs-cbn.com/news/business/2026/4/29/9-2-million-filipino-households-see-themselves-as-poor-octa-survey-1327
+2026-04-29 16:16:16 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 9.2 million Filipino households see themselves as poor — OCT
+2026-04-29 16:16:16 [INFO] data.news_scraper - [21/46] https://www.abs-cbn.com/news/regions/2026/4/26/company-consultant-patay-sa-pananambang-sa-calamba-laguna-1827
+2026-04-29 16:16:17 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): Company consultant patay sa pananambang sa Calamba, Laguna
+2026-04-29 16:16:17 [INFO] data.news_scraper - [22/46] https://www.abs-cbn.com/news/business/2026/4/29/sm-investments-net-income-up-7-pct-in-q1-hikes-dividends-by-31-pct-1544
+2026-04-29 16:16:22 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): SM Investments net income up 7 pct in Q1, hikes dividends by
+2026-04-29 16:16:22 [INFO] data.news_scraper - [23/46] https://www.abs-cbn.com/news/business/2026/4/24/solar-panel-project-helps-communities-nationwide-1219
+2026-04-29 16:16:27 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Solar panel project helps communities nationwide
+2026-04-29 16:16:27 [INFO] data.news_scraper - [24/46] https://www.abs-cbn.com/news/regions/2026/4/27/san-pablo-laguna-vice-mayor-faces-malversation-graft-raps-over-ghost-employees-1729
+2026-04-29 16:16:29 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): San Pablo, Laguna vice mayor faces malversation, graft raps 
+2026-04-29 16:16:29 [INFO] data.news_scraper - [25/46] https://www.abs-cbn.com/news/nation/2026/4/29/gov-t-to-launch-integrated-hub-where-public-can-report-online-text-scams-1528
+2026-04-29 16:16:31 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): Gov’t to launch integrated hub where public can report onlin
+2026-04-29 16:16:31 [INFO] data.news_scraper - [26/46] https://www.abs-cbn.com/news/nation/2026/4/29/lawmakers-blast-duterte-camp-complaint-over-disclosure-of-bank-records-1235
+2026-04-29 16:16:36 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): ‘We will not bow down’: Lawmakers blast Duterte camp complai
+2026-04-29 16:16:36 [INFO] data.news_scraper - [27/46] https://www.abs-cbn.com/news/nation/2026/4/29/defensor-says-hotel-issue-politicized-declines-comment-on-closure-order-1350
+2026-04-29 16:16:37 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): Defensor says hotel issue 'politicized,' declines comment on
+2026-04-29 16:16:37 [INFO] data.news_scraper - [28/46] https://www.abs-cbn.com/news/nation/2026/4/29/live-house-resumes-hearing-on-impeachment-complaints-against-vp-sara-duterte-0941
+2026-04-29 16:16:39 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): LIVE: House resumes hearing on impeachment complaints agains
+2026-04-29 16:16:39 [INFO] data.news_scraper - [29/46] https://www.abs-cbn.com/news/nation/2026/4/29/caught-in-the-crossfire-family-believes-slain-driver-was-not-intended-target-1326
+2026-04-29 16:16:40 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): Caught in the crossfire: Family believes slain driver was no
+2026-04-29 16:16:40 [INFO] data.news_scraper - [30/46] https://www.abs-cbn.com/news/business/2026/4/29/sss-gsis-kkr-investments-in-first-gen-at-risk-due-to-poison-pill-provisions-lopez-majority-1508
+2026-04-29 16:16:42 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): SSS, GSIS, KKR investments in First Gen at risk due to 'pois
+2026-04-29 16:16:42 [INFO] data.news_scraper - [31/46] https://www.abs-cbn.com/news/regions/2026/4/24/protesters-seek-truly-independent-probe-into-negros-occidental-clash-that-killed-19-1552
+2026-04-29 16:16:47 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Protesters seek ‘truly independent’ probe into Negros Occide
+2026-04-29 16:16:47 [INFO] data.news_scraper - [32/46] https://www.abs-cbn.com/news/nation/2026/4/29/ph-navy-monitors-chinese-vessels-aircraft-during-balikatan-maritime-drills-1125
+2026-04-29 16:16:51 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): PH Navy monitors Chinese vessels, aircraft during Balikatan 
+2026-04-29 16:16:51 [INFO] data.news_scraper - [33/46] https://www.abs-cbn.com/news/world/2026/4/29/will-fuel-shortages-ruin-summer-vacations-1046
+2026-04-29 16:16:56 [INFO] data.news_scraper -   ✓ RELEVANT: Will fuel shortages ruin summer vacations?... sentiment=-0.80 type=fuel_energy products=['Diesel', 'Jet Fuel', 'Cooking Oil']
+2026-04-29 16:16:57 [INFO] data.news_scraper - [34/46] https://www.abs-cbn.com/news/nation/2026/4/29/motorsiklong-ginamit-sa-pananambang-sa-timog-ave-narekober-1113
+2026-04-29 16:17:01 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Riding-in-tandem suspects caught on CCTV before fatal ambush
+2026-04-29 16:17:01 [INFO] data.news_scraper - [35/46] https://www.abs-cbn.com/news/business/2026/4/29/abs-cbn-wins-gold-in-financeasia-s-best-companies-2026-poll-1027
+2026-04-29 16:17:06 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): ABS-CBN wins gold in FinanceAsia’s Best Companies 2026 Poll
+2026-04-29 16:17:06 [INFO] data.news_scraper - [36/46] https://www.abs-cbn.com/news/nation/2026/4/29/vp-duterte-s-designated-survivor-remark-raised-in-house-hearing-1510
+2026-04-29 16:17:10 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Another threat? VP Duterte’s ‘designated survivor’ remark ra
+2026-04-29 16:17:10 [INFO] data.news_scraper - [37/46] https://www.abs-cbn.com/news/regions/2026/4/27/paresan-3-pang-establisimyento-inararo-ng-pickup-sa-quezon-1021
+2026-04-29 16:17:12 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): Paresan, 3 pang establisimyento inararo ng pickup sa Quezon
+2026-04-29 16:17:12 [INFO] data.news_scraper - [38/46] https://www.abs-cbn.com/news/business/2026/4/22/look-jollibee-is-now-leed-certified-1554
+2026-04-29 16:17:21 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): LOOK: Jollibee is now LEED-certified
+2026-04-29 16:17:21 [INFO] data.news_scraper - [39/46] https://www.abs-cbn.com/news/business/2026/4/29/peso-hits-new-low-a-day-after-breaching-p61-to-dollar-level-1609
+2026-04-29 16:17:26 [INFO] data.news_scraper -   ✓ RELEVANT: Peso hits new low a day after breaching P61-to-dollar level... sentiment=-0.50 type=general products=['Oil', 'Cooking Oil']
+2026-04-29 16:17:26 [INFO] data.news_scraper - [40/46] https://www.abs-cbn.com/news/regions/2026/4/26/sawa-na-lumamon-ng-buong-baboy-nahuli-sa-marinduque-0830
+2026-04-29 16:17:31 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Sawa na lumamon ng buong baboy, nahuli sa Marinduque
+2026-04-29 16:17:31 [INFO] data.news_scraper - [41/46] https://www.abs-cbn.com/news/business/2026/4/29/explainer-the-uae-has-left-opec-but-what-is-the-bloc-it-s-quitting-0655
+2026-04-29 16:17:35 [INFO] data.news_scraper -   ✓ RELEVANT: EXPLAINER: The UAE has left OPEC - but what is the bloc it's... sentiment=-0.50 type=import_export products=['Cooking Oil']
+2026-04-29 16:17:36 [INFO] data.news_scraper - [42/46] https://www.abs-cbn.com/news/nation/2026/4/29/nbi-duterte-threat-marcos-impeachment-hearing-1315
+2026-04-29 16:17:37 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): NBI following leads on alleged ‘assassin’ in Duterte threat 
+2026-04-29 16:17:37 [INFO] data.news_scraper - [43/46] https://www.abs-cbn.com/news/business/2026/4/22/guarding-tubbataha-protecting-a-world-heritage-reef-1009
+2026-04-29 16:17:42 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Guarding Tubbataha: Protecting a World Heritage reef
+2026-04-29 16:17:42 [INFO] data.news_scraper - [44/46] https://www.abs-cbn.com/news/regions/2026/4/26/consultant-ng-pribadong-kompanya-sa-calamba-patay-sa-ambush-1949
+2026-04-29 16:17:43 [INFO] data.news_scraper -   ✗ SKIP (no food/price keywords): Consultant ng pribadong kompanya sa Calamba, patay sa ambush
+2026-04-29 16:17:43 [INFO] data.news_scraper - [45/46] https://www.abs-cbn.com/news/regions/2026/4/27/mga-tindahan-sa-hagonoy-nasira-dahil-sa-malakas-na-ulan-1942
+2026-04-29 16:17:48 [INFO] data.news_scraper -   ✓ RELEVANT: Mga tindahan sa Hagonoy, nasira dahil sa malakas na ulan... sentiment=-0.50 type=weather products=['Grocery']
+2026-04-29 16:17:48 [INFO] data.news_scraper - [46/46] https://www.abs-cbn.com/news/nation/2026/4/29/sara-duterte-attends-pop-up-exhibit-as-house-continues-impeachment-hearing-1432
+2026-04-29 16:17:53 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Sara Duterte attends pop-up exhibit as House continues impea
+2026-04-29 16:17:53 [INFO] data.news_scraper - === SCRAPE COMPLETE === discovered=47 new=46 relevant=4 stored=4
+2026-04-29 16:17:53 [INFO] main - Scraping complete. Stats: {'discovered': 47, 'new': 46, 'relevant': 4, 'stored': 4}

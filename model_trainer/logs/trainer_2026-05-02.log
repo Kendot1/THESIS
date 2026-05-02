@@ -1,0 +1,499 @@
+2026-05-02 18:01:47 [INFO] main - Running news scraping pipeline ...
+2026-05-02 18:01:49 [INFO] data.news_scraper - === NEWS SCRAPING PIPELINE (ABS-CBN) === LLM: Groq (llama-3.3-70b)
+2026-05-02 18:02:23 [INFO] data.news_scraper - Discovered 41 article URLs.
+2026-05-02 18:02:35 [INFO] data.news_scraper - 41 new URLs to process.
+2026-05-02 18:02:36 [INFO] data.news_scraper - [1/41] https://www.abs-cbn.com/news/regions/2026/5/2/cop-husband-dismissed-for-alleged-obstruction-of-evidence-in-mollenido-son-killings-1138
+2026-05-02 18:02:41 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Cop husband dismissed for alleged obstruction of evidence in
+2026-05-02 18:02:41 [INFO] data.news_scraper - [2/41] https://www.abs-cbn.com/news/nation/2026/5/2/2-akyat-bahay-sa-qc-himas-rehas-1737
+2026-05-02 18:02:45 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 akyat-bahay sa QC himas-rehas
+2026-05-02 18:02:45 [INFO] data.news_scraper - [3/41] https://www.abs-cbn.com/news/regions/2026/4/27/palace-denies-leviste-s-claim-says-batangas-aid-was-not-politicized-1522
+2026-05-02 18:02:50 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Palace denies Leviste's claim, says Batangas aid was not pol
+2026-05-02 18:02:50 [INFO] data.news_scraper - [4/41] https://www.abs-cbn.com/news/nation/2026/5/2/sc-voids-carandang-s-dismissal-under-duterte-administration-1525
+2026-05-02 18:02:55 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): SC voids Carandang's dismissal under Duterte administration
+2026-05-02 18:02:55 [INFO] data.news_scraper - [5/41] https://www.abs-cbn.com/news/nation/2026/5/2/delivery-rider-hinoldap-at-binugbog-sa-maynila-1736
+2026-05-02 18:02:59 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Delivery rider hinoldap at binugbog sa Maynila
+2026-05-02 18:02:59 [INFO] data.news_scraper - [6/41] https://www.abs-cbn.com/news/business/2026/4/22/look-jollibee-is-now-leed-certified-1554
+2026-05-02 18:03:05 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): LOOK: Jollibee is now LEED-certified
+2026-05-02 18:03:05 [INFO] data.news_scraper - [7/41] https://www.abs-cbn.com/news/nation/2026/5/2/2-lalaki-arestado-matapos-mahuli-sa-aktong-nagnanakaw-sa-isang-bahay-sa-quezon-city-1353
+2026-05-02 18:03:09 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 lalaki arestado matapos mahuli sa aktong nagnanakaw sa isa
+2026-05-02 18:03:09 [INFO] data.news_scraper - [8/41] https://www.abs-cbn.com/news/business/2026/4/22/guarding-tubbataha-protecting-a-world-heritage-reef-1009
+2026-05-02 18:03:14 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Guarding Tubbataha: Protecting a World Heritage reef
+2026-05-02 18:03:14 [INFO] data.news_scraper - [9/41] https://www.abs-cbn.com/news/nation/2026/5/2/ph-us-test-sea-denial-capability-with-nmesis-deployment-in-batanes-1421
+2026-05-02 18:03:19 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): PH, US test sea denial capability with NMESIS deployment in 
+2026-05-02 18:03:19 [INFO] data.news_scraper - [10/41] https://www.abs-cbn.com/news/regions/2026/4/27/cebu-about-80-percent-ready-for-asean-2026-1101
+2026-05-02 18:03:24 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Cebu about 80 percent ready for ASEAN 2026
+2026-05-02 18:03:24 [INFO] data.news_scraper - [11/41] https://www.abs-cbn.com/news/regions/2026/4/27/marcos-leads-rice-distribution-in-capiz-1744
+2026-05-02 18:03:28 [INFO] data.news_scraper -   ✓ RELEVANT: Marcos leads rice distribution in Capiz... sentiment=0.50 type=policy_change products=['Rice']
+2026-05-02 18:03:29 [INFO] data.news_scraper - [12/41] https://www.abs-cbn.com/news/regions/2026/5/1/nbi-7-says-inmate-in-cebu-city-jail-died-due-to-possible-torture-1004
+2026-05-02 18:03:33 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): NBI-7 says inmate in Cebu City Jail died due to possible tor
+2026-05-02 18:03:33 [INFO] data.news_scraper - [13/41] https://www.abs-cbn.com/news/business/2026/4/24/solar-panel-project-helps-communities-nationwide-1219
+2026-05-02 18:03:38 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Solar panel project helps communities nationwide
+2026-05-02 18:03:38 [INFO] data.news_scraper - [14/41] https://www.abs-cbn.com/news/business/2026/5/2/group-calls-anew-for-passage-of-motorcycle-taxi-law-1459
+2026-05-02 18:03:42 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Group calls anew for passage of motorcycle taxi law
+2026-05-02 18:03:42 [INFO] data.news_scraper - [15/41] https://www.abs-cbn.com/news/regions/2026/4/30/2-women-arrested-in-isabela-for-alleged-illegal-practice-of-medicine-1853
+2026-05-02 18:03:47 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 women arrested in Isabela for alleged illegal practice of 
+2026-05-02 18:03:47 [INFO] data.news_scraper - [16/41] https://www.abs-cbn.com/news/business/2026/5/1/278-000-jobs-offered-at-labor-day-job-fairs-1752
+2026-05-02 18:03:52 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 278,000 jobs offered at Labor Day job fairs
+2026-05-02 18:03:52 [INFO] data.news_scraper - [17/41] https://www.abs-cbn.com/news/regions/2026/5/2/dnd-lgu-distribute-aid-to-ilocos-norte-fisherfolk-affected-by-balikatan-2026-1559
+2026-05-02 18:03:56 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): DND, LGU distribute aid to Ilocos Norte fisherfolk affected 
+2026-05-02 18:03:56 [INFO] data.news_scraper - [18/41] https://www.abs-cbn.com/news/nation/2026/5/2/cctv-patrol-delivery-rider-hinoldap-binugbog-ng-3-lalaki-sa-maynila-0827
+2026-05-02 18:04:01 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): CCTV Patrol: Delivery rider, hinoldap, binugbog ng 3 lalaki 
+2026-05-02 18:04:01 [INFO] data.news_scraper - [19/41] https://www.abs-cbn.com/news/nation/2026/5/2/de-lima-diokno-ridon-among-possible-prosecutors-in-vp-duterte-impeachment-trial-1450
+2026-05-02 18:04:05 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): De Lima, Diokno, Ridon among names floated to compose prosec
+2026-05-02 18:04:05 [INFO] data.news_scraper - [20/41] https://www.abs-cbn.com/news/regions/2026/4/30/pag-ulan-ng-yelo-naranasan-sa-mountain-province-1822
+2026-05-02 18:04:10 [INFO] data.news_scraper -   ✓ RELEVANT: Pag-ulan ng yelo naranasan sa Mountain Province... sentiment=-0.50 type=weather products=['Potato']
+2026-05-02 18:04:10 [INFO] data.news_scraper - [21/41] https://www.abs-cbn.com/news/business/2026/5/2/cavitex-c5-link-segment-3b-to-collect-toll-starting-may-5-1042
+2026-05-02 18:04:15 [INFO] data.news_scraper -   ✓ RELEVANT: Cavitex C5 Link Segment 3B to collect toll starting May 5... sentiment=-0.50 type=fuel_energy products=['all food products']
+2026-05-02 18:04:15 [INFO] data.news_scraper - [22/41] https://www.abs-cbn.com/news/nation/2026/5/1/-more-than-half-of-house-might-support-vp-duterte-s-impeachment-garin-2034
+2026-05-02 18:04:20 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): ‘More than half’ of House might support VP Duterte’s impeach
+2026-05-02 18:04:20 [INFO] data.news_scraper - [23/41] https://www.abs-cbn.com/news/nation/2026/5/1/nup-to-meet-on-potential-party-stand-on-duterte-impeachment-valeriano-1959
+2026-05-02 18:04:24 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): NUP to meet on potential party stand on Duterte impeachment 
+2026-05-02 18:04:24 [INFO] data.news_scraper - [24/41] https://www.abs-cbn.com/news/regions/2026/5/2/94-hawksbill-turtle-hatchlings-pinakawalan-sa-puerto-galera-0904
+2026-05-02 18:04:28 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 94 Hawksbill turtle hatchlings pinakawalan sa Puerto Galera
+2026-05-02 18:04:28 [INFO] data.news_scraper - [25/41] https://www.abs-cbn.com/news/regions/2026/4/28/united-bangsamoro-justice-party-submits-docs-to-comelec-for-bangsamoro-polls-1710
+2026-05-02 18:04:34 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): United Bangsamoro Justice Party submits docs to Comelec for 
+2026-05-02 18:04:34 [INFO] data.news_scraper - [26/41] https://www.abs-cbn.com/news/regions/2026/4/27/mga-tindahan-sa-hagonoy-nasira-dahil-sa-malakas-na-ulan-1942
+2026-05-02 18:04:39 [INFO] data.news_scraper -   ✓ RELEVANT: Mga tindahan sa Hagonoy, nasira dahil sa malakas na ulan... sentiment=-0.50 type=weather products=['Grocery']
+2026-05-02 18:04:40 [INFO] data.news_scraper - [27/41] https://www.abs-cbn.com/news/regions/2026/5/1/mga-manggagawa-sa-baguio-sumama-sa-panawagang-p1-200-daily-minimum-wage-nationwide-1645
+2026-05-02 18:04:44 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Mga manggagawa sa Baguio sumama sa panawagang P1,200 daily m
+2026-05-02 18:04:44 [INFO] data.news_scraper - [28/41] https://www.abs-cbn.com/news/regions/2026/4/27/paresan-3-pang-establisimyento-inararo-ng-pickup-sa-quezon-1021
+2026-05-02 18:04:49 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Paresan, 3 pang establisimyento inararo ng pickup sa Quezon
+2026-05-02 18:04:49 [INFO] data.news_scraper - [29/41] https://www.abs-cbn.com/news/nation/2026/5/2/ridon-house-can-impeach-sara-duterte-on-basis-of-evidence-1645
+2026-05-02 18:04:53 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Ridon: House can impeach Sara Duterte ‘on basis of evidence’
+2026-05-02 18:04:53 [INFO] data.news_scraper - [30/41] https://www.abs-cbn.com/news/business/2026/4/28/government-fintech-work-together-through-crisis-1229
+2026-05-02 18:04:58 [INFO] data.news_scraper -   ✓ RELEVANT: Government, fintech work together through crisis... sentiment=0.20 type=policy_change products=['fuel']
+2026-05-02 18:04:58 [INFO] data.news_scraper - [31/41] https://www.abs-cbn.com/news/nation/2026/5/2/repairs-begin-on-accident-prone-beata-bridge-1244
+2026-05-02 18:05:03 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Repairs begin on accident-prone Beata Bridge
+2026-05-02 18:05:03 [INFO] data.news_scraper - [32/41] https://www.abs-cbn.com/news/regions/2026/4/30/marcos-visits-bailiwick-tacloban-city-to-distribute-rice-financial-aid-1344
+2026-05-02 18:05:08 [INFO] data.news_scraper -   ✓ RELEVANT: Marcos visits bailiwick Tacloban City to distribute rice, fi... sentiment=0.20 type=policy_change products=['Rice']
+2026-05-02 18:05:08 [INFO] data.news_scraper - [33/41] https://www.abs-cbn.com/news/nation/2026/5/2/lacson-to-make-privilege-speech-on-blue-ribbon-partial-flood-control-report-next-week-0921
+2026-05-02 18:05:13 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Lacson to make privilege speech on Blue Ribbon partial flood
+2026-05-02 18:05:13 [INFO] data.news_scraper - [34/41] https://www.abs-cbn.com/news/nation/2026/5/2/dalawang-koreano-sugatan-sa-banggaan-ng-trak-at-tnvs-car-sa-maynila-0736
+2026-05-02 18:05:18 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Dalawang Koreano, sugatan sa banggaan ng trak at TNVS car sa
+2026-05-02 18:05:18 [INFO] data.news_scraper - [35/41] https://www.abs-cbn.com/news/regions/2026/5/1/rambol-sa-pagitan-ng-mga-vendor-at-clearing-team-sa-davao-city-sapul-sa-video-2354
+2026-05-02 18:05:23 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Rambol sa pagitan ng mga vendor at clearing team sa Davao Ci
+2026-05-02 18:05:23 [INFO] data.news_scraper - [36/41] https://www.abs-cbn.com/news/nation/2026/5/2/around-1-300-filipino-seafarers-have-safely-crossed-hormuz-strait-cacdac-1219
+2026-05-02 18:05:27 [INFO] data.news_scraper -   ✓ RELEVANT: Around 1,300 Filipino seafarers have safely crossed Hormuz s... sentiment=-0.50 type=import_export products=['Cooking Oil']
+2026-05-02 18:05:28 [INFO] data.news_scraper - [37/41] https://www.abs-cbn.com/news/nation/2026/5/2/what-will-happen-when-icc-trial-chamber-convenes-for-status-conference-in-duterte-case-1554
+2026-05-02 18:05:32 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): What will happen when ICC Trial Chamber convenes for status 
+2026-05-02 18:05:32 [INFO] data.news_scraper - [38/41] https://www.abs-cbn.com/news/regions/2026/5/2/vice-ganda-leni-robredo-reunite-at-1st-isarog-hot-air-balloon-festival-0843
+2026-05-02 18:05:36 [WARNING] data.news_scraper -   LLM rate limited (429), retrying in 10s...
+2026-05-02 18:05:47 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 'You are our heart': Vice Ganda, Leni Robredo reunite at 1st
+2026-05-02 18:05:47 [INFO] data.news_scraper - [39/41] https://www.abs-cbn.com/news/regions/2026/4/27/san-pablo-laguna-vice-mayor-faces-malversation-graft-raps-over-ghost-employees-1729
+2026-05-02 18:05:52 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): San Pablo, Laguna vice mayor faces malversation, graft raps 
+2026-05-02 18:05:52 [INFO] data.news_scraper - [40/41] https://www.abs-cbn.com/news/nation/2026/5/2/senior-citizen-sugatan-3-pamilya-nawalan-ng-bahay-sa-sunog-sa-caloocan-0723
+2026-05-02 18:05:57 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Senior citizen sugatan, 3 pamilya nawalan ng bahay sa sunog 
+2026-05-02 18:05:57 [INFO] data.news_scraper - [41/41] https://www.abs-cbn.com/news/business/2026/5/2/mixed-oil-price-movements-seen-next-week-1139
+2026-05-02 18:06:01 [INFO] data.news_scraper -   ✓ RELEVANT: Mixed oil price movements seen next week... sentiment=-0.50 type=fuel_energy products=['Diesel', 'Gasoline', 'Kerosene']
+2026-05-02 18:06:02 [INFO] data.news_scraper - === SCRAPE COMPLETE === discovered=41 new=41 relevant=8 stored=8
+2026-05-02 18:06:02 [INFO] main - Scraping complete. Stats: {'discovered': 41, 'new': 41, 'relevant': 8, 'stored': 8}
+2026-05-02 18:18:38 [INFO] main - Running news scraping pipeline ...
+2026-05-02 18:18:40 [INFO] data.news_scraper - === NEWS SCRAPING PIPELINE (ABS-CBN) === LLM: Groq (llama-3.3-70b)
+2026-05-02 18:19:07 [INFO] data.news_scraper - Discovered 41 article URLs.
+2026-05-02 18:19:17 [INFO] data.news_scraper - 33 new URLs to process.
+2026-05-02 18:19:18 [INFO] data.news_scraper - [1/33] https://www.abs-cbn.com/news/regions/2026/4/30/2-women-arrested-in-isabela-for-alleged-illegal-practice-of-medicine-1853
+2026-05-02 18:19:22 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 women arrested in Isabela for alleged illegal practice of 
+2026-05-02 18:19:22 [INFO] data.news_scraper - [2/33] https://www.abs-cbn.com/news/nation/2026/5/2/2-akyat-bahay-sa-qc-himas-rehas-1737
+2026-05-02 18:19:26 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 akyat-bahay sa QC himas-rehas
+2026-05-02 18:19:26 [INFO] data.news_scraper - [3/33] https://www.abs-cbn.com/news/nation/2026/5/2/sc-voids-carandang-s-dismissal-under-duterte-administration-1525
+2026-05-02 18:19:30 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): SC voids Carandang's dismissal under Duterte administration
+2026-05-02 18:19:30 [INFO] data.news_scraper - [4/33] https://www.abs-cbn.com/news/business/2026/4/22/guarding-tubbataha-protecting-a-world-heritage-reef-1009
+2026-05-02 18:19:36 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Guarding Tubbataha: Protecting a World Heritage reef
+2026-05-02 18:19:36 [INFO] data.news_scraper - [5/33] https://www.abs-cbn.com/news/regions/2026/4/27/san-pablo-laguna-vice-mayor-faces-malversation-graft-raps-over-ghost-employees-1729
+2026-05-02 18:19:41 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): San Pablo, Laguna vice mayor faces malversation, graft raps 
+2026-05-02 18:19:41 [INFO] data.news_scraper - [6/33] https://www.abs-cbn.com/news/nation/2026/5/2/de-lima-diokno-ridon-among-possible-prosecutors-in-vp-duterte-impeachment-trial-1450
+2026-05-02 18:19:45 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): De Lima, Diokno, Ridon among names floated to compose prosec
+2026-05-02 18:19:45 [INFO] data.news_scraper - [7/33] https://www.abs-cbn.com/news/nation/2026/5/2/what-will-happen-when-icc-trial-chamber-convenes-for-status-conference-in-duterte-case-1554
+2026-05-02 18:19:50 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): What will happen when ICC Trial Chamber convenes for status 
+2026-05-02 18:19:50 [INFO] data.news_scraper - [8/33] https://www.abs-cbn.com/news/regions/2026/5/2/dnd-lgu-distribute-aid-to-ilocos-norte-fisherfolk-affected-by-balikatan-2026-1559
+2026-05-02 18:19:54 [INFO] data.news_scraper -   ✓ RELEVANT: DND, LGU distribute aid to Ilocos Norte fisherfolk affected ... sentiment=0.00 type=supply_shock products=['Fish']
+2026-05-02 18:19:57 [INFO] data.news_scraper -   ✓ Image saved to R2: https://pub-50662b85ed9944c4a9168283e580de48.r2.dev/news_images/4b3ea0d5cbac4cd59151d4136e6e3bd4.jpg
+2026-05-02 18:19:57 [INFO] data.news_scraper - [9/33] https://www.abs-cbn.com/news/regions/2026/5/1/mga-manggagawa-sa-baguio-sumama-sa-panawagang-p1-200-daily-minimum-wage-nationwide-1645
+2026-05-02 18:20:01 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Mga manggagawa sa Baguio sumama sa panawagang P1,200 daily m
+2026-05-02 18:20:01 [INFO] data.news_scraper - [10/33] https://www.abs-cbn.com/news/nation/2026/5/2/cctv-patrol-delivery-rider-hinoldap-binugbog-ng-3-lalaki-sa-maynila-0827
+2026-05-02 18:20:06 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): CCTV Patrol: Delivery rider, hinoldap, binugbog ng 3 lalaki 
+2026-05-02 18:20:06 [INFO] data.news_scraper - [11/33] https://www.abs-cbn.com/news/regions/2026/5/2/94-hawksbill-turtle-hatchlings-pinakawalan-sa-puerto-galera-0904
+2026-05-02 18:20:11 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 94 Hawksbill turtle hatchlings pinakawalan sa Puerto Galera
+2026-05-02 18:20:11 [INFO] data.news_scraper - [12/33] https://www.abs-cbn.com/news/business/2026/5/2/group-calls-anew-for-passage-of-motorcycle-taxi-law-1459
+2026-05-02 18:20:15 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Group calls anew for passage of motorcycle taxi law
+2026-05-02 18:20:15 [INFO] data.news_scraper - [13/33] https://www.abs-cbn.com/news/business/2026/5/1/278-000-jobs-offered-at-labor-day-job-fairs-1752
+2026-05-02 18:20:20 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 278,000 jobs offered at Labor Day job fairs
+2026-05-02 18:20:20 [INFO] data.news_scraper - [14/33] https://www.abs-cbn.com/news/regions/2026/4/27/cebu-about-80-percent-ready-for-asean-2026-1101
+2026-05-02 18:20:25 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Cebu about 80 percent ready for ASEAN 2026
+2026-05-02 18:20:25 [INFO] data.news_scraper - [15/33] https://www.abs-cbn.com/news/regions/2026/5/2/vice-ganda-leni-robredo-reunite-at-1st-isarog-hot-air-balloon-festival-0843
+2026-05-02 18:20:29 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 'You are our heart': Vice Ganda, Leni Robredo reunite at 1st
+2026-05-02 18:20:29 [INFO] data.news_scraper - [16/33] https://www.abs-cbn.com/news/regions/2026/4/27/palace-denies-leviste-s-claim-says-batangas-aid-was-not-politicized-1522
+2026-05-02 18:20:33 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Palace denies Leviste's claim, says Batangas aid was not pol
+2026-05-02 18:20:33 [INFO] data.news_scraper - [17/33] https://www.abs-cbn.com/news/nation/2026/5/1/nup-to-meet-on-potential-party-stand-on-duterte-impeachment-valeriano-1959
+2026-05-02 18:20:38 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): NUP to meet on potential party stand on Duterte impeachment 
+2026-05-02 18:20:38 [INFO] data.news_scraper - [18/33] https://www.abs-cbn.com/news/nation/2026/5/1/-more-than-half-of-house-might-support-vp-duterte-s-impeachment-garin-2034
+2026-05-02 18:20:42 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): ‘More than half’ of House might support VP Duterte’s impeach
+2026-05-02 18:20:42 [INFO] data.news_scraper - [19/33] https://www.abs-cbn.com/news/regions/2026/5/1/nbi-7-says-inmate-in-cebu-city-jail-died-due-to-possible-torture-1004
+2026-05-02 18:20:46 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): NBI-7 says inmate in Cebu City Jail died due to possible tor
+2026-05-02 18:20:46 [INFO] data.news_scraper - [20/33] https://www.abs-cbn.com/news/nation/2026/5/2/repairs-begin-on-accident-prone-beata-bridge-1244
+2026-05-02 18:20:50 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Repairs begin on accident-prone Beata Bridge
+2026-05-02 18:20:50 [INFO] data.news_scraper - [21/33] https://www.abs-cbn.com/news/nation/2026/5/2/ph-us-test-sea-denial-capability-with-nmesis-deployment-in-batanes-1421
+2026-05-02 18:20:55 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): PH, US test sea denial capability with NMESIS deployment in 
+2026-05-02 18:20:55 [INFO] data.news_scraper - [22/33] https://www.abs-cbn.com/news/regions/2026/5/1/rambol-sa-pagitan-ng-mga-vendor-at-clearing-team-sa-davao-city-sapul-sa-video-2354
+2026-05-02 18:20:59 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Rambol sa pagitan ng mga vendor at clearing team sa Davao Ci
+2026-05-02 18:20:59 [INFO] data.news_scraper - [23/33] https://www.abs-cbn.com/news/nation/2026/5/2/dalawang-koreano-sugatan-sa-banggaan-ng-trak-at-tnvs-car-sa-maynila-0736
+2026-05-02 18:21:03 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Dalawang Koreano, sugatan sa banggaan ng trak at TNVS car sa
+2026-05-02 18:21:03 [INFO] data.news_scraper - [24/33] https://www.abs-cbn.com/news/regions/2026/4/28/united-bangsamoro-justice-party-submits-docs-to-comelec-for-bangsamoro-polls-1710
+2026-05-02 18:21:08 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): United Bangsamoro Justice Party submits docs to Comelec for 
+2026-05-02 18:21:08 [INFO] data.news_scraper - [25/33] https://www.abs-cbn.com/news/nation/2026/5/2/lacson-to-make-privilege-speech-on-blue-ribbon-partial-flood-control-report-next-week-0921
+2026-05-02 18:21:12 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Lacson to make privilege speech on Blue Ribbon partial flood
+2026-05-02 18:21:12 [INFO] data.news_scraper - [26/33] https://www.abs-cbn.com/news/business/2026/4/24/solar-panel-project-helps-communities-nationwide-1219
+2026-05-02 18:21:16 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Solar panel project helps communities nationwide
+2026-05-02 18:21:16 [INFO] data.news_scraper - [27/33] https://www.abs-cbn.com/news/regions/2026/5/2/cop-husband-dismissed-for-alleged-obstruction-of-evidence-in-mollenido-son-killings-1138
+2026-05-02 18:21:21 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Cop husband dismissed for alleged obstruction of evidence in
+2026-05-02 18:21:21 [INFO] data.news_scraper - [28/33] https://www.abs-cbn.com/news/regions/2026/4/27/paresan-3-pang-establisimyento-inararo-ng-pickup-sa-quezon-1021
+2026-05-02 18:21:25 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Paresan, 3 pang establisimyento inararo ng pickup sa Quezon
+2026-05-02 18:21:25 [INFO] data.news_scraper - [29/33] https://www.abs-cbn.com/news/nation/2026/5/2/delivery-rider-hinoldap-at-binugbog-sa-maynila-1736
+2026-05-02 18:21:29 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Delivery rider hinoldap at binugbog sa Maynila
+2026-05-02 18:21:29 [INFO] data.news_scraper - [30/33] https://www.abs-cbn.com/news/nation/2026/5/2/2-lalaki-arestado-matapos-mahuli-sa-aktong-nagnanakaw-sa-isang-bahay-sa-quezon-city-1353
+2026-05-02 18:21:34 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 lalaki arestado matapos mahuli sa aktong nagnanakaw sa isa
+2026-05-02 18:21:34 [INFO] data.news_scraper - [31/33] https://www.abs-cbn.com/news/business/2026/4/22/look-jollibee-is-now-leed-certified-1554
+2026-05-02 18:21:38 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): LOOK: Jollibee is now LEED-certified
+2026-05-02 18:21:38 [INFO] data.news_scraper - [32/33] https://www.abs-cbn.com/news/nation/2026/5/2/ridon-house-can-impeach-sara-duterte-on-basis-of-evidence-1645
+2026-05-02 18:21:43 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Ridon: House can impeach Sara Duterte ‘on basis of evidence’
+2026-05-02 18:21:43 [INFO] data.news_scraper - [33/33] https://www.abs-cbn.com/news/nation/2026/5/2/senior-citizen-sugatan-3-pamilya-nawalan-ng-bahay-sa-sunog-sa-caloocan-0723
+2026-05-02 18:21:48 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Senior citizen sugatan, 3 pamilya nawalan ng bahay sa sunog 
+2026-05-02 18:21:49 [INFO] data.news_scraper - === SCRAPE COMPLETE === discovered=41 new=33 relevant=1 stored=1
+2026-05-02 18:21:49 [INFO] main - Scraping complete. Stats: {'discovered': 41, 'new': 33, 'relevant': 1, 'stored': 1}
+2026-05-02 18:22:54 [INFO] main - Running news scraping pipeline ...
+2026-05-02 18:22:56 [INFO] data.news_scraper - === NEWS SCRAPING PIPELINE (ABS-CBN) === LLM: Groq (llama-3.3-70b)
+2026-05-02 18:23:21 [INFO] data.news_scraper - Discovered 41 article URLs.
+2026-05-02 18:23:33 [INFO] data.news_scraper - 41 new URLs to process.
+2026-05-02 18:23:34 [INFO] data.news_scraper - [1/41] https://www.abs-cbn.com/news/business/2026/5/2/mixed-oil-price-movements-seen-next-week-1139
+2026-05-02 18:23:39 [INFO] data.news_scraper -   ✓ RELEVANT: Mixed oil price movements seen next week... sentiment=-0.50 type=fuel_energy products=['Diesel', 'Gasoline', 'Kerosene']
+2026-05-02 18:23:40 [INFO] data.news_scraper -   ✓ Image saved to R2: https://pub-50662b85ed9944c4a9168283e580de48.r2.dev/news_images/72717e97ba004e8f9437d01ef9912f24.jpg
+2026-05-02 18:23:41 [INFO] data.news_scraper - [2/41] https://www.abs-cbn.com/news/nation/2026/5/1/nup-to-meet-on-potential-party-stand-on-duterte-impeachment-valeriano-1959
+2026-05-02 18:23:45 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): NUP to meet on potential party stand on Duterte impeachment 
+2026-05-02 18:23:45 [INFO] data.news_scraper - [3/41] https://www.abs-cbn.com/news/regions/2026/5/1/rambol-sa-pagitan-ng-mga-vendor-at-clearing-team-sa-davao-city-sapul-sa-video-2354
+2026-05-02 18:23:49 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Rambol sa pagitan ng mga vendor at clearing team sa Davao Ci
+2026-05-02 18:23:49 [INFO] data.news_scraper - [4/41] https://www.abs-cbn.com/news/regions/2026/4/30/2-women-arrested-in-isabela-for-alleged-illegal-practice-of-medicine-1853
+2026-05-02 18:23:54 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 women arrested in Isabela for alleged illegal practice of 
+2026-05-02 18:23:54 [INFO] data.news_scraper - [5/41] https://www.abs-cbn.com/news/nation/2026/5/2/2-lalaki-arestado-matapos-mahuli-sa-aktong-nagnanakaw-sa-isang-bahay-sa-quezon-city-1353
+2026-05-02 18:23:58 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 lalaki arestado matapos mahuli sa aktong nagnanakaw sa isa
+2026-05-02 18:23:58 [INFO] data.news_scraper - [6/41] https://www.abs-cbn.com/news/nation/2026/5/2/around-1-300-filipino-seafarers-have-safely-crossed-hormuz-strait-cacdac-1219
+2026-05-02 18:24:03 [INFO] data.news_scraper -   ✓ RELEVANT: Around 1,300 Filipino seafarers have safely crossed Hormuz s... sentiment=-0.50 type=import_export products=['Cooking Oil']
+2026-05-02 18:24:04 [INFO] data.news_scraper -   ✓ Image saved to R2: https://pub-50662b85ed9944c4a9168283e580de48.r2.dev/news_images/a746b79dbac24b418fd145e615463594.jpg
+2026-05-02 18:24:04 [INFO] data.news_scraper - [7/41] https://www.abs-cbn.com/news/nation/2026/5/2/delivery-rider-hinoldap-at-binugbog-sa-maynila-1736
+2026-05-02 18:24:08 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Delivery rider hinoldap at binugbog sa Maynila
+2026-05-02 18:24:08 [INFO] data.news_scraper - [8/41] https://www.abs-cbn.com/news/regions/2026/4/27/mga-tindahan-sa-hagonoy-nasira-dahil-sa-malakas-na-ulan-1942
+2026-05-02 18:24:13 [WARNING] data.news_scraper -   LLM daily token limit exhausted. Stopping.
+2026-05-02 18:24:13 [WARNING] data.news_scraper -   ✗ SKIP (LLM call failed): Mga tindahan sa Hagonoy, nasira dahil sa malakas na ulan
+2026-05-02 18:24:13 [WARNING] data.news_scraper - LLM daily limit exhausted — skipping remaining 33 articles.
+2026-05-02 18:24:13 [INFO] data.news_scraper - === SCRAPE COMPLETE === discovered=41 new=41 relevant=2 stored=2
+2026-05-02 18:24:13 [INFO] main - Scraping complete. Stats: {'discovered': 41, 'new': 41, 'relevant': 2, 'stored': 2}
+2026-05-02 18:31:26 [INFO] main - Running news scraping pipeline ...
+2026-05-02 18:31:27 [INFO] data.news_scraper - === NEWS SCRAPING PIPELINE (ABS-CBN) === LLM: Groq (llama-3.3-70b)
+2026-05-02 18:31:53 [INFO] data.news_scraper - Discovered 41 article URLs.
+2026-05-02 18:32:03 [INFO] data.news_scraper - 41 new URLs to process.
+2026-05-02 18:32:04 [INFO] data.news_scraper - [1/41] https://www.abs-cbn.com/news/nation/2026/5/2/de-lima-diokno-ridon-among-possible-prosecutors-in-vp-duterte-impeachment-trial-1450
+2026-05-02 18:32:09 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): De Lima, Diokno, Ridon among names floated to compose prosec
+2026-05-02 18:32:09 [INFO] data.news_scraper - [2/41] https://www.abs-cbn.com/news/nation/2026/5/2/dalawang-koreano-sugatan-sa-banggaan-ng-trak-at-tnvs-car-sa-maynila-0736
+2026-05-02 18:32:13 [WARNING] data.news_scraper -   LLM daily token limit exhausted. Stopping.
+2026-05-02 18:32:13 [WARNING] data.news_scraper -   ✗ SKIP (LLM call failed): Dalawang Koreano, sugatan sa banggaan ng trak at TNVS car sa
+2026-05-02 18:32:13 [WARNING] data.news_scraper - LLM daily limit exhausted — skipping remaining 39 articles.
+2026-05-02 18:32:13 [INFO] data.news_scraper - === SCRAPE COMPLETE === discovered=41 new=41 relevant=0 stored=0
+2026-05-02 18:32:13 [INFO] main - Scraping complete. Stats: {'discovered': 41, 'new': 41, 'relevant': 0, 'stored': 0}
+2026-05-02 18:35:26 [INFO] main - Running news scraping pipeline ...
+2026-05-02 18:35:26 [INFO] data.news_scraper - === NEWS SCRAPING PIPELINE (ABS-CBN) === LLM: Groq (llama-3.3-70b)
+2026-05-02 18:35:51 [INFO] data.news_scraper - Discovered 41 article URLs.
+2026-05-02 18:36:03 [INFO] data.news_scraper - 41 new URLs to process.
+2026-05-02 18:36:04 [INFO] data.news_scraper - [1/41] https://www.abs-cbn.com/news/regions/2026/4/27/palace-denies-leviste-s-claim-says-batangas-aid-was-not-politicized-1522
+2026-05-02 18:36:08 [WARNING] data.news_scraper -   LLM daily token limit exhausted. Switching to heuristic fallback.
+2026-05-02 18:36:08 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Palace denies Leviste's claim, says Batangas aid was not pol
+2026-05-02 18:36:08 [INFO] data.news_scraper - [2/41] https://www.abs-cbn.com/news/regions/2026/4/27/cebu-about-80-percent-ready-for-asean-2026-1101
+2026-05-02 18:36:10 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Cebu about 80 percent ready for ASEAN 2026
+2026-05-02 18:36:10 [INFO] data.news_scraper - [3/41] https://www.abs-cbn.com/news/regions/2026/5/1/mga-manggagawa-sa-baguio-sumama-sa-panawagang-p1-200-daily-minimum-wage-nationwide-1645
+2026-05-02 18:36:11 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Mga manggagawa sa Baguio sumama sa panawagang P1,200 daily m
+2026-05-02 18:36:11 [INFO] data.news_scraper - [4/41] https://www.abs-cbn.com/news/regions/2026/5/2/dnd-lgu-distribute-aid-to-ilocos-norte-fisherfolk-affected-by-balikatan-2026-1559
+2026-05-02 18:36:12 [INFO] data.news_scraper -   ✓ RELEVANT: DND, LGU distribute aid to Ilocos Norte fisherfolk affected ... sentiment=0.00 type=general products=['Mixed']
+2026-05-02 18:36:13 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 18:36:13 [INFO] data.news_scraper - [5/41] https://www.abs-cbn.com/news/nation/2026/5/2/senior-citizen-sugatan-3-pamilya-nawalan-ng-bahay-sa-sunog-sa-caloocan-0723
+2026-05-02 18:36:14 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Senior citizen sugatan, 3 pamilya nawalan ng bahay sa sunog 
+2026-05-02 18:36:14 [INFO] data.news_scraper - [6/41] https://www.abs-cbn.com/news/nation/2026/5/2/2-lalaki-arestado-matapos-mahuli-sa-aktong-nagnanakaw-sa-isang-bahay-sa-quezon-city-1353
+2026-05-02 18:36:15 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): 2 lalaki arestado matapos mahuli sa aktong nagnanakaw sa isa
+2026-05-02 18:36:15 [INFO] data.news_scraper - [7/41] https://www.abs-cbn.com/news/nation/2026/5/2/repairs-begin-on-accident-prone-beata-bridge-1244
+2026-05-02 18:36:17 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Repairs begin on accident-prone Beata Bridge
+2026-05-02 18:36:17 [INFO] data.news_scraper - [8/41] https://www.abs-cbn.com/news/business/2026/5/1/278-000-jobs-offered-at-labor-day-job-fairs-1752
+2026-05-02 18:36:18 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): 278,000 jobs offered at Labor Day job fairs
+2026-05-02 18:36:18 [INFO] data.news_scraper - [9/41] https://www.abs-cbn.com/news/nation/2026/5/1/-more-than-half-of-house-might-support-vp-duterte-s-impeachment-garin-2034
+2026-05-02 18:36:19 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): ‘More than half’ of House might support VP Duterte’s impeach
+2026-05-02 18:36:19 [INFO] data.news_scraper - [10/41] https://www.abs-cbn.com/news/regions/2026/5/1/nbi-7-says-inmate-in-cebu-city-jail-died-due-to-possible-torture-1004
+2026-05-02 18:36:20 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): NBI-7 says inmate in Cebu City Jail died due to possible tor
+2026-05-02 18:36:20 [INFO] data.news_scraper - [11/41] https://www.abs-cbn.com/news/regions/2026/5/2/vice-ganda-leni-robredo-reunite-at-1st-isarog-hot-air-balloon-festival-0843
+2026-05-02 18:36:22 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): 'You are our heart': Vice Ganda, Leni Robredo reunite at 1st
+2026-05-02 18:36:22 [INFO] data.news_scraper - [12/41] https://www.abs-cbn.com/news/nation/2026/5/2/what-will-happen-when-icc-trial-chamber-convenes-for-status-conference-in-duterte-case-1554
+2026-05-02 18:36:23 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): What will happen when ICC Trial Chamber convenes for status 
+2026-05-02 18:36:23 [INFO] data.news_scraper - [13/41] https://www.abs-cbn.com/news/nation/2026/5/2/delivery-rider-hinoldap-at-binugbog-sa-maynila-1736
+2026-05-02 18:36:25 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Delivery rider hinoldap at binugbog sa Maynila
+2026-05-02 18:36:25 [INFO] data.news_scraper - [14/41] https://www.abs-cbn.com/news/regions/2026/5/1/rambol-sa-pagitan-ng-mga-vendor-at-clearing-team-sa-davao-city-sapul-sa-video-2354
+2026-05-02 18:36:26 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Rambol sa pagitan ng mga vendor at clearing team sa Davao Ci
+2026-05-02 18:36:26 [INFO] data.news_scraper - [15/41] https://www.abs-cbn.com/news/regions/2026/4/27/marcos-leads-rice-distribution-in-capiz-1744
+2026-05-02 18:36:27 [INFO] data.news_scraper -   ✓ RELEVANT: Marcos leads rice distribution in Capiz... sentiment=0.00 type=general products=['Mixed']
+2026-05-02 18:36:27 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 18:36:27 [INFO] data.news_scraper - [16/41] https://www.abs-cbn.com/news/regions/2026/5/2/94-hawksbill-turtle-hatchlings-pinakawalan-sa-puerto-galera-0904
+2026-05-02 18:36:29 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): 94 Hawksbill turtle hatchlings pinakawalan sa Puerto Galera
+2026-05-02 18:36:29 [INFO] data.news_scraper - [17/41] https://www.abs-cbn.com/news/regions/2026/4/28/united-bangsamoro-justice-party-submits-docs-to-comelec-for-bangsamoro-polls-1710
+2026-05-02 18:36:30 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): United Bangsamoro Justice Party submits docs to Comelec for 
+2026-05-02 18:36:30 [INFO] data.news_scraper - [18/41] https://www.abs-cbn.com/news/business/2026/5/2/group-calls-anew-for-passage-of-motorcycle-taxi-law-1459
+2026-05-02 18:36:31 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Group calls anew for passage of motorcycle taxi law
+2026-05-02 18:36:31 [INFO] data.news_scraper - [19/41] https://www.abs-cbn.com/news/regions/2026/4/30/marcos-visits-bailiwick-tacloban-city-to-distribute-rice-financial-aid-1344
+2026-05-02 18:36:33 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Marcos visits bailiwick Tacloban City to distribute rice, fi
+2026-05-02 18:36:33 [INFO] data.news_scraper - [20/41] https://www.abs-cbn.com/news/business/2026/5/2/cavitex-c5-link-segment-3b-to-collect-toll-starting-may-5-1042
+2026-05-02 18:36:34 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Cavitex C5 Link Segment 3B to collect toll starting May 5
+2026-05-02 18:36:34 [INFO] data.news_scraper - [21/41] https://www.abs-cbn.com/news/business/2026/4/28/government-fintech-work-together-through-crisis-1229
+2026-05-02 18:36:35 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Government, fintech work together through crisis
+2026-05-02 18:36:35 [INFO] data.news_scraper - [22/41] https://www.abs-cbn.com/news/nation/2026/5/2/2-akyat-bahay-sa-qc-himas-rehas-1737
+2026-05-02 18:36:37 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): 2 akyat-bahay sa QC himas-rehas
+2026-05-02 18:36:37 [INFO] data.news_scraper - [23/41] https://www.abs-cbn.com/news/nation/2026/5/2/lacson-to-make-privilege-speech-on-blue-ribbon-partial-flood-control-report-next-week-0921
+2026-05-02 18:36:38 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Lacson to make privilege speech on Blue Ribbon partial flood
+2026-05-02 18:36:38 [INFO] data.news_scraper - [24/41] https://www.abs-cbn.com/news/business/2026/4/22/look-jollibee-is-now-leed-certified-1554
+2026-05-02 18:36:40 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): LOOK: Jollibee is now LEED-certified
+2026-05-02 18:36:40 [INFO] data.news_scraper - [25/41] https://www.abs-cbn.com/news/nation/2026/5/2/around-1-300-filipino-seafarers-have-safely-crossed-hormuz-strait-cacdac-1219
+2026-05-02 18:36:41 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Around 1,300 Filipino seafarers have safely crossed Hormuz s
+2026-05-02 18:36:41 [INFO] data.news_scraper - [26/41] https://www.abs-cbn.com/news/business/2026/4/22/guarding-tubbataha-protecting-a-world-heritage-reef-1009
+2026-05-02 18:36:43 [INFO] data.news_scraper -   ✓ RELEVANT: Guarding Tubbataha: Protecting a World Heritage reef... sentiment=0.00 type=general products=['Mixed']
+2026-05-02 18:36:43 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 18:36:43 [INFO] data.news_scraper - [27/41] https://www.abs-cbn.com/news/nation/2026/5/2/sc-voids-carandang-s-dismissal-under-duterte-administration-1525
+2026-05-02 18:36:44 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): SC voids Carandang's dismissal under Duterte administration
+2026-05-02 18:36:44 [INFO] data.news_scraper - [28/41] https://www.abs-cbn.com/news/nation/2026/5/2/cctv-patrol-delivery-rider-hinoldap-binugbog-ng-3-lalaki-sa-maynila-0827
+2026-05-02 18:36:45 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): CCTV Patrol: Delivery rider, hinoldap, binugbog ng 3 lalaki 
+2026-05-02 18:36:45 [INFO] data.news_scraper - [29/41] https://www.abs-cbn.com/news/regions/2026/4/30/2-women-arrested-in-isabela-for-alleged-illegal-practice-of-medicine-1853
+2026-05-02 18:36:47 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): 2 women arrested in Isabela for alleged illegal practice of 
+2026-05-02 18:36:47 [INFO] data.news_scraper - [30/41] https://www.abs-cbn.com/news/nation/2026/5/2/de-lima-diokno-ridon-among-possible-prosecutors-in-vp-duterte-impeachment-trial-1450
+2026-05-02 18:36:48 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): De Lima, Diokno, Ridon among names floated to compose prosec
+2026-05-02 18:36:48 [INFO] data.news_scraper - [31/41] https://www.abs-cbn.com/news/regions/2026/4/27/paresan-3-pang-establisimyento-inararo-ng-pickup-sa-quezon-1021
+2026-05-02 18:36:50 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Paresan, 3 pang establisimyento inararo ng pickup sa Quezon
+2026-05-02 18:36:50 [INFO] data.news_scraper - [32/41] https://www.abs-cbn.com/news/regions/2026/4/27/mga-tindahan-sa-hagonoy-nasira-dahil-sa-malakas-na-ulan-1942
+2026-05-02 18:36:51 [INFO] data.news_scraper -   ✓ RELEVANT: Mga tindahan sa Hagonoy, nasira dahil sa malakas na ulan... sentiment=0.00 type=general products=['Mixed']
+2026-05-02 18:36:51 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 18:36:51 [INFO] data.news_scraper - [33/41] https://www.abs-cbn.com/news/regions/2026/5/2/cop-husband-dismissed-for-alleged-obstruction-of-evidence-in-mollenido-son-killings-1138
+2026-05-02 18:36:53 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Cop husband dismissed for alleged obstruction of evidence in
+2026-05-02 18:36:53 [INFO] data.news_scraper - [34/41] https://www.abs-cbn.com/news/business/2026/5/2/mixed-oil-price-movements-seen-next-week-1139
+2026-05-02 18:36:54 [INFO] data.news_scraper -   ✓ RELEVANT: Mixed oil price movements seen next week... sentiment=0.00 type=general products=['Mixed']
+2026-05-02 18:36:54 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 18:36:54 [INFO] data.news_scraper - [35/41] https://www.abs-cbn.com/news/nation/2026/5/2/ph-us-test-sea-denial-capability-with-nmesis-deployment-in-batanes-1421
+2026-05-02 18:36:56 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): PH, US test sea denial capability with NMESIS deployment in 
+2026-05-02 18:36:56 [INFO] data.news_scraper - [36/41] https://www.abs-cbn.com/news/business/2026/4/24/solar-panel-project-helps-communities-nationwide-1219
+2026-05-02 18:36:57 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Solar panel project helps communities nationwide
+2026-05-02 18:36:57 [INFO] data.news_scraper - [37/41] https://www.abs-cbn.com/news/nation/2026/5/1/nup-to-meet-on-potential-party-stand-on-duterte-impeachment-valeriano-1959
+2026-05-02 18:36:59 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): NUP to meet on potential party stand on Duterte impeachment 
+2026-05-02 18:36:59 [INFO] data.news_scraper - [38/41] https://www.abs-cbn.com/news/regions/2026/4/30/pag-ulan-ng-yelo-naranasan-sa-mountain-province-1822
+2026-05-02 18:37:00 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Pag-ulan ng yelo naranasan sa Mountain Province
+2026-05-02 18:37:00 [INFO] data.news_scraper - [39/41] https://www.abs-cbn.com/news/regions/2026/4/27/san-pablo-laguna-vice-mayor-faces-malversation-graft-raps-over-ghost-employees-1729
+2026-05-02 18:37:01 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): San Pablo, Laguna vice mayor faces malversation, graft raps 
+2026-05-02 18:37:01 [INFO] data.news_scraper - [40/41] https://www.abs-cbn.com/news/nation/2026/5/2/ridon-house-can-impeach-sara-duterte-on-basis-of-evidence-1645
+2026-05-02 18:37:03 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Ridon: House can impeach Sara Duterte ‘on basis of evidence’
+2026-05-02 18:37:03 [INFO] data.news_scraper - [41/41] https://www.abs-cbn.com/news/nation/2026/5/2/dalawang-koreano-sugatan-sa-banggaan-ng-trak-at-tnvs-car-sa-maynila-0736
+2026-05-02 18:37:04 [INFO] data.news_scraper -   ✗ SKIP (Heuristic: not relevant): Dalawang Koreano, sugatan sa banggaan ng trak at TNVS car sa
+2026-05-02 18:37:05 [INFO] data.news_scraper - === SCRAPE COMPLETE === discovered=41 new=41 relevant=5 stored=5
+2026-05-02 18:37:05 [INFO] main - Scraping complete. Stats: {'discovered': 41, 'new': 41, 'relevant': 5, 'stored': 5}
+2026-05-02 18:38:15 [INFO] main - Running news scraping pipeline ...
+2026-05-02 18:38:16 [INFO] data.news_scraper - === NEWS SCRAPING PIPELINE (ABS-CBN) === LLM: Groq (llama-3.3-70b)
+2026-05-02 18:38:43 [INFO] data.news_scraper - Discovered 29 article URLs.
+2026-05-02 18:38:51 [INFO] data.news_scraper - 26 new URLs to process.
+2026-05-02 18:38:52 [INFO] data.news_scraper - [1/26] https://www.abs-cbn.com/news/regions/2026/5/2/cop-husband-dismissed-for-alleged-obstruction-of-evidence-in-mollenido-son-killings-1138
+2026-05-02 18:38:56 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Cop husband dismissed for alleged obstruction of evidence in
+2026-05-02 18:38:56 [INFO] data.news_scraper - [2/26] https://www.abs-cbn.com/news/nation/2026/5/2/around-1-300-filipino-seafarers-have-safely-crossed-hormuz-strait-cacdac-1219
+2026-05-02 18:39:01 [INFO] data.news_scraper -   ✓ RELEVANT: Around 1,300 Filipino seafarers have safely crossed Hormuz s... sentiment=-0.50 type=import_export products=['Cooking Oil']
+2026-05-02 18:39:01 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 18:39:01 [INFO] data.news_scraper - [3/26] https://www.abs-cbn.com/news/business/2026/5/2/group-calls-anew-for-passage-of-motorcycle-taxi-law-1459
+2026-05-02 18:39:06 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Group calls anew for passage of motorcycle taxi law
+2026-05-02 18:39:06 [INFO] data.news_scraper - [4/26] https://www.abs-cbn.com/news/nation/2026/5/2/de-lima-diokno-ridon-among-possible-prosecutors-in-vp-duterte-impeachment-trial-1450
+2026-05-02 18:39:10 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): De Lima, Diokno, Ridon among names floated to compose prosec
+2026-05-02 18:39:10 [INFO] data.news_scraper - [5/26] https://www.abs-cbn.com/news/business/2026/5/1/278-000-jobs-offered-at-labor-day-job-fairs-1752
+2026-05-02 18:39:15 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 278,000 jobs offered at Labor Day job fairs
+2026-05-02 18:39:15 [INFO] data.news_scraper - [6/26] https://www.abs-cbn.com/news/nation/2026/5/2/cctv-patrol-delivery-rider-hinoldap-binugbog-ng-3-lalaki-sa-maynila-0827
+2026-05-02 18:39:19 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): CCTV Patrol: Delivery rider, hinoldap, binugbog ng 3 lalaki 
+2026-05-02 18:39:19 [INFO] data.news_scraper - [7/26] https://www.abs-cbn.com/news/nation/2026/5/2/lacson-to-make-privilege-speech-on-blue-ribbon-partial-flood-control-report-next-week-0921
+2026-05-02 18:39:23 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Lacson to make privilege speech on Blue Ribbon partial flood
+2026-05-02 18:39:23 [INFO] data.news_scraper - [8/26] https://www.abs-cbn.com/news/nation/2026/5/2/repairs-begin-on-accident-prone-beata-bridge-1244
+2026-05-02 18:39:28 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Repairs begin on accident-prone Beata Bridge
+2026-05-02 18:39:28 [INFO] data.news_scraper - [9/26] https://www.abs-cbn.com/news/nation/2026/5/2/dalawang-koreano-sugatan-sa-banggaan-ng-trak-at-tnvs-car-sa-maynila-0736
+2026-05-02 18:39:32 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Dalawang Koreano, sugatan sa banggaan ng trak at TNVS car sa
+2026-05-02 18:39:32 [INFO] data.news_scraper - [10/26] https://www.abs-cbn.com/news/nation/2026/5/1/nup-to-meet-on-potential-party-stand-on-duterte-impeachment-valeriano-1959
+2026-05-02 18:39:36 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): NUP to meet on potential party stand on Duterte impeachment 
+2026-05-02 18:39:36 [INFO] data.news_scraper - [11/26] https://www.abs-cbn.com/news/nation/2026/5/2/2-lalaki-arestado-matapos-mahuli-sa-aktong-nagnanakaw-sa-isang-bahay-sa-quezon-city-1353
+2026-05-02 18:39:40 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 lalaki arestado matapos mahuli sa aktong nagnanakaw sa isa
+2026-05-02 18:39:40 [INFO] data.news_scraper - [12/26] https://www.abs-cbn.com/news/business/2026/5/2/cavitex-c5-link-segment-3b-to-collect-toll-starting-may-5-1042
+2026-05-02 18:39:44 [INFO] data.news_scraper -   ✓ RELEVANT: Cavitex C5 Link Segment 3B to collect toll starting May 5... sentiment=-0.50 type=fuel_energy products=['all food products']
+2026-05-02 18:39:45 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 18:39:45 [INFO] data.news_scraper - [13/26] https://www.abs-cbn.com/news/nation/2026/5/2/delivery-rider-hinoldap-at-binugbog-sa-maynila-1736
+2026-05-02 18:39:49 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Delivery rider hinoldap at binugbog sa Maynila
+2026-05-02 18:39:49 [INFO] data.news_scraper - [14/26] https://www.abs-cbn.com/news/business/2026/4/24/solar-panel-project-helps-communities-nationwide-1219
+2026-05-02 18:39:53 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Solar panel project helps communities nationwide
+2026-05-02 18:39:53 [INFO] data.news_scraper - [15/26] https://www.abs-cbn.com/news/regions/2026/5/2/94-hawksbill-turtle-hatchlings-pinakawalan-sa-puerto-galera-0904
+2026-05-02 18:39:57 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 94 Hawksbill turtle hatchlings pinakawalan sa Puerto Galera
+2026-05-02 18:39:57 [INFO] data.news_scraper - [16/26] https://www.abs-cbn.com/news/nation/2026/5/2/sc-voids-carandang-s-dismissal-under-duterte-administration-1525
+2026-05-02 18:40:01 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): SC voids Carandang's dismissal under Duterte administration
+2026-05-02 18:40:01 [INFO] data.news_scraper - [17/26] https://www.abs-cbn.com/news/regions/2026/5/2/ongoing-pyroclastic-current-on-mayon-volcano-phivolcs-says-1837
+2026-05-02 18:40:06 [INFO] data.news_scraper -   ✓ RELEVANT: Ongoing pyroclastic current on Mayon Volcano, Phivolcs says... sentiment=-0.50 type=weather products=['Rice', 'Vegetables']
+2026-05-02 18:40:06 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 18:40:06 [INFO] data.news_scraper - [18/26] https://www.abs-cbn.com/news/nation/2026/5/1/-more-than-half-of-house-might-support-vp-duterte-s-impeachment-garin-2034
+2026-05-02 18:40:10 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): ‘More than half’ of House might support VP Duterte’s impeach
+2026-05-02 18:40:10 [INFO] data.news_scraper - [19/26] https://www.abs-cbn.com/news/nation/2026/5/2/ridon-house-can-impeach-sara-duterte-on-basis-of-evidence-1645
+2026-05-02 18:40:14 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Ridon: House can impeach Sara Duterte ‘on basis of evidence’
+2026-05-02 18:40:14 [INFO] data.news_scraper - [20/26] https://www.abs-cbn.com/news/nation/2026/5/2/what-will-happen-when-icc-trial-chamber-convenes-for-status-conference-in-duterte-case-1554
+2026-05-02 18:40:18 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): What will happen when ICC Trial Chamber convenes for status 
+2026-05-02 18:40:18 [INFO] data.news_scraper - [21/26] https://www.abs-cbn.com/news/business/2026/4/28/government-fintech-work-together-through-crisis-1229
+2026-05-02 18:40:23 [INFO] data.news_scraper -   ✓ RELEVANT: Government, fintech work together through crisis... sentiment=0.20 type=policy_change products=['fuel']
+2026-05-02 18:40:23 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 18:40:23 [INFO] data.news_scraper - [22/26] https://www.abs-cbn.com/news/nation/2026/5/2/ph-us-test-sea-denial-capability-with-nmesis-deployment-in-batanes-1421
+2026-05-02 18:40:27 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): PH, US test sea denial capability with NMESIS deployment in 
+2026-05-02 18:40:27 [INFO] data.news_scraper - [23/26] https://www.abs-cbn.com/news/nation/2026/5/2/2-akyat-bahay-sa-qc-himas-rehas-1737
+2026-05-02 18:40:31 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 akyat-bahay sa QC himas-rehas
+2026-05-02 18:40:31 [INFO] data.news_scraper - [24/26] https://www.abs-cbn.com/news/regions/2026/5/2/vice-ganda-leni-robredo-reunite-at-1st-isarog-hot-air-balloon-festival-0843
+2026-05-02 18:40:36 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 'You are our heart': Vice Ganda, Leni Robredo reunite at 1st
+2026-05-02 18:40:36 [INFO] data.news_scraper - [25/26] https://www.abs-cbn.com/news/nation/2026/5/2/senior-citizen-sugatan-3-pamilya-nawalan-ng-bahay-sa-sunog-sa-caloocan-0723
+2026-05-02 18:40:39 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Senior citizen sugatan, 3 pamilya nawalan ng bahay sa sunog 
+2026-05-02 18:40:39 [INFO] data.news_scraper - [26/26] https://www.abs-cbn.com/news/business/2026/4/22/look-jollibee-is-now-leed-certified-1554
+2026-05-02 18:40:44 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): LOOK: Jollibee is now LEED-certified
+2026-05-02 18:40:44 [INFO] data.news_scraper - === SCRAPE COMPLETE === discovered=29 new=26 relevant=4 stored=4
+2026-05-02 18:40:44 [INFO] main - Scraping complete. Stats: {'discovered': 29, 'new': 26, 'relevant': 4, 'stored': 4}
+2026-05-02 19:19:49 [INFO] main - Running news scraping pipeline ...
+2026-05-02 19:19:51 [INFO] data.news_scraper - === NEWS SCRAPING PIPELINE (ABS-CBN) === LLM: Groq (llama-3.3-70b)
+2026-05-02 19:20:21 [INFO] data.news_scraper - Discovered 40 article URLs.
+2026-05-02 19:20:32 [INFO] data.news_scraper - 40 new URLs to process.
+2026-05-02 19:20:33 [INFO] data.news_scraper - [1/40] https://www.abs-cbn.com/news/business/2026/4/22/look-jollibee-is-now-leed-certified-1554
+2026-05-02 19:20:38 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): LOOK: Jollibee is now LEED-certified
+2026-05-02 19:20:38 [INFO] data.news_scraper - [2/40] https://www.abs-cbn.com/news/regions/2026/5/2/vice-ganda-leni-robredo-reunite-at-1st-isarog-hot-air-balloon-festival-0843
+2026-05-02 19:20:43 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 'You are our heart': Vice Ganda, Leni Robredo reunite at 1st
+2026-05-02 19:20:43 [INFO] data.news_scraper - [3/40] https://www.abs-cbn.com/news/regions/2026/4/27/mga-tindahan-sa-hagonoy-nasira-dahil-sa-malakas-na-ulan-1942
+2026-05-02 19:20:48 [INFO] data.news_scraper -   ✓ RELEVANT: Mga tindahan sa Hagonoy, nasira dahil sa malakas na ulan... sentiment=-0.50 type=weather products=['Grocery']
+2026-05-02 19:20:48 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 19:20:48 [INFO] data.news_scraper - [4/40] https://www.abs-cbn.com/news/regions/2026/4/28/united-bangsamoro-justice-party-submits-docs-to-comelec-for-bangsamoro-polls-1710
+2026-05-02 19:20:53 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): United Bangsamoro Justice Party submits docs to Comelec for 
+2026-05-02 19:20:53 [INFO] data.news_scraper - [5/40] https://www.abs-cbn.com/news/regions/2026/5/1/nbi-7-says-inmate-in-cebu-city-jail-died-due-to-possible-torture-1004
+2026-05-02 19:20:57 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): NBI-7 says inmate in Cebu City Jail died due to possible tor
+2026-05-02 19:20:57 [INFO] data.news_scraper - [6/40] https://www.abs-cbn.com/news/regions/2026/4/27/cebu-about-80-percent-ready-for-asean-2026-1101
+2026-05-02 19:21:01 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Cebu about 80 percent ready for ASEAN 2026
+2026-05-02 19:21:01 [INFO] data.news_scraper - [7/40] https://www.abs-cbn.com/news/nation/2026/5/2/ph-us-test-sea-denial-capability-with-nmesis-deployment-in-batanes-1421
+2026-05-02 19:21:06 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): PH, US test sea denial capability with NMESIS deployment in 
+2026-05-02 19:21:06 [INFO] data.news_scraper - [8/40] https://www.abs-cbn.com/news/regions/2026/5/2/94-hawksbill-turtle-hatchlings-pinakawalan-sa-puerto-galera-0904
+2026-05-02 19:21:11 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 94 Hawksbill turtle hatchlings pinakawalan sa Puerto Galera
+2026-05-02 19:21:11 [INFO] data.news_scraper - [9/40] https://www.abs-cbn.com/news/nation/2026/5/2/dalawang-koreano-sugatan-sa-banggaan-ng-trak-at-tnvs-car-sa-maynila-0736
+2026-05-02 19:21:15 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Dalawang Koreano, sugatan sa banggaan ng trak at TNVS car sa
+2026-05-02 19:21:15 [INFO] data.news_scraper - [10/40] https://www.abs-cbn.com/news/nation/2026/5/2/lacson-to-make-privilege-speech-on-blue-ribbon-partial-flood-control-report-next-week-0921
+2026-05-02 19:21:20 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Lacson to make privilege speech on Blue Ribbon partial flood
+2026-05-02 19:21:20 [INFO] data.news_scraper - [11/40] https://www.abs-cbn.com/news/regions/2026/5/1/mga-manggagawa-sa-baguio-sumama-sa-panawagang-p1-200-daily-minimum-wage-nationwide-1645
+2026-05-02 19:21:24 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Mga manggagawa sa Baguio sumama sa panawagang P1,200 daily m
+2026-05-02 19:21:24 [INFO] data.news_scraper - [12/40] https://www.abs-cbn.com/news/nation/2026/5/2/ridon-house-can-impeach-sara-duterte-on-basis-of-evidence-1645
+2026-05-02 19:21:29 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Ridon: House can impeach Sara Duterte ‘on basis of evidence’
+2026-05-02 19:21:29 [INFO] data.news_scraper - [13/40] https://www.abs-cbn.com/news/regions/2026/4/30/marcos-visits-bailiwick-tacloban-city-to-distribute-rice-financial-aid-1344
+2026-05-02 19:21:33 [INFO] data.news_scraper -   ✓ RELEVANT: Marcos visits bailiwick Tacloban City to distribute rice, fi... sentiment=0.20 type=policy_change products=['Rice']
+2026-05-02 19:21:33 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 19:21:33 [INFO] data.news_scraper - [14/40] https://www.abs-cbn.com/news/regions/2026/5/2/ongoing-pyroclastic-current-on-mayon-volcano-phivolcs-says-1837
+2026-05-02 19:21:38 [INFO] data.news_scraper -   ✓ RELEVANT: Ongoing pyroclastic current on Mayon Volcano, Phivolcs says... sentiment=-0.50 type=weather products=['Rice', 'Vegetables']
+2026-05-02 19:21:38 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 19:21:38 [INFO] data.news_scraper - [15/40] https://www.abs-cbn.com/news/regions/2026/5/2/dnd-lgu-distribute-aid-to-ilocos-norte-fisherfolk-affected-by-balikatan-2026-1559
+2026-05-02 19:21:43 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): DND, LGU distribute aid to Ilocos Norte fisherfolk affected 
+2026-05-02 19:21:43 [INFO] data.news_scraper - [16/40] https://www.abs-cbn.com/news/regions/2026/4/27/marcos-leads-rice-distribution-in-capiz-1744
+2026-05-02 19:21:47 [INFO] data.news_scraper -   ✓ RELEVANT: Marcos leads rice distribution in Capiz... sentiment=0.50 type=policy_change products=['Rice']
+2026-05-02 19:21:48 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 19:21:48 [INFO] data.news_scraper - [17/40] https://www.abs-cbn.com/news/nation/2026/5/1/-more-than-half-of-house-might-support-vp-duterte-s-impeachment-garin-2034
+2026-05-02 19:21:52 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): ‘More than half’ of House might support VP Duterte’s impeach
+2026-05-02 19:21:52 [INFO] data.news_scraper - [18/40] https://www.abs-cbn.com/news/business/2026/4/22/guarding-tubbataha-protecting-a-world-heritage-reef-1009
+2026-05-02 19:21:56 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Guarding Tubbataha: Protecting a World Heritage reef
+2026-05-02 19:21:56 [INFO] data.news_scraper - [19/40] https://www.abs-cbn.com/news/regions/2026/4/27/palace-denies-leviste-s-claim-says-batangas-aid-was-not-politicized-1522
+2026-05-02 19:22:01 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Palace denies Leviste's claim, says Batangas aid was not pol
+2026-05-02 19:22:01 [INFO] data.news_scraper - [20/40] https://www.abs-cbn.com/news/business/2026/4/24/solar-panel-project-helps-communities-nationwide-1219
+2026-05-02 19:22:05 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Solar panel project helps communities nationwide
+2026-05-02 19:22:05 [INFO] data.news_scraper - [21/40] https://www.abs-cbn.com/news/regions/2026/5/2/cop-husband-dismissed-for-alleged-obstruction-of-evidence-in-mollenido-son-killings-1138
+2026-05-02 19:22:09 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Cop husband dismissed for alleged obstruction of evidence in
+2026-05-02 19:22:09 [INFO] data.news_scraper - [22/40] https://www.abs-cbn.com/news/nation/2026/5/2/senior-citizen-sugatan-3-pamilya-nawalan-ng-bahay-sa-sunog-sa-caloocan-0723
+2026-05-02 19:22:14 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Senior citizen sugatan, 3 pamilya nawalan ng bahay sa sunog 
+2026-05-02 19:22:14 [INFO] data.news_scraper - [23/40] https://www.abs-cbn.com/news/nation/2026/5/1/nup-to-meet-on-potential-party-stand-on-duterte-impeachment-valeriano-1959
+2026-05-02 19:22:18 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): NUP to meet on potential party stand on Duterte impeachment 
+2026-05-02 19:22:18 [INFO] data.news_scraper - [24/40] https://www.abs-cbn.com/news/nation/2026/5/2/sc-voids-carandang-s-dismissal-under-duterte-administration-1525
+2026-05-02 19:22:23 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): SC voids Carandang's dismissal under Duterte administration
+2026-05-02 19:22:23 [INFO] data.news_scraper - [25/40] https://www.abs-cbn.com/news/business/2026/4/28/government-fintech-work-together-through-crisis-1229
+2026-05-02 19:22:27 [INFO] data.news_scraper -   ✓ RELEVANT: Government, fintech work together through crisis... sentiment=0.20 type=policy_change products=['fuel']
+2026-05-02 19:22:28 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 19:22:28 [INFO] data.news_scraper - [26/40] https://www.abs-cbn.com/news/business/2026/5/2/group-calls-anew-for-passage-of-motorcycle-taxi-law-1459
+2026-05-02 19:22:32 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Group calls anew for passage of motorcycle taxi law
+2026-05-02 19:22:32 [INFO] data.news_scraper - [27/40] https://www.abs-cbn.com/news/regions/2026/5/1/rambol-sa-pagitan-ng-mga-vendor-at-clearing-team-sa-davao-city-sapul-sa-video-2354
+2026-05-02 19:22:36 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Rambol sa pagitan ng mga vendor at clearing team sa Davao Ci
+2026-05-02 19:22:36 [INFO] data.news_scraper - [28/40] https://www.abs-cbn.com/news/business/2026/5/2/mixed-oil-price-movements-seen-next-week-1139
+2026-05-02 19:22:41 [INFO] data.news_scraper -   ✓ RELEVANT: Mixed oil price movements seen next week... sentiment=-0.50 type=fuel_energy products=['Diesel', 'Gasoline', 'Kerosene']
+2026-05-02 19:22:41 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 19:22:41 [INFO] data.news_scraper - [29/40] https://www.abs-cbn.com/news/regions/2026/4/30/2-women-arrested-in-isabela-for-alleged-illegal-practice-of-medicine-1853
+2026-05-02 19:22:45 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 women arrested in Isabela for alleged illegal practice of 
+2026-05-02 19:22:45 [INFO] data.news_scraper - [30/40] https://www.abs-cbn.com/news/nation/2026/5/2/de-lima-diokno-ridon-among-possible-prosecutors-in-vp-duterte-impeachment-trial-1450
+2026-05-02 19:22:49 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): De Lima, Diokno, Ridon among names floated to compose prosec
+2026-05-02 19:22:49 [INFO] data.news_scraper - [31/40] https://www.abs-cbn.com/news/nation/2026/5/2/delivery-rider-hinoldap-at-binugbog-sa-maynila-1736
+2026-05-02 19:22:54 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Delivery rider hinoldap at binugbog sa Maynila
+2026-05-02 19:22:54 [INFO] data.news_scraper - [32/40] https://www.abs-cbn.com/news/nation/2026/5/2/what-will-happen-when-icc-trial-chamber-convenes-for-status-conference-in-duterte-case-1554
+2026-05-02 19:22:58 [WARNING] data.news_scraper -   LLM rate limited (429), retrying in 10s...
+2026-05-02 19:23:09 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): What will happen when ICC Trial Chamber convenes for status 
+2026-05-02 19:23:09 [INFO] data.news_scraper - [33/40] https://www.abs-cbn.com/news/nation/2026/5/2/2-lalaki-arestado-matapos-mahuli-sa-aktong-nagnanakaw-sa-isang-bahay-sa-quezon-city-1353
+2026-05-02 19:23:13 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 lalaki arestado matapos mahuli sa aktong nagnanakaw sa isa
+2026-05-02 19:23:13 [INFO] data.news_scraper - [34/40] https://www.abs-cbn.com/news/regions/2026/4/30/pag-ulan-ng-yelo-naranasan-sa-mountain-province-1822
+2026-05-02 19:23:18 [INFO] data.news_scraper -   ✓ RELEVANT: Pag-ulan ng yelo naranasan sa Mountain Province... sentiment=-0.50 type=weather products=['Potato']
+2026-05-02 19:23:18 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 19:23:18 [INFO] data.news_scraper - [35/40] https://www.abs-cbn.com/news/nation/2026/5/2/cctv-patrol-delivery-rider-hinoldap-binugbog-ng-3-lalaki-sa-maynila-0827
+2026-05-02 19:23:22 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): CCTV Patrol: Delivery rider, hinoldap, binugbog ng 3 lalaki 
+2026-05-02 19:23:22 [INFO] data.news_scraper - [36/40] https://www.abs-cbn.com/news/nation/2026/5/2/repairs-begin-on-accident-prone-beata-bridge-1244
+2026-05-02 19:23:26 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Repairs begin on accident-prone Beata Bridge
+2026-05-02 19:23:26 [INFO] data.news_scraper - [37/40] https://www.abs-cbn.com/news/business/2026/5/2/cavitex-c5-link-segment-3b-to-collect-toll-starting-may-5-1042
+2026-05-02 19:23:31 [INFO] data.news_scraper -   ✓ RELEVANT: Cavitex C5 Link Segment 3B to collect toll starting May 5... sentiment=-0.50 type=fuel_energy products=['all food products']
+2026-05-02 19:23:32 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 19:23:32 [INFO] data.news_scraper - [38/40] https://www.abs-cbn.com/news/regions/2026/4/27/san-pablo-laguna-vice-mayor-faces-malversation-graft-raps-over-ghost-employees-1729
+2026-05-02 19:23:36 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): San Pablo, Laguna vice mayor faces malversation, graft raps 
+2026-05-02 19:23:36 [INFO] data.news_scraper - [39/40] https://www.abs-cbn.com/news/nation/2026/5/2/around-1-300-filipino-seafarers-have-safely-crossed-hormuz-strait-cacdac-1219
+2026-05-02 19:23:41 [INFO] data.news_scraper -   ✓ RELEVANT: Around 1,300 Filipino seafarers have safely crossed Hormuz s... sentiment=-0.50 type=import_export products=['Cooking Oil']
+2026-05-02 19:23:41 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 19:23:41 [INFO] data.news_scraper - [40/40] https://www.abs-cbn.com/news/nation/2026/5/2/2-akyat-bahay-sa-qc-himas-rehas-1737
+2026-05-02 19:23:46 [WARNING] data.news_scraper -   LLM rate limited (429), retrying in 10s...
+2026-05-02 19:23:56 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 2 akyat-bahay sa QC himas-rehas
+2026-05-02 19:23:57 [INFO] data.news_scraper - === SCRAPE COMPLETE === discovered=40 new=40 relevant=9 stored=9
+2026-05-02 19:23:57 [INFO] main - Scraping complete. Stats: {'discovered': 40, 'new': 40, 'relevant': 9, 'stored': 9}
+2026-05-02 19:34:58 [INFO] main - Running news scraping pipeline ...
+2026-05-02 19:34:59 [INFO] data.news_scraper - === NEWS SCRAPING PIPELINE (ABS-CBN) === LLM: Groq (llama-3.3-70b)
+2026-05-02 19:35:28 [INFO] data.news_scraper - Discovered 36 article URLs.
+2026-05-02 19:35:37 [INFO] data.news_scraper - 29 new URLs to process.
+2026-05-02 19:35:38 [INFO] data.news_scraper - [1/29] https://www.abs-cbn.com/news/regions/2026/4/28/united-bangsamoro-justice-party-submits-docs-to-comelec-for-bangsamoro-polls-1710
+2026-05-02 19:35:43 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): United Bangsamoro Justice Party submits docs to Comelec for 
+2026-05-02 19:35:43 [INFO] data.news_scraper - [2/29] https://www.abs-cbn.com/news/nation/2026/5/2/sc-voids-carandang-s-dismissal-under-duterte-administration-1525
+2026-05-02 19:35:47 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): SC voids Carandang's dismissal under Duterte administration
+2026-05-02 19:35:47 [INFO] data.news_scraper - [3/29] https://www.abs-cbn.com/news/business/2026/4/28/government-fintech-work-together-through-crisis-1229
+2026-05-02 19:35:52 [INFO] data.news_scraper -   ✓ RELEVANT: Government, fintech work together through crisis... sentiment=0.20 type=policy_change products=['fuel']
+2026-05-02 19:35:52 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 19:35:52 [INFO] data.news_scraper - [4/29] https://www.abs-cbn.com/news/nation/2026/5/2/cctv-patrol-delivery-rider-hinoldap-binugbog-ng-3-lalaki-sa-maynila-0827
+2026-05-02 19:35:57 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): CCTV Patrol: Delivery rider, hinoldap, binugbog ng 3 lalaki 
+2026-05-02 19:35:57 [INFO] data.news_scraper - [5/29] https://www.abs-cbn.com/news/regions/2026/5/2/cop-husband-dismissed-for-alleged-obstruction-of-evidence-in-mollenido-son-killings-1138
+2026-05-02 19:36:02 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Cop husband dismissed for alleged obstruction of evidence in
+2026-05-02 19:36:02 [INFO] data.news_scraper - [6/29] https://www.abs-cbn.com/news/regions/2026/5/2/dnd-lgu-distribute-aid-to-ilocos-norte-fisherfolk-affected-by-balikatan-2026-1559
+2026-05-02 19:36:07 [INFO] data.news_scraper -   ✓ RELEVANT: DND, LGU distribute aid to Ilocos Norte fisherfolk affected ... sentiment=0.00 type=supply_shock products=['Fish']
+2026-05-02 19:36:07 [INFO] data.news_scraper -   ✓ Article and image URL saved to Supabase.
+2026-05-02 19:36:07 [INFO] data.news_scraper - [7/29] https://www.abs-cbn.com/news/nation/2026/5/2/delivery-rider-hinoldap-at-binugbog-sa-maynila-1736
+2026-05-02 19:36:11 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Delivery rider hinoldap at binugbog sa Maynila
+2026-05-02 19:36:11 [INFO] data.news_scraper - [8/29] https://www.abs-cbn.com/news/regions/2026/5/2/vice-ganda-leni-robredo-reunite-at-1st-isarog-hot-air-balloon-festival-0843
+2026-05-02 19:36:16 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): 'You are our heart': Vice Ganda, Leni Robredo reunite at 1st
+2026-05-02 19:36:16 [INFO] data.news_scraper - [9/29] https://www.abs-cbn.com/news/nation/2026/5/2/lacson-to-make-privilege-speech-on-blue-ribbon-partial-flood-control-report-next-week-0921
+2026-05-02 19:36:21 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Lacson to make privilege speech on Blue Ribbon partial flood
+2026-05-02 19:36:21 [INFO] data.news_scraper - [10/29] https://www.abs-cbn.com/news/nation/2026/5/2/repairs-begin-on-accident-prone-beata-bridge-1244
+2026-05-02 19:36:25 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Repairs begin on accident-prone Beata Bridge
+2026-05-02 19:36:25 [INFO] data.news_scraper - [11/29] https://www.abs-cbn.com/news/business/2026/4/24/solar-panel-project-helps-communities-nationwide-1219
+2026-05-02 19:36:30 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Solar panel project helps communities nationwide
+2026-05-02 19:36:30 [INFO] data.news_scraper - [12/29] https://www.abs-cbn.com/news/regions/2026/4/27/cebu-about-80-percent-ready-for-asean-2026-1101
+2026-05-02 19:36:37 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Cebu about 80 percent ready for ASEAN 2026
+2026-05-02 19:36:37 [INFO] data.news_scraper - [13/29] https://www.abs-cbn.com/news/regions/2026/5/1/rambol-sa-pagitan-ng-mga-vendor-at-clearing-team-sa-davao-city-sapul-sa-video-2354
+2026-05-02 19:36:41 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Rambol sa pagitan ng mga vendor at clearing team sa Davao Ci
+2026-05-02 19:36:41 [INFO] data.news_scraper - [14/29] https://www.abs-cbn.com/news/regions/2026/5/1/nbi-7-says-inmate-in-cebu-city-jail-died-due-to-possible-torture-1004
+2026-05-02 19:36:46 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): NBI-7 says inmate in Cebu City Jail died due to possible tor
+2026-05-02 19:36:46 [INFO] data.news_scraper - [15/29] https://www.abs-cbn.com/news/regions/2026/5/1/mga-manggagawa-sa-baguio-sumama-sa-panawagang-p1-200-daily-minimum-wage-nationwide-1645
+2026-05-02 19:36:50 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Mga manggagawa sa Baguio sumama sa panawagang P1,200 daily m
+2026-05-02 19:36:50 [INFO] data.news_scraper - [16/29] https://www.abs-cbn.com/news/business/2026/4/22/guarding-tubbataha-protecting-a-world-heritage-reef-1009
+2026-05-02 19:36:55 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): Guarding Tubbataha: Protecting a World Heritage reef
+2026-05-02 19:36:55 [INFO] data.news_scraper - [17/29] https://www.abs-cbn.com/news/regions/2026/4/27/san-pablo-laguna-vice-mayor-faces-malversation-graft-raps-over-ghost-employees-1729
+2026-05-02 19:36:59 [INFO] data.news_scraper -   ✗ SKIP (LLM: not relevant): San Pablo, Laguna vice mayor faces malversation, graft raps 
+2026-05-02 19:36:59 [INFO] data.news_scraper - [18/29] https://www.abs-cbn.com/news/regions/2026/4/30/marcos-visits-bailiwick-tacloban-city-to-distribute-rice-financial-aid-1344
+2026-05-02 19:37:03 [WARNING] data.news_scraper -   LLM daily token limit exhausted. Stopping.
+2026-05-02 19:37:03 [WARNING] data.news_scraper -   ✗ SKIP (LLM call failed): Marcos visits bailiwick Tacloban City to distribute rice, fi
+2026-05-02 19:37:03 [WARNING] data.news_scraper - LLM daily limit exhausted — skipping remaining 11 articles.
+2026-05-02 19:37:03 [INFO] data.news_scraper - === SCRAPE COMPLETE === discovered=36 new=29 relevant=2 stored=2
+2026-05-02 19:37:03 [INFO] main - Scraping complete. Stats: {'discovered': 36, 'new': 29, 'relevant': 2, 'stored': 2}

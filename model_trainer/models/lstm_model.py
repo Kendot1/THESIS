@@ -72,6 +72,7 @@ class PriceSequenceDataset(Dataset):
 # ──────────────────────────────────────────────
 # Network with Attention + Orthogonal Init
 # ──────────────────────────────────────────────
+
 class _LSTMNetwork(nn.Module):
     """
     Multi-layer LSTM with temporal attention and a fully-connected head.

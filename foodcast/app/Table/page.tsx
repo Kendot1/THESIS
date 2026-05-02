@@ -1,21 +1,37 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useDeferredValue } from "react";
 import Link from "next/link";
-import { Search, ArrowUpDown, Filter, Download, Eye } from "lucide-react";
+import { Search, ArrowUpDown, Filter, Eye, ArrowLeft, ChevronLeft, ChevronRight, X, SlidersHorizontal } from "lucide-react";
+import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import SparklineChart from "../components/SparklineChart";
 import ScrollReveal from "../components/ScrollReveal";
-import { products, categories } from "../lib/data";
+import { Product, fetchProducts, categories, CATEGORY_EMOJI } from "../lib/data";
 
 type SortKey = "name" | "currentPrice" | "predictedPrice" | "change" | "volume";
 type SortDir = "asc" | "desc";
 
 export default function TablePage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [priceRange, setPriceRange] = useState("All Prices");
+  const [selectedOrigin, setSelectedOrigin] = useState("All");
+  const itemsPerPage = 12;
+  const router = useRouter();
+
+  useEffect(() => {
+    fetchProducts().then(data => {
+      setProducts(data);
+      setIsLoading(false);
+    });
+  }, []);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -26,15 +42,51 @@ export default function TablePage() {
     }
   };
 
+  const deferredQuery = useDeferredValue(query);
+  const deferredCategory = useDeferredValue(selectedCategory);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [deferredQuery, deferredCategory, priceRange, selectedOrigin]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { All: products.length };
+    products.forEach(p => {
+      counts[p.category] = (counts[p.category] || 0) + 1;
+    });
+    return counts;
+  }, [products]);
+
+  const uniqueOrigins = useMemo(() => {
+    const origins = new Set<string>();
+    products.forEach(p => {
+      if (p.origin) origins.add(p.origin);
+    });
+    return Array.from(origins).sort();
+  }, [products]);
+
   const sortedProducts = useMemo(() => {
     let results = products.filter((p) => {
       const matchCategory =
-        selectedCategory === "All" || p.category === selectedCategory;
+        deferredCategory === "All" || p.category === deferredCategory;
       const matchQuery =
-        !query ||
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.category.toLowerCase().includes(query.toLowerCase());
-      return matchCategory && matchQuery;
+        !deferredQuery ||
+        p.name.toLowerCase().includes(deferredQuery.toLowerCase()) ||
+        p.category.toLowerCase().includes(deferredQuery.toLowerCase()) ||
+        (p.variant && p.variant.toLowerCase().includes(deferredQuery.toLowerCase())) ||
+        (p.origin && p.origin.toLowerCase().includes(deferredQuery.toLowerCase()));
+      
+      const matchPrice = (() => {
+        if (priceRange === "All Prices") return true;
+        if (priceRange === "Below ₱50") return p.currentPrice < 50;
+        if (priceRange === "₱50 - ₱100") return p.currentPrice >= 50 && p.currentPrice <= 100;
+        if (priceRange === "Above ₱100") return p.currentPrice > 100;
+        return true;
+      })();
+
+      const matchOrigin = selectedOrigin === "All" || p.origin === selectedOrigin;
+
+      return matchCategory && matchQuery && matchPrice && matchOrigin;
     });
 
     results.sort((a, b) => {
@@ -64,7 +116,14 @@ export default function TablePage() {
     });
 
     return results;
-  }, [query, selectedCategory, sortKey, sortDir]);
+  }, [deferredQuery, deferredCategory, sortKey, sortDir, products, priceRange, selectedOrigin]);
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return sortedProducts.slice(start, start + itemsPerPage);
+  }, [sortedProducts, currentPage]);
+
+  const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
 
   const SortHeader = ({
     label,
@@ -75,30 +134,49 @@ export default function TablePage() {
   }) => (
     <button
       onClick={() => toggleSort(sortKeyName)}
-      className="flex items-center gap-1 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-primary-800 transition-colors group"
+      className="flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-white uppercase tracking-wider 
+      hover:text-primary-400 transition-colors group"
       aria-label={`Sort by ${label}`}
     >
       {label}
       <ArrowUpDown
-        className={`w-3 h-3 transition-colors ${
-          sortKey === sortKeyName ? "text-primary-800" : "text-gray-300 group-hover:text-gray-400"
-        }`}
+        className={`w-3 h-3 transition-colors ${sortKey === sortKeyName ? "text-primary-400" : "text-white"}`}
       />
     </button>
   );
 
+  if (isLoading) {
+    return (
+      <>
+        <Header />
+        <main className="pt-20 min-h-screen bg-surface flex flex-col items-center justify-center">
+          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-800 rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-500 font-medium">Loading product table...</p>
+        </main>
+      </>
+    );
+  }
+
   return (
     <>
       <Header />
-      <main id="main-content" className="pt-20 min-h-screen bg-surface">
+      <main id="main-content">
         {/* ─── Header ──────────────────────────────────── */}
-        <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-14 sm:py-16 overflow-hidden">
+        <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-12 sm:py-14 pt-28 sm:pt-30 overflow-hidden">
           <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
             <div className="absolute top-0 left-1/3 w-[400px] h-[400px] bg-accent/6 rounded-full blur-[100px]" />
           </div>
           <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
+            {/* Back to search link */}
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white/50 hover:text-white/80 transition-colors mb-4 sm:mb-5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              Back to Home
+            </Link>
             <h1
-              className="text-3xl sm:text-4xl font-bold text-white mb-2"
+              className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Market{" "}
@@ -106,231 +184,352 @@ export default function TablePage() {
                 Table View
               </span>
             </h1>
-            <p className="text-white/50 max-w-xl">
+            <p className="text-white/50 max-w-xl text-sm sm:text-base">
               Comprehensive data view of all tracked agri-fishery products
             </p>
           </div>
         </section>
 
-        <div className="max-w-7xl mx-auto px-5 lg:px-10 py-8 sm:py-10">
+        <div className="max-w-7xl mx-auto px-5 lg:px-10 py-6 sm:py-8 lg:py-10">
           {/* ─── Filters ─────────────────────────────────── */}
           <ScrollReveal>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
-              {/* Search */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Filter products..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400
-                    focus:outline-none focus:border-accent/50 focus:shadow-[0_0_0_3px_rgba(126,217,87,0.1)] transition-all"
-                  id="table-search"
-                  aria-label="Filter products"
-                />
+            <div className="mb-8">
+              <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
+                {/* Search & Filter Trigger */}
+                <div className="flex items-center gap-2 flex-1">
+                  <div className="relative flex-1 group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary-600 transition-colors" />
+                    <input
+                      type="text"
+                      placeholder="Search markets or products..."
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder-gray-400
+                        focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_4px_rgba(46,125,50,0.1)] transition-all shadow-sm"
+                      id="table-search"
+                      aria-label="Search markets or products"
+                    />
+                  </div>
+                  <button
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    className={`p-3 rounded-2xl border transition-all flex items-center justify-center ${isFilterOpen
+                        ? "bg-primary-800 border-primary-800 text-white shadow-lg"
+                        : "bg-white border-gray-200 text-gray-500 hover:border-primary-300 hover:text-primary-800"
+                      }`}
+                    aria-label="Advanced filters"
+                    aria-expanded={isFilterOpen}
+                  >
+                    <SlidersHorizontal className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Category pills with scroll-snap and gradient */}
+                <div className="relative lg:max-w-2xl">
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory scrollbar-hide px-1">
+                    {categories.map((cat) => {
+                      const isActive = selectedCategory === cat;
+                      const count = categoryCounts[cat] || 0;
+
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`snap-start flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 border ${isActive
+                            ? "bg-primary-900 border-primary-900 text-white shadow-md scale-105"
+                            : "bg-white border-gray-100 text-gray-500 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-800"
+                            }`}
+                          aria-pressed={isActive}
+                        >
+                          {cat}
+                          <span className={`text-[10px] font-medium opacity-60 ${isActive ? "text-white" : "text-gray-400"}`}>
+                            ({count})
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Subtle gradient fade for horizontal overflow */}
+                  <div className="absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-surface to-transparent pointer-events-none hidden sm:block" />
+                </div>
               </div>
 
-              {/* Category pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                <Filter className="w-4 h-4 text-gray-400 shrink-0" />
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all duration-200 ${
-                      selectedCategory === cat
-                        ? "bg-primary-800 text-white"
-                        : "bg-white border border-gray-200 text-gray-600 hover:border-primary-200 hover:text-primary-800"
-                    }`}
-                    aria-pressed={selectedCategory === cat}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
+              {/* Advanced Filter Panel */}
+              {isFilterOpen && (
+                <div className="mt-4 p-6 bg-white rounded-[2rem] border border-gray-100 shadow-xl animate-in fade-in slide-in-from-top-4 duration-300">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-sm font-bold text-gray-900">Advanced Filter Options</h3>
+                    <button onClick={() => setIsFilterOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+                      <X className="w-4 h-4 text-gray-400" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Price Range</label>
+                      <select 
+                        value={priceRange}
+                        onChange={(e) => setPriceRange(e.target.value)}
+                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-primary-500"
+                      >
+                        <option>All Prices</option>
+                        <option>Below ₱50</option>
+                        <option>₱50 - ₱100</option>
+                        <option>Above ₱100</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Market / Origin</label>
+                      <select 
+                        value={selectedOrigin}
+                        onChange={(e) => setSelectedOrigin(e.target.value)}
+                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-primary-500"
+                      >
+                        <option value="All">All Locations</option>
+                        {uniqueOrigins.map(origin => (
+                          <option key={origin} value={origin}>{origin}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollReveal>
 
           {/* ─── Data Table ───────────────────────────────── */}
-          <ScrollReveal>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full" role="grid" aria-label="Product prices table">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left px-5 py-4">
-                        <SortHeader label="Product" sortKeyName="name" />
-                      </th>
-                      <th className="text-left px-5 py-4">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Category
-                        </span>
-                      </th>
-                      <th className="text-right px-5 py-4">
-                        <SortHeader label="Current Price" sortKeyName="currentPrice" />
-                      </th>
-                      <th className="text-right px-5 py-4">
-                        <SortHeader label="Predicted" sortKeyName="predictedPrice" />
-                      </th>
-                      <th className="text-right px-5 py-4">
-                        <SortHeader label="Change" sortKeyName="change" />
-                      </th>
-                      <th className="text-right px-5 py-4">
-                        <SortHeader label="Volume" sortKeyName="volume" />
-                      </th>
-                      <th className="text-center px-5 py-4">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Trend
-                        </span>
-                      </th>
-                      <th className="text-center px-5 py-4">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Sentiment
-                        </span>
-                      </th>
-                      <th className="text-center px-5 py-4">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Action
-                        </span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedProducts.map((p, i) => {
-                      const change =
-                        ((p.predictedPrice - p.currentPrice) /
-                          p.currentPrice) *
-                        100;
-                      const isUp = change >= 0;
+          <div className="bg-white/40 backdrop-blur-md rounded-[2.5rem] border border-white/50 shadow-xl overflow-hidden">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full" role="grid" aria-label="Product prices table">
+                <thead>
+                  <tr className="border-b border-black/5 text-white bg-primary-700 ">
+                    <th className="text-left px-6 lg:px-8 py-5">
+                      <SortHeader label="Product" sortKeyName="name" />
+                    </th>
+                    <th className="text-left px-6 lg:px-8 py-5 ">
+                      <span className="text-[10px] font-bold uppercase tracking-widest">
+                        Category
+                      </span>
+                    </th>
+                    <th className="text-center px-6 py-5">
+                      <SortHeader label="Current Price" sortKeyName="currentPrice" />
+                    </th>
+                    <th className=" text-center px-6 py-5">
+                      <SortHeader label="Predicted" sortKeyName="predictedPrice" />
+                    </th>
+                    <th className="text-center px-6 py-5">
+                      <SortHeader label="Change" sortKeyName="change" />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-black/5">
+                  {paginatedProducts.map((p) => {
+                    const change =
+                      ((p.predictedPrice - p.currentPrice) /
+                        p.currentPrice) *
+                      100;
+                    const isUp = change >= 0;
 
-                      return (
-                        <tr
-                          key={p.id}
-                          className="border-b border-gray-50 hover:bg-primary-50/40 transition-colors group"
-                        >
-                          {/* Product */}
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <span className="text-xl">{p.emoji}</span>
-                              <span className="font-medium text-sm text-gray-900 group-hover:text-primary-800 transition-colors">
-                                {p.name}
+                    return (
+                      <tr
+                        key={p.id}
+                        onClick={() => router.push(`/Product/${p.id}`)}
+                        className="group transition-all duration-300 hover:bg-primary-50/40 cursor-pointer"
+                      >
+                        <td className="px-6 lg:px-8 py-5">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-white shadow-md flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-110">
+                              {p.emoji}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-base text-gray-900 group-hover:text-primary-800 transition-colors">
+                                {p.variant ? `${p.variant} ${p.name}` : p.name}
                               </span>
+                              {p.origin && (
+                                <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
+                                  {p.origin}
+                                </span>
+                              )}
                             </div>
-                          </td>
-
-                          {/* Category */}
-                          <td className="px-5 py-4">
-                            <span className="text-xs font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded-full">
-                              {p.category}
-                            </span>
-                          </td>
-
-                          {/* Current Price */}
-                          <td className="px-5 py-4 text-right">
-                            <span className="text-sm font-semibold text-gray-900">
-                              ₱{p.currentPrice.toFixed(2)}
-                            </span>
-                          </td>
-
-                          {/* Predicted Price */}
-                          <td className="px-5 py-4 text-right">
-                            <span
-                              className={`text-sm font-semibold ${
-                                isUp ? "text-positive" : "text-negative"
+                          </div>
+                        </td>
+                        <td className="px-6 lg:px-8 py-5 text-left">
+                          <span className="inline-block text-[10px] font-bold text-primary-700 bg-primary-100/50 backdrop-blur-sm px-2.5 py-1 rounded-lg">
+                            {p.category}
+                          </span>
+                        </td>
+                        <td className="px-6 lg:px-8 py-5 text-center">
+                          <span className="text-sm font-bold text-gray-900 tabular-nums">
+                            ₱{p.currentPrice.toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="px-6 lg:px-8 py-5 text-center">
+                          <span
+                            className={`text-sm font-black tabular-nums transition-all ${isUp ? "text-positive group-hover:drop-shadow-[0_0_8px_rgba(46,125,50,0.3)]" : "text-negative group-hover:drop-shadow-[0_0_8px_rgba(198,40,40,0.3)]"
                               }`}
-                            >
-                              ₱{p.predictedPrice.toFixed(2)}
-                            </span>
-                          </td>
-
-                          {/* Change */}
-                          <td className="px-5 py-4 text-right">
-                            <span
-                              className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                isUp
-                                  ? "text-positive bg-positive/10"
-                                  : "text-negative bg-negative/10"
+                          >
+                            ₱{p.predictedPrice.toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="px-6 lg:px-8 py-5 text-center">
+                          <div
+                            className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full transition-all duration-300 ${isUp
+                              ? "text-positive bg-positive/10 group-hover:bg-positive/20"
+                              : "text-negative bg-negative/10 group-hover:bg-negative/20"
                               }`}
-                            >
-                              {isUp ? "▲" : "▼"}{" "}
-                              {Math.abs(change).toFixed(1)}%
-                            </span>
-                          </td>
+                          >
+                            {isUp ? "▲" : "▼"}{" "}
+                            {Math.abs(change).toFixed(1)}%
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-                          {/* Volume */}
-                          <td className="px-5 py-4 text-right text-sm text-gray-600">
-                            {p.volume}
-                          </td>
+            {/* Mobile Card Layout */}
+            <div className="md:hidden divide-y divide-black/5 bg-white/20">
+              {paginatedProducts.map((p) => {
+                const change =
+                  ((p.predictedPrice - p.currentPrice) / p.currentPrice) *
+                  100;
+                const isUp = change >= 0;
 
-                          {/* Sparkline */}
-                          <td className="px-5 py-4">
-                            <div className="w-[80px] mx-auto">
-                              <SparklineChart
-                                data={p.sparklineData}
-                                color={isUp ? "#2E7D32" : "#C62828"}
-                                height={30}
-                              />
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => router.push(`/Product/${p.id}`)}
+                    className="p-5 active:bg-white/60 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-white shadow-md flex items-center justify-center text-2xl">
+                          {p.emoji}
+                        </div>
+                        <div>
+                          <div className="text-base font-bold text-gray-900">
+                            {p.variant ? `${p.variant} ${p.name}` : p.name}
+                          </div>
+                          {p.origin && (
+                            <div className="text-[10px] text-gray-500 font-medium mb-1 uppercase tracking-wider">
+                              {p.origin}
                             </div>
-                          </td>
+                          )}
+                          <span className="text-[10px] font-bold text-primary-700 bg-primary-100 px-2 py-0.5 rounded-lg">
+                            {p.category}
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full ${isUp
+                          ? "text-positive bg-positive/10"
+                          : "text-negative bg-negative/10"
+                          }`}
+                      >
+                        {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-white/40 p-3 rounded-xl border border-white/60">
+                        <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
+                          Current
+                        </div>
+                        <div className="text-sm font-bold text-gray-900 tabular-nums">
+                          ₱{p.currentPrice.toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="bg-white/40 p-3 rounded-xl border border-white/60">
+                        <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
+                          Predicted
+                        </div>
+                        <div className={`text-sm font-black tabular-nums ${isUp ? "text-positive" : "text-negative"}`}>
+                          ₱{p.predictedPrice.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
 
-                          {/* Sentiment */}
-                          <td className="px-5 py-4 text-center">
-                            <span
-                              className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                p.sentiment === "Bullish"
-                                  ? "text-positive bg-positive/10"
-                                  : p.sentiment === "Bearish"
-                                  ? "text-negative bg-negative/10"
-                                  : "text-gray-600 bg-gray-100"
-                              }`}
-                            >
-                              {p.sentiment}
-                            </span>
-                          </td>
+            {sortedProducts.length === 0 && (
+              <div className="text-center py-12 sm:py-16">
+                <div className="text-3xl sm:text-4xl mb-3">📊</div>
+                <h3 className="text-sm sm:text-base font-semibold text-gray-700 mb-1">
+                  No results found
+                </h3>
+                <p className="text-gray-500 text-xs sm:text-sm">
+                  Try different filters or search terms
+                </p>
+              </div>
+            )}
 
-                          {/* Action */}
-                          <td className="px-5 py-4 text-center">
-                            <Link
-                              href={`/Product/${p.id}`}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-primary-800 bg-primary-50 rounded-lg
-                                hover:bg-primary-100 transition-colors"
-                              aria-label={`View details for ${p.name}`}
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              View
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            {/* Pagination + Summary row */}
+            <div className="px-4 sm:px-6 py-4 bg-gray-50/80 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] sm:text-xs font-medium text-gray-500">
+                  Showing <span className="text-primary-800 font-bold">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-primary-800 font-bold">{Math.min(currentPage * itemsPerPage, sortedProducts.length)}</span> of <span className="text-primary-800 font-bold">{sortedProducts.length}</span> products
+                </span>
               </div>
 
-              {sortedProducts.length === 0 && (
-                <div className="text-center py-16">
-                  <div className="text-4xl mb-3">📊</div>
-                  <h3 className="text-base font-semibold text-gray-700 mb-1">
-                    No results found
-                  </h3>
-                  <p className="text-gray-500 text-sm">
-                    Try different filters or search terms
-                  </p>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="p-2 rounded-lg bg-white border border-gray-200 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:border-primary-300 hover:text-primary-800 transition-all"
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <div className="flex items-center gap-1 px-2">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+                      // Only show a few page numbers around the current page
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${currentPage === page
+                                ? "bg-primary-800 text-white shadow-md scale-110"
+                                : "bg-white border border-gray-100 text-gray-500 hover:border-primary-200"
+                              }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      } else if (
+                        (page === 2 && currentPage > 3) ||
+                        (page === totalPages - 1 && currentPage < totalPages - 2)
+                      ) {
+                        return <span key={page} className="text-gray-300 text-[10px]">...</span>;
+                      }
+                      return null;
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-2 rounded-lg bg-white border border-gray-200 text-gray-600 disabled:opacity-40 disabled:cursor-not-allowed hover:border-primary-300 hover:text-primary-800 transition-all"
+                    aria-label="Next page"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
               )}
 
-              {/* Summary row */}
-              <div className="px-5 py-3 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-xs text-gray-500">
-                  Showing {sortedProducts.length} of {products.length} products
-                </span>
-                <span className="text-xs text-gray-400">
-                  Data refreshed hourly
-                </span>
-              </div>
+              <span className="text-[11px] sm:text-xs text-gray-400 font-medium">
+                Data refreshed hourly
+              </span>
             </div>
-          </ScrollReveal>
+          </div>
         </div>
       </main>
       <Footer />

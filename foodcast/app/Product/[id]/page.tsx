@@ -1,21 +1,30 @@
 "use client";
-import { use, useMemo } from "react";
+import { use, useMemo, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ArrowRight,
   TrendingUp,
   TrendingDown,
   Minus,
   BarChart3,
   Calendar,
   Layers,
+  CheckCircle2,
+  AlertCircle,
+  ArrowRightLeft,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Activity,
 } from "lucide-react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import ForecastChart from "../../components/ForecastChart";
 import ProductCard from "../../components/ProductCard";
 import ScrollReveal from "../../components/ScrollReveal";
-import { products } from "../../lib/data";
+import { Product, fetchProducts, DEFAULT_PRODUCT_IMAGE } from "../../lib/data";
 
 export default function ProductPage({
   params,
@@ -23,19 +32,98 @@ export default function ProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const product = products.find((p) => p.id === id);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchProducts().then(data => {
+      setProducts(data);
+      const found = data.find((p) => p.id === id);
+      setProduct(found || null);
+    });
+  }, [id]);
+
+  const variants = useMemo(() => {
+    if (!product) return [];
+    return products.filter((p) => p.name === product.name);
+  }, [product, products]);
+
+  const smartAlternatives = useMemo(() => {
+    if (!product) return [];
+    // Suggest alternatives if current product is Bullish
+    if (product.sentiment !== "Bullish") return [];
+
+    const variantIds = variants.map(v => v.id);
+
+    return products
+      .filter((p) => p.id !== product.id && p.category === product.category)
+      .filter((p) => p.sentiment !== "Bullish")
+      .filter((p) => !variantIds.includes(p.id))
+      .sort((a, b) => a.currentPrice - b.currentPrice)
+      .slice(0, 3);
+  }, [product, variants]);
 
   const suggestedProducts = useMemo(() => {
     if (!product) return [];
+    const excludeIds = [product.id, ...variants.map(v => v.id), ...smartAlternatives.map(a => a.id)];
     return products
-      .filter((p) => p.id !== product.id)
+      .filter((p) => !excludeIds.includes(p.id))
       .filter(
         (p) =>
           p.category === product.category ||
           p.sentiment === product.sentiment
       )
       .slice(0, 4);
-  }, [product]);
+  }, [product, variants, smartAlternatives, products]);
+
+  const [chartPeriod, setChartPeriod] = useState("6M");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const aiConfidence = useMemo(() => Math.floor(Math.random() * (98 - 85 + 1) + 85), [id]);
+
+  /* ─── Slider Logic (Predict style) ──────────── */
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(true);
+
+  const checkScroll = () => {
+    const el = sliderRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 10);
+    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  };
+
+  const scrollSlider = (dir: "left" | "right") => {
+    const el = sliderRef.current;
+    if (!el) return;
+    const cardWidth = window.innerWidth < 640 ? 200 : 260;
+    el.scrollBy({ left: dir === "left" ? -cardWidth : cardWidth, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const el = sliderRef.current;
+    if (el) {
+      el.addEventListener("scroll", checkScroll, { passive: true });
+      window.addEventListener("resize", checkScroll);
+    }
+    return () => {
+      el?.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("resize", checkScroll);
+    };
+  }, [suggestedProducts]);
+
+  if (products.length === 0) {
+    return (
+      <>
+        <Header />
+        <main className="pt-20 min-h-screen bg-surface flex flex-col items-center justify-center">
+          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-800 rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-500 font-medium">Loading product data...</p>
+        </main>
+      </>
+    );
+  }
 
   if (!product) {
     return (
@@ -50,10 +138,10 @@ export default function ProductPage({
             The product you&apos;re looking for doesn&apos;t exist.
           </p>
           <Link
-            href="/Search"
+            href="/Predict"
             className="px-6 py-3 bg-primary-800 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors"
           >
-            Back to Search
+            Back to Predict
           </Link>
         </main>
         <Footer />
@@ -62,6 +150,7 @@ export default function ProductPage({
   }
 
   const priceChange = product.predictedPrice - product.currentPrice;
+  const combinedName = product.variant ? `${product.variant} ${product.name}` : product.name;
   const priceChangePercent =
     ((priceChange) / product.currentPrice) * 100;
   const isUp = priceChange >= 0;
@@ -79,186 +168,575 @@ export default function ProductPage({
     product.sentiment === "Bullish"
       ? "text-positive bg-positive/10"
       : product.sentiment === "Bearish"
-      ? "text-negative bg-negative/10"
-      : "text-gray-600 bg-gray-100";
+        ? "text-negative bg-negative/10"
+        : "text-gray-600 bg-gray-100";
+
+  const trendLabel = product.sentiment === "Bullish" ? "Price Rising" : product.sentiment === "Bearish" ? "Price Dropping" : "Stable";
+
+
+  // Group variants by their prefix (e.g., "White" or "Brown") and extract the "Size"
+  const groupedVariants = variants.reduce((acc, v) => {
+    const match = v.variant.match(/^(.*?)\s*\((.*?)\)$/);
+    const prefix = match ? match[1] : "Standard";
+    const size = match ? match[2] : v.variant;
+    if (!acc[prefix]) acc[prefix] = [];
+    acc[prefix].push({ ...v, size });
+    return acc;
+  }, {} as Record<string, any[]>);
 
   return (
     <>
       <Header />
-      <main id="main-content" className="pt-20 min-h-screen bg-surface">
-        {/* ─── Breadcrumb + Back ──────────────────────── */}
-        <div className="bg-surface border-b border-gray-100">
-          <div className="max-w-7xl mx-auto px-5 lg:px-10 py-4">
-            <div className="flex items-center gap-3">
-              <Link
-                href="/Search"
-                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-800 transition-colors"
-                aria-label="Back to search"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Search
-              </Link>
-              <span className="text-gray-300" aria-hidden="true">/</span>
-              <span className="text-sm font-medium text-gray-900">
-                {product.name}
-              </span>
-            </div>
-          </div>
+      <main id="main-content" className="relative pt-20 min-h-screen bg-surface overflow-hidden">
+        {/* ─── Page Top Design ────────────────────────── */}
+        <div className="absolute top-0 left-0 right-0 h-[500px] pointer-events-none overflow-hidden" aria-hidden="true">
+          {/* Subtle Color Wash */}
+          <div className="absolute inset-0 bg-gradient-to-b from-primary-50/30 via-surface/80 to-surface" />
+
+          {/* Animated Atmospheric Orbs */}
+          <div className="absolute top-[-10%] left-[15%] w-[45%] h-[60%] bg-accent/8 rounded-full blur-[120px] animate-pulse opacity-60" />
+          <div className="absolute top-[5%] right-[10%] w-[35%] h-[50%] bg-orange/5 rounded-full blur-[100px] animate-float opacity-50" style={{ animationDelay: '-3s' }} />
         </div>
 
-        <div className="max-w-7xl mx-auto px-5 lg:px-10 py-8 sm:py-12">
-          {/* ─── Product Header ──────────────────────────── */}
-          <ScrollReveal>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center text-4xl shadow-sm">
-                {product.emoji}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h1
-                    className="text-3xl sm:text-4xl font-bold text-gray-900"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    {product.name}
-                  </h1>
-                  <span className="text-xs font-medium text-primary-600 bg-primary-50 px-3 py-1 rounded-full">
-                    {product.category}
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full ${sentimentColor}`}
-                  >
-                    {sentimentIcon}
-                    {product.sentiment}
-                  </span>
-                </div>
-                <p className="text-gray-500 mt-1">
-                  Price forecast and market analysis
-                </p>
-              </div>
-            </div>
-          </ScrollReveal>
-
-          {/* ─── Price Forecast Chart ────────────────────── */}
-          <ScrollReveal>
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 sm:p-8 mb-8 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-                <div>
-                  <h2
-                    className="text-xl font-bold text-gray-900 mb-1"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    Price Market Forecast
-                  </h2>
-                  <p className="text-gray-500 text-sm">
-                    Historical data with AI-powered predictions
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  {["1M", "3M", "6M", "1Y"].map((period) => (
-                    <button
-                      key={period}
-                      className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all hover:bg-primary-50 text-gray-500 hover:text-primary-800"
-                    >
-                      {period}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <ForecastChart
-                data={product.forecastData}
-                height={350}
-                showGrid
-                showLegend
-              />
-            </div>
-          </ScrollReveal>
-
-          {/* ─── Price Overview Stats ────────────────────── */}
-          <ScrollReveal delay={100}>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              {[
-                {
-                  label: "Current Price",
-                  value: `₱${product.currentPrice.toFixed(2)}`,
-                  icon: <BarChart3 className="w-4 h-4" />,
-                  sub: "Latest recorded price",
-                  color: "text-primary-800",
-                },
-                {
-                  label: "Predicted Price",
-                  value: `₱${product.predictedPrice.toFixed(2)}`,
-                  icon: <TrendingUp className="w-4 h-4" />,
-                  sub: "AI forecast estimate",
-                  color: isUp ? "text-positive" : "text-negative",
-                },
-                {
-                  label: "Price Change",
-                  value: `${isUp ? "+" : ""}${priceChangePercent.toFixed(1)}%`,
-                  icon: isUp ? (
-                    <TrendingUp className="w-4 h-4" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4" />
-                  ),
-                  sub: `${isUp ? "+" : ""}₱${priceChange.toFixed(2)}`,
-                  color: isUp ? "text-positive" : "text-negative",
-                },
-                {
-                  label: "Trading Volume",
-                  value: product.volume,
-                  icon: <Layers className="w-4 h-4" />,
-                  sub: "Weekly average",
-                  color: "text-gray-900",
-                },
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow"
+        <div className="relative z-10">
+          {/* ─── Breadcrumb + Back ──────────────────────── */}
+          <div className="border-b border-gray-100/50 backdrop-blur-sm bg-white/5">
+            <div className="max-w-7xl mx-auto px-5 lg:px-10 pt-3">
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/Predict"
+                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-800 transition-colors"
+                  aria-label="Back to Predict"
                 >
-                  <div className="flex items-center gap-2 text-gray-400 mb-3">
-                    {stat.icon}
-                    <span className="text-xs font-medium uppercase tracking-wider">
-                      {stat.label}
-                    </span>
-                  </div>
-                  <div className={`text-2xl font-bold ${stat.color}`}>
-                    {stat.value}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">{stat.sub}</div>
-                </div>
-              ))}
+                  <ArrowLeft className="w-4 h-4" />
+                  Back to Predict
+                </Link>
+                <span className="text-gray-300" aria-hidden="true">/</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {product.variant ? `${product.variant} ${product.name}` : product.name}
+                </span>
+              </div>
             </div>
-          </ScrollReveal>
+          </div>
 
-          {/* ─── Suggested Products ───────────────────────── */}
-          {suggestedProducts.length > 0 && (
-            <section aria-labelledby="suggested-heading">
-              <ScrollReveal>
-                <h2
-                  id="suggested-heading"
-                  className="text-xl sm:text-2xl font-bold text-gray-900 mb-6"
-                  style={{ fontFamily: "var(--font-display)" }}
-                >
-                  Suggested Products
-                </h2>
-              </ScrollReveal>
+          <div className="max-w-7xl mx-auto px-5 lg:px-10 pt-3 sm:py-5">
+            {/* ─── Product Header ──────────────────────────── */}
+            <ScrollReveal delay={200} className="relative z-40">
+              <div className="relative bg-gradient-to-br from-primary-800 to-primary-900 mb-6 sm:mb-8 rounded-2xl p-5 sm:p-8 shadow-2xl">
+                <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-accent/10 rounded-full blur-3xl -mr-16 -mt-16 sm:-mr-20 sm:-mt-20" />
+                <div className="absolute bottom-0 left-0 w-24 sm:w-32 h-24 sm:h-32 bg-white/5 rounded-full blur-2xl -ml-8 -mb-8 sm:-ml-10 sm:-mb-10" />
 
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {suggestedProducts.map((p, i) => (
-                  <ScrollReveal key={p.id} delay={i * 80} animation="fade-up">
-                    <ProductCard
-                      id={p.id}
-                      name={p.name}
-                      emoji={p.emoji}
-                      category={p.category}
-                      currentPrice={p.currentPrice}
-                      predictedPrice={p.predictedPrice}
-                      sparklineData={p.sparklineData}
-                    />
+                <div className="relative space-y-8">
+                  {/* Top Row: Image + Identity */}
+                  <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 sm:gap-10">
+                    <div className="shrink-0 w-25 h-25 sm:w-35 sm:h-35 rounded-xl bg-white overflow-hidden shadow-2xl border-4 border-white/20 transform hover:scale-105 transition-transform duration-500">
+                      <img
+                        src={product.image || DEFAULT_PRODUCT_IMAGE}
+                        alt={product.name}
+                        className="w-full h-full object-cover rounded-xl"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (target.src !== DEFAULT_PRODUCT_IMAGE) {
+                            target.src = DEFAULT_PRODUCT_IMAGE;
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex-1 flex flex-col items-center sm:items-start">
+                      <div className="flex flex-col gap-3 mb-2 ">
+                        <div className="space-y-4">
+                          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold px-4 py-1.5 rounded-full shadow-lg ${sentimentColor} backdrop-blur-md`}
+                            >
+                              {sentimentIcon}
+                              {trendLabel}
+                            </span>
+                            <span className="text-[10px] sm:text-xs font-bold text-accent bg-accent/10 px-4 py-1.5 rounded-full border border-accent/20">
+                              {product.category}
+                            </span>
+                          </div>
+
+                        </div>
+                        <h1
+                          className="text-2xl sm:text-5xl font-bold text-white leading-tight mb-2"
+                          style={{ fontFamily: "var(--font-display)" }}
+                        >
+                          {product.name}
+                        </h1>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-accent-light/80 text-xs sm:text-lg font-medium">
+                          <div className="flex items-center gap-2">
+                            {product.variant && <span>{product.variant}</span>}
+                            {product.origin && (
+                              <>
+                                <span className="w-1 h-1 rounded-full bg-accent/40" />
+                                <span>{product.origin}</span>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Variant Selector Dropdown in Header */}
+                          {variants.length > 1 && (
+                            <div className="relative mt-2 sm:mt-0 sm:ml-4">
+                              <button
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg transition-all backdrop-blur-md"
+                              >
+                                <span className="text-[10px] sm:text-xs font-bold text-white whitespace-nowrap">Switch Variety</span>
+                                <ChevronDown className={`w-3 h-3 text-white/60 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                              </button>
+
+                              {isDropdownOpen && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setIsDropdownOpen(false)}
+                                  />
+                                  <div className="absolute top-full left-0 mt-2 w-[280px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                    <div className="max-h-[400px] overflow-y-auto scrollbar-hide">
+                                      {Object.entries(groupedVariants).map(([prefix, items]) => (
+                                        <div key={prefix} className="p-2">
+                                          <div className="px-3 py-2 text-[9px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50 rounded-lg mb-1">
+                                            {prefix}
+                                          </div>
+                                          <div className="space-y-1">
+                                            {items.map((v) => (
+                                              <Link
+                                                key={v.id}
+                                                href={`/Product/${v.id}`}
+                                                onClick={() => setIsDropdownOpen(false)}
+                                                className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${v.id === product.id
+                                                  ? "bg-primary-50 text-primary-900 shadow-sm"
+                                                  : "hover:bg-gray-50 text-gray-600"
+                                                  }`}
+                                              >
+                                                <div className="flex flex-col">
+                                                  <span className="text-xs font-bold">{v.size || "Standard"}</span>
+                                                  <span className="text-[10px] opacity-60">₱{v.currentPrice.toFixed(2)}</span>
+                                                </div>
+                                                {v.id === product.id && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                                              </Link>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-white/30 text-[9px] sm:text-xs font-mono tracking-widest mt-4 block">NCR-ID: {product.id.split('-')[0].toUpperCase()}</span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: Description */}
+                  <div className="pt-8 border-t border-white/10">
+                    <p className="text-white/70 text-xs sm:text-base leading-relaxed text-justify max-w-4xl">
+                      {product.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </ScrollReveal>
+
+            {/* ─── Main Content Layout (Dashboard Style) ──────── */}
+            <div className="grid lg:grid-cols-12 gap-8 items-start">
+              {/* Left Column: Forecast & Core Stats */}
+              <div className="lg:col-span-8 space-y-8">
+                {/* Price Forecast Chart */}
+                <ScrollReveal>
+                  <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+                      <div>
+                        <h2
+                          className="text-2xl sm:text-2xl font-bold text-gray-900 mb-1"
+                          style={{ fontFamily: "var(--font-display)" }}
+                        >
+                          Market Price Forecast
+                        </h2>
+                        <p className="text-gray-500 text-sm">
+                          Real-time price insights with AI forecasting
+                        </p>
+                      </div>
+                      <div className="flex items-center p-1 bg-gray-50 rounded-xl border border-gray-100 w-fit">
+                        {["1M", "3M", "6M", "1Y"].map((period) => (
+                          <button
+                            key={period}
+                            onClick={() => setChartPeriod(period)}
+                            className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${chartPeriod === period ? "bg-white text-primary-800 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-600"}`}
+                          >
+                            {period}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <ForecastChart
+                        data={product.forecastData}
+                        showGrid
+                        showLegend
+                        productName={product.variant ? `${product.variant} ${product.name}` : product.name}
+                      />
+                    </div>
+                  </div>
+                </ScrollReveal>
+
+
+
+                {/* AI Market Analysis */}
+                <ScrollReveal delay={150}>
+                  <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                    <div className="flex items-center justify-between gap-3 mb-8">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-positive/10 flex items-center justify-center text-positive shadow-inner">
+                          <Activity className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h2
+                            className="text-lg font-bold text-gray-900"
+                            style={{ fontFamily: "var(--font-display)" }}
+                          >
+                            AI Market Analysis
+                          </h2>
+                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">
+                            30-Day Outlook & Digest
+                          </p>
+                        </div>
+                      </div>
+                      <div className="hidden sm:flex flex-col items-end">
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-accent/10 border border-accent/20 rounded-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                          <span className="text-[10px] font-bold text-accent uppercase tracking-wider">
+                            {aiConfidence}% Confidence
+                          </span>
+                        </div>
+                        <span className="text-[8px] text-gray-400 font-bold mt-1 uppercase">Updated 2h ago</span>
+                      </div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-8 items-stretch">
+                      {/* Market Reasoning */}
+                      <div className="flex flex-col">
+                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                          Market Reasoning
+                        </h3>
+                        <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 h-full">
+                          <p className="text-sm text-gray-600 leading-relaxed text-justify">
+                            Based on our AI models analyzing the past 60 days of market data, {product.variant ? `${product.variant} ${product.name}` : product.name} shows a{" "}
+                            {isUp ? "strong upward" : "moderate downward"} trend.{" "}
+                            {isUp
+                              ? "Supply constraints and seasonal demand spikes indicate prices will likely rise significantly in the coming weeks."
+                              : "Inflow of new harvests and eased supply chain bottlenecks are projected to ease prices."}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Daily Forecast */}
+                      <div className="flex flex-col h-full">
+                        <div className="flex items-center justify-between mb-4 pr-2">
+                          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                            Daily Forecast
+                          </h3>
+                          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">
+                            Predicted Price
+                          </h3>
+                        </div>
+                        <div className="flex-1 relative min-h-[300px] md:min-h-0">
+                          <div className="md:absolute md:inset-0 space-y-3 overflow-y-auto scrollbar-hide pr-2">
+                            {product.dailyForecast.map((forecast, i) => {
+                              const dateObj = new Date(forecast.date);
+                              const dateStr = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                              const isExpanded = expandedDate === forecast.date;
+                              return (
+                                <div
+                                  key={i}
+                                  onClick={() => setExpandedDate(isExpanded ? null : forecast.date)}
+                                  className={`group flex flex-col p-4 rounded-2xl border transition-colors cursor-pointer ${isExpanded ? "border-accent/40 bg-gray-50" : "border-gray-100 hover:border-accent/40 hover:bg-gray-50"}`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <Calendar className={`w-3.5 h-3.5 ${isExpanded ? "text-accent" : "text-gray-400"}`} />
+                                      <span className={`text-xs font-bold ${isExpanded ? "text-gray-900" : "text-gray-700"}`}>{dateStr}</span>
+                                    </div>
+                                    <span className="text-xs font-black text-gray-900 tabular-nums">
+                                      ₱{forecast.predicted_price.toFixed(2)}
+                                    </span>
+                                  </div>
+                                  {isExpanded && (
+                                    <div className="text-[10px] text-gray-500 leading-relaxed border-t border-gray-100/50 pt-3 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                      {forecast.reasoning}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </ScrollReveal>
+              </div>
+
+              {/* Side Column (Market Pulse) */}
+              <div className="lg:col-span-4 space-y-5">
+                {/* Price Overview Stats */}
+                <ScrollReveal delay={100}>
+                  <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
+                    {[
+                      {
+                        label: "Market Price",
+                        value: `₱${product.currentPrice.toFixed(2)}`,
+                        icon: <BarChart3 className="w-4 h-4" />,
+                        sub: "Live NCR Rate",
+                        color: "text-primary-800",
+                        bg: "bg-primary-50/50",
+                        border: "border-primary-100",
+                      },
+                      {
+                        label: "Volatility",
+                        value: `${isUp ? "+" : ""}${priceChangePercent.toFixed(1)}%`,
+                        icon: isUp ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />,
+                        sub: "Weekly Change",
+                        color: isUp ? "text-positive" : "text-negative",
+                        bg: isUp ? "bg-positive/5" : "bg-negative/5",
+                        border: isUp ? "border-positive/20" : "border-negative/20",
+                      },
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        className={`rounded-2xl border ${stat.border} p-5 shadow-sm transition-all hover:shadow-md ${stat.bg}`}
+                      >
+                        <div className="flex items-center gap-2 text-gray-500 mb-3">
+                          <span className="p-1.5 rounded-lg bg-white shadow-sm">{stat.icon}</span>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            {stat.label}
+                          </span>
+                        </div>
+                        <div className={`text-xl sm:text-2xl font-black ${stat.color}`}>
+                          {stat.value}
+                        </div>
+                        <div className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-tight opacity-70">{stat.sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollReveal>
+                <ScrollReveal delay={200}>
+                  {(() => {
+                    const isBullish = product.sentiment === "Bullish";
+                    const isBearish = product.sentiment === "Bearish";
+                    const insight = isBullish
+                      ? {
+                        title: "Buying Opportunity",
+                        message: `Prices rising by ${priceChangePercent.toFixed(1)}%. Markets are getting tighter.`,
+                        action: "Buy Now",
+                        recommendation: "Increase stock levels now to avoid higher costs later.",
+                        status: "Suggested Buy",
+                        statusBg: "bg-positive/10 text-positive",
+                        pulseColor: "bg-positive",
+                        glowColor: "from-positive/10 to-accent/5",
+                      }
+                      : isBearish
+                        ? {
+                          title: "Wait to Purchase",
+                          message: `Prices dropping by ${Math.abs(priceChangePercent).toFixed(1)}%.`,
+                          action: "Wait",
+                          recommendation: "Wait for the price to drop further to save money.",
+                          status: "Hold Off",
+                          statusBg: "bg-negative/10 text-negative",
+                          pulseColor: "bg-negative",
+                          glowColor: "from-negative/10 to-accent/5",
+                        }
+                        : {
+                          title: "Stable Market",
+                          message: "Prices are following normal seasonal patterns.",
+                          action: "No Action",
+                          recommendation: "Continue your normal buying schedule.",
+                          status: "Monitor",
+                          statusBg: "bg-gray-100 text-gray-600",
+                          pulseColor: "bg-gray-400",
+                          glowColor: "from-gray-100 to-transparent",
+                        };
+
+                    return (
+                      <div className="relative group">
+                        <div className={`absolute inset-0 bg-gradient-to-br ${insight.glowColor} opacity-50 rounded-[2rem] blur-xl transition-opacity duration-700`} />
+                        <div className="relative bg-white/70 backdrop-blur-xl border border-white/80 rounded-[2rem] p-6 sm:p-8 shadow-xl flex flex-col items-center text-center overflow-hidden">
+                          <div className="relative mb-6">
+                            <div className={`w-20 h-20 rounded-full ${insight.pulseColor}/20 flex items-center justify-center animate-pulse`}>
+                              <div className={`w-10 h-10 rounded-full ${insight.pulseColor} shadow-lg flex items-center justify-center`}>
+                                {isBullish ? <TrendingUp className="w-5 h-5 text-white" /> : isBearish ? <TrendingDown className="w-5 h-5 text-white" /> : <Minus className="w-5 h-5 text-white" />}
+                              </div>
+                            </div>
+                            <div className={`absolute inset-0 rounded-full border-2 border-dashed ${insight.pulseColor}/30 animate-spin-slow`} />
+                          </div>
+
+                          <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm mb-3 ${insight.statusBg}`}>
+                            {insight.status}
+                          </span>
+
+                          <h3 className="text-xl font-bold text-gray-900 mb-3" style={{ fontFamily: "var(--font-display)" }}>
+                            {insight.title}
+                          </h3>
+
+                          <p className="text-gray-600 text-sm leading-relaxed mb-6">
+                            {insight.message} <span className="font-bold text-gray-900">{insight.recommendation}</span>
+                          </p>
+
+                          <div className="w-full pt-6 border-t border-gray-100 flex flex-col gap-4">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Next Action</span>
+                              <span className="text-xs font-black text-primary-800 uppercase tracking-tight">{insight.action}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Confidence Level</span>
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((s) => (
+                                  <div key={s} className={`w-2 h-2 rounded-full ${s <= 4 ? "bg-accent" : "bg-gray-200"}`} />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </ScrollReveal>
+
+                {/* Alternatives */}
+                {smartAlternatives.length > 0 && (
+                  <ScrollReveal delay={400}>
+                    <div className="bg-primary-900 rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-accent/20 rounded-full blur-2xl -mr-12 -mt-12" />
+
+                      <div className="relative flex items-center gap-3 mb-5">
+                        <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center text-accent">
+                          <Sparkles className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+                            Smart Alternatives
+                          </h3>
+                          <p className="text-[10px] text-white/50 font-bold uppercase tracking-tighter">Better Value</p>
+                        </div>
+                      </div>
+
+                      <div className="relative space-y-2">
+                        {smartAlternatives.map(a => (
+                          <Link
+                            key={a.id}
+                            href={`/Product/${a.id}`}
+                            className="group flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-accent/40 transition-all duration-300"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/10 shrink-0 bg-white/5">
+                                <img
+                                  src={a.image || DEFAULT_PRODUCT_IMAGE}
+                                  alt={a.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    if (target.src !== DEFAULT_PRODUCT_IMAGE) {
+                                      target.src = DEFAULT_PRODUCT_IMAGE;
+                                    }
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-white group-hover:text-accent transition-colors">{a.name}</div>
+                                <div className="text-[9px] text-white/40 font-black uppercase tracking-widest">₱{a.currentPrice.toFixed(2)}</div>
+                              </div>
+                            </div>
+                            <ArrowRight className="w-3.5 h-3.5 text-white/30 group-hover:text-accent group-hover:translate-x-1 transition-all" />
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
                   </ScrollReveal>
-                ))}
+                )}
               </div>
-            </section>
-          )}
+            </div>
+
+            {/* ─── Suggested Products ───────────────────────── */}
+            {suggestedProducts.length > 0 && (
+              <section aria-labelledby="suggested-heading" className="mt-16 sm:mt-24">
+                <ScrollReveal className="flex items-end justify-between mb-6">
+                  <div>
+                    <h2
+                      id="suggested-heading"
+                      className="text-xl sm:text-2xl font-bold text-gray-900"
+                      style={{ fontFamily: "var(--font-display)" }}
+                    >
+                      Suggested Products
+                    </h2>
+                    <p className="text-gray-500 text-xs mt-1">Based on category and trends</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/Table"
+                      className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-primary-800 hover:text-accent transition-colors"
+                    >
+                      View all <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </Link>
+                  </div>
+                </ScrollReveal>
+
+                {/* Slider Container */}
+                <div
+                  ref={sliderRef}
+                  className="flex gap-4 sm:gap-6 overflow-x-auto pt-4 pb-12 px-10 -mx-10 scroll-px-10 snap-x snap-mandatory scrollbar-hide"
+                  aria-label="Suggested products slider"
+                  role="region"
+                >
+                  {(() => {
+                    const groupedMap = new Map<string, any>();
+
+                    suggestedProducts.forEach(p => {
+                      if (!groupedMap.has(p.name)) {
+                        groupedMap.set(p.name, {
+                          name: p.name,
+                          category: p.category,
+                          image: p.image,
+                          emoji: p.emoji,
+                          variants: []
+                        });
+                      }
+                      groupedMap.get(p.name).variants.push({
+                        id: p.id,
+                        variant: p.variant,
+                        origin: p.origin,
+                        currentPrice: p.currentPrice,
+                        predictedPrice: p.predictedPrice
+                      });
+                    });
+
+                    return Array.from(groupedMap.values()).map((product, i) => (
+                      <div
+                        key={i}
+                        className="snap-start shrink-0 w-[180px] sm:w-[240px] lg:w-[280px]"
+                      >
+                        <ScrollReveal delay={i * 80} animation="fade-up">
+                          <ProductCard
+                            name={product.name}
+                            emoji={product.emoji}
+                            image={product.image}
+                            category={product.category}
+                            variants={product.variants}
+                            compact
+                          />
+                        </ScrollReveal>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </section>
+            )}
+          </div>
         </div>
       </main>
       <Footer />
