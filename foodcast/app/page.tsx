@@ -161,9 +161,67 @@ export default function HomePage() {
     return (
       <>
         <Header />
-        <main className="pt-20 min-h-screen bg-surface flex flex-col items-center justify-center">
-          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-800 rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-500 font-medium">Loading...</p>
+        <main className="min-h-screen bg-surface">
+          {/* Hero Section Skeleton */}
+          <section className="relative min-h-[85vh] flex items-center bg-primary-900 overflow-hidden">
+            <div className="relative max-w-7xl mx-auto px-5 lg:px-10 sm:px-5 w-full">
+              <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+                <div className="max-w-xl">
+                  <div className="h-6 w-48 bg-white/10 rounded-full mb-8 animate-pulse" />
+                  <div className="space-y-4 mb-6">
+                    <div className="h-16 w-3/4 bg-white/10 rounded-2xl animate-pulse" />
+                    <div className="h-16 w-full bg-white/10 rounded-2xl animate-pulse" />
+                    <div className="h-16 w-1/2 bg-white/10 rounded-2xl animate-pulse" />
+                  </div>
+                  <div className="h-12 w-full bg-white/5 rounded-xl mb-10 animate-pulse" />
+                  <div className="h-14 w-full max-w-lg bg-white/20 rounded-2xl animate-pulse" />
+                </div>
+                <div className="hidden lg:block">
+                  <div className="w-full h-[500px] bg-white/5 rounded-[3rem] animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Daily Movers Skeleton */}
+          <section className="py-5 sm:py-10 bg-surface -mt-10 relative z-20">
+            <div className="max-w-7xl mx-auto px-5 lg:px-10">
+              <div className="flex items-end justify-between mb-4 sm:mb-8">
+                <div className="space-y-2">
+                  <div className="h-8 w-64 bg-gray-200 rounded-xl animate-pulse" />
+                  <div className="h-4 w-48 bg-gray-100 rounded-lg animate-pulse" />
+                </div>
+                <div className="flex gap-2">
+                  <div className="h-10 w-10 bg-gray-100 rounded-xl animate-pulse" />
+                  <div className="h-10 w-10 bg-gray-100 rounded-xl animate-pulse" />
+                </div>
+              </div>
+              <div className="flex gap-4 sm:gap-6 overflow-hidden">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="shrink-0 w-[300px] sm:w-[420px] lg:w-[480px] bg-white rounded-3xl border border-gray-100 p-6 h-[220px] animate-pulse">
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="w-16 h-16 bg-gray-100 rounded-2xl" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-1/3 bg-gray-100 rounded-md" />
+                        <div className="h-6 w-3/4 bg-gray-200 rounded-lg" />
+                      </div>
+                      <div className="h-8 w-20 bg-gray-100 rounded-full" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-6">
+                      <div className="space-y-2">
+                        <div className="h-3 w-16 bg-gray-100 rounded-md" />
+                        <div className="h-6 w-24 bg-gray-200 rounded-lg" />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="h-3 w-16 bg-gray-100 rounded-md" />
+                        <div className="h-6 w-24 bg-gray-200 rounded-lg" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
         </main>
       </>
     );
@@ -269,6 +327,7 @@ export default function HomePage() {
                           const isUp = change >= 0;
                           return (
                             <Link
+                              prefetch={false}
                               key={p.id}
                               href={`/Product/${p.id}`}
                               className="flex items-center gap-3 px-4 py-3 hover:bg-primary-50/60 transition-colors duration-200 border-b border-gray-50 last:border-0"

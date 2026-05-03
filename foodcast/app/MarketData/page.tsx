@@ -1,7 +1,7 @@
 "use client";
-import { useState, useMemo, useEffect, useDeferredValue } from "react";
+import { useState, useMemo, useEffect, useRef, useDeferredValue } from "react";
 import Link from "next/link";
-import { Search, ArrowUpDown, Filter, Eye, ArrowLeft, ChevronLeft, ChevronRight, X, SlidersHorizontal } from "lucide-react";
+import { Search, ArrowUpDown, Filter, Eye, ArrowLeft, ChevronLeft, ChevronRight, X, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -9,10 +9,10 @@ import SparklineChart from "../components/SparklineChart";
 import ScrollReveal from "../components/ScrollReveal";
 import { Product, fetchProducts, categories, CATEGORY_EMOJI } from "../lib/data";
 
-type SortKey = "name" | "currentPrice" | "predictedPrice" | "change" | "volume";
+type SortKey = "name" | "category" | "currentPrice" | "predictedPrice" | "change" | "volume";
 type SortDir = "asc" | "desc";
 
-export default function TablePage() {
+export default function MarketDataPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -23,6 +23,9 @@ export default function TablePage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [priceRange, setPriceRange] = useState("All Prices");
   const [selectedOrigin, setSelectedOrigin] = useState("All");
+  const [showMoreCategories, setShowMoreCategories] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(6);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 12;
   const router = useRouter();
 
@@ -31,6 +34,29 @@ export default function TablePage() {
       setProducts(data);
       setIsLoading(false);
     });
+  }, []);
+
+  // Responsive visible categories
+  useEffect(() => {
+    const updateCount = () => {
+      if (window.innerWidth < 640) setVisibleCount(2);
+      else if (window.innerWidth < 1024) setVisibleCount(4);
+      else setVisibleCount(6);
+    };
+    updateCount();
+    window.addEventListener('resize', updateCount);
+    return () => window.removeEventListener('resize', updateCount);
+  }, []);
+
+  // Close category dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowMoreCategories(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const toggleSort = (key: SortKey) => {
@@ -75,7 +101,7 @@ export default function TablePage() {
         p.category.toLowerCase().includes(deferredQuery.toLowerCase()) ||
         (p.variant && p.variant.toLowerCase().includes(deferredQuery.toLowerCase())) ||
         (p.origin && p.origin.toLowerCase().includes(deferredQuery.toLowerCase()));
-      
+
       const matchPrice = (() => {
         if (priceRange === "All Prices") return true;
         if (priceRange === "Below ₱50") return p.currentPrice < 50;
@@ -94,6 +120,9 @@ export default function TablePage() {
       switch (sortKey) {
         case "name":
           comp = a.name.localeCompare(b.name);
+          break;
+        case "category":
+          comp = a.category.localeCompare(b.category);
           break;
         case "currentPrice":
           comp = a.currentPrice - b.currentPrice;
@@ -128,14 +157,16 @@ export default function TablePage() {
   const SortHeader = ({
     label,
     sortKeyName,
+    center = false,
   }: {
     label: string;
     sortKeyName: SortKey;
+    center?: boolean;
   }) => (
     <button
       onClick={() => toggleSort(sortKeyName)}
-      className="flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-white uppercase tracking-wider 
-      hover:text-primary-400 transition-colors group"
+      className={`flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-white uppercase tracking-wider 
+      hover:text-primary-400 transition-colors group ${center ? "mx-auto" : ""}`}
       aria-label={`Sort by ${label}`}
     >
       {label}
@@ -149,10 +180,51 @@ export default function TablePage() {
     return (
       <>
         <Header />
-        <main className="pt-20 min-h-screen bg-surface flex flex-col items-center justify-center">
-          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-800 rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-500 font-medium">Loading product table...</p>
+        <main className="min-h-screen bg-surface">
+          {/* Header Skeleton */}
+          <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-7 sm:py-10 pt-22 sm:pt-25 overflow-hidden">
+            <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
+              <div className="h-4 w-32 bg-white/10 rounded-md mb-6 animate-pulse" />
+              <div className="h-10 sm:h-12 w-48 sm:w-64 bg-white/10 rounded-xl mb-4 animate-pulse" />
+              <div className="h-4 w-64 sm:w-96 bg-white/5 rounded-lg animate-pulse" />
+            </div>
+          </section>
+
+          <div className="max-w-7xl mx-auto px-5 lg:px-10 py-6 sm:py-8 lg:py-10">
+            {/* Filter Skeleton */}
+            <div className="mb-5 flex flex-col lg:flex-row gap-4">
+              <div className="flex gap-2 flex-1">
+                <div className="h-12 flex-1 bg-white border border-gray-100 rounded-2xl animate-pulse" />
+                <div className="h-12 w-12 bg-white border border-gray-100 rounded-2xl animate-pulse" />
+              </div>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="h-12 w-24 bg-white border border-gray-100 rounded-2xl animate-pulse hidden sm:block" />
+                ))}
+              </div>
+            </div>
+
+            {/* Table Skeleton */}
+            <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-xl overflow-hidden">
+              <div className="h-14 bg-primary-700 animate-pulse border-b border-black/5" />
+              <div className="divide-y divide-gray-50">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                  <div key={i} className="flex items-center justify-between p-4 sm:px-8 py-5">
+                    <div className="flex flex-col gap-2 w-1/4">
+                      <div className="h-4 w-3/4 bg-gray-200 rounded-md animate-pulse" />
+                      <div className="h-3 w-1/2 bg-gray-100 rounded-md animate-pulse" />
+                    </div>
+                    <div className="h-6 w-20 bg-primary-100 rounded-lg animate-pulse hidden sm:block" />
+                    <div className="h-5 w-16 bg-gray-200 rounded-md animate-pulse" />
+                    <div className="h-5 w-16 bg-gray-200 rounded-md animate-pulse" />
+                    <div className="h-6 w-16 bg-gray-100 rounded-full animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </main>
+        <Footer />
       </>
     );
   }
@@ -162,7 +234,7 @@ export default function TablePage() {
       <Header />
       <main id="main-content">
         {/* ─── Header ──────────────────────────────────── */}
-        <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-12 sm:py-14 pt-28 sm:pt-30 overflow-hidden">
+        <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-7 sm:py-10 pt-22 sm:pt-25 overflow-hidden">
           <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
             <div className="absolute top-0 left-1/3 w-[400px] h-[400px] bg-accent/6 rounded-full blur-[100px]" />
           </div>
@@ -181,7 +253,7 @@ export default function TablePage() {
             >
               Market{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light">
-                Table View
+                Data
               </span>
             </h1>
             <p className="text-white/50 max-w-xl text-sm sm:text-base">
@@ -192,8 +264,8 @@ export default function TablePage() {
 
         <div className="max-w-7xl mx-auto px-5 lg:px-10 py-6 sm:py-8 lg:py-10">
           {/* ─── Filters ─────────────────────────────────── */}
-          <ScrollReveal>
-            <div className="mb-8">
+          <ScrollReveal className="relative z-50">
+            <div className="mb-5">
               <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
                 {/* Search & Filter Trigger */}
                 <div className="flex items-center gap-2 flex-1">
@@ -213,8 +285,8 @@ export default function TablePage() {
                   <button
                     onClick={() => setIsFilterOpen(!isFilterOpen)}
                     className={`p-3 rounded-2xl border transition-all flex items-center justify-center ${isFilterOpen
-                        ? "bg-primary-800 border-primary-800 text-white shadow-lg"
-                        : "bg-white border-gray-200 text-gray-500 hover:border-primary-300 hover:text-primary-800"
+                      ? "bg-primary-800 border-primary-800 text-white shadow-lg"
+                      : "bg-white border-gray-200 text-gray-500 hover:border-primary-300 hover:text-primary-800"
                       }`}
                     aria-label="Advanced filters"
                     aria-expanded={isFilterOpen}
@@ -223,10 +295,10 @@ export default function TablePage() {
                   </button>
                 </div>
 
-                {/* Category pills with scroll-snap and gradient */}
-                <div className="relative lg:max-w-2xl">
-                  <div className="flex items-center gap-2 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory scrollbar-hide px-1">
-                    {categories.map((cat) => {
+                {/* Category pills with More button */}
+                <div className="relative flex items-center gap-2" ref={dropdownRef}>
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                    {categories.slice(0, visibleCount).map((cat) => {
                       const isActive = selectedCategory === cat;
                       const count = categoryCounts[cat] || 0;
 
@@ -234,7 +306,7 @@ export default function TablePage() {
                         <button
                           key={cat}
                           onClick={() => setSelectedCategory(cat)}
-                          className={`snap-start flex items-center gap-1.5 px-5 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 border ${isActive
+                          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 border ${isActive
                             ? "bg-primary-900 border-primary-900 text-white shadow-md scale-105"
                             : "bg-white border-gray-100 text-gray-500 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-800"
                             }`}
@@ -248,8 +320,47 @@ export default function TablePage() {
                       );
                     })}
                   </div>
-                  {/* Subtle gradient fade for horizontal overflow */}
-                  <div className="absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-surface to-transparent pointer-events-none hidden sm:block" />
+
+                  {/* More Button */}
+                  {categories.length > visibleCount && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowMoreCategories(!showMoreCategories)}
+                        className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 border ${categories.slice(visibleCount).includes(selectedCategory)
+                          ? "bg-primary-900 border-primary-900 text-white shadow-md scale-105"
+                          : "bg-white border-gray-100 text-gray-500 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-800"
+                          }`}
+                        aria-expanded={showMoreCategories}
+                      >
+                        {categories.slice(visibleCount).includes(selectedCategory) ? selectedCategory : "More"}
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${showMoreCategories ? "rotate-180" : ""}`} />
+                      </button>
+
+                      {/* Dropdown */}
+                      {showMoreCategories && (
+                        <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-gray-100 py-2 z-[100] animate-fade-in origin-top-right">
+                          {categories.slice(visibleCount).map((cat) => {
+                            const isActive = selectedCategory === cat;
+                            const count = categoryCounts[cat] || 0;
+                            return (
+                              <button
+                                key={cat}
+                                onClick={() => {
+                                  setSelectedCategory(cat);
+                                  setShowMoreCategories(false);
+                                }}
+                                className={`w-full flex items-center justify-between px-5 py-2.5 text-xs font-bold transition-colors hover:bg-gray-50
+                                  ${isActive ? "text-primary-800 bg-primary-50/50" : "text-gray-600 hover:text-primary-800"}`}
+                              >
+                                <span>{cat}</span>
+                                <span className="text-[10px] opacity-60">({count})</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -265,7 +376,7 @@ export default function TablePage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Price Range</label>
-                      <select 
+                      <select
                         value={priceRange}
                         onChange={(e) => setPriceRange(e.target.value)}
                         className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-primary-500"
@@ -278,7 +389,7 @@ export default function TablePage() {
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Market / Origin</label>
-                      <select 
+                      <select
                         value={selectedOrigin}
                         onChange={(e) => setSelectedOrigin(e.target.value)}
                         className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-primary-500"
@@ -296,28 +407,26 @@ export default function TablePage() {
           </ScrollReveal>
 
           {/* ─── Data Table ───────────────────────────────── */}
-          <div className="bg-white/40 backdrop-blur-md rounded-[2.5rem] border border-white/50 shadow-xl overflow-hidden">
+          <div className="bg-white/40 backdrop-blur-md rounded-[1.5rem] border border-white/50 shadow-xl overflow-hidden relative z-10">
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full" role="grid" aria-label="Product prices table">
                 <thead>
-                  <tr className="border-b border-black/5 text-white bg-primary-700 ">
-                    <th className="text-left px-6 lg:px-8 py-5">
+                  <tr className="border-b border-black/5 text-white bg-primary-700">
+                    <th className="text-left px-6 lg:px-8 py-4">
                       <SortHeader label="Product" sortKeyName="name" />
                     </th>
-                    <th className="text-left px-6 lg:px-8 py-5 ">
-                      <span className="text-[10px] font-bold uppercase tracking-widest">
-                        Category
-                      </span>
+                    <th className="text-center px-6 lg:px-8 py-4 ">
+                      <SortHeader label="Category" sortKeyName="category" center />
                     </th>
-                    <th className="text-center px-6 py-5">
-                      <SortHeader label="Current Price" sortKeyName="currentPrice" />
+                    <th className="text-center px-6 lg:px-8 py-4">
+                      <SortHeader label="Current Price" sortKeyName="currentPrice" center />
                     </th>
-                    <th className=" text-center px-6 py-5">
-                      <SortHeader label="Predicted" sortKeyName="predictedPrice" />
+                    <th className="text-center px-6 lg:px-8 py-4">
+                      <SortHeader label="Predicted" sortKeyName="predictedPrice" center />
                     </th>
-                    <th className="text-center px-6 py-5">
-                      <SortHeader label="Change" sortKeyName="change" />
+                    <th className="text-center px-6 lg:px-8 py-4">
+                      <SortHeader label="Change" sortKeyName="change" center />
                     </th>
                   </tr>
                 </thead>
@@ -335,13 +444,10 @@ export default function TablePage() {
                         onClick={() => router.push(`/Product/${p.id}`)}
                         className="group transition-all duration-300 hover:bg-primary-50/40 cursor-pointer"
                       >
-                        <td className="px-6 lg:px-8 py-5">
+                        <td className="px-6 lg:px-8 py-3">
                           <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-white shadow-md flex items-center justify-center text-2xl transition-transform duration-300 group-hover:scale-110">
-                              {p.emoji}
-                            </div>
                             <div className="flex flex-col">
-                              <span className="font-bold text-base text-gray-900 group-hover:text-primary-800 transition-colors">
+                              <span className="font-bold text-sm text-gray-900 group-hover:text-primary-800 transition-colors">
                                 {p.variant ? `${p.variant} ${p.name}` : p.name}
                               </span>
                               {p.origin && (
@@ -352,17 +458,17 @@ export default function TablePage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 lg:px-8 py-5 text-left">
+                        <td className="px-6 lg:px-8 py-3 text-center">
                           <span className="inline-block text-[10px] font-bold text-primary-700 bg-primary-100/50 backdrop-blur-sm px-2.5 py-1 rounded-lg">
                             {p.category}
                           </span>
                         </td>
-                        <td className="px-6 lg:px-8 py-5 text-center">
+                        <td className="px-6 lg:px-8 py-3 text-center">
                           <span className="text-sm font-bold text-gray-900 tabular-nums">
                             ₱{p.currentPrice.toFixed(2)}
                           </span>
                         </td>
-                        <td className="px-6 lg:px-8 py-5 text-center">
+                        <td className="px-6 lg:px-8 py-3 text-center">
                           <span
                             className={`text-sm font-black tabular-nums transition-all ${isUp ? "text-positive group-hover:drop-shadow-[0_0_8px_rgba(46,125,50,0.3)]" : "text-negative group-hover:drop-shadow-[0_0_8px_rgba(198,40,40,0.3)]"
                               }`}
@@ -370,7 +476,7 @@ export default function TablePage() {
                             ₱{p.predictedPrice.toFixed(2)}
                           </span>
                         </td>
-                        <td className="px-6 lg:px-8 py-5 text-center">
+                        <td className="px-6 lg:px-8 py-3 text-center">
                           <div
                             className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full transition-all duration-300 ${isUp
                               ? "text-positive bg-positive/10 group-hover:bg-positive/20"
@@ -404,9 +510,6 @@ export default function TablePage() {
                   >
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-white shadow-md flex items-center justify-center text-2xl">
-                          {p.emoji}
-                        </div>
                         <div>
                           <div className="text-base font-bold text-gray-900">
                             {p.variant ? `${p.variant} ${p.name}` : p.name}
@@ -431,7 +534,7 @@ export default function TablePage() {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-white/40 p-3 rounded-xl border border-white/60">
+                      <div>
                         <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
                           Current
                         </div>
@@ -439,7 +542,7 @@ export default function TablePage() {
                           ₱{p.currentPrice.toFixed(2)}
                         </div>
                       </div>
-                      <div className="bg-white/40 p-3 rounded-xl border border-white/60">
+                      <div>
                         <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
                           Predicted
                         </div>
@@ -455,7 +558,6 @@ export default function TablePage() {
 
             {sortedProducts.length === 0 && (
               <div className="text-center py-12 sm:py-16">
-                <div className="text-3xl sm:text-4xl mb-3">📊</div>
                 <h3 className="text-sm sm:text-base font-semibold text-gray-700 mb-1">
                   No results found
                 </h3>
@@ -466,7 +568,7 @@ export default function TablePage() {
             )}
 
             {/* Pagination + Summary row */}
-            <div className="px-4 sm:px-6 py-4 bg-gray-50/80 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="px-4 sm:px-6 py-4 bg-surface-warm/50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] sm:text-xs font-medium text-gray-500">
                   Showing <span className="text-primary-800 font-bold">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-primary-800 font-bold">{Math.min(currentPage * itemsPerPage, sortedProducts.length)}</span> of <span className="text-primary-800 font-bold">{sortedProducts.length}</span> products
@@ -497,8 +599,8 @@ export default function TablePage() {
                             key={page}
                             onClick={() => setCurrentPage(page)}
                             className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${currentPage === page
-                                ? "bg-primary-800 text-white shadow-md scale-110"
-                                : "bg-white border border-gray-100 text-gray-500 hover:border-primary-200"
+                              ? "bg-primary-800 text-white shadow-md scale-110"
+                              : "bg-white border border-gray-100 text-gray-500 hover:border-primary-200"
                               }`}
                           >
                             {page}

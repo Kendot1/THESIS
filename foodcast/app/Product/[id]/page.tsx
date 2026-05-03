@@ -21,10 +21,13 @@ import {
 } from "lucide-react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-import ForecastChart from "../../components/ForecastChart";
+import dynamic from "next/dynamic";
+const ForecastChart = dynamic(() => import("../../components/ForecastChart"), {
+  ssr: false,
+});
 import ProductCard from "../../components/ProductCard";
 import ScrollReveal from "../../components/ScrollReveal";
-import { Product, fetchProducts, DEFAULT_PRODUCT_IMAGE } from "../../lib/data";
+import { Product, fetchProducts, fetchNews, DEFAULT_PRODUCT_IMAGE } from "../../lib/data";
 
 export default function ProductPage({
   params,
@@ -35,6 +38,8 @@ export default function ProductPage({
   const [products, setProducts] = useState<Product[]>([]);
   const [product, setProduct] = useState<Product | null>(null);
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [aiReasoning, setAiReasoning] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     fetchProducts().then(data => {
@@ -43,6 +48,50 @@ export default function ProductPage({
       setProduct(found || null);
     });
   }, [id]);
+
+  // Fetch AI Reasoning from Gemini when product loads
+  useEffect(() => {
+    if (!product) return;
+    
+    let isMounted = true;
+    const generateAnalysis = async () => {
+      setIsAnalyzing(true);
+      try {
+        const news = await fetchNews(3); // Get 3 latest news
+        const newsContext = news.map(n => `- ${n.title}: ${n.excerpt}`).join("\n");
+        
+        const response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productName: product.variant ? `${product.variant} ${product.name}` : product.name,
+            currentPrice: product.currentPrice,
+            predictedPrice: product.predictedPrice,
+            newsContext: newsContext || "No recent news available.",
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (isMounted && data.reasoning) {
+            setAiReasoning(data.reasoning);
+          }
+        } else {
+          console.error("Failed to fetch AI analysis");
+        }
+      } catch (error) {
+        console.error("Error generating analysis:", error);
+      } finally {
+        if (isMounted) setIsAnalyzing(false);
+      }
+    };
+
+    generateAnalysis();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [product]);
 
   const variants = useMemo(() => {
     if (!product) return [];
@@ -117,10 +166,99 @@ export default function ProductPage({
     return (
       <>
         <Header />
-        <main className="pt-20 min-h-screen bg-surface flex flex-col items-center justify-center">
-          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-800 rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-500 font-medium">Loading product data...</p>
+        <main className="min-h-screen bg-surface pt-20">
+          <div className="border-b border-gray-100/50 bg-white/5">
+            <div className="max-w-7xl mx-auto px-5 lg:px-10 pt-3 h-10 flex items-center">
+              <div className="h-4 w-48 bg-gray-200 rounded-md animate-pulse" />
+            </div>
+          </div>
+          
+          <div className="max-w-7xl mx-auto px-5 lg:px-10 pt-3 sm:py-5">
+            {/* Header Skeleton */}
+            <div className="bg-primary-900 mb-6 sm:mb-8 rounded-2xl p-5 sm:p-8">
+              <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 sm:gap-10 mb-8">
+                <div className="shrink-0 w-25 h-25 sm:w-35 sm:h-35 rounded-xl bg-white/10 animate-pulse border-4 border-white/20" />
+                <div className="flex-1 w-full space-y-4">
+                  <div className="flex gap-2">
+                    <div className="h-6 w-24 bg-white/10 rounded-full animate-pulse" />
+                    <div className="h-6 w-20 bg-white/10 rounded-full animate-pulse" />
+                  </div>
+                  <div className="h-10 sm:h-12 w-3/4 sm:w-1/2 bg-white/20 rounded-xl animate-pulse" />
+                  <div className="h-4 w-32 bg-white/10 rounded-md animate-pulse" />
+                </div>
+              </div>
+              <div className="pt-8 border-t border-white/10 space-y-2">
+                <div className="h-4 w-full bg-white/10 rounded-md animate-pulse" />
+                <div className="h-4 w-5/6 bg-white/10 rounded-md animate-pulse" />
+                <div className="h-4 w-4/6 bg-white/10 rounded-md animate-pulse" />
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-12 gap-8 items-start">
+              {/* Left Column */}
+              <div className="lg:col-span-8 space-y-8">
+                {/* Chart Skeleton */}
+                <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm h-[400px] flex flex-col">
+                  <div className="flex justify-between items-center mb-8">
+                    <div className="space-y-2">
+                      <div className="h-6 w-48 bg-gray-200 rounded-lg animate-pulse" />
+                      <div className="h-4 w-64 bg-gray-100 rounded-md animate-pulse" />
+                    </div>
+                    <div className="h-8 w-40 bg-gray-100 rounded-xl animate-pulse" />
+                  </div>
+                  <div className="flex-1 bg-gray-50 rounded-2xl animate-pulse" />
+                </div>
+                
+                {/* AI Reasoning Skeleton */}
+                <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 animate-pulse" />
+                    <div className="h-6 w-48 bg-gray-200 rounded-lg animate-pulse" />
+                  </div>
+                  <div className="space-y-3">
+                    <div className="h-4 w-full bg-gray-100 rounded-md animate-pulse" />
+                    <div className="h-4 w-full bg-gray-100 rounded-md animate-pulse" />
+                    <div className="h-4 w-5/6 bg-gray-100 rounded-md animate-pulse" />
+                    <div className="h-4 w-4/6 bg-gray-100 rounded-md animate-pulse" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div className="lg:col-span-4 space-y-6">
+                {/* Metrics Skeleton */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white rounded-3xl border border-gray-100 p-5 h-32 flex flex-col justify-center gap-3 animate-pulse">
+                    <div className="h-4 w-20 bg-gray-100 rounded-md" />
+                    <div className="h-8 w-24 bg-gray-200 rounded-lg" />
+                  </div>
+                  <div className="bg-white rounded-3xl border border-gray-100 p-5 h-32 flex flex-col justify-center gap-3 animate-pulse">
+                    <div className="h-4 w-20 bg-gray-100 rounded-md" />
+                    <div className="h-8 w-24 bg-gray-200 rounded-lg" />
+                  </div>
+                </div>
+                
+                {/* News Skeleton */}
+                <div className="bg-white rounded-3xl border border-gray-100 p-6">
+                  <div className="h-5 w-40 bg-gray-200 rounded-lg mb-6 animate-pulse" />
+                  <div className="space-y-4">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="flex gap-3">
+                        <div className="w-16 h-16 rounded-xl bg-gray-100 animate-pulse shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3 w-full bg-gray-200 rounded-md animate-pulse" />
+                          <div className="h-3 w-2/3 bg-gray-200 rounded-md animate-pulse" />
+                          <div className="h-2 w-20 bg-gray-100 rounded-md animate-pulse" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </main>
+        <Footer />
       </>
     );
   }
@@ -425,14 +563,25 @@ export default function ProductPage({
                         <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
                           Market Reasoning
                         </h3>
-                        <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 h-full">
-                          <p className="text-sm text-gray-600 leading-relaxed text-justify">
-                            Based on our AI models analyzing the past 60 days of market data, {product.variant ? `${product.variant} ${product.name}` : product.name} shows a{" "}
-                            {isUp ? "strong upward" : "moderate downward"} trend.{" "}
-                            {isUp
-                              ? "Supply constraints and seasonal demand spikes indicate prices will likely rise significantly in the coming weeks."
-                              : "Inflow of new harvests and eased supply chain bottlenecks are projected to ease prices."}
-                          </p>
+                        <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 h-full relative">
+                          {isAnalyzing ? (
+                            <div className="flex flex-col items-center justify-center h-full gap-3 opacity-50">
+                              <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                              <span className="text-xs font-medium text-gray-500">Baw is analyzing market news...</span>
+                            </div>
+                          ) : aiReasoning ? (
+                            <p className="text-sm text-gray-600 leading-relaxed text-justify animate-in fade-in duration-500">
+                              {aiReasoning}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-600 leading-relaxed text-justify">
+                              Based on our AI models analyzing the past 60 days of market data, {product.variant ? `${product.variant} ${product.name}` : product.name} shows a{" "}
+                              {isUp ? "strong upward" : "moderate downward"} trend.{" "}
+                              {isUp
+                                ? "Supply constraints and seasonal demand spikes indicate prices will likely rise significantly in the coming weeks."
+                                : "Inflow of new harvests and eased supply chain bottlenecks are projected to ease prices."}
+                            </p>
+                          )}
                         </div>
                       </div>
 

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ScrollReveal from "../components/ScrollReveal";
@@ -126,6 +126,70 @@ function SectionHeading({ title }: { title: string }) {
 }
 
 export default function ResourcesPage() {
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setIsLoading(false), 200);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col min-h-screen bg-surface">
+                <Header />
+                <main className="flex-grow">
+                    {/* Hero Skeleton */}
+                    <section className="relative py-12 sm:py-20 pt-28 sm:pt-36 overflow-hidden bg-primary-900">
+                        <div className="relative z-10 max-w-7xl mx-auto px-5 lg:px-10">
+                            <div className="h-12 sm:h-16 w-3/4 max-w-lg bg-white/10 rounded-2xl mb-4 animate-pulse" />
+                            <div className="h-4 sm:h-5 w-full max-w-2xl bg-white/5 rounded-lg mb-2 animate-pulse" />
+                            <div className="h-4 sm:h-5 w-5/6 max-w-xl bg-white/5 rounded-lg animate-pulse" />
+                        </div>
+                    </section>
+
+                    {/* Resources Skeleton */}
+                    <section className="py-12 sm:py-20">
+                        <div className="max-w-7xl mx-auto px-5 lg:px-10 space-y-16 sm:space-y-24">
+                            {[1, 2].map((groupIdx) => (
+                                <div key={groupIdx}>
+                                    {/* Section Heading Skeleton */}
+                                    <div className="flex items-center gap-4 mb-8 sm:mb-12">
+                                        <div className="h-[2px] w-12 sm:w-16 bg-primary-800/20 animate-pulse" />
+                                        <div className="h-8 sm:h-10 w-48 bg-gray-200 rounded-xl animate-pulse" />
+                                    </div>
+                                    
+                                    {/* Cards Grid Skeleton */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+                                        {[1, 2, 3, 4, 5, 6].map((idx) => (
+                                            <div key={idx} className="bg-white rounded-[1.5rem] sm:rounded-[2rem] p-6 sm:p-8 border border-gray-50 flex flex-col h-[280px] animate-pulse">
+                                                <div className="flex items-center gap-4 mb-4">
+                                                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-100 rounded-2xl shrink-0" />
+                                                    <div className="h-6 sm:h-7 w-3/4 bg-gray-200 rounded-lg" />
+                                                </div>
+                                                
+                                                <div className="space-y-2 mt-4 flex-grow">
+                                                    <div className="h-3 w-full bg-gray-100 rounded-md" />
+                                                    <div className="h-3 w-5/6 bg-gray-100 rounded-md" />
+                                                    <div className="h-3 w-4/6 bg-gray-100 rounded-md" />
+                                                </div>
+                                                
+                                                <div className="mt-6 flex items-center gap-2">
+                                                    <div className="h-4 w-20 bg-gray-200 rounded-md" />
+                                                    <div className="w-4 h-4 bg-gray-100 rounded-full" />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col min-h-screen bg-surface">
             <Header />

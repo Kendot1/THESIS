@@ -18,10 +18,22 @@ from urllib.parse import urlparse, quote_plus
 import httpx
 from supabase import create_client, Client
 
-from config.settings import get_settings
-from utils.logger import get_logger
+import os
+import sys
 
-log = get_logger(__name__)
+# Force UTF-8 encoding for Windows console (prevents UnicodeEncodeError when printing emojis)
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────
 # ABS-CBN sections + Google News site-restricted search
@@ -113,11 +125,10 @@ class NewsScraper:
     """
 
     def __init__(self):
-        cfg = get_settings()
-        self._client: Client = create_client(cfg.supabase_url, cfg.supabase_key)
-        self._table = cfg.news_articles_table
-        self._groq_key = cfg.groq_api_key
-        self._openai_key = cfg.openai_api_key
+        self._client: Client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        self._table = "news_articles"
+        self._groq_key = os.environ.get("GROQ_API_KEY", "")
+        self._openai_key = os.environ.get("OPENAI_API_KEY", "")
 
     # ------------------------------------------------------------------
     # Public API
@@ -645,3 +656,10 @@ class NewsScraper:
             return image_url
         except Exception:
             return image_url.replace("maxresdefault.jpg", "hqdefault.jpg")
+
+
+
+if __name__ == '__main__':
+    import asyncio
+    scraper = NewsScraper()
+    asyncio.run(scraper.run_daily_scrape())

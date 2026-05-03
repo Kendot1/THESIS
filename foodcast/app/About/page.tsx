@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Brain,
   Database,
@@ -75,6 +75,63 @@ const stats = [
 export default function AboutPage() {
   const [selectedStep, setSelectedStep] = useState<(typeof methodologySteps)[0] | null>(null);
   const [selectedPillar, setSelectedPillar] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-surface">
+        <Header />
+        <main className="flex-grow">
+          {/* Hero Skeleton */}
+          <section className="relative py-12 sm:py-20 pt-28 sm:pt-36 bg-primary-900 overflow-hidden">
+            <div className="relative z-10 max-w-7xl mx-auto px-5 lg:px-10">
+              <div className="h-6 w-32 bg-white/10 rounded-full mb-6 animate-pulse" />
+              <div className="h-12 sm:h-16 w-3/4 max-w-2xl bg-white/10 rounded-2xl mb-6 animate-pulse" />
+              <div className="h-20 w-full max-w-3xl bg-white/5 rounded-2xl mb-12 animate-pulse" />
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 border-t border-white/10 pt-8 mt-12">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="flex items-center gap-3 animate-pulse">
+                    <div className="w-10 h-10 rounded-xl bg-white/10" />
+                    <div className="space-y-2">
+                      <div className="h-5 w-16 bg-white/10 rounded-lg" />
+                      <div className="h-3 w-20 bg-white/5 rounded-md" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Pillars Skeleton */}
+          <section className="py-16 bg-surface">
+            <div className="max-w-7xl mx-auto px-5 lg:px-10">
+              <div className="h-10 w-64 bg-gray-200 rounded-xl mb-12 animate-pulse" />
+              <div className="grid md:grid-cols-3 gap-8">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="bg-white rounded-[2rem] p-8 border border-gray-100 h-64 flex flex-col animate-pulse">
+                    <div className="w-12 h-12 rounded-2xl bg-gray-100 mb-6" />
+                    <div className="h-6 w-3/4 bg-gray-200 rounded-lg mb-2" />
+                    <div className="h-5 w-1/2 bg-gray-100 rounded-lg mb-4" />
+                    <div className="space-y-2 mt-auto">
+                      <div className="h-3 w-full bg-gray-100 rounded-md" />
+                      <div className="h-3 w-5/6 bg-gray-100 rounded-md" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <>

@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactCompiler: true,
+  reactCompiler: process.env.NODE_ENV === "production",
   experimental: {
-    turbopackFileSystemCacheForDev: true,
+    optimizePackageImports: ["lucide-react", "recharts", "@base-ui/react"],
   },
   images: {
     remotePatterns: [
