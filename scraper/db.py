@@ -1,4 +1,6 @@
 import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
 from supabase import create_client
 
 supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
@@ -21,6 +23,35 @@ def insert_prices(rows):
             continue
         seen.add(key)
         try:
-            supabase.table("food_prices").insert(row).execute()
+            # Use upsert to overwrite any copied/placeholder data with actual scraped data
+            supabase.table("food_prices").upsert(row, on_conflict="product_name,product_variant,origin,report_date").execute()
         except Exception as e:
-            print(f"Failed to insert row: {row} - {e}")
+            print(f"Failed to upsert row: {row} - {e}")
+
+def get_last_date():
+    try:
+        response = supabase.table("food_prices").select("report_date").order("report_date", desc=True).limit(1).execute()
+        if response.data and len(response.data) > 0:
+            return response.data[0]["report_date"]
+        return None
+    except Exception as e:
+        print(f"Failed to fetch last date: {e}")
+        return None
+
+def get_processed_pdfs():
+    try:
+        processed = set()
+        page_size = 1000
+        start_idx = 0
+        while True:
+            response = supabase.table("food_prices").select("source_pdf").range(start_idx, start_idx + page_size - 1).execute()
+            if not response.data:
+                break
+            processed.update(row["source_pdf"] for row in response.data if row.get("source_pdf"))
+            if len(response.data) < page_size:
+                break
+            start_idx += page_size
+        return processed
+    except Exception as e:
+        print(f"Failed to fetch processed PDFs: {e}")
+        return set()

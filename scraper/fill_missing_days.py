@@ -8,16 +8,34 @@ from db import supabase
 
 
 def get_all_rows_in_range(start: date, end: date) -> list[dict]:
-    """Fetch every row between start and end in a single DB call."""
-    response = (
-        supabase.table("food_prices")
-        .select("*")
-        .gte("report_date", start.isoformat())
-        .lte("report_date", end.isoformat())
-        .order("report_date")
-        .execute()
-    )
-    return response.data
+    """Fetch every row between start and end using pagination."""
+    all_data = []
+    page_size = 1000
+    start_idx = 0
+    
+    while True:
+        response = (
+            supabase.table("food_prices")
+            .select("*")
+            .gte("report_date", start.isoformat())
+            .lte("report_date", end.isoformat())
+            .order("report_date")
+            .range(start_idx, start_idx + page_size - 1)
+            .execute()
+        )
+        
+        data = response.data
+        if not data:
+            break
+            
+        all_data.extend(data)
+        
+        if len(data) < page_size:
+            break
+            
+        start_idx += page_size
+        
+    return all_data
 
 
 def fill_missing_days(start: date, end: date) -> dict:
@@ -26,7 +44,9 @@ def fill_missing_days(start: date, end: date) -> dict:
     copy the most recent previous day's records into that date.
     All data is fetched in ONE initial query — efficient.
     """
-    all_rows = get_all_rows_in_range(start, end)
+    # Fetch from 7 days prior to ensure we capture the previous recorded date
+    fetch_start = start - timedelta(days=7)
+    all_rows = get_all_rows_in_range(fetch_start, end)
 
     # Group rows by date
     rows_by_date: dict[date, list[dict]] = {}

@@ -70,7 +70,7 @@ RULES:
 """
 
 # Initialize Gemini client
-client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY_DA_PARSER"])
 
 def parse_pdf_text_with_ai(pdf_text, report_date, source_pdf):
     """
