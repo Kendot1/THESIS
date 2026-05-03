@@ -63,6 +63,7 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source }: Ne
             </a>
           ) : (
             <Link
+              prefetch={false}
               href={`/News/${id}`}
               className="inline-flex items-center gap-2 text-xs font-bold text-primary-700 hover:text-primary-900 transition-colors group/link"
             >

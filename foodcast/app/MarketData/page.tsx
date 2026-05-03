@@ -180,10 +180,51 @@ export default function MarketDataPage() {
     return (
       <>
         <Header />
-        <main className="pt-20 min-h-screen bg-surface flex flex-col items-center justify-center">
-          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-800 rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-500 font-medium">Loading product table...</p>
+        <main className="min-h-screen bg-surface">
+          {/* Header Skeleton */}
+          <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-7 sm:py-10 pt-22 sm:pt-25 overflow-hidden">
+            <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
+              <div className="h-4 w-32 bg-white/10 rounded-md mb-6 animate-pulse" />
+              <div className="h-10 sm:h-12 w-48 sm:w-64 bg-white/10 rounded-xl mb-4 animate-pulse" />
+              <div className="h-4 w-64 sm:w-96 bg-white/5 rounded-lg animate-pulse" />
+            </div>
+          </section>
+
+          <div className="max-w-7xl mx-auto px-5 lg:px-10 py-6 sm:py-8 lg:py-10">
+            {/* Filter Skeleton */}
+            <div className="mb-5 flex flex-col lg:flex-row gap-4">
+              <div className="flex gap-2 flex-1">
+                <div className="h-12 flex-1 bg-white border border-gray-100 rounded-2xl animate-pulse" />
+                <div className="h-12 w-12 bg-white border border-gray-100 rounded-2xl animate-pulse" />
+              </div>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="h-12 w-24 bg-white border border-gray-100 rounded-2xl animate-pulse hidden sm:block" />
+                ))}
+              </div>
+            </div>
+
+            {/* Table Skeleton */}
+            <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-xl overflow-hidden">
+              <div className="h-14 bg-primary-700 animate-pulse border-b border-black/5" />
+              <div className="divide-y divide-gray-50">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                  <div key={i} className="flex items-center justify-between p-4 sm:px-8 py-5">
+                    <div className="flex flex-col gap-2 w-1/4">
+                      <div className="h-4 w-3/4 bg-gray-200 rounded-md animate-pulse" />
+                      <div className="h-3 w-1/2 bg-gray-100 rounded-md animate-pulse" />
+                    </div>
+                    <div className="h-6 w-20 bg-primary-100 rounded-lg animate-pulse hidden sm:block" />
+                    <div className="h-5 w-16 bg-gray-200 rounded-md animate-pulse" />
+                    <div className="h-5 w-16 bg-gray-200 rounded-md animate-pulse" />
+                    <div className="h-6 w-16 bg-gray-100 rounded-full animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </main>
+        <Footer />
       </>
     );
   }

@@ -437,12 +437,13 @@ function buildForecastData(
 }
 
 let cachedNewsPromise: Promise<NewsArticle[]> | null = null;
+let cachedNewsData: NewsArticle[] | null = null;
 let lastNewsFetchTime = 0;
 
 export async function fetchNews(limit = 10, forceRefresh = false): Promise<NewsArticle[]> {
   // 1. Memory Cache
-  if (!forceRefresh && cachedNewsPromise && Date.now() - lastNewsFetchTime < CACHE_DURATION_MS) {
-    return cachedNewsPromise;
+  if (!forceRefresh && cachedNewsData && cachedNewsData.length >= limit && Date.now() - lastNewsFetchTime < CACHE_DURATION_MS) {
+    return cachedNewsData;
   }
 
   // 2. LocalStorage Cache
@@ -452,13 +453,15 @@ export async function fetchNews(limit = 10, forceRefresh = false): Promise<NewsA
       const storedTime = localStorage.getItem("foodcast_news_time");
       if (stored && storedTime && Date.now() - parseInt(storedTime) < CACHE_DURATION_MS * 12) {
         const parsed = JSON.parse(stored);
-        if (parsed && parsed.length > 0) {
+        if (parsed && parsed.length >= limit) {
           if (!cachedNewsPromise) {
+            cachedNewsData = parsed;
             cachedNewsPromise = Promise.resolve(parsed);
             lastNewsFetchTime = parseInt(storedTime);
             
             // Silent background revalidation
             _fetchNews(limit).then(freshData => {
+              cachedNewsData = freshData;
               localStorage.setItem("foodcast_news_cache", JSON.stringify(freshData));
               localStorage.setItem("foodcast_news_time", Date.now().toString());
               cachedNewsPromise = Promise.resolve(freshData);
@@ -475,6 +478,7 @@ export async function fetchNews(limit = 10, forceRefresh = false): Promise<NewsA
 
   // 3. Network Fetch Fallback
   cachedNewsPromise = _fetchNews(limit).then(data => {
+    cachedNewsData = data;
     if (typeof window !== "undefined") {
       try {
         localStorage.setItem("foodcast_news_cache", JSON.stringify(data));
@@ -517,3 +521,54 @@ async function _fetchNews(limit = 10): Promise<NewsArticle[]> {
   }
 }
 
+export async function fetchPaginatedNews(
+  start: number, 
+  limit: number, 
+  search?: string, 
+  category?: string,
+  dateFilter?: string
+): Promise<{ data: NewsArticle[], total: number }> {
+  try {
+    let query = supabase.from("news_articles").select("id, title, content, event_type, published_at, image_url, url, source", { count: "exact" });
+
+    if (search) {
+      query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%,source.ilike.%${search}%`);
+    }
+    if (category && category !== "All") {
+      query = query.eq("event_type", category.replace(/ /g, '_'));
+    }
+    if (dateFilter === "Today") {
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      query = query.gte("published_at", yesterday);
+    } else if (dateFilter === "Recent") {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      query = query.gte("published_at", thirtyDaysAgo.toISOString());
+    }
+
+    const { data, count, error } = await query
+      .order("published_at", { ascending: false })
+      .range(start, start + limit - 1);
+
+    if (error) {
+      console.error("Error fetching paginated news:", error);
+      return { data: [], total: 0 };
+    }
+
+    const articles = (data || []).map(article => ({
+      id: article.id,
+      title: article.title,
+      excerpt: article.content ? (article.content.substring(0, 150) + "...") : "",
+      category: (article.event_type || "News").replace(/_/g, ' '),
+      date: new Date(article.published_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+      image: article.image_url || "/news/market.png",
+      url: article.url,
+      source: article.source,
+    }));
+
+    return { data: articles, total: count || 0 };
+  } catch (e) {
+    console.error("Failed to fetch paginated news:", e);
+    return { data: [], total: 0 };
+  }
+}

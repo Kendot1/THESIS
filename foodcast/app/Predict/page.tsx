@@ -6,7 +6,10 @@ import { Search, TrendingUp, Filter, X, ArrowRight, ChevronLeft, ChevronRight, A
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
-import ForecastChart from "../components/ForecastChart";
+import dynamic from "next/dynamic";
+const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
+  ssr: false,
+});
 import ScrollReveal from "../components/ScrollReveal";
 import { Product, fetchProducts, categories, CATEGORY_EMOJI, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
 
@@ -197,10 +200,78 @@ function PredictPageContent() {
     return (
       <>
         <Header />
-        <main className="pt-20 min-h-screen bg-surface flex flex-col items-center justify-center">
-          <div className="w-10 h-10 border-4 border-primary-200 border-t-primary-800 rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-500 font-medium">Loading predictions...</p>
+        <main className="min-h-screen bg-surface">
+          <section className="relative py-12 sm:py-15 pt-28 sm:pt-30 bg-primary-900 overflow-hidden">
+            <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
+              <div className="h-10 sm:h-12 w-48 sm:w-64 bg-white/10 rounded-xl mb-4 animate-pulse" />
+              <div className="h-4 w-64 sm:w-96 bg-white/5 rounded-lg mb-8 animate-pulse" />
+              <div className="h-12 sm:h-14 max-w-lg bg-white/10 rounded-2xl animate-pulse" />
+            </div>
+          </section>
+
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
+              <div className="lg:col-span-8 bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 flex flex-col min-h-[400px]">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-2xl animate-pulse shrink-0" />
+                  <div className="flex-1 space-y-3">
+                    <div className="h-3 w-24 bg-gray-100 rounded-md animate-pulse" />
+                    <div className="h-6 sm:h-8 w-32 sm:w-48 bg-gray-200 rounded-lg animate-pulse" />
+                  </div>
+                  <div className="w-20 sm:w-24 h-8 sm:h-10 bg-gray-100 rounded-xl animate-pulse hidden sm:block" />
+                </div>
+                <div className="space-y-2 mb-8">
+                  <div className="h-3 w-full bg-gray-100 rounded-md animate-pulse" />
+                  <div className="h-3 w-3/4 bg-gray-100 rounded-md animate-pulse" />
+                </div>
+                <div className="flex-1 bg-gray-50 rounded-2xl animate-pulse min-h-[200px]" />
+              </div>
+
+              <div className="lg:col-span-4 flex flex-col gap-6">
+                <div className="bg-white rounded-3xl border border-gray-100 p-6 h-fit">
+                  <div className="h-4 w-32 bg-gray-200 rounded-lg mb-6 animate-pulse" />
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4, 5].map(i => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-gray-100 animate-pulse shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-3 w-24 bg-gray-200 rounded-md animate-pulse" />
+                          <div className="h-2 w-16 bg-gray-100 rounded-md animate-pulse" />
+                        </div>
+                        <div className="h-3 w-10 bg-gray-100 rounded-md animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="h-12 w-full bg-gray-100 rounded-2xl animate-pulse" />
+              </div>
+            </section>
+
+            <section className="mt-12">
+              <div className="h-6 w-32 sm:w-48 bg-gray-200 rounded-xl mb-2 animate-pulse" />
+              <div className="h-3 w-40 sm:w-64 bg-gray-100 rounded-lg mb-6 animate-pulse" />
+              <div className="flex gap-2 mb-8 overflow-hidden">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="h-10 w-20 sm:w-24 bg-gray-100 rounded-2xl animate-pulse shrink-0" />
+                ))}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                  <div key={i} className="bg-white rounded-[1.5rem] sm:rounded-[2rem] border border-gray-100 p-3 sm:p-4 h-[220px] sm:h-[260px] flex flex-col">
+                    <div className="h-24 sm:h-32 w-full bg-gray-100 rounded-xl sm:rounded-2xl mb-4 animate-pulse" />
+                    <div className="h-4 sm:h-5 w-3/4 bg-gray-200 rounded-lg mb-2 animate-pulse" />
+                    <div className="h-3 w-1/2 bg-gray-100 rounded-md mb-auto animate-pulse" />
+                    <div className="flex justify-between items-end mt-4">
+                      <div className="h-4 sm:h-5 w-12 sm:w-16 bg-gray-100 rounded-lg animate-pulse" />
+                      <div className="h-6 sm:h-8 w-16 sm:w-20 bg-gray-100 rounded-xl animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
         </main>
+        <Footer />
       </>
     );
   }
@@ -258,7 +329,7 @@ function PredictPageContent() {
                     const change = p.currentPrice === 0 ? 0 : ((p.predictedPrice - p.currentPrice) / p.currentPrice) * 100;
                     const isUp = change >= 0;
                     return (
-                      <Link key={p.id} href={`/Product/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-primary-50/60 transition-colors duration-200 border-b border-gray-50 last:border-0">
+                      <Link prefetch={false} key={p.id} href={`/Product/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-primary-50/60 transition-colors duration-200 border-b border-gray-50 last:border-0">
                         <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl shrink-0">
                           <img
                             src={p.image || DEFAULT_PRODUCT_IMAGE}
@@ -436,7 +507,7 @@ function PredictPageContent() {
                 </div>
                 <div className="space-y-6">
                   {majorChanges.map((p, i) => (
-                    <Link key={p.id} href={`/Product/${p.id}`} className="flex items-start gap-4 group">
+                    <Link prefetch={false} key={p.id} href={`/Product/${p.id}`} className="flex items-start gap-4 group">
                       <span className="text-lg font-black text-gray-100 group-hover:text-primary-100 transition-colors leading-none">{i + 1}</span>
                       <div className="flex-1">
                         <h4 className="text-sm font-bold text-gray-800 group-hover:text-primary-800 transition-colors leading-tight mb-1 line-clamp-2">
@@ -468,7 +539,7 @@ function PredictPageContent() {
                 </div>
                 <div className="space-y-4">
                   {trendingProductsSide.map((p, i) => (
-                    <Link key={p.id} href={`/Product/${p.id}`} className="flex items-center justify-between group p-2 -mx-2 rounded-xl hover:bg-gray-50 transition-colors">
+                    <Link prefetch={false} key={p.id} href={`/Product/${p.id}`} className="flex items-center justify-between group p-2 -mx-2 rounded-xl hover:bg-gray-50 transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg overflow-hidden border border-gray-100 shrink-0">
                           <img

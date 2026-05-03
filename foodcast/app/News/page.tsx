@@ -5,58 +5,44 @@ import Footer from "../components/Footer";
 import NewsCard from "../components/NewsCard";
 import ScrollReveal from "../components/ScrollReveal";
 import { Search, Filter, Calendar, Newspaper, ArrowLeft, TrendingUp, Clock } from "lucide-react";
-import { fetchNews, NewsArticle } from "../lib/data";
+import { fetchPaginatedNews, NewsArticle } from "../lib/data";
 import Link from "next/link";
 
 export default function NewsPage() {
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [dateFilter, setDateFilter] = useState("All");
-  const [visibleCount, setVisibleCount] = useState(6);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const PAGE_SIZE = 10;
 
+  // Initial load & filter changes
   useEffect(() => {
-    fetchNews(100).then((data) => {
+    setLoading(true);
+    fetchPaginatedNews(0, PAGE_SIZE, searchQuery, selectedCategory, dateFilter).then(({ data, total }) => {
       setNews(data);
+      setTotalRecords(total);
       setLoading(false);
     });
-  }, []);
+  }, [searchQuery, selectedCategory, dateFilter]);
 
-  const categories = useMemo(() => {
-    const cats = new Set(news.map((item) => item.category));
-    return ["All", ...Array.from(cats)];
-  }, [news]);
+  const handleLoadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    const start = news.length;
+    const { data } = await fetchPaginatedNews(start, PAGE_SIZE, searchQuery, selectedCategory, dateFilter);
+    setNews(prev => [...prev, ...data]);
+    setLoadingMore(false);
+  };
 
-  const filteredNews = useMemo(() => {
-    return news.filter((item) => {
-      const matchesSearch =
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.source && item.source.toLowerCase().includes(searchQuery.toLowerCase()));
+  const categories = ["All", "Policy Change", "Market Trend", "Weather Event", "Supply Chain", "Global Trade"];
 
-      const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
-
-      let matchesDate = true;
-      if (dateFilter === "Recent") {
-        const itemDate = new Date(item.date);
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        matchesDate = itemDate >= thirtyDaysAgo;
-      } else if (dateFilter === "Today") {
-        const itemDate = new Date(item.date).toDateString();
-        const today = new Date().toDateString();
-        matchesDate = itemDate === today;
-      }
-
-      return matchesSearch && matchesCategory && matchesDate;
-    });
-  }, [news, searchQuery, selectedCategory, dateFilter]);
-
-  const featuredArticle = news[0];
+  const featuredArticle = news.length > 0 ? news[0] : null;
   const displayNews = searchQuery || selectedCategory !== "All" || dateFilter !== "All"
-    ? filteredNews
-    : filteredNews.slice(1);
+    ? news
+    : news.slice(1);
 
   return (
     <>
@@ -151,7 +137,7 @@ export default function NewsPage() {
                       onChange={(e) => setDateFilter(e.target.value)}
                     >
                       <option value="All">All Time</option>
-                      <option value="Today">Today</option>
+                      <option value="Today">Last 24 Hours</option>
                       <option value="Recent">Last 30 Days</option>
                     </select>
                   </div>
@@ -164,33 +150,44 @@ export default function NewsPage() {
         {/* Article Grid */}
         <section className="py-5 max-w-7xl mx-auto px-5 lg:px-10">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-32">
-              <div className="w-12 h-12 border-4 border-gray-100 border-t-accent rounded-full animate-spin mb-6" />
-              <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Updating Intelligence Feed</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="bg-white rounded-3xl border border-gray-100 p-4 h-[380px] flex flex-col shadow-sm">
+                  <div className="h-48 w-full bg-gray-100 rounded-2xl mb-5 animate-pulse" />
+                  <div className="flex gap-2 mb-4">
+                    <div className="h-5 w-20 bg-gray-200 rounded-lg animate-pulse" />
+                    <div className="h-5 w-24 bg-gray-100 rounded-lg animate-pulse" />
+                  </div>
+                  <div className="h-6 w-full bg-gray-200 rounded-lg mb-3 animate-pulse" />
+                  <div className="h-6 w-3/4 bg-gray-200 rounded-lg mb-auto animate-pulse" />
+                  <div className="h-4 w-32 bg-gray-100 rounded-md animate-pulse mt-4" />
+                </div>
+              ))}
             </div>
           ) : displayNews.length > 0 ? (
             <>
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em]">
-                  {searchQuery || selectedCategory !== "All" || dateFilter !== "All" ? `Results Found (${displayNews.length})` : "Latest Reports"}
+                  {searchQuery || selectedCategory !== "All" || dateFilter !== "All" ? `Results Found (${totalRecords})` : "Latest Reports"}
                 </h3>
                 <div className="h-[1px] flex-1 bg-gray-100 mx-8 hidden md:block" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                {displayNews.slice(0, visibleCount).map((article, i) => (
-                  <ScrollReveal key={article.id} delay={i * 30} animation="fade-up">
+                {displayNews.map((article, i) => (
+                  <ScrollReveal key={article.id} delay={(i % PAGE_SIZE) * 30} animation="fade-up">
                     <NewsCard {...article} />
                   </ScrollReveal>
                 ))}
               </div>
 
-              {visibleCount < displayNews.length && (
+              {news.length < totalRecords && (
                 <div className="mt-16 text-center">
                   <button
-                    onClick={() => setVisibleCount(prev => prev + 6)}
-                    className="group relative px-10 py-5 bg-white border border-gray-200 rounded-[2rem] text-primary-900 font-black uppercase tracking-[0.2em] text-[10px] hover:text-white transition-all duration-500 overflow-hidden shadow-lg hover:shadow-primary-900/20 active:scale-95"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="group relative px-10 py-5 bg-white border border-gray-200 rounded-[2rem] text-primary-900 font-black uppercase tracking-[0.2em] text-[10px] hover:text-white transition-all duration-500 overflow-hidden shadow-lg hover:shadow-primary-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <span className="relative z-10">Load More</span>
+                    <span className="relative z-10">{loadingMore ? "Loading..." : "Load More"}</span>
                     <div className="absolute inset-0 bg-primary-900 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                   </button>
                 </div>

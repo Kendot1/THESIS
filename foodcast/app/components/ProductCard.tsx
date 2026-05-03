@@ -152,6 +152,7 @@ const ProductCard = ({
         {/* Row 6: View Button (Mockup Style) */}
         <div className="relative z-30">
           <Link
+            prefetch={false}
             href={`/Product/${id}`}
             className="flex items-center justify-center w-full py-3.5 bg-primary-900 text-white rounded-full font-bold text-xs 
             transition-all duration-300 shadow-lg shadow-primary-900/10 
@@ -164,6 +165,7 @@ const ProductCard = ({
 
       {/* Subtle Link for the whole card area (excluding buttons) */}
       <Link
+        prefetch={false}
         href={`/Product/${id}`}
         className="absolute inset-0 z-20 rounded-[2rem]"
         aria-label={`View details for ${name}`}

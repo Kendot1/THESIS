@@ -60,6 +60,7 @@ const DailyMoverCard = ({
 
   return (
     <Link
+      prefetch={false}
       href={`/Product/${id}`}
       className="daily-mover-card group relative block bg-white/90 rounded-2xl sm:rounded-3xl border border-gray-100/80
         transition-all duration-500 ease-out
