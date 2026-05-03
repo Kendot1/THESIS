@@ -2,7 +2,7 @@
 import { useState, useMemo, useRef, useEffect, Suspense, useDeferredValue } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, TrendingUp, Filter, X, ArrowRight, ChevronLeft, ChevronRight, ArrowRightLeft, Sparkles, AlertCircle, Bookmark, Share2, Grid, List, MoreHorizontal, Flame, ChevronDown } from "lucide-react";
+import { Search, TrendingUp, Filter, X, ArrowRight, ChevronLeft, ChevronRight, ArrowRightLeft, Sparkles, AlertCircle, Bookmark, Share2, Grid, List, MoreHorizontal, Flame } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
@@ -26,7 +26,6 @@ function PredictPageContent() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showAllRows, setShowAllRows] = useState(false);
   const [showMoreCategories, setShowMoreCategories] = useState(false);
-  const [visibleCategoryCount, setVisibleCategoryCount] = useState(6);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const allMarketsRef = useRef<HTMLElement>(null);
   const [featuredIndex, setFeaturedIndex] = useState(0);
@@ -35,18 +34,6 @@ function PredictPageContent() {
 
   useEffect(() => {
     fetchProducts().then(setProducts);
-  }, []);
-
-  // Responsive visible categories
-  useEffect(() => {
-    const updateCount = () => {
-      if (window.innerWidth < 640) setVisibleCategoryCount(2);
-      else if (window.innerWidth < 1024) setVisibleCategoryCount(4);
-      else setVisibleCategoryCount(6);
-    };
-    updateCount();
-    window.addEventListener('resize', updateCount);
-    return () => window.removeEventListener('resize', updateCount);
   }, []);
 
   // Close category dropdown when clicking outside
@@ -522,7 +509,7 @@ function PredictPageContent() {
               {/* Category Tabs with More Button */}
               <div className="relative mb-8 flex items-center gap-2" ref={dropdownRef}>
                 <div className="flex items-center gap-2 overflow-x-auto pb-4 scroll-smooth scrollbar-hide">
-                  {categories.slice(0, visibleCategoryCount).map((cat) => {
+                  {categories.slice(0, 5).map((cat) => {
                     const isActive = selectedCategory === cat;
                     const count = categoryCounts[cat] || 0;
 
@@ -545,24 +532,24 @@ function PredictPageContent() {
                 </div>
 
                 {/* More Button */}
-                {categories.length > visibleCategoryCount && (
+                {categories.length > 5 && (
                   <div className="relative mb-4">
                     <button
                       onClick={() => setShowMoreCategories(!showMoreCategories)}
-                      className={`flex items-center gap-1.5 px-5 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 border ${categories.slice(visibleCategoryCount).includes(selectedCategory)
+                      className={`flex items-center gap-1.5 px-5 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 border ${categories.slice(5).includes(selectedCategory)
                         ? "bg-primary-900 border-primary-900 text-white shadow-md scale-105"
                         : "bg-white border-gray-100 text-gray-700 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-800"
                         }`}
                       aria-expanded={showMoreCategories}
                     >
-                      {categories.slice(visibleCategoryCount).includes(selectedCategory) ? selectedCategory : "More"}
+                      {categories.slice(5).includes(selectedCategory) ? selectedCategory : "More"}
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${showMoreCategories ? "rotate-180" : ""}`} />
                     </button>
 
                     {/* Dropdown */}
                     {showMoreCategories && (
-                      <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-gray-100 py-2 z-[100] animate-fade-in origin-top-right">
-                        {categories.slice(visibleCategoryCount).map((cat) => {
+                      <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 animate-fade-in">
+                        {categories.slice(5).map((cat) => {
                           const isActive = selectedCategory === cat;
                           const count = categoryCounts[cat] || 0;
                           return (
