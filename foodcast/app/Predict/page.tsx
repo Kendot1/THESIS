@@ -614,12 +614,12 @@ function PredictPageContent() {
                 <div className="mt-10 text-center">
                   <button
                     onClick={() => setShowAllRows(true)}
-                    className="group relative px-6 py-3 bg-white border border-gray-200 rounded-2xl text-gray-900 hover:text-accent transition-all duration-300  overflow-hidden"
+                    className="group relative px-10 py-4 bg-white border border-gray-200 rounded-[2rem] text-primary-900 font-black uppercase tracking-[0.2em] text-[10px] hover:text-white transition-all duration-500 overflow-hidden shadow-lg hover:shadow-primary-900/20 active:scale-95"
                   >
                     <span className="relative z-10 flex items-center gap-2">
-                      Load More <MoreHorizontal className="w-5 h-5" />
+                      Load More
                     </span>
-                    <div className="absolute inset-0 bg-accent/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                    <div className="absolute inset-0 bg-primary-900 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                   </button>
                 </div>
               )}

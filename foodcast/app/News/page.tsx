@@ -14,6 +14,7 @@ export default function NewsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [dateFilter, setDateFilter] = useState("All");
+  const [visibleCount, setVisibleCount] = useState(6);
 
   useEffect(() => {
     fetchNews(100).then((data) => {
@@ -29,13 +30,13 @@ export default function NewsPage() {
 
   const filteredNews = useMemo(() => {
     return news.filter((item) => {
-      const matchesSearch = 
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      const matchesSearch =
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.source && item.source.toLowerCase().includes(searchQuery.toLowerCase()));
-      
+
       const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
-      
+
       let matchesDate = true;
       if (dateFilter === "Recent") {
         const itemDate = new Date(item.date);
@@ -53,8 +54,8 @@ export default function NewsPage() {
   }, [news, searchQuery, selectedCategory, dateFilter]);
 
   const featuredArticle = news[0];
-  const displayNews = searchQuery || selectedCategory !== "All" || dateFilter !== "All" 
-    ? filteredNews 
+  const displayNews = searchQuery || selectedCategory !== "All" || dateFilter !== "All"
+    ? filteredNews
     : filteredNews.slice(1);
 
   return (
@@ -62,7 +63,7 @@ export default function NewsPage() {
       <Header />
       <main className="min-h-screen bg-surface">
         {/* Premium Hero Section */}
-        <section className="relative bg-primary-900 pt-32 pb-24 overflow-hidden">
+        <section className="relative bg-primary-900 pt-30 md:pt-40 pb-10 md:pb-20 overflow-hidden">
           <div className="absolute inset-0 z-0">
             <img src="/Bg-4.jpg" alt="" className="w-full h-full object-cover opacity-40 blur-[2px]" />
             <div className="absolute inset-0 bg-gradient-to-b from-primary-900/80 via-primary-900/90 to-surface" />
@@ -74,10 +75,10 @@ export default function NewsPage() {
                 <TrendingUp className="w-4 h-4 text-accent" />
                 <span className="text-white/80 text-[10px] font-bold uppercase tracking-widest">Market Intelligence</span>
               </div>
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-6 leading-[0.9]" style={{ fontFamily: "var(--font-display)" }}>
+              <h1 className="text-2xl sm:text-3xl lg:text-5xl font-black text-white mb-3 sm:mb-6 leading-[0.9]" style={{ fontFamily: "var(--font-display)" }}>
                 The <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light">Feed</span>
               </h1>
-              <p className="text-white/50 max-w-2xl text-base md:text-lg mb-12 font-light leading-relaxed">
+              <p className="text-white/50 max-w-2xl text-sm sm:text-base mb-12 font-light leading-relaxed">
                 Stay updated with real-time agricultural intelligence, policy changes, and price alerts across the NCR market ecosystem.
               </p>
             </ScrollReveal>
@@ -86,10 +87,10 @@ export default function NewsPage() {
             {!searchQuery && selectedCategory === "All" && dateFilter === "All" && featuredArticle && (
               <ScrollReveal delay={200}>
                 <div className="group relative bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 flex flex-col lg:flex-row transition-all duration-500 hover:shadow-accent/10">
-                  <div className="lg:w-1/2 h-[300px] lg:h-auto overflow-hidden">
+                  <div className="lg:w-1/2 h-[200px] lg:h-auto overflow-hidden">
                     <img src={featuredArticle.image} alt={featuredArticle.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
                   </div>
-                  <div className="lg:w-1/2 p-8 md:p-12 flex flex-col justify-center">
+                  <div className="lg:w-1/2 p-4 md:p-8 flex flex-col justify-center">
                     <div className="flex items-center gap-4 mb-6">
                       <span className="px-3 py-1 bg-primary-900 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider">{featuredArticle.category}</span>
                       <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
@@ -134,7 +135,7 @@ export default function NewsPage() {
                 <div className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded-2xl shadow-sm">
                   <div className="flex items-center gap-2 px-3 py-2 border-r border-gray-100">
                     <Filter className="w-4 h-4 text-primary-700" />
-                    <select 
+                    <select
                       className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none appearance-none cursor-pointer"
                       value={selectedCategory}
                       onChange={(e) => setSelectedCategory(e.target.value)}
@@ -144,7 +145,7 @@ export default function NewsPage() {
                   </div>
                   <div className="flex items-center gap-2 px-3 py-2">
                     <Calendar className="w-4 h-4 text-primary-700" />
-                    <select 
+                    <select
                       className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none appearance-none cursor-pointer"
                       value={dateFilter}
                       onChange={(e) => setDateFilter(e.target.value)}
@@ -161,7 +162,7 @@ export default function NewsPage() {
         </section>
 
         {/* Article Grid */}
-        <section className="py-20 max-w-7xl mx-auto px-5 lg:px-10">
+        <section className="py-5 max-w-7xl mx-auto px-5 lg:px-10">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32">
               <div className="w-12 h-12 border-4 border-gray-100 border-t-accent rounded-full animate-spin mb-6" />
@@ -169,34 +170,46 @@ export default function NewsPage() {
             </div>
           ) : displayNews.length > 0 ? (
             <>
-              <div className="flex items-center justify-between mb-12">
+              <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em]">
                   {searchQuery || selectedCategory !== "All" || dateFilter !== "All" ? `Results Found (${displayNews.length})` : "Latest Reports"}
                 </h3>
                 <div className="h-[1px] flex-1 bg-gray-100 mx-8 hidden md:block" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                {displayNews.map((article, i) => (
+                {displayNews.slice(0, visibleCount).map((article, i) => (
                   <ScrollReveal key={article.id} delay={i * 30} animation="fade-up">
                     <NewsCard {...article} />
                   </ScrollReveal>
                 ))}
               </div>
+
+              {visibleCount < displayNews.length && (
+                <div className="mt-16 text-center">
+                  <button
+                    onClick={() => setVisibleCount(prev => prev + 6)}
+                    className="group relative px-10 py-5 bg-white border border-gray-200 rounded-[2rem] text-primary-900 font-black uppercase tracking-[0.2em] text-[10px] hover:text-white transition-all duration-500 overflow-hidden shadow-lg hover:shadow-primary-900/20 active:scale-95"
+                  >
+                    <span className="relative z-10">Load More</span>
+                    <div className="absolute inset-0 bg-primary-900 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <ScrollReveal animation="scale-in">
               <div className="text-center py-32 bg-white rounded-[3rem] border border-dashed border-gray-200 shadow-inner">
-                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-8">
-                   <Newspaper className="w-8 h-8 text-gray-300" />
-                 </div>
-                 <h3 className="text-2xl font-black text-gray-900 mb-3">No matching reports found</h3>
-                 <p className="text-gray-500 mb-10 max-w-xs mx-auto text-sm">We couldn't find any articles matching your current search parameters.</p>
-                 <button 
-                  onClick={() => {setSearchQuery(""); setSelectedCategory("All"); setDateFilter("All");}}
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-8">
+                  <Newspaper className="w-8 h-8 text-gray-300" />
+                </div>
+                <h3 className="text-2xl font-black text-gray-900 mb-3">No matching reports found</h3>
+                <p className="text-gray-500 mb-10 max-w-xs mx-auto text-sm">We couldn't find any articles matching your current search parameters.</p>
+                <button
+                  onClick={() => { setSearchQuery(""); setSelectedCategory("All"); setDateFilter("All"); }}
                   className="px-8 py-4 bg-primary-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-accent transition-all shadow-lg hover:shadow-accent/20 active:scale-95"
-                 >
-                   Reset Search Filter
-                 </button>
+                >
+                  Reset Search Filter
+                </button>
               </div>
             </ScrollReveal>
           )}

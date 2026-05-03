@@ -38,13 +38,13 @@ const Header = () => {
     { href: "/Predict", label: "Predict" },
     { href: "/MarketData", label: "Market Data" },
     { href: "/News", label: "News" },
-    { 
-      label: "About", 
+    {
+      label: "About",
       href: "/About",
       dropdown: [
         { href: "/About", label: "About Foodcast" },
         { href: "/Resources", label: "Resources" }
-      ] 
+      ]
     },
   ];
 
@@ -85,8 +85,8 @@ const Header = () => {
 
                 if (link.dropdown) {
                   return (
-                    <li 
-                      key={link.label} 
+                    <li
+                      key={link.label}
                       className="relative group/dropdown"
                       onMouseEnter={() => setOpenDropdown(link.label)}
                       onMouseLeave={() => setOpenDropdown(null)}
@@ -108,7 +108,7 @@ const Header = () => {
                       </button>
 
                       {/* Dropdown Menu */}
-                      <div 
+                      <div
                         className={`absolute top-full left-0 pt-3 w-48 transition-all duration-300 z-50
                           ${isDropdownOpen ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-2 pointer-events-none"}
                         `}

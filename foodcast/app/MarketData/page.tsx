@@ -366,25 +366,25 @@ export default function MarketDataPage() {
           </ScrollReveal>
 
           {/* ─── Data Table ───────────────────────────────── */}
-          <div className="bg-white/40 backdrop-blur-md rounded border border-white/50 shadow-xl overflow-visible relative z-10">
+          <div className="bg-white/40 backdrop-blur-md rounded-[1.5rem] border border-white/50 shadow-xl overflow-hidden relative z-10">
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full" role="grid" aria-label="Product prices table">
                 <thead>
-                  <tr className="border-b border-black/5 text-white bg-primary-700 ">
-                    <th className="text-left px-6 lg:px-8 py-3">
+                  <tr className="border-b border-black/5 text-white bg-primary-700">
+                    <th className="text-left px-6 lg:px-8 py-4">
                       <SortHeader label="Product" sortKeyName="name" />
                     </th>
-                    <th className="text-center px-6 lg:px-8 py-3 ">
+                    <th className="text-center px-6 lg:px-8 py-4 ">
                       <SortHeader label="Category" sortKeyName="category" center />
                     </th>
-                    <th className="text-center px-6 lg:px-8 py-3">
+                    <th className="text-center px-6 lg:px-8 py-4">
                       <SortHeader label="Current Price" sortKeyName="currentPrice" center />
                     </th>
-                    <th className="text-center px-6 lg:px-8 py-3">
+                    <th className="text-center px-6 lg:px-8 py-4">
                       <SortHeader label="Predicted" sortKeyName="predictedPrice" center />
                     </th>
-                    <th className="text-center px-6 lg:px-8 py-3">
+                    <th className="text-center px-6 lg:px-8 py-4">
                       <SortHeader label="Change" sortKeyName="change" center />
                     </th>
                   </tr>
@@ -417,17 +417,17 @@ export default function MarketDataPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 lg:px-8 py-5 text-center">
+                        <td className="px-6 lg:px-8 py-3 text-center">
                           <span className="inline-block text-[10px] font-bold text-primary-700 bg-primary-100/50 backdrop-blur-sm px-2.5 py-1 rounded-lg">
                             {p.category}
                           </span>
                         </td>
-                        <td className="px-6 lg:px-8 py-5 text-center">
+                        <td className="px-6 lg:px-8 py-3 text-center">
                           <span className="text-sm font-bold text-gray-900 tabular-nums">
                             ₱{p.currentPrice.toFixed(2)}
                           </span>
                         </td>
-                        <td className="px-6 lg:px-8 py-5 text-center">
+                        <td className="px-6 lg:px-8 py-3 text-center">
                           <span
                             className={`text-sm font-black tabular-nums transition-all ${isUp ? "text-positive group-hover:drop-shadow-[0_0_8px_rgba(46,125,50,0.3)]" : "text-negative group-hover:drop-shadow-[0_0_8px_rgba(198,40,40,0.3)]"
                               }`}
@@ -435,7 +435,7 @@ export default function MarketDataPage() {
                             ₱{p.predictedPrice.toFixed(2)}
                           </span>
                         </td>
-                        <td className="px-6 lg:px-8 py-5 text-center">
+                        <td className="px-6 lg:px-8 py-3 text-center">
                           <div
                             className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full transition-all duration-300 ${isUp
                               ? "text-positive bg-positive/10 group-hover:bg-positive/20"
