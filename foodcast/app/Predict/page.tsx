@@ -279,7 +279,7 @@ function PredictPageContent() {
   return (
     <>
       <Header />
-      <main id="main-content" className=" min-h-screen">
+      <main id="main-content" className="min-h-screen relative z-20">
 
         <section className="relative py-12 sm:py-15 pt-28 sm:pt-30">
           {/* Background Image */}

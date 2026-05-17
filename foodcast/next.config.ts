@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  reactCompiler: process.env.NODE_ENV === "production",
+  reactCompiler: true,
   experimental: {
     optimizePackageImports: ["lucide-react", "recharts", "@base-ui/react"],
   },

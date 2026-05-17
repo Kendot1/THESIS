@@ -333,13 +333,13 @@ class PredictionWriter:
         except Exception as e:
             log.warning(f"  Could not clear old predictions: {e}")
 
-        # Insert in batches of 500
+        # Upsert in batches of 500
         batch_size = 500
         for i in range(0, len(rows), batch_size):
             batch = rows[i : i + batch_size]
             try:
-                self._supabase.table("predictions").insert(batch).execute()
+                self._supabase.table("predictions").upsert(batch, on_conflict="product_id,prediction_date").execute()
             except Exception as e:
-                log.error(f"  Failed to insert batch {i // batch_size}: {e}")
+                log.error(f"  Failed to upsert batch {i // batch_size}: {e}")
 
         log.info("  Successfully wrote predictions to Supabase.")

@@ -9,9 +9,9 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 # Load GEMINI_API_KEY
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 from datetime import datetime, timedelta
 from pdf_detector import get_pdf_links
@@ -25,8 +25,17 @@ def run():
     print("=" * 50)
     
     end_date = datetime.now()
-    # Always scan the last 7 days to catch any late DA PDF uploads
-    start_date = end_date - timedelta(days=7)
+    
+    last_db_date_str = get_last_date()
+    if last_db_date_str:
+        last_db_date = datetime.strptime(last_db_date_str, "%Y-%m-%d")
+        # To fill your missing May 4 - May 9 gap, let's look back 30 days.
+        # It's safe because get_processed_pdfs() skips already scraped days.
+        start_date = min(last_db_date, end_date - timedelta(days=30))
+    else:
+        # Scan the last 30 days if no DB data
+        start_date = end_date - timedelta(days=30)
+        
     # Ensure we at least start from our base date
     base_date = datetime(2026, 1, 21)
     if start_date < base_date:

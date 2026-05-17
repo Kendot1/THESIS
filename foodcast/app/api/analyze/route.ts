@@ -1,10 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
-// Initialize the Gemini API client
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY_REASONING || "");
-
-// Switch to Edge Runtime to eliminate Next.js Dev Server 30s compilation delays
 export const runtime = "edge";
 
 export async function POST(req: Request) {
@@ -12,9 +8,12 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { productName, currentPrice, predictedPrice, newsContext } = body;
 
-    if (!process.env.GEMINI_API_KEY_REASONING) {
+    const groqKey = process.env.GROQ_API_KEY_REASONING || process.env.GROQ_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY_REASONING;
+
+    if (!groqKey && !geminiKey) {
       return NextResponse.json(
-        { error: "GEMINI_API_KEY_REASONING is missing in environment variables." },
+        { error: "Both GROQ_API_KEY_REASONING and GEMINI_API_KEY_REASONING are missing." },
         { status: 500 }
       );
     }
@@ -23,9 +22,10 @@ export async function POST(req: Request) {
     const trend = isUp ? "upward" : "downward";
     const percentChange = Math.abs(((predictedPrice - currentPrice) / currentPrice) * 100).toFixed(1);
 
-    const prompt = `
-      You are an expert agricultural market analyst for the NCR region in the Philippines.
-      Analyze the price trend for ${productName}.
+    const systemPrompt = `You are an expert agricultural market analyst for the NCR region in the Philippines. Write a concise 2-3 sentence market reasoning explaining WHY the price trend for the specified product is happening based on the provided news context and data. Be professional, direct, and focus on supply, demand, or environmental factors mentioned in the news.`;
+
+    const userPrompt = `
+      Product: ${productName}
       
       Data:
       - Current Price: ₱${currentPrice}
@@ -34,25 +34,55 @@ export async function POST(req: Request) {
       
       Recent Market News Context:
       ${newsContext}
-      
-      Task:
-      Write a concise 2-3 sentence market reasoning explaining WHY this price trend is happening. 
-      Use the provided news context to back up the hybrid AI model's prediction. 
-      Be professional, direct, and focus on supply, demand, or environmental factors mentioned in the news.
     `;
 
-    // Use Gemini 2.5 Flash as requested
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // Attempt 1: Groq (Faster)
+    if (groqKey) {
+      try {
+        const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${groqKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 150
+          })
+        });
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+        if (groqResponse.ok) {
+          const data = await groqResponse.json();
+          const reasoning = data.choices[0]?.message?.content || "";
+          return NextResponse.json({ reasoning });
+        }
+        console.warn("Groq failed, falling back to Gemini...");
+      } catch (err) {
+        console.warn("Groq error, falling back to Gemini:", err);
+      }
+    }
 
-    return NextResponse.json({ reasoning: text });
-  } catch (error) {
-    console.error("Gemini API Error:", error);
+    // Attempt 2: Gemini (Fallback)
+    if (geminiKey) {
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const prompt = `${systemPrompt}\n\n${userPrompt}`;
+      
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      return NextResponse.json({ reasoning: response.text() });
+    }
+
+    throw new Error("Both AI providers failed.");
+  } catch (error: any) {
+    console.error("Analysis Error:", error);
     return NextResponse.json(
-      { error: "Failed to generate market analysis." },
+      { error: "Failed to generate market analysis.", details: error.message },
       { status: 500 }
     );
   }
