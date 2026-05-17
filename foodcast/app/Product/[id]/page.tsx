@@ -128,6 +128,7 @@ export default function ProductPage({
 
   const [chartPeriod, setChartPeriod] = useState("6M");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isOriginDropdownOpen, setIsOriginDropdownOpen] = useState(false);
   const aiConfidence = useMemo(() => Math.floor(Math.random() * (98 - 85 + 1) + 85), [id]);
 
   /* ─── Slider Logic (Predict style) ──────────── */
@@ -312,15 +313,19 @@ export default function ProductPage({
   const trendLabel = product.sentiment === "Bullish" ? "Price Rising" : product.sentiment === "Bearish" ? "Price Dropping" : "Stable";
 
 
-  // Group variants by their prefix (e.g., "White" or "Brown") and extract the "Size"
-  const groupedVariants = variants.reduce((acc, v) => {
-    const match = v.variant.match(/^(.*?)\s*\((.*?)\)$/);
-    const prefix = match ? match[1] : "Standard";
-    const size = match ? match[2] : v.variant;
-    if (!acc[prefix]) acc[prefix] = [];
-    acc[prefix].push({ ...v, size });
-    return acc;
-  }, {} as Record<string, any[]>);
+  const uniqueOrigins = Array.from(new Set(variants.map(v => v.origin || "Local")));
+
+  const availableVariantsForOrigin = product 
+    ? variants.filter(v => (v.origin || "Local") === (product.origin || "Local"))
+    : [];
+
+  const getProductForNewOrigin = (newOrigin: string) => {
+    if (!product) return null;
+    const sameVariety = variants.find(v => (v.origin || "Local") === newOrigin && v.variant === product.variant);
+    if (sameVariety) return sameVariety.id;
+    const fallback = variants.find(v => (v.origin || "Local") === newOrigin);
+    return fallback ? fallback.id : null;
+  };
 
   return (
     <>
@@ -404,67 +409,96 @@ export default function ProductPage({
                           {product.name}
                         </h1>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-accent-light/80 text-xs sm:text-lg font-medium">
-                          <div className="flex items-center gap-2">
-                            {product.variant && <span>{product.variant}</span>}
-                            {product.origin && (
+                          {/* Removed redundant static variant/origin text as it's now in the dropdown buttons */}
+                          <div className="flex items-center gap-2" />
+
+                          {/* Origin Selector */}
+                          <div className="relative mt-2 sm:mt-0 sm:ml-2">
+                            <button
+                              onClick={() => uniqueOrigins.length > 1 && setIsOriginDropdownOpen(!isOriginDropdownOpen)}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all backdrop-blur-md border ${
+                                uniqueOrigins.length > 1 
+                                  ? "bg-white/10 hover:bg-white/20 border-white/10 cursor-pointer" 
+                                  : "bg-white/5 border-white/5 cursor-default"
+                              }`}
+                            >
+                              <span className="text-xs sm:text-sm font-bold text-white whitespace-nowrap uppercase tracking-wider">{product.origin || "Local"}</span>
+                              {uniqueOrigins.length > 1 && (
+                                <ChevronDown className={`w-4 h-4 text-white/60 transition-transform ${isOriginDropdownOpen ? 'rotate-180' : ''}`} />
+                              )}
+                            </button>
+
+                            {uniqueOrigins.length > 1 && isOriginDropdownOpen && (
                               <>
-                                <span className="w-1 h-1 rounded-full bg-accent/40" />
-                                <span>{product.origin}</span>
+                                <div className="fixed inset-0 z-40" onClick={() => setIsOriginDropdownOpen(false)} />
+                                <div className="absolute top-full left-0 mt-2 w-[160px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                  <div className="p-2 space-y-1">
+                                    {uniqueOrigins.map((origin) => {
+                                      const targetId = getProductForNewOrigin(origin);
+                                      return targetId ? (
+                                        <Link
+                                          key={origin}
+                                          href={`/Product/${targetId}`}
+                                          onClick={() => setIsOriginDropdownOpen(false)}
+                                          className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${(product.origin || "Local") === origin
+                                            ? "bg-primary-50 text-primary-900 shadow-sm"
+                                            : "hover:bg-gray-50 text-gray-600"
+                                            }`}
+                                        >
+                                          <span className="text-xs font-bold uppercase tracking-widest">{origin}</span>
+                                          {(product.origin || "Local") === origin && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                                        </Link>
+                                      ) : null;
+                                    })}
+                                  </div>
+                                </div>
                               </>
                             )}
                           </div>
 
-                          {/* Variant Selector Dropdown in Header */}
-                          {variants.length > 1 && (
-                            <div className="relative mt-2 sm:mt-0 sm:ml-4">
-                              <button
-                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg transition-all backdrop-blur-md"
-                              >
-                                <span className="text-[10px] sm:text-xs font-bold text-white whitespace-nowrap">Switch Variety</span>
-                                <ChevronDown className={`w-3 h-3 text-white/60 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                              </button>
-
-                              {isDropdownOpen && (
-                                <>
-                                  <div
-                                    className="fixed inset-0 z-40"
-                                    onClick={() => setIsDropdownOpen(false)}
-                                  />
-                                  <div className="absolute top-full left-0 mt-2 w-[280px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                    <div className="max-h-[400px] overflow-y-auto scrollbar-hide">
-                                      {Object.entries(groupedVariants).map(([prefix, items]) => (
-                                        <div key={prefix} className="p-2">
-                                          <div className="px-3 py-2 text-[9px] font-black text-gray-400 uppercase tracking-widest bg-gray-50/50 rounded-lg mb-1">
-                                            {prefix}
-                                          </div>
-                                          <div className="space-y-1">
-                                            {items.map((v) => (
-                                              <Link
-                                                key={v.id}
-                                                href={`/Product/${v.id}`}
-                                                onClick={() => setIsDropdownOpen(false)}
-                                                className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${v.id === product.id
-                                                  ? "bg-primary-50 text-primary-900 shadow-sm"
-                                                  : "hover:bg-gray-50 text-gray-600"
-                                                  }`}
-                                              >
-                                                <div className="flex flex-col">
-                                                  <span className="text-xs font-bold">{v.size || "Standard"}</span>
-                                                  <span className="text-[10px] opacity-60">₱{v.currentPrice.toFixed(2)}</span>
-                                                </div>
-                                                {v.id === product.id && <CheckCircle2 className="w-4 h-4 text-accent" />}
-                                              </Link>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </>
+                          {/* Variant Selector */}
+                          <div className="relative mt-2 sm:mt-0 sm:ml-2">
+                            <button
+                              onClick={() => availableVariantsForOrigin.length > 1 && setIsDropdownOpen(!isDropdownOpen)}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all backdrop-blur-md border ${
+                                availableVariantsForOrigin.length > 1 
+                                  ? "bg-white/10 hover:bg-white/20 border-white/10 cursor-pointer" 
+                                  : "bg-white/5 border-white/5 cursor-default"
+                              }`}
+                            >
+                              <span className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">{product.variant || "Standard"}</span>
+                              {availableVariantsForOrigin.length > 1 && (
+                                <ChevronDown className={`w-4 h-4 text-white/60 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                               )}
-                            </div>
-                          )}
+                            </button>
+
+                            {availableVariantsForOrigin.length > 1 && isDropdownOpen && (
+                              <>
+                                <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                                <div className="absolute top-full left-0 mt-2 w-[240px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                  <div className="max-h-[400px] overflow-y-auto scrollbar-hide p-2 space-y-1">
+                                    {availableVariantsForOrigin.map((v) => (
+                                      <Link
+                                        key={v.id}
+                                        href={`/Product/${v.id}`}
+                                        onClick={() => setIsDropdownOpen(false)}
+                                        className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${v.id === product.id
+                                          ? "bg-primary-50 text-primary-900 shadow-sm"
+                                          : "hover:bg-gray-50 text-gray-600"
+                                          }`}
+                                      >
+                                        <div className="flex flex-col">
+                                          <span className="text-xs font-bold">{v.variant || "Standard"}</span>
+                                          <span className="text-[10px] opacity-60">₱{v.currentPrice.toFixed(2)}</span>
+                                        </div>
+                                        {v.id === product.id && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                                      </Link>
+                                    ))}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <span className="text-white/30 text-[9px] sm:text-xs font-mono tracking-widest mt-4 block">NCR-ID: {product.id.split('-')[0].toUpperCase()}</span>
@@ -567,7 +601,7 @@ export default function ProductPage({
                           {isAnalyzing ? (
                             <div className="flex flex-col items-center justify-center h-full gap-3 opacity-50">
                               <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                              <span className="text-xs font-medium text-gray-500">Baw is analyzing market news...</span>
+                              <span className="text-xs font-medium text-gray-500">AI is analyzing market news...</span>
                             </div>
                           ) : aiReasoning ? (
                             <p className="text-sm text-gray-600 leading-relaxed text-justify animate-in fade-in duration-500">
@@ -575,7 +609,7 @@ export default function ProductPage({
                             </p>
                           ) : (
                             <p className="text-sm text-gray-600 leading-relaxed text-justify">
-                              Based on our AI models analyzing the past 60 days of market data, {product.variant ? `${product.variant} ${product.name}` : product.name} shows a{" "}
+                              Based on our AI models analyzing historical market data, {product.variant ? `${product.variant} ${product.name}` : product.name} shows a{" "}
                               {isUp ? "strong upward" : "moderate downward"} trend.{" "}
                               {isUp
                                 ? "Supply constraints and seasonal demand spikes indicate prices will likely rise significantly in the coming weeks."

@@ -46,9 +46,24 @@ const ProductCard = ({
   }, [initialVariantId]);
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [isOriginDropdownOpen, setIsOriginDropdownOpen] = useState(false);
 
   const selectedVariant = variants.find(v => v.id === selectedVariantId) || variants[0];
   const { currentPrice, predictedPrice, variant, origin, id } = selectedVariant;
+
+  const currentOrigin = origin || "Local";
+  const uniqueOrigins = Array.from(new Set(variants.map(v => v.origin || "Local")));
+  const availableVariantsForOrigin = variants.filter(v => (v.origin || "Local") === currentOrigin);
+
+  const handleOriginChange = (newOrigin: string) => {
+    const sameVariety = variants.find(v => (v.origin || "Local") === newOrigin && v.variant === variant);
+    const fallback = variants.find(v => (v.origin || "Local") === newOrigin);
+    if (sameVariety) {
+      setSelectedVariantId(sameVariety.id);
+    } else if (fallback) {
+      setSelectedVariantId(fallback.id);
+    }
+  };
 
   const change = currentPrice === 0 ? 0 : ((predictedPrice - currentPrice) / currentPrice) * 100;
   const isUp = change >= 0;
@@ -95,13 +110,68 @@ const ProductCard = ({
 
       <div className="flex flex-col flex-grow px-4 sm:px-5 pb-4 sm:pb-5">
         {/* Row 2: Origin Label (SOURCE style) */}
-        {origin && (
-          <div>
-            <span className="text-[10px] font-semibold text-gray-400">
-              {origin}
+        <div className="min-h-[16px] mb-1 relative z-40">
+          {uniqueOrigins.length > 1 ? (
+            <div className="relative inline-block">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsOriginDropdownOpen(!isOriginDropdownOpen);
+                }}
+                className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-transparent cursor-pointer hover:text-primary-800 transition-colors focus:outline-none"
+              >
+                <span>{currentOrigin}</span>
+                <svg className={`w-3 h-3 transition-transform ${isOriginDropdownOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {isOriginDropdownOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsOriginDropdownOpen(false);
+                    }}
+                  />
+                  <div className="absolute top-full left-0 mt-2 w-[140px] bg-white rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-1 space-y-0.5">
+                      {uniqueOrigins.map((o) => (
+                        <button
+                          key={o}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleOriginChange(o);
+                            setIsOriginDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-left ${currentOrigin === o
+                              ? "bg-primary-50 text-primary-900"
+                              : "hover:bg-gray-50 text-gray-600"
+                            }`}
+                        >
+                          <span className="text-[10px] font-bold uppercase tracking-widest">{o}</span>
+                          {currentOrigin === o && (
+                            <svg className="w-3.5 h-3.5 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              {currentOrigin}
             </span>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Row 3: Product Name */}
         <div>
@@ -114,10 +184,10 @@ const ProductCard = ({
         </div>
 
         {/* Row 4: Variant Pills */}
-        <div className="mb-3 relative z-30">
-          {variants.length > 1 && (
+        <div className="mb-3 relative z-30 min-h-[32px]">
+          {availableVariantsForOrigin.length > 1 && (
             <div className="flex flex-wrap gap-2 overflow-hidden max-h-[32px]">
-              {variants.map((v) => (
+              {availableVariantsForOrigin.map((v) => (
                 <button
                   key={v.id}
                   onClick={(e) => {

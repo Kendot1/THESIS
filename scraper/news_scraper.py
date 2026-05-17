@@ -29,7 +29,7 @@ if sys.stdout.encoding != 'utf-8':
         pass
 
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -127,7 +127,7 @@ class NewsScraper:
     def __init__(self):
         self._client: Client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
         self._table = "news_articles"
-        self._groq_key = os.environ.get("GROQ_API_KEY", "")
+        self._groq_key = os.environ.get("GROQ_API_KEY_NEWS_SCRAPER", "")
         self._openai_key = os.environ.get("OPENAI_API_KEY", "")
 
     # ------------------------------------------------------------------
@@ -144,7 +144,7 @@ class NewsScraper:
             return stats
 
         if not self._groq_key and not self._openai_key:
-            log.error("No LLM API key set. Add GROQ_API_KEY or OPENAI_API_KEY to .env")
+            log.error("No LLM API key set. Add GROQ_API_KEY_NEWS_SCRAPER or OPENAI_API_KEY to .env")
             return stats
 
         llm_name = "Groq (llama-3.3-70b)" if self._groq_key else "OpenAI (gpt-4o-mini)"

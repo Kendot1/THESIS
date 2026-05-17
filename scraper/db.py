@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '..', '.env'))
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
 from supabase import create_client
 
 supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
@@ -12,11 +12,11 @@ def insert_prices(rows):
     """
     seen = set()
     for row in rows:
-        # Normalize product_variant: treat empty string / "null" string as None
+        # Normalize product_variant: treat empty string / "null" string as "Standard"
         variant = row.get("product_variant")
-        if not variant or str(variant).strip().lower() == "null":
-            row["product_variant"] = None
-            variant = None
+        if not variant or str(variant).strip().lower() == "null" or str(variant).strip().lower() == "none":
+            row["product_variant"] = "Standard"
+            variant = "Standard"
 
         key = (row["product_name"], variant, row["origin"], row["report_date"])
         if key in seen:
