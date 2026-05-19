@@ -718,7 +718,7 @@ export default function HomePage() {
                     </button>
                   </div>
                   <Link
-                    href="/Table"
+                    href="/MarketData"
                     className="hidden sm:flex items-center gap-1.5 text-xs sm:text-sm font-medium text-primary-800 hover:text-accent transition-colors"
                   >
                     View all <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -812,7 +812,7 @@ export default function HomePage() {
 
             <div className="flex sm:hidden justify-center mt-4">
               <Link
-                href="/Table"
+                href="/MarketData"
                 className="flex items-center gap-1.5 text-xs font-medium text-primary-800 hover:text-accent transition-colors"
               >
                 View all products <ArrowRight className="w-3.5 h-3.5" />

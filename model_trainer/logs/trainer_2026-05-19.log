@@ -1,0 +1,298 @@
+2026-05-20 00:54:57 [INFO] pipeline.trainer - === FULL TRAINING PIPELINE ===
+2026-05-20 00:54:57 [INFO] data.fetcher - Fetching ALL food price records ...
+2026-05-20 00:55:16 [INFO] data.fetcher - Fetched 41,928 rows total.
+2026-05-20 00:55:16 [INFO] pipeline.trainer - Step 1/8 -- Preprocessing ...
+2026-05-20 00:55:16 [INFO] data.preprocessor - Preprocessing 41,928 rows ...
+2026-05-20 00:55:16 [WARNING] data.preprocessor - Dropped 3 invalid rows (null/negative price).
+2026-05-20 00:55:16 [INFO] data.preprocessor -   After drop_invalid: 41,925 rows (3 removed)
+2026-05-20 00:55:16 [INFO] data.preprocessor - Aggregated 157 rows with duplicate product+variant+date combinations.
+2026-05-20 00:55:16 [INFO] data.preprocessor -   After dedup:        41,768 rows (157 merged)
+2026-05-20 00:55:17 [INFO] data.preprocessor -   After fill_missing: 44,357 rows (+2,589 interpolated)
+2026-05-20 00:55:17 [INFO] data.preprocessor - Removed 114 outlier rows (>4.0σ).
+2026-05-20 00:55:17 [INFO] data.preprocessor -   After outliers:     44,243 rows (114 removed)
+2026-05-20 00:55:17 [INFO] data.preprocessor - Preprocessing complete -- 44,243 clean rows (from 41,928 raw).
+2026-05-20 00:55:17 [INFO] pipeline.trainer - Step 2/8 -- Feature engineering ...
+2026-05-20 00:55:17 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 00:55:19 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 00:55:19 [INFO] features.categorical - Saved categorical mappings → D:\THESIS\model_trainer\artifacts\categorical_mappings.json
+2026-05-20 00:55:19 [INFO] features.categorical - Encoded 4 categorical columns (119 unique values).
+2026-05-20 00:55:19 [INFO] pipeline.trainer - Step 3/8 -- Splitting data ...
+2026-05-20 00:55:19 [INFO] pipeline.trainer - Data split -- train: 32,367 rows, val: 6,458 rows (16.6%)
+2026-05-20 00:55:19 [INFO] pipeline.trainer - LightGBM using 54 historical data features. No reasoning features included.
+2026-05-20 00:55:19 [INFO] pipeline.trainer - Step 4/8 -- Training LightGBM (absolute prices) ...
+2026-05-20 00:55:24 [INFO] models.lightgbm_model - LightGBM validation -- RMSE: 3.7197  MAE: 1.8875  MAPE: 1.52%
+2026-05-20 00:55:24 [INFO] models.lightgbm_model - Saved LightGBM model -> D:\THESIS\model_trainer\artifacts\lightgbm_model.txt
+2026-05-20 00:55:32 [INFO] models.lightgbm_model - Trained quantile models for confidence intervals.
+2026-05-20 00:55:32 [INFO] pipeline.trainer - Step 5/8 -- Training LSTM (Stage 1: base temporal model) ...
+2026-05-20 00:55:32 [INFO] models.lstm_model - LSTM using 16 input features: ['price_lag_1d', 'price_lag_7d', 'price_lag_30d', 'price_rolling_mean_7d', 'price_rolling_mean_30d', 'price_pct_change_1d', 'price_pct_change_7d', 'price_rsi_14d', 'price_macd', 'price_macd_signal', 'price_rolling_std_7d', 'price_rolling_std_30d', 'month_sin', 'month_cos', 'dow_sin', 'dow_cos']
+2026-05-20 00:55:34 [INFO] pipeline.trainer - LSTM sequences -- train: 26660, val: 3752, features: 16
+2026-05-20 00:55:49 [INFO] models.lstm_model - Epoch   1/200  train=0.061500  val=0.036791  lr=9.94e-04  patience=0/35
+2026-05-20 00:56:30 [INFO] models.lstm_model - Epoch   5/200  train=0.052748  val=0.036848  lr=8.54e-04  patience=2/35
+2026-05-20 00:57:26 [INFO] models.lstm_model - Epoch  10/200  train=0.046617  val=0.036025  lr=5.01e-04  patience=3/35
+2026-05-20 00:58:24 [INFO] models.lstm_model - Epoch  15/200  train=0.037912  val=0.039107  lr=1.47e-04  patience=8/35
+2026-05-20 00:59:22 [INFO] models.lstm_model - Epoch  20/200  train=0.034629  val=0.041398  lr=1.00e-03  patience=13/35
+2026-05-20 01:00:16 [INFO] models.lstm_model - Epoch  25/200  train=0.038724  val=0.040289  lr=9.62e-04  patience=18/35
+2026-05-20 01:01:11 [INFO] models.lstm_model - Epoch  30/200  train=0.034084  val=0.041410  lr=8.54e-04  patience=23/35
+2026-05-20 01:02:09 [INFO] models.lstm_model - Epoch  35/200  train=0.030181  val=0.041302  lr=6.92e-04  patience=28/35
+2026-05-20 01:03:06 [INFO] models.lstm_model - Epoch  40/200  train=0.027112  val=0.044295  lr=5.01e-04  patience=33/35
+2026-05-20 01:03:28 [INFO] models.lstm_model - Early stopping at epoch 42 (best epoch: 7, best val_loss: 0.034592)
+2026-05-20 01:03:28 [INFO] models.lstm_model - LSTM validation — RMSE: 2.8967  MAE: 1.1785  MAPE: 0.85%
+2026-05-20 01:03:28 [INFO] pipeline.trainer - Step 6/8 -- Evaluating blended hybrid ensemble ...
+2026-05-20 01:03:29 [INFO] models.ensemble - Blended hybrid trained (LGBM_Weight=0.50, LSTM_Weight=0.50) --
+  LSTM-only:   RMSE=2.8967  DirAcc=48.21%
+  LGBM-only:   RMSE=3.1284  DirAcc=61.42%
+  Hybrid:      RMSE=2.7357  DirAcc=55.69%
+  Improvement vs LSTM: 5.6%
+2026-05-20 01:03:29 [INFO] models.ensemble - Saved residual stats -> D:\THESIS\model_trainer\artifacts\ensemble_residual_stats.pkl
+2026-05-20 01:03:29 [INFO] pipeline.trainer - Step 7/8 -- Saving model version ...
+2026-05-20 01:03:29 [INFO] models.model_store - Pruned old version: v011_2026-04-30T13-01-47
+2026-05-20 01:03:29 [INFO] models.model_store - Created model version v011_2026-05-19T17-03-29 (5 files)
+2026-05-20 01:03:29 [INFO] pipeline.drift_detector - Saved reference distribution (44243 samples).
+2026-05-20 01:03:29 [INFO] pipeline.trainer - ============================================================
+2026-05-20 01:03:29 [INFO] pipeline.trainer - TRAINING SUMMARY
+2026-05-20 01:03:29 [INFO] pipeline.trainer - ============================================================
+2026-05-20 01:03:29 [INFO] pipeline.trainer -   LightGBM (standalone): RMSE=3.7197  MAE=1.8875  MAPE=1.52%
+2026-05-20 01:03:29 [INFO] pipeline.trainer -   LSTM (base):           RMSE=2.8967  MAE=1.1785  MAPE=0.85%
+2026-05-20 01:03:29 [INFO] pipeline.trainer -   HYBRID ENSEMBLE:       RMSE=2.7357  MAE=1.3378  MAPE=1.02%
+2026-05-20 01:03:29 [INFO] pipeline.trainer - ============================================================
+2026-05-20 01:03:29 [INFO] pipeline.trainer - === TRAINING COMPLETE ===
+2026-05-20 01:03:29 [INFO] main - Training complete. Metrics: {'lgbm': {'rmse': 3.719742838294875, 'mae': 1.8874948015137227, 'mape': 1.5184754287222453, 'r2': 0.9987954247410264, 'directional_accuracy': 58.19935691318327}, 'lstm': {'rmse': 2.896714808146226, 'mae': 1.1785370657677203, 'mape': 0.8538099295419127, 'r2': 0.9992629147518982, 'directional_accuracy': 48.35863042710907}, 'ensemble': {'rmse': 2.73572214647754, 'mae': 1.3378470232868422, 'mape': 1.0227507751491554, 'r2': 0.9993425689482437, 'directional_accuracy': 55.693430656934304}, 'timestamp': '2026-05-19T17:03:29.232349+00:00', 'data_rows': 44243, 'mode': 'full'}
+2026-05-20 01:08:21 [INFO] pipeline.prediction_writer - Starting batch prediction (horizon=monthly, 30 days)
+2026-05-20 01:08:21 [INFO] models.registry - Loading models into registry ...
+2026-05-20 01:08:21 [INFO] models.lightgbm_model - Loaded LightGBM model <- D:\THESIS\model_trainer\artifacts\lightgbm_model.txt
+2026-05-20 01:08:21 [INFO] models.lightgbm_model - Loaded LightGBM residual model <- D:\THESIS\model_trainer\artifacts\lightgbm_residual_model.txt
+2026-05-20 01:08:21 [INFO] models.lstm_model - Loaded LSTM model ← D:\THESIS\model_trainer\artifacts\lstm_model.pt (16 features)
+2026-05-20 01:08:21 [INFO] models.ensemble - Loaded residual stats <- D:\THESIS\model_trainer\artifacts\ensemble_residual_stats.pkl
+2026-05-20 01:08:21 [INFO] models.registry - Model registry loaded successfully.
+2026-05-20 01:08:23 [INFO] pipeline.prediction_writer - Loaded 113 product IDs from products table.
+2026-05-20 01:08:23 [INFO] data.fetcher - Fetching ALL food price records ...
+2026-05-20 01:08:33 [INFO] data.fetcher - Fetched 41,928 rows total.
+2026-05-20 01:08:33 [INFO] data.preprocessor - Preprocessing 41,928 rows ...
+2026-05-20 01:08:33 [WARNING] data.preprocessor - Dropped 3 invalid rows (null/negative price).
+2026-05-20 01:08:33 [INFO] data.preprocessor -   After drop_invalid: 41,925 rows (3 removed)
+2026-05-20 01:08:33 [INFO] data.preprocessor - Aggregated 184 rows with duplicate product+variant+date combinations.
+2026-05-20 01:08:33 [INFO] data.preprocessor -   After dedup:        41,741 rows (184 merged)
+2026-05-20 01:08:33 [INFO] data.preprocessor -   After fill_missing: 44,357 rows (+2,616 interpolated)
+2026-05-20 01:08:33 [INFO] data.preprocessor - Removed 115 outlier rows (>4.0σ).
+2026-05-20 01:08:33 [INFO] data.preprocessor -   After outliers:     44,242 rows (115 removed)
+2026-05-20 01:08:33 [INFO] data.preprocessor - Preprocessing complete -- 44,242 clean rows (from 41,928 raw).
+2026-05-20 01:08:33 [INFO] pipeline.prediction_writer - Found 106 unique product series to predict.
+2026-05-20 01:08:34 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:34 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:34 [INFO] features.categorical - Loaded categorical mappings from D:\THESIS\model_trainer\artifacts\categorical_mappings.json
+2026-05-20 01:08:34 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:34 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:34 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:34 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:34 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:34 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:34 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:34 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:34 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:34 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:34 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:34 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:35 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:35 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:35 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:35 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:35 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:35 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:35 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:35 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:35 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:35 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:35 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:35 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:35 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:36 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:36 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:36 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:36 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:36 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:36 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:36 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:36 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:36 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:36 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:36 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:36 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:36 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:37 [INFO] pipeline.prediction_writer -   Progress: 20/106 series predicted
+2026-05-20 01:08:37 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:37 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:37 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:37 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:37 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:37 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:37 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:37 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:37 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:37 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:37 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:37 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:38 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:38 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:38 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:38 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:38 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:38 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:38 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:38 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:38 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:38 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:38 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:38 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:38 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:38 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:38 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:38 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:39 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:39 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:39 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:39 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:39 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:39 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:39 [WARNING] pipeline.prediction_writer -   Failed to predict Corn Cracked: Insufficient data (2 rows)
+2026-05-20 01:08:39 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:39 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:39 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:39 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:39 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:39 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:39 [INFO] pipeline.prediction_writer -   Progress: 40/106 series predicted
+2026-05-20 01:08:39 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:39 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:40 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:40 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:40 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:40 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:40 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:40 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:40 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:40 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:40 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:40 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:40 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:40 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:40 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:40 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:41 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:41 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:41 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:41 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:41 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:41 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:41 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:41 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:41 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:41 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:41 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:41 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:41 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:41 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:42 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:42 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:42 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:42 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:43 [INFO] pipeline.prediction_writer -   Auto-registered new product: Pork | Frozen Belly | Imported
+2026-05-20 01:08:43 [WARNING] pipeline.prediction_writer -   Failed to predict Pork: Insufficient data (1 rows)
+2026-05-20 01:08:43 [WARNING] pipeline.prediction_writer -   Failed to predict Pork: Insufficient data (1 rows)
+2026-05-20 01:08:43 [INFO] pipeline.prediction_writer -   Auto-registered new product: Pork | Frozen Ham | Imported
+2026-05-20 01:08:43 [WARNING] pipeline.prediction_writer -   Failed to predict Pork: Insufficient data (1 rows)
+2026-05-20 01:08:43 [WARNING] pipeline.prediction_writer -   Failed to predict Pork: Insufficient data (1 rows)
+2026-05-20 01:08:43 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:43 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:43 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:43 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:43 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:44 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:44 [INFO] pipeline.prediction_writer -   Progress: 60/106 series predicted
+2026-05-20 01:08:44 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:44 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:44 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:44 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:44 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:44 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:44 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:44 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:44 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:44 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:44 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:44 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:44 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:44 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:45 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:45 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:45 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:45 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:45 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:45 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:45 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:45 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:45 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:45 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:45 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:45 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:45 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:45 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:46 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:46 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:46 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:46 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:46 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:46 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:46 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:46 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:46 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:46 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:46 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:46 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:46 [INFO] pipeline.prediction_writer -   Progress: 80/106 series predicted
+2026-05-20 01:08:46 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:46 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:46 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:47 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:47 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:47 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:47 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:47 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:47 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:47 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:47 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:47 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:47 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:47 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:47 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:47 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:47 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:47 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:48 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:48 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:48 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:48 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:48 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:48 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:48 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:48 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:48 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:48 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:48 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:48 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:48 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:48 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:49 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:49 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:49 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:49 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:49 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:49 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:49 [WARNING] pipeline.prediction_writer -   Failed to predict Yellow Sweet Corn: Insufficient data (1 rows)
+2026-05-20 01:08:49 [INFO] features.temporal - Added 15 temporal features.
+2026-05-20 01:08:49 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-20 01:08:49 [INFO] pipeline.prediction_writer -   Progress: 100/106 series predicted
+2026-05-20 01:08:49 [INFO] pipeline.prediction_writer - Writing 3000 prediction rows to predictions table...
+2026-05-20 01:08:50 [INFO] pipeline.prediction_writer -   Cleared old predictions.
+2026-05-20 01:08:53 [INFO] pipeline.prediction_writer -   Successfully wrote predictions to Supabase.
+2026-05-20 01:08:53 [INFO] pipeline.prediction_writer - Batch prediction complete: {'success': 100, 'failed': 6, 'total': 106, 'rows_written': 3000}
+2026-05-20 01:08:53 [INFO] main - Prediction batch complete. Stats: {'success': 100, 'failed': 6, 'total': 106, 'rows_written': 3000}

@@ -861,7 +861,7 @@ export default function ProductPage({
                   </div>
                   <div className="flex items-center gap-3">
                     <Link
-                      href="/Table"
+                      href="/MarketData"
                       className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-primary-800 hover:text-accent transition-colors"
                     >
                       View all <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
