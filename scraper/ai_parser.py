@@ -104,7 +104,10 @@ Do not include any extra text or explanation.
     # Call Gemini
     response = client.models.generate_content(
         model="gemini-3-flash-preview",
-        contents=prompt
+        contents=prompt,
+        config=genai.types.GenerateContentConfig(
+            max_output_tokens=8192
+        )
     )
 
     try:
@@ -125,9 +128,11 @@ Do not include any extra text or explanation.
                 data = json.loads(match.group(1))
             else:
                 print("Failed to find JSON array in Gemini output")
+                print("RAW OUTPUT:", raw)
                 data = []
     except Exception as e:
         print("Failed to parse Gemini output as JSON:", e)
+        print("RAW OUTPUT (Exception):", raw if 'raw' in locals() else 'N/A')
         data = []
 
     return data

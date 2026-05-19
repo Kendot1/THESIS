@@ -573,7 +573,7 @@ function PredictPageContent() {
                   ))}
                 </div>
               </div>
-              <Link href="/Table"
+              <Link href="/MarketData"
                 className="block w-full max-h-13 py-4 bg-primary-900 hover:bg-primary-800 text-white text-center font-bold rounded-2xl transition-all shadow-lg shadow-primary-900/10 text-sm active:scale-[0.98]">
                 View Full Table
               </Link>

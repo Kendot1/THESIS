@@ -6,7 +6,9 @@ from ai_parser import parse_pdf_text_with_ai
 import re
 YELLOW_TABLE_KEYWORDS = [
     "AVERAGE RETAIL PRICE",
-    "PREVAILING RETAIL PRICE PER UNIT"
+    "PREVAILING RETAIL PRICE PER UNIT",
+    "Retail Price of Selected Agri-fishery Commodities at NCR Markets",
+    "Retail Price of Selected Agri-fishery Commodities"
 ]
 
 def parse_pdf(url):

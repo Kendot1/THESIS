@@ -9,7 +9,7 @@ const Footer = () => {
   const navLinks = [
     { href: "/", label: "Home", icon: <Home className="w-4 h-4" /> },
     { href: "/Predict", label: "Predict", icon: <TrendingUp className="w-4 h-4" /> },
-    { href: "/Table", label: "Table", icon: <Table2 className="w-4 h-4" /> },
+    { href: "/MarketData", label: "Market Data", icon: <Table2 className="w-4 h-4" /> },
     { href: "/Resources", label: "Resources", icon: <Mail className="w-4 h-4" /> },
     { href: "/About", label: "About", icon: <Info className="w-4 h-4" /> },
   ];
