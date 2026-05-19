@@ -8,6 +8,7 @@ interface ProductVariant {
   id: string;
   variant: string;
   origin?: string;
+  image?: string;
   currentPrice: number;
   predictedPrice: number;
 }
@@ -80,7 +81,8 @@ const ProductCard = ({
       {/* Row 1: Product Image Container (Flush with edges) */}
       <div className={`relative overflow-hidden bg-gray-50 transition-all duration-700 ${compact ? "h-[140px] mb-4" : "h-[180px] mb-5"}`}>
         <img
-          src={image || DEFAULT_PRODUCT_IMAGE}
+          key={selectedVariant.image || image || DEFAULT_PRODUCT_IMAGE} // Force re-render of img tag to trigger animation if needed, or at least change instantly
+          src={selectedVariant.image || image || DEFAULT_PRODUCT_IMAGE}
           alt={name}
           loading="lazy"
           decoding="async"

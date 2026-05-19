@@ -18,6 +18,7 @@ export interface Product {
   sentiment: "Bullish" | "Bearish" | "Neutral";
   sparklineData: { value: number }[];
   forecastData: {
+    date: string;
     name: string;
     actual: number | null;
     predicted: number | null;
@@ -163,9 +164,9 @@ export async function fetchProducts(forceRefresh = false): Promise<Product[]> {
 }
 
 async function _fetchProducts(): Promise<Product[]> {
-  const sixtyDaysAgo = new Date();
-  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-  const sinceDate = sixtyDaysAgo.toISOString().split("T")[0];
+  const oneYearAgo = new Date();
+  oneYearAgo.setDate(oneYearAgo.getDate() - 365);
+  const sinceDate = oneYearAgo.toISOString().split("T")[0];
 
   async function fetchAll<T>(queryBuilder: any, pageSize: number = 1000): Promise<T[]> {
     let allData: T[] = [];
@@ -364,73 +365,74 @@ function buildForecastData(
   fallbackPredictedPrice: number,
   mlPredictions: { date: string; predicted_price: number }[] | null
 ) {
-  const result: { name: string; actual: number | null; predicted: number | null }[] = [];
-  
-  const historyMap = new Map<string, number[]>();
+  // Use a unified map keyed by "YYYY-MM-DD" for daily granularity
+  const dayMap = new Map<string, { actual: number | null; predicted: number | null }>();
+
+  // 1. Populate actuals from history (average duplicates on the same day)
+  const dailyActuals = new Map<string, number[]>();
   for (const r of historyRows) {
-    const d = new Date(r.report_date);
-    const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
-    if (!historyMap.has(key)) historyMap.set(key, []);
-    historyMap.get(key)!.push(r.price_index);
+    const key = r.report_date.split("T")[0]; // "YYYY-MM-DD"
+    if (!dailyActuals.has(key)) dailyActuals.set(key, []);
+    dailyActuals.get(key)!.push(r.price_index);
+  }
+  for (const [key, prices] of dailyActuals) {
+    const avg = Math.round((prices.reduce((a, b) => a + b, 0) / prices.length) * 100) / 100;
+    dayMap.set(key, { actual: avg, predicted: null });
   }
 
-  const sortedKeys = Array.from(historyMap.keys()).sort();
-  for (const key of sortedKeys) {
-    const prices = historyMap.get(key)!;
-    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
-    const monthIdx = parseInt(key.split("-")[1]);
-    const monthName = MONTH_NAMES[monthIdx];
-    result.push({
-      name: monthName,
-      actual: Math.round(avg * 100) / 100,
-      predicted: null,
-    });
-  }
-
-  const lastDateStr = historyRows[historyRows.length - 1].report_date;
-  const lastDate = new Date(lastDateStr);
+  // Find the last actual date for transition point
+  const sortedActualDates = Array.from(dailyActuals.keys()).sort();
+  const lastActualDate = sortedActualDates[sortedActualDates.length - 1];
   const lastPrice = historyRows[historyRows.length - 1].price_index;
 
-  if (result.length > 0) {
-    result[result.length - 1].predicted = result[result.length - 1].actual;
-  }
-
+  // 2. Populate predictions
   if (mlPredictions && mlPredictions.length > 0) {
-    const predMonthlyMap = new Map<string, number[]>();
     for (const p of mlPredictions) {
-      const d = new Date(p.date);
-      const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
-      if (!predMonthlyMap.has(key)) predMonthlyMap.set(key, []);
-      predMonthlyMap.get(key)!.push(p.predicted_price);
-    }
-    const predMonths = Array.from(predMonthlyMap.keys()).sort().slice(0, 3);
-
-    for (const key of predMonths) {
-      const prices = predMonthlyMap.get(key)!;
-      const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
-      const monthIdx = parseInt(key.split("-")[1]);
-      const monthName = MONTH_NAMES[monthIdx];
-      result.push({
-        name: monthName,
-        actual: null,
-        predicted: Math.round(avg * 100) / 100,
-      });
+      const key = p.date.split("T")[0];
+      if (dayMap.has(key)) {
+        // This date also has actual data — add prediction alongside it
+        dayMap.get(key)!.predicted = Math.round(p.predicted_price * 100) / 100;
+      } else {
+        dayMap.set(key, { actual: null, predicted: Math.round(p.predicted_price * 100) / 100 });
+      }
     }
   } else {
+    // Fallback: generate synthetic daily predictions for next 30 days
     const recentPrices = historyRows.slice(-7).map((r) => r.price_index);
     const slope = linearSlope(recentPrices);
-
-    for (let i = 1; i <= 3; i++) {
-      const futureMonth = new Date(lastDate);
-      futureMonth.setMonth(futureMonth.getMonth() + i);
-      const monthName = MONTH_NAMES[futureMonth.getMonth()];
-      const projectedPrice = Math.round((lastPrice + slope * 30 * i) * 100) / 100;
-      result.push({
-        name: monthName,
-        actual: null,
-        predicted: projectedPrice,
-      });
+    const lastDate = new Date(lastActualDate);
+    for (let i = 1; i <= 30; i++) {
+      const futureDay = new Date(lastDate);
+      futureDay.setDate(futureDay.getDate() + i);
+      const key = futureDay.toISOString().split("T")[0];
+      const projectedPrice = Math.round((lastPrice + slope * i) * 100) / 100;
+      dayMap.set(key, { actual: null, predicted: projectedPrice });
     }
+  }
+
+  // 3. Set the transition point: last actual date also gets a predicted value
+  //    so the predicted line starts from where actuals end
+  if (lastActualDate && dayMap.has(lastActualDate)) {
+    const entry = dayMap.get(lastActualDate)!;
+    if (entry.predicted === null) {
+      entry.predicted = entry.actual;
+    }
+  }
+
+  // 4. Build sorted result with readable date labels
+  const allDates = Array.from(dayMap.keys()).sort();
+  const result: { date: string; name: string; actual: number | null; predicted: number | null }[] = [];
+
+  for (const dateStr of allDates) {
+    const entry = dayMap.get(dateStr)!;
+    const d = new Date(dateStr + "T00:00:00");
+    const label = `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
+    result.push({
+      date: dateStr,
+      name: label,
+      actual: entry.actual,
+      predicted: entry.predicted,
+    });
   }
 
   return result;

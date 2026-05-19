@@ -1,17 +1,18 @@
 "use client";
-import { useMemo, useState, useEffect, useId } from "react";
+import { useRef, useEffect, useMemo, useCallback } from "react";
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-} from "recharts";
+  createChart,
+  ColorType,
+  LineStyle,
+  CrosshairMode,
+  AreaSeries,
+  type IChartApi,
+  type ISeriesApi,
+  type Time,
+} from "lightweight-charts";
 
 interface DataPoint {
+  date: string;
   name: string;
   actual: number | null;
   predicted: number | null;
@@ -23,157 +24,321 @@ interface ForecastChartProps {
   showGrid?: boolean;
   showLegend?: boolean;
   productName?: string;
-  variantName?: string;
+  period?: string;
 }
 
-const ForecastChart = ({ 
-  data, 
-  height, 
-  showGrid = true, 
+const ForecastChart = ({
+  data,
+  height,
+  showGrid = true,
   showLegend = true,
   productName,
-  variantName
+  period = "Daily",
 }: ForecastChartProps) => {
-  const [mounted, setMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const actualSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
+  const predictedSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
 
-  useEffect(() => {
-    setMounted(true);
+  // Build series data
+  const { actualData, predictedData } = useMemo(() => {
+    const groupedActuals = new Map<string, number[]>();
+    const groupedPredictions = new Map<string, number[]>();
+
+    const getGroupKey = (dateStr: string) => {
+      if (period === "Weekly") {
+        const d = new Date(dateStr + "T00:00:00");
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const weekStart = new Date(d.getFullYear(), d.getMonth(), diff);
+        const pad = (n: number) => n.toString().padStart(2, "0");
+        return `${weekStart.getFullYear()}-${pad(weekStart.getMonth() + 1)}-${pad(weekStart.getDate())}`;
+      }
+      if (period === "Monthly") {
+        return dateStr.substring(0, 7) + "-01";
+      }
+      return dateStr;
+    };
+
+    for (const point of data) {
+      if (!point.date) continue;
+      const key = getGroupKey(point.date);
+      
+      if (point.actual !== null) {
+        if (!groupedActuals.has(key)) groupedActuals.set(key, []);
+        groupedActuals.get(key)!.push(point.actual);
+      }
+      
+      if (point.predicted !== null) {
+        if (!groupedPredictions.has(key)) groupedPredictions.set(key, []);
+        groupedPredictions.get(key)!.push(point.predicted);
+      }
+    }
+
+    const actuals = Array.from(groupedActuals.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([time, values]) => ({
+        time: time as Time,
+        value: values.reduce((a, b) => a + b, 0) / values.length,
+      }));
+
+    const predictions = Array.from(groupedPredictions.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([time, values]) => ({
+        time: time as Time,
+        value: values.reduce((a, b) => a + b, 0) / values.length,
+      }));
+
+    return { actualData: actuals, predictedData: predictions };
+  }, [data, period]);
+
+  // We just let the chart fit the content to the aggregated data automatically
+  const getVisibleRange = useCallback(() => {
+    return null;
   }, []);
 
-  const baseId = useId();
-  const actualGradientId = `actual-grad-${baseId.replace(/:/g, "")}`;
-  const predictedGradientId = `predicted-grad-${baseId.replace(/:/g, "")}`;
+  // Create chart
+  useEffect(() => {
+    if (!containerRef.current) return;
 
-  // Find transition point
-  const transitionIndex = data.findIndex(d => d.predicted !== null && d.actual === null);
+    const container = containerRef.current;
 
-  // Compute Y-axis domain so the chart zooms to the data range instead of starting at 0
-  const [yMin, yMax] = useMemo(() => {
-    const allValues = data.flatMap(d => [d.actual, d.predicted]).filter((v): v is number => v !== null);
-    if (allValues.length === 0) return [0, 100];
-    const min = Math.min(...allValues);
-    const max = Math.max(...allValues);
-    const padding = (max - min) * 0.15 || 5; // 15% padding, minimum 5
-    return [Math.floor(min - padding), Math.ceil(max + padding)];
-  }, [data]);
+    const chart = createChart(container, {
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: "#9CA3AF",
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 11,
+        attributionLogo: false,
+      },
+      grid: {
+        vertLines: { visible: false },
+        horzLines: {
+          visible: showGrid,
+          color: "rgba(0, 0, 0, 0.04)",
+          style: LineStyle.Dotted,
+        },
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: {
+          width: 1,
+          color: "rgba(11, 59, 36, 0.3)",
+          style: LineStyle.Dashed,
+          labelBackgroundColor: "#0B3B24",
+        },
+        horzLine: {
+          width: 1,
+          color: "rgba(11, 59, 36, 0.3)",
+          style: LineStyle.Dashed,
+          labelBackgroundColor: "#0B3B24",
+        },
+      },
+      rightPriceScale: {
+        borderVisible: false,
+        scaleMargins: { top: 0.1, bottom: 0.1 },
+      },
+      timeScale: {
+        borderVisible: false,
+        timeVisible: false,
+        fixLeftEdge: false,
+        fixRightEdge: false,
+        rightOffset: 5,
+      },
+      handleScroll: { vertTouchDrag: false },
+      handleScale: { axisPressedMouseMove: true },
+      width: container.clientWidth,
+      height: height || 380,
+    });
 
-  if (!mounted) {
-    return <div className="w-full h-[160px] sm:h-[200px] lg:h-[280px] bg-gray-50/50 animate-pulse rounded-xl" />;
-  }
+    // Actual price series (solid dark green area)
+    const actualSeries = chart.addSeries(AreaSeries, {
+      lineColor: "#0B3B24",
+      topColor: "rgba(11, 59, 36, 0.25)",
+      bottomColor: "rgba(11, 59, 36, 0.02)",
+      lineWidth: 2,
+      priceFormat: { type: "custom", formatter: (p: number) => `₱${p.toFixed(2)}` },
+      crosshairMarkerRadius: 5,
+      crosshairMarkerBorderColor: "#0B3B24",
+      crosshairMarkerBackgroundColor: "#fff",
+      crosshairMarkerBorderWidth: 2,
+      title: "Actual",
+    });
+
+    // Predicted price series (dashed green area)
+    const predictedSeries = chart.addSeries(AreaSeries, {
+      lineColor: "#7ED957",
+      topColor: "rgba(126, 217, 87, 0.15)",
+      bottomColor: "rgba(126, 217, 87, 0.01)",
+      lineWidth: 2,
+      lineStyle: LineStyle.Dashed,
+      priceFormat: { type: "custom", formatter: (p: number) => `₱${p.toFixed(2)}` },
+      crosshairMarkerRadius: 5,
+      crosshairMarkerBorderColor: "#7ED957",
+      crosshairMarkerBackgroundColor: "#fff",
+      crosshairMarkerBorderWidth: 2,
+      title: "Predicted",
+    });
+
+    chartRef.current = chart;
+    actualSeriesRef.current = actualSeries;
+    predictedSeriesRef.current = predictedSeries;
+
+    // Tooltip logic
+    chart.subscribeCrosshairMove((param) => {
+      const tooltip = tooltipRef.current;
+      if (!tooltip || !containerRef.current) return;
+
+      if (
+        param.point === undefined ||
+        !param.time ||
+        param.point.x < 0 ||
+        param.point.x > containerRef.current.clientWidth ||
+        param.point.y < 0 ||
+        param.point.y > containerRef.current.clientHeight
+      ) {
+        tooltip.style.display = "none";
+        return;
+      }
+
+      const actualData = param.seriesData.get(actualSeries);
+      const predictedData = param.seriesData.get(predictedSeries);
+
+      let priceData: any = null;
+      let title = "";
+      let color = "";
+
+      if (actualData && (actualData as any).value !== undefined) {
+        priceData = actualData;
+        title = "Actual Price";
+        color = "#0B3B24";
+      } else if (predictedData && (predictedData as any).value !== undefined) {
+        priceData = predictedData;
+        title = "Predicted Price";
+        color = "#7ED957";
+      }
+
+      if (priceData) {
+        tooltip.style.display = "block";
+        const dateStr = param.time as string;
+        const formattedDate = new Date(dateStr).toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric"
+        });
+
+        tooltip.innerHTML = `
+          <div style="font-size: 10px; font-weight: 700; color: #9CA3AF; margin-bottom: 4px;">${formattedDate}</div>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${color};"></div>
+            <span style="font-size: 12px; font-weight: 700; color: #111827;">${title}:</span>
+            <span style="font-size: 14px; font-weight: 900; color: #111827;">₱${priceData.value.toFixed(2)}</span>
+          </div>
+        `;
+
+        // Position tooltip
+        let left = param.point.x + 15;
+        let top = param.point.y + 15;
+
+        // Prevent tooltip from overflowing the right edge
+        if (left > containerRef.current.clientWidth - 150) {
+          left = param.point.x - 160;
+        }
+
+        tooltip.style.left = left + "px";
+        tooltip.style.top = top + "px";
+      } else {
+        tooltip.style.display = "none";
+      }
+    });
+
+    // Handle resize
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width } = entry.contentRect;
+        chart.applyOptions({ width });
+      }
+    });
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+      chart.remove();
+      chartRef.current = null;
+      actualSeriesRef.current = null;
+      predictedSeriesRef.current = null;
+    };
+  }, [showGrid, height]);
+
+  // Update data when it changes
+  useEffect(() => {
+    if (!actualSeriesRef.current || !predictedSeriesRef.current) return;
+
+    actualSeriesRef.current.setData(actualData);
+    predictedSeriesRef.current.setData(predictedData);
+
+    // Set visible range or auto-fit
+    const range = getVisibleRange();
+    if (range && chartRef.current) {
+      try {
+        chartRef.current.timeScale().setVisibleRange(range);
+      } catch {
+        chartRef.current.timeScale().fitContent();
+      }
+    } else if (chartRef.current) {
+      chartRef.current.timeScale().fitContent();
+    }
+  }, [actualData, predictedData, getVisibleRange]);
+
+  // Auto-fit when period changes
+  useEffect(() => {
+    if (!chartRef.current) return;
+    const range = getVisibleRange();
+    if (range) {
+      try {
+        chartRef.current.timeScale().setVisibleRange(range);
+      } catch {
+        chartRef.current.timeScale().fitContent();
+      }
+    } else {
+      chartRef.current.timeScale().fitContent();
+    }
+  }, [period, getVisibleRange]);
 
   return (
-    <div
-    >
-      {(productName) && (
+    <div>
+      {productName && (
         <div className="flex items-center gap-2 mb-2 px-1">
           <span className="text-[10px] font-bold text-gray-900 uppercase tracking-wider">
             {productName}
           </span>
         </div>
       )}
-      <div className={!height ? "h-[220px] sm:h-[300px] lg:h-[400px]" : "h-full w-full"}>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
-            data={data}
-            margin={{
-              top: height ? 20 : 20,
-              right: height ? 15 : 15,
-              left: height ? 0 : 0,
-              bottom: height ? 0 : 15
-            }}
-          >
-            {showGrid && (
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
-            )}
-            <XAxis
-              dataKey="name"
-              hide={height ? height < 120 : false}
-              tick={{ fontSize: 10, fill: "#9CA3AF" }}
-              axisLine={{ stroke: "#E5E7EB" }}
-              tickLine={false}
-              dy={10}
-            />
-            <YAxis
-              domain={[yMin, yMax]}
-              tick={{ fontSize: 9, fill: "#9CA3AF" }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(v) => `₱${v}`}
-              width={height ? 35 : 40}
-            />
-            <Tooltip
-              contentStyle={{
-                borderRadius: 12,
-                border: "none",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.1)",
-                fontSize: 10,
-                fontFamily: "'Inter', sans-serif",
-              }}
-              formatter={(value, name) => {
-                const numValue = typeof value === "number" ? value : 0;
-                const label = name === "actual" ? "Actual Price" : "Predicted Price";
-                return [
-                  `₱${numValue.toFixed(2)}`,
-                  `${productName} (${label})`,
-                ];
-              }}
-            />
-            {transitionIndex > 0 && (
-              <ReferenceLine
-                x={data[transitionIndex - 1]?.name}
-                stroke="#9CA3AF"
-                strokeDasharray="5 5"
-                label={{
-                  value: "Forecast",
-                  position: "top",
-                  fill: "#9CA3AF",
-                  fontSize: 9,
-                }}
-              />
-            )}
-            <defs>
-              <linearGradient id={actualGradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#7ED957" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#7ED957" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id={predictedGradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#7ED957" stopOpacity={0.15} />
-                <stop offset="95%" stopColor="#7ED957" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <Area
-              type="monotone"
-              dataKey="actual"
-              stroke="#0B3B24"
-              strokeWidth={2}
-              fill={`url(#${actualGradientId})`}
-              dot={false}
-              connectNulls={false}
-            />
-            <Area
-              type="monotone"
-              dataKey="predicted"
-              stroke="#7ED957"
-              strokeWidth={2}
-              strokeDasharray="6 4"
-              fill={`url(#${predictedGradientId})`}
-              dot={false}
-              connectNulls={false}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="relative">
+        <div
+          ref={tooltipRef}
+          className="absolute z-50 pointer-events-none bg-white/95 backdrop-blur-sm rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 p-3 transition-all duration-75 ease-out"
+          style={{ display: "none" }}
+        />
+        <div
+          ref={containerRef}
+          className={!height ? "w-full" : "h-full w-full"}
+          style={{ minHeight: height || 380 }}
+        />
       </div>
-      {/* Legend */}
-      <div className="flex items-center gap-6 mt-4 -mb-1 ml-2">
-        <div className="flex items-center gap-2">
-          <div className="forecast-legend-dot" style={{ background: "#0B3B24" }} />
-          <span className="text-[10px] font-medium text-gray-900">Actual Price</span>
+      {showLegend && (
+        <div className="flex items-center gap-6 mt-3 -mb-1 ml-2">
+          <div className="flex items-center gap-2">
+            <div className="forecast-legend-dot" style={{ background: "#0B3B24" }} />
+            <span className="text-[10px] font-medium text-gray-900">Actual Price</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="forecast-legend-dot" style={{ background: "#7ED957" }} />
+            <span className="text-[10px] font-medium text-gray-900">Predicted Price</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="forecast-legend-dot" style={{ background: "#7ED957" }} />
-          <span className="text-[10px] font-medium text-gray-900">Predicted Price</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

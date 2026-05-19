@@ -126,7 +126,7 @@ export default function ProductPage({
       .slice(0, 4);
   }, [product, variants, smartAlternatives, products]);
 
-  const [chartPeriod, setChartPeriod] = useState("6M");
+  const [chartPeriod, setChartPeriod] = useState("Daily");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isOriginDropdownOpen, setIsOriginDropdownOpen] = useState(false);
   const aiConfidence = useMemo(() => Math.floor(Math.random() * (98 - 85 + 1) + 85), [id]);
@@ -535,7 +535,7 @@ export default function ProductPage({
                         </p>
                       </div>
                       <div className="flex items-center p-1 bg-gray-50 rounded-xl border border-gray-100 w-fit">
-                        {["1M", "3M", "6M", "1Y"].map((period) => (
+                        {["Daily", "Weekly", "Monthly"].map((period) => (
                           <button
                             key={period}
                             onClick={() => setChartPeriod(period)}
@@ -553,6 +553,7 @@ export default function ProductPage({
                         showGrid
                         showLegend
                         productName={product.variant ? `${product.variant} ${product.name}` : product.name}
+                        period={chartPeriod}
                       />
                     </div>
                   </div>
@@ -831,7 +832,9 @@ export default function ProductPage({
                                 />
                               </div>
                               <div>
-                                <div className="text-xs font-bold text-white group-hover:text-accent transition-colors">{a.name}</div>
+                                <div className="text-xs font-bold text-white group-hover:text-accent transition-colors">
+                                  {a.variant && a.variant !== "Standard" ? `${a.variant} ${a.name}` : a.name}
+                                </div>
                                 <div className="text-[9px] text-white/40 font-black uppercase tracking-widest">₱{a.currentPrice.toFixed(2)}</div>
                               </div>
                             </div>

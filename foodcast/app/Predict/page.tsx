@@ -157,6 +157,7 @@ function PredictPageContent() {
         id: string;
         variant: string;
         origin: string;
+        image: string;
         currentPrice: number;
         predictedPrice: number;
       }[];
@@ -176,6 +177,7 @@ function PredictPageContent() {
         id: p.id,
         variant: p.variant,
         origin: p.origin,
+        image: p.image,
         currentPrice: p.currentPrice,
         predictedPrice: p.predictedPrice
       });
@@ -439,8 +441,7 @@ function PredictPageContent() {
                     data={featuredProduct.forecastData}
                     showGrid={true}
                     showLegend={true}
-                    productName={featuredProduct.name}
-                    variantName={featuredProduct.variant}
+                    productName={featuredProduct.variant && featuredProduct.variant !== "Standard" ? `${featuredProduct.variant} ${featuredProduct.name}` : featuredProduct.name}
                   />
                 </div>
               </div>
