@@ -64,14 +64,24 @@ function PredictPageContent() {
   }, []);
 
   const featuredItems = useMemo(() => {
-    const bullish = products.filter(p => p.sentiment === "Bullish");
-    if (bullish.length > 0) return bullish.slice(0, 6);
+    const uniqueMap = new Map();
+    for (const p of products) {
+      if (!uniqueMap.has(p.name)) {
+        uniqueMap.set(p.name, p);
+      } else if (p.sentiment === "Bullish" && uniqueMap.get(p.name).sentiment !== "Bullish") {
+        uniqueMap.set(p.name, p);
+      }
+    }
+    const uniqueProducts = Array.from(uniqueMap.values());
 
-    // Fallback if no products are explicitly Bullish
-    return [...products]
+    return uniqueProducts
       .sort((a, b) => {
-        const changeA = ((a.predictedPrice - a.currentPrice) / a.currentPrice) * 100;
-        const changeB = ((b.predictedPrice - b.currentPrice) / b.currentPrice) * 100;
+        const isBullishA = a.sentiment === "Bullish" ? 1 : 0;
+        const isBullishB = b.sentiment === "Bullish" ? 1 : 0;
+        if (isBullishA !== isBullishB) return isBullishB - isBullishA;
+
+        const changeA = a.currentPrice ? ((a.predictedPrice - a.currentPrice) / a.currentPrice) * 100 : 0;
+        const changeB = b.currentPrice ? ((b.currentPrice === 0 ? 0 : (b.predictedPrice - b.currentPrice) / b.currentPrice)) * 100 : 0;
         return changeB - changeA;
       })
       .slice(0, 6);
@@ -125,15 +135,24 @@ function PredictPageContent() {
   }, [products]);
 
   const trendingProductsSide = useMemo(() => {
-    const bullish = products.filter(p => p.sentiment === "Bullish");
-    if (bullish.length > 0) {
-      return bullish.slice(0, 5);
+    const uniqueMap = new Map();
+    for (const p of products) {
+      if (!uniqueMap.has(p.name)) {
+        uniqueMap.set(p.name, p);
+      } else if (p.sentiment === "Bullish" && uniqueMap.get(p.name).sentiment !== "Bullish") {
+        uniqueMap.set(p.name, p);
+      }
     }
-    // Fallback: Return top products with largest positive price change
-    return [...products]
+    const uniqueProducts = Array.from(uniqueMap.values());
+
+    return uniqueProducts
       .sort((a, b) => {
-        const changeA = ((a.predictedPrice - a.currentPrice) / a.currentPrice) * 100;
-        const changeB = ((b.predictedPrice - b.currentPrice) / b.currentPrice) * 100;
+        const isBullishA = a.sentiment === "Bullish" ? 1 : 0;
+        const isBullishB = b.sentiment === "Bullish" ? 1 : 0;
+        if (isBullishA !== isBullishB) return isBullishB - isBullishA;
+
+        const changeA = a.currentPrice ? ((a.predictedPrice - a.currentPrice) / a.currentPrice) * 100 : 0;
+        const changeB = b.currentPrice ? ((b.currentPrice === 0 ? 0 : (b.predictedPrice - b.currentPrice) / b.currentPrice)) * 100 : 0;
         return changeB - changeA;
       })
       .slice(0, 5);
@@ -347,7 +366,7 @@ function PredictPageContent() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-semibold text-gray-900 truncate">
-                            {p.variant && p.variant !== "Standard" ? `${p.variant} ${p.name}` : p.name}
+                            {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name}
                           </div>
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] text-gray-400">{p.category}</span>
@@ -407,7 +426,7 @@ function PredictPageContent() {
                         <span>Featured Market Pulse</span>
                       </div>
                       <h2 className="text-xl sm:text-3xl font-bold text-gray-900 leading-tight">
-                        {featuredProduct.variant && featuredProduct.variant !== "Standard" ? `${featuredProduct.variant} ${featuredProduct.name}` : featuredProduct.name}
+                        {featuredProduct.variant && featuredProduct.variant !== "Standard" ? `${featuredProduct.name} (${featuredProduct.variant})` : featuredProduct.name}
                       </h2>
                       {featuredProduct.origin && (
                         <div className="mt-1">
@@ -441,7 +460,7 @@ function PredictPageContent() {
                     data={featuredProduct.forecastData}
                     showGrid={true}
                     showLegend={true}
-                    productName={featuredProduct.variant && featuredProduct.variant !== "Standard" ? `${featuredProduct.variant} ${featuredProduct.name}` : featuredProduct.name}
+                    productName={featuredProduct.variant && featuredProduct.variant !== "Standard" ? `${featuredProduct.name} (${featuredProduct.variant})` : featuredProduct.name}
                   />
                 </div>
               </div>
@@ -457,18 +476,19 @@ function PredictPageContent() {
               </div>
 
               {/* Carousel Pagination & Navigation */}
-              <div className="px-8 py-4 bg-gray-50/30 border-t border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1 px-1 -mx-1">
-                  {featuredItems.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setFeaturedIndex(i)}
-                      className={`h-1.5 rounded-full transition-all duration-500 shrink-0 ${featuredIndex === i ? "w-8 bg-primary-800" : "w-1.5 bg-gray-300"
-                        }`}
-                      aria-label={`Go to featured item ${i + 1}`}
-                    />
-                  ))}
-                </div>
+              {featuredItems.length > 1 && (
+                <div className="px-8 py-4 bg-gray-50/30 border-t border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1 px-1 -mx-1">
+                    {featuredItems.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setFeaturedIndex(i)}
+                        className={`h-1.5 rounded-full transition-all duration-500 shrink-0 ${featuredIndex === i ? "w-8 bg-primary-800" : "w-1.5 bg-gray-300"
+                          }`}
+                        aria-label={`Go to featured item ${i + 1}`}
+                      />
+                    ))}
+                  </div>
                 <div className="flex items-center gap-3 hidden md:flex">
                   <button
                     onClick={() => setFeaturedIndex((prev) => (prev - 1 + featuredItems.length) % featuredItems.length)}
@@ -479,7 +499,7 @@ function PredictPageContent() {
                     <ChevronLeft className="w-3 h-3" />
                     {(() => {
                       const p = featuredItems[(featuredIndex - 1 + featuredItems.length) % featuredItems.length];
-                      return p?.variant && p.variant !== "Standard" ? `${p.variant} ${p.name}` : p?.name;
+                      return p?.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p?.name;
                     })()}
                   </button>
                   <button
@@ -488,12 +508,13 @@ function PredictPageContent() {
                   >
                     {(() => {
                       const p = featuredItems[(featuredIndex + 1) % featuredItems.length];
-                      return p?.variant && p.variant !== "Standard" ? `${p.variant} ${p.name}` : p?.name;
+                      return p?.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p?.name;
                     })()}
                     <ChevronRight className="w-3 h-3" />
                   </button>
                 </div>
               </div>
+              )}
             </div>
 
             {/* Sidebars */}
@@ -512,7 +533,7 @@ function PredictPageContent() {
                       <span className="text-lg font-black text-gray-100 group-hover:text-primary-100 transition-colors leading-none">{i + 1}</span>
                       <div className="flex-1">
                         <h4 className="text-sm font-bold text-gray-800 group-hover:text-primary-800 transition-colors leading-tight mb-1 line-clamp-2">
-                          {p.variant && p.variant !== "Standard" ? `${p.variant} ${p.name}` : p.name} price swing of {Math.abs(p.change).toFixed(0)}%?
+                          {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name} price swing of {Math.abs(p.change).toFixed(0)}%?
                         </h4>
                         <div className={`text-[10px] font-bold ${p.change >= 0 ? 'text-positive' : 'text-negative'} flex items-center gap-2`}>
                           <span className="px-2 py-0.5 bg-gray-50 rounded-md text-gray-500">Predicted</span>
@@ -557,7 +578,7 @@ function PredictPageContent() {
                         </div>
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-gray-700 group-hover:text-primary-800 transition-colors line-clamp-1">
-                            {p.variant && p.variant !== "Standard" ? `${p.variant} ${p.name}` : p.name}
+                            {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name}
                           </span>
                           {p.origin && (
                             <span className="text-[9px] font-medium text-gray-400 uppercase tracking-tight">{p.origin}</span>

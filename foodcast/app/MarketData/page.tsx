@@ -448,7 +448,7 @@ export default function MarketDataPage() {
                           <div className="flex items-center gap-4">
                             <div className="flex flex-col">
                               <span className="font-bold text-sm text-gray-900 group-hover:text-primary-800 transition-colors">
-                                {p.variant ? `${p.variant} ${p.name}` : p.name}
+                                {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name}
                               </span>
                               {p.origin && (
                                 <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
@@ -512,7 +512,7 @@ export default function MarketDataPage() {
                       <div className="flex items-center gap-3">
                         <div>
                           <div className="text-base font-bold text-gray-900">
-                            {p.variant ? `${p.variant} ${p.name}` : p.name}
+                            {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name}
                           </div>
                           {p.origin && (
                             <div className="text-[10px] text-gray-500 font-medium mb-1 uppercase tracking-wider">

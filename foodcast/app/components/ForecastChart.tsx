@@ -64,12 +64,12 @@ const ForecastChart = ({
     for (const point of data) {
       if (!point.date) continue;
       const key = getGroupKey(point.date);
-      
+
       if (point.actual !== null) {
         if (!groupedActuals.has(key)) groupedActuals.set(key, []);
         groupedActuals.get(key)!.push(point.actual);
       }
-      
+
       if (point.predicted !== null) {
         if (!groupedPredictions.has(key)) groupedPredictions.set(key, []);
         groupedPredictions.get(key)!.push(point.predicted);
@@ -142,9 +142,9 @@ const ForecastChart = ({
       timeScale: {
         borderVisible: false,
         timeVisible: false,
-        fixLeftEdge: false,
-        fixRightEdge: false,
-        rightOffset: 5,
+        fixLeftEdge: true,
+        fixRightEdge: true,
+        rightOffset: 30,
       },
       handleScroll: { vertTouchDrag: false },
       handleScale: { axisPressedMouseMove: true },
@@ -271,6 +271,19 @@ const ForecastChart = ({
     };
   }, [showGrid, height]);
 
+  // Helper to fit content but preserve right allowance
+  const fitContentWithAllowance = useCallback(() => {
+    if (!chartRef.current) return;
+    chartRef.current.timeScale().fitContent();
+    const logicalRange = chartRef.current.timeScale().getVisibleLogicalRange();
+    if (logicalRange) {
+      chartRef.current.timeScale().setVisibleLogicalRange({
+        from: logicalRange.from,
+        to: logicalRange.to + 12, // add empty space bars to the right
+      });
+    }
+  }, []);
+
   // Update data when it changes
   useEffect(() => {
     if (!actualSeriesRef.current || !predictedSeriesRef.current) return;
@@ -284,12 +297,12 @@ const ForecastChart = ({
       try {
         chartRef.current.timeScale().setVisibleRange(range);
       } catch {
-        chartRef.current.timeScale().fitContent();
+        fitContentWithAllowance();
       }
     } else if (chartRef.current) {
-      chartRef.current.timeScale().fitContent();
+      fitContentWithAllowance();
     }
-  }, [actualData, predictedData, getVisibleRange]);
+  }, [actualData, predictedData, getVisibleRange, fitContentWithAllowance]);
 
   // Auto-fit when period changes
   useEffect(() => {
@@ -299,12 +312,12 @@ const ForecastChart = ({
       try {
         chartRef.current.timeScale().setVisibleRange(range);
       } catch {
-        chartRef.current.timeScale().fitContent();
+        fitContentWithAllowance();
       }
     } else {
-      chartRef.current.timeScale().fitContent();
+      fitContentWithAllowance();
     }
-  }, [period, getVisibleRange]);
+  }, [period, getVisibleRange, fitContentWithAllowance]);
 
   return (
     <div>

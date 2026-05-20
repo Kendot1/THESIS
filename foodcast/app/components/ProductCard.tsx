@@ -181,7 +181,7 @@ const ProductCard = ({
             className={`font-bold text-gray-900 md:group-hover:text-primary-800 transition-colors duration-300 ${compact ? 'text-[18px] mb-2' : 'text-[22px] mb-2'}`}
             style={{ fontFamily: "var(--font-display)" }}
           >
-            {variant && variant !== "Standard" ? `${variant} ${name}` : name}
+            {variant && variant !== "Standard" ? `${name} (${variant})` : name}
           </h3>
         </div>
 

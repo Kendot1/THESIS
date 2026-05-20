@@ -64,7 +64,7 @@ export default function ProductPage({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            productName: product.variant ? `${product.variant} ${product.name}` : product.name,
+            productName: product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name,
             currentPrice: product.currentPrice,
             predictedPrice: product.predictedPrice,
             newsContext: newsContext || "No recent news available.",
@@ -289,7 +289,7 @@ export default function ProductPage({
   }
 
   const priceChange = product.predictedPrice - product.currentPrice;
-  const combinedName = product.variant ? `${product.variant} ${product.name}` : product.name;
+  const combinedName = product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name;
   const priceChangePercent =
     ((priceChange) / product.currentPrice) * 100;
   const isUp = priceChange >= 0;
@@ -356,7 +356,7 @@ export default function ProductPage({
                 </Link>
                 <span className="text-gray-300" aria-hidden="true">/</span>
                 <span className="text-sm font-medium text-gray-900">
-                  {product.variant ? `${product.variant} ${product.name}` : product.name}
+                  {product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name}
                 </span>
               </div>
             </div>
@@ -552,7 +552,7 @@ export default function ProductPage({
                         data={product.forecastData}
                         showGrid
                         showLegend
-                        productName={product.variant ? `${product.variant} ${product.name}` : product.name}
+                        productName={product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name}
                         period={chartPeriod}
                       />
                     </div>
@@ -610,7 +610,7 @@ export default function ProductPage({
                             </p>
                           ) : (
                             <p className="text-sm text-gray-600 leading-relaxed text-justify">
-                              Based on our AI models analyzing historical market data, {product.variant ? `${product.variant} ${product.name}` : product.name} shows a{" "}
+                              Based on our AI models analyzing historical market data, {product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name} shows a{" "}
                               {isUp ? "strong upward" : "moderate downward"} trend.{" "}
                               {isUp
                                 ? "Supply constraints and seasonal demand spikes indicate prices will likely rise significantly in the coming weeks."
@@ -833,7 +833,7 @@ export default function ProductPage({
                               </div>
                               <div>
                                 <div className="text-xs font-bold text-white group-hover:text-accent transition-colors">
-                                  {a.variant && a.variant !== "Standard" ? `${a.variant} ${a.name}` : a.name}
+                                  {a.variant && a.variant !== "Standard" ? `${a.name} (${a.variant})` : a.name}
                                 </div>
                                 <div className="text-[9px] text-white/40 font-black uppercase tracking-widest">₱{a.currentPrice.toFixed(2)}</div>
                               </div>

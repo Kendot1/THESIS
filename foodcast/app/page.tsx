@@ -347,7 +347,7 @@ export default function HomePage() {
                               </div>
                               <div className="flex-1 min-w-0 text-left">
                                 <div className="text-sm font-semibold text-gray-900 truncate">
-                                  {p.variant && p.variant !== "Standard" ? `${p.variant} ${p.name}` : p.name}
+                                  {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name}
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span className="text-[10px] text-gray-400">{p.category}</span>
@@ -376,7 +376,7 @@ export default function HomePage() {
                 {/* Stats row */}
                 <div className="animate-fade-in-up delay-500 flex flex-wrap gap-8 mt-10">
                   {[
-                    { value: "50+", label: "Products Tracked" },
+                    { value: `${products.length}`, label: "Products Tracked" },
                     { value: "98.5%", label: "Prediction Success" },
                     { value: "Real-time", label: "Data Updates" },
                   ].map((stat) => (
@@ -491,7 +491,7 @@ export default function HomePage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-semibold text-white truncate">
-                              {p.variant ? `${p.variant} ${p.name}` : p.name}
+                              {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name}
                             </div>
                             <div className="text-[10px] text-white/30">{p.category}</div>
                           </div>
@@ -532,7 +532,7 @@ export default function HomePage() {
                   <div className="flex items-center gap-2.5">
                     <BarChart3 className="w-5 h-5 text-orange" />
                     <div>
-                      <div className="text-xs font-bold text-white">9 Products</div>
+                      <div className="text-xs font-bold text-white">{products.length} Products</div>
                       <div className="text-[10px] text-white/35">Tracked in NCR</div>
                     </div>
                   </div>
@@ -603,7 +603,7 @@ export default function HomePage() {
               {allProducts.map((p, i) => (
                 <div
                   key={p.id}
-                  className="snap-start shrink-0 w-[300px] sm:w-[420px] lg:w-[480px]"
+                  className="snap-start shrink-0 w-[280px] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]"
                   style={{ animationDelay: `${i * 80}ms` }}
                 >
                   <DailyMoverCard
