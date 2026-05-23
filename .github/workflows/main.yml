@@ -92,7 +92,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r model_trainer/requirements.txt
 
-      - name: Run Smart Daily Training
+      - name: Run Smart Daily Training Pipeline
         run: |
           # Create .env dynamically for the model trainer
           echo "SUPABASE_URL=${SUPABASE_URL}" > model_trainer/.env
@@ -103,6 +103,16 @@ jobs:
           echo "CLOUDFLARE_R2_BUCKET_NAME=${CLOUDFLARE_R2_BUCKET_NAME}" >> model_trainer/.env
           echo "CLOUDFLARE_R2_PUBLIC_URL=${CLOUDFLARE_R2_PUBLIC_URL}" >> model_trainer/.env
           
-          # Run the pipeline in daily mode (auto-detects drift)
           cd model_trainer
+          
+          # 1. Download previous artifacts (state persistence)
+          python utils/r2_sync.py download
+          
+          # 2. Run the pipeline in daily mode (auto-detects drift)
           python main.py train --mode daily
+          
+          # 3. Generate predictions and write to Supabase
+          python main.py predict --horizon monthly
+          
+          # 4. Upload new artifacts to R2 for tomorrow
+          python utils/r2_sync.py upload

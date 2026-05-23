@@ -7,15 +7,16 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import SparklineChart from "../components/SparklineChart";
 import ScrollReveal from "../components/ScrollReveal";
-import { Product, fetchProducts, categories, CATEGORY_EMOJI } from "../lib/data";
+import { Product, useProducts, fetchCategories } from "../lib/data";
 
 type SortKey = "name" | "category" | "currentPrice" | "predictedPrice" | "change" | "volume";
 type SortDir = "asc" | "desc";
 
 export default function MarketDataPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: products = [], isLoading } = useProducts();
+  
   const [query, setQuery] = useState("");
+  const [categories, setCategories] = useState<string[]>(["All"]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -30,9 +31,8 @@ export default function MarketDataPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetchProducts().then(data => {
-      setProducts(data);
-      setIsLoading(false);
+    fetchCategories().then((cats) => {
+      setCategories(cats);
     });
   }, []);
 
@@ -442,6 +442,7 @@ export default function MarketDataPage() {
                       <tr
                         key={p.id}
                         onClick={() => router.push(`/Product/${p.id}`)}
+                        onMouseEnter={() => router.prefetch(`/Product/${p.id}`)}
                         className="group transition-all duration-300 hover:bg-primary-50/40 cursor-pointer"
                       >
                         <td className="px-6 lg:px-8 py-3">
@@ -506,6 +507,7 @@ export default function MarketDataPage() {
                   <div
                     key={p.id}
                     onClick={() => router.push(`/Product/${p.id}`)}
+                    onMouseEnter={() => router.prefetch(`/Product/${p.id}`)}
                     className="p-5 active:bg-white/60 transition-colors cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-3 mb-4">

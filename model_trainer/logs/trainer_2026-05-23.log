@@ -1,0 +1,340 @@
+2026-05-23 13:37:45 [INFO] main - Running model evaluation ...
+2026-05-23 13:37:46 [INFO] data.fetcher - Fetching ALL food price records ...
+2026-05-23 13:38:01 [INFO] data.fetcher - Fetched 41,928 rows total.
+2026-05-23 13:38:01 [INFO] data.preprocessor - Preprocessing 41,928 rows ...
+2026-05-23 13:38:01 [WARNING] data.preprocessor - Dropped 3 invalid rows (null/negative price).
+2026-05-23 13:38:01 [INFO] data.preprocessor -   After drop_invalid: 41,925 rows (3 removed)
+2026-05-23 13:38:01 [INFO] data.preprocessor - Aggregated 134 rows with duplicate product+variant+date combinations.
+2026-05-23 13:38:01 [INFO] data.preprocessor -   After dedup:        41,791 rows (134 merged)
+2026-05-23 13:38:02 [INFO] data.preprocessor -   After fill_missing: 44,357 rows (+2,566 interpolated)
+2026-05-23 13:38:02 [INFO] data.preprocessor - Removed 117 outlier rows (>4.0σ).
+2026-05-23 13:38:02 [INFO] data.preprocessor -   After outliers:     44,240 rows (117 removed)
+2026-05-23 13:38:02 [INFO] data.preprocessor - Preprocessing complete -- 44,240 clean rows (from 41,928 raw).
+2026-05-23 13:38:02 [INFO] features.temporal - Added 15 temporal features.
+2026-05-23 13:38:04 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-23 13:38:04 [INFO] features.categorical - Loaded categorical mappings from D:\THESIS\model_trainer\artifacts\categorical_mappings.json
+2026-05-23 13:40:21 [INFO] main - Running model evaluation ...
+2026-05-23 13:40:22 [INFO] data.fetcher - Fetching ALL food price records ...
+2026-05-23 13:40:34 [INFO] data.fetcher - Fetched 41,928 rows total.
+2026-05-23 13:40:34 [INFO] data.preprocessor - Preprocessing 41,928 rows ...
+2026-05-23 13:40:34 [WARNING] data.preprocessor - Dropped 3 invalid rows (null/negative price).
+2026-05-23 13:40:34 [INFO] data.preprocessor -   After drop_invalid: 41,925 rows (3 removed)
+2026-05-23 13:40:34 [INFO] data.preprocessor - Aggregated 168 rows with duplicate product+variant+date combinations.
+2026-05-23 13:40:34 [INFO] data.preprocessor -   After dedup:        41,757 rows (168 merged)
+2026-05-23 13:40:34 [INFO] data.preprocessor -   After fill_missing: 44,357 rows (+2,600 interpolated)
+2026-05-23 13:40:34 [INFO] data.preprocessor - Removed 114 outlier rows (>4.0σ).
+2026-05-23 13:40:34 [INFO] data.preprocessor -   After outliers:     44,243 rows (114 removed)
+2026-05-23 13:40:34 [INFO] data.preprocessor - Preprocessing complete -- 44,243 clean rows (from 41,928 raw).
+2026-05-23 13:40:34 [INFO] features.temporal - Added 15 temporal features.
+2026-05-23 13:40:37 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-23 13:40:37 [INFO] features.categorical - Loaded categorical mappings from D:\THESIS\model_trainer\artifacts\categorical_mappings.json
+2026-05-23 13:41:14 [INFO] pipeline.trainer - === FULL TRAINING PIPELINE ===
+2026-05-23 13:41:14 [INFO] data.fetcher - Fetching ALL food price records ...
+2026-05-23 13:41:27 [INFO] data.fetcher - Fetched 41,928 rows total.
+2026-05-23 13:41:27 [INFO] pipeline.trainer - Step 1/8 -- Preprocessing ...
+2026-05-23 13:41:27 [INFO] data.preprocessor - Preprocessing 41,928 rows ...
+2026-05-23 13:41:27 [WARNING] data.preprocessor - Dropped 3 invalid rows (null/negative price).
+2026-05-23 13:41:27 [INFO] data.preprocessor -   After drop_invalid: 41,925 rows (3 removed)
+2026-05-23 13:41:27 [INFO] data.preprocessor - Aggregated 94 rows with duplicate product+variant+date combinations.
+2026-05-23 13:41:27 [INFO] data.preprocessor -   After dedup:        41,831 rows (94 merged)
+2026-05-23 13:41:27 [INFO] data.preprocessor -   After fill_missing: 44,357 rows (+2,526 interpolated)
+2026-05-23 13:41:27 [INFO] data.preprocessor - Removed 114 outlier rows (>4.0σ).
+2026-05-23 13:41:27 [INFO] data.preprocessor -   After outliers:     44,243 rows (114 removed)
+2026-05-23 13:41:27 [INFO] data.preprocessor - Preprocessing complete -- 44,243 clean rows (from 41,928 raw).
+2026-05-23 13:41:27 [INFO] pipeline.trainer - Step 2/8 -- Feature engineering ...
+2026-05-23 13:41:27 [INFO] features.temporal - Added 15 temporal features.
+2026-05-23 13:41:29 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-23 13:41:29 [INFO] features.categorical - Saved categorical mappings → D:\THESIS\model_trainer\artifacts\categorical_mappings.json
+2026-05-23 13:41:29 [INFO] features.categorical - Encoded 4 categorical columns (119 unique values).
+2026-05-23 13:41:29 [INFO] pipeline.trainer - Step 3/8 -- Splitting data ...
+2026-05-23 13:41:29 [INFO] pipeline.trainer - Data split -- train: 32,367 rows, val: 6,516 rows (16.8%)
+2026-05-23 13:41:29 [INFO] pipeline.trainer - LightGBM using 54 historical data features. No reasoning features included.
+2026-05-23 13:41:29 [INFO] pipeline.trainer - Step 4/8 -- Training LightGBM (absolute prices) ...
+2026-05-23 13:41:35 [INFO] models.lightgbm_model - LightGBM validation -- RMSE: 3.6960  MAE: 1.9142  MAPE: 1.56%
+2026-05-23 13:41:35 [INFO] models.lightgbm_model - Saved LightGBM model -> D:\THESIS\model_trainer\artifacts\lightgbm_model.txt
+2026-05-23 13:41:47 [INFO] models.lightgbm_model - Trained quantile models for confidence intervals.
+2026-05-23 13:41:47 [INFO] pipeline.trainer - Step 5/8 -- Training LSTM (Stage 1: base temporal model) ...
+2026-05-23 13:41:47 [INFO] models.lstm_model - LSTM using 16 input features: ['price_lag_1d', 'price_lag_7d', 'price_lag_30d', 'price_rolling_mean_7d', 'price_rolling_mean_30d', 'price_pct_change_1d', 'price_pct_change_7d', 'price_rsi_14d', 'price_macd', 'price_macd_signal', 'price_rolling_std_7d', 'price_rolling_std_30d', 'month_sin', 'month_cos', 'dow_sin', 'dow_cos']
+2026-05-23 13:41:49 [INFO] pipeline.trainer - LSTM sequences -- train: 26660, val: 3809, features: 16
+2026-05-23 13:42:06 [INFO] models.lstm_model - Epoch   1/200  train=0.061447  val=0.036400  lr=9.94e-04  patience=0/35
+2026-05-23 13:42:47 [INFO] models.lstm_model - Epoch   5/200  train=0.053009  val=0.036460  lr=8.54e-04  patience=2/35
+2026-05-23 13:43:37 [INFO] models.lstm_model - Epoch  10/200  train=0.046356  val=0.036799  lr=5.01e-04  patience=2/35
+2026-05-23 13:44:28 [INFO] models.lstm_model - Epoch  15/200  train=0.037591  val=0.039651  lr=1.47e-04  patience=7/35
+2026-05-23 13:45:17 [INFO] models.lstm_model - Epoch  20/200  train=0.034094  val=0.041752  lr=1.00e-03  patience=12/35
+2026-05-23 13:46:08 [INFO] models.lstm_model - Epoch  25/200  train=0.037210  val=0.043092  lr=9.62e-04  patience=17/35
+2026-05-23 13:47:09 [INFO] models.lstm_model - Epoch  30/200  train=0.033348  val=0.038710  lr=8.54e-04  patience=22/35
+2026-05-23 13:48:02 [INFO] models.lstm_model - Epoch  35/200  train=0.029316  val=0.041881  lr=6.92e-04  patience=27/35
+2026-05-23 13:48:57 [INFO] models.lstm_model - Epoch  40/200  train=0.026221  val=0.045151  lr=5.01e-04  patience=32/35
+2026-05-23 13:49:29 [INFO] models.lstm_model - Early stopping at epoch 43 (best epoch: 8, best val_loss: 0.035518)
+2026-05-23 13:49:29 [INFO] models.lstm_model - LSTM validation — RMSE: 2.8859  MAE: 1.1665  MAPE: 0.84%
+2026-05-23 13:49:29 [INFO] models.lstm_model - Saved LSTM training history to D:\THESIS\model_trainer\artifacts\lstm_history.json
+2026-05-23 13:49:29 [INFO] pipeline.trainer - Step 6/8 -- Evaluating blended hybrid ensemble ...
+2026-05-23 13:49:30 [INFO] models.ensemble - Blended hybrid trained (LGBM_Weight=0.50, LSTM_Weight=0.50) --
+  LSTM-only:   RMSE=2.8859  DirAcc=48.66%
+  LGBM-only:   RMSE=3.0473  DirAcc=60.85%
+  Hybrid:      RMSE=2.7019  DirAcc=55.42%
+  Improvement vs LSTM: 6.4%
+2026-05-23 13:49:30 [INFO] models.ensemble - Saved residual stats -> D:\THESIS\model_trainer\artifacts\ensemble_residual_stats.pkl
+2026-05-23 13:49:30 [INFO] pipeline.trainer - Step 7/8 -- Saving model version ...
+2026-05-23 13:49:30 [INFO] models.model_store - Pruned old version: v011_2026-04-30T13-02-53
+2026-05-23 13:49:30 [INFO] models.model_store - Created model version v011_2026-05-23T05-49-30 (5 files)
+2026-05-23 13:49:30 [INFO] pipeline.drift_detector - Saved reference distribution (44243 samples).
+2026-05-23 13:49:30 [INFO] pipeline.trainer - Step 8/8 -- Generating visual training dashboards ...
+2026-05-23 13:49:30 [INFO] pipeline.trainer - Generating modern training and evaluation visual dashboards ...
+2026-05-23 13:49:32 [INFO] pipeline.trainer - Generated training loss curves visual -> D:\THESIS\model_trainer\artifacts\loss_curves.png
+2026-05-23 13:49:32 [INFO] pipeline.trainer - Generated feature importance visual -> D:\THESIS\model_trainer\artifacts\feature_importance.png
+2026-05-23 13:49:33 [INFO] pipeline.trainer - Generated validation prediction curves visual for Corn Grits -> D:\THESIS\model_trainer\artifacts\evaluation_results.png
+2026-05-23 13:49:33 [INFO] pipeline.trainer - ============================================================
+2026-05-23 13:49:33 [INFO] pipeline.trainer - TRAINING SUMMARY
+2026-05-23 13:49:33 [INFO] pipeline.trainer - ============================================================
+2026-05-23 13:49:33 [INFO] pipeline.trainer -   LightGBM (standalone): RMSE=3.6960  MAE=1.9142  MAPE=1.56%
+2026-05-23 13:49:33 [INFO] pipeline.trainer -   LSTM (base):           RMSE=2.8859  MAE=1.1665  MAPE=0.84%
+2026-05-23 13:49:33 [INFO] pipeline.trainer -   HYBRID ENSEMBLE:       RMSE=2.7019  MAE=1.3258  MAPE=1.03%
+2026-05-23 13:49:33 [INFO] pipeline.trainer - ============================================================
+2026-05-23 13:49:33 [INFO] pipeline.trainer - === TRAINING COMPLETE ===
+2026-05-23 13:49:33 [INFO] main - Training complete. Metrics: {'lgbm': {'rmse': 3.696045114583343, 'mae': 1.9141654141754614, 'mape': 1.5629586688943709, 'r2': 0.9988151754713511, 'directional_accuracy': 58.40085287846482}, 'lstm': {'rmse': 2.8859205818488127, 'mae': 1.1664980245407996, 'mape': 0.8416444760292687, 'r2': 0.9992731346060512, 'directional_accuracy': 48.77622377622377}, 'ensemble': {'rmse': 2.701876027464287, 'mae': 1.3257688617400178, 'mape': 1.0307810046219448, 'r2': 0.9993628875707973, 'directional_accuracy': 55.42299349240781}, 'timestamp': '2026-05-23T05:49:30.324629+00:00', 'data_rows': 44243, 'mode': 'full'}
+2026-05-23 13:49:40 [INFO] main - Running model evaluation ...
+2026-05-23 13:49:40 [INFO] data.fetcher - Fetching ALL food price records ...
+2026-05-23 13:49:56 [INFO] data.fetcher - Fetched 41,928 rows total.
+2026-05-23 13:49:56 [INFO] data.preprocessor - Preprocessing 41,928 rows ...
+2026-05-23 13:49:56 [WARNING] data.preprocessor - Dropped 3 invalid rows (null/negative price).
+2026-05-23 13:49:56 [INFO] data.preprocessor -   After drop_invalid: 41,925 rows (3 removed)
+2026-05-23 13:49:56 [INFO] data.preprocessor - Aggregated 171 rows with duplicate product+variant+date combinations.
+2026-05-23 13:49:56 [INFO] data.preprocessor -   After dedup:        41,754 rows (171 merged)
+2026-05-23 13:49:56 [INFO] data.preprocessor -   After fill_missing: 44,357 rows (+2,603 interpolated)
+2026-05-23 13:49:56 [INFO] data.preprocessor - Removed 116 outlier rows (>4.0σ).
+2026-05-23 13:49:56 [INFO] data.preprocessor -   After outliers:     44,241 rows (116 removed)
+2026-05-23 13:49:56 [INFO] data.preprocessor - Preprocessing complete -- 44,241 clean rows (from 41,928 raw).
+2026-05-23 13:49:56 [INFO] features.temporal - Added 15 temporal features.
+2026-05-23 13:49:58 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-23 13:49:58 [INFO] features.categorical - Loaded categorical mappings from D:\THESIS\model_trainer\artifacts\categorical_mappings.json
+2026-05-23 13:49:59 [INFO] models.lightgbm_model - Loaded LightGBM model <- D:\THESIS\model_trainer\artifacts\lightgbm_model.txt
+2026-05-23 13:49:59 [INFO] pipeline.evaluator - Evaluation report: Overall RMSE=3.9310, MAE=1.9965, MAPE=1.62%
+2026-05-23 13:49:59 [INFO] main - === EVALUATION REPORT ===
+2026-05-23 13:49:59 [INFO] main - Overall: {'rmse': 3.9309513359114683, 'mae': 1.996498073099711, 'mape': 1.6166278510814864, 'r2': 0.9986511301659823, 'directional_accuracy': 58.39925546765937}
+2026-05-23 13:49:59 [INFO] main - Products evaluated: 49
+2026-05-23 13:49:59 [INFO] main - Total samples: 5994
+2026-05-23 13:49:59 [WARNING] main - Could not generate plots. Ensure seaborn and matplotlib are installed: No module named 'seaborn'
+2026-05-23 13:51:02 [INFO] main - Running model evaluation ...
+2026-05-23 13:51:03 [INFO] data.fetcher - Fetching ALL food price records ...
+2026-05-23 13:51:17 [INFO] data.fetcher - Fetched 41,928 rows total.
+2026-05-23 13:51:17 [INFO] data.preprocessor - Preprocessing 41,928 rows ...
+2026-05-23 13:51:17 [WARNING] data.preprocessor - Dropped 3 invalid rows (null/negative price).
+2026-05-23 13:51:17 [INFO] data.preprocessor -   After drop_invalid: 41,925 rows (3 removed)
+2026-05-23 13:51:17 [INFO] data.preprocessor - Aggregated 131 rows with duplicate product+variant+date combinations.
+2026-05-23 13:51:17 [INFO] data.preprocessor -   After dedup:        41,794 rows (131 merged)
+2026-05-23 13:51:17 [INFO] data.preprocessor -   After fill_missing: 44,357 rows (+2,563 interpolated)
+2026-05-23 13:51:17 [INFO] data.preprocessor - Removed 114 outlier rows (>4.0σ).
+2026-05-23 13:51:17 [INFO] data.preprocessor -   After outliers:     44,243 rows (114 removed)
+2026-05-23 13:51:17 [INFO] data.preprocessor - Preprocessing complete -- 44,243 clean rows (from 41,928 raw).
+2026-05-23 13:51:17 [INFO] features.temporal - Added 15 temporal features.
+2026-05-23 13:51:19 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-23 13:51:19 [INFO] features.categorical - Loaded categorical mappings from D:\THESIS\model_trainer\artifacts\categorical_mappings.json
+2026-05-23 13:51:19 [INFO] models.lightgbm_model - Loaded LightGBM model <- D:\THESIS\model_trainer\artifacts\lightgbm_model.txt
+2026-05-23 13:51:19 [INFO] pipeline.evaluator - Evaluation report: Overall RMSE=3.7726, MAE=1.9706, MAPE=1.60%
+2026-05-23 13:51:19 [INFO] main - === EVALUATION REPORT ===
+2026-05-23 13:51:19 [INFO] main - Overall: {'rmse': 3.7725597156889563, 'mae': 1.9706023061653917, 'mape': 1.6040573329708738, 'r2': 0.9987652867074956, 'directional_accuracy': 58.5503166783955}
+2026-05-23 13:51:19 [INFO] main - Products evaluated: 49
+2026-05-23 13:51:19 [INFO] main - Total samples: 6030
+2026-05-23 13:51:20 [WARNING] main - Could not generate plots. Ensure seaborn and matplotlib are installed: No module named 'seaborn'
+2026-05-23 13:58:31 [INFO] main - Running model evaluation ...
+2026-05-23 13:58:32 [INFO] data.fetcher - Fetching ALL food price records ...
+2026-05-23 13:58:42 [INFO] data.fetcher - Fetched 41,928 rows total.
+2026-05-23 13:58:42 [INFO] data.preprocessor - Preprocessing 41,928 rows ...
+2026-05-23 13:58:42 [WARNING] data.preprocessor - Dropped 3 invalid rows (null/negative price).
+2026-05-23 13:58:42 [INFO] data.preprocessor -   After drop_invalid: 41,925 rows (3 removed)
+2026-05-23 13:58:42 [INFO] data.preprocessor - Aggregated 172 rows with duplicate product+variant+date combinations.
+2026-05-23 13:58:42 [INFO] data.preprocessor -   After dedup:        41,753 rows (172 merged)
+2026-05-23 13:58:42 [INFO] data.preprocessor -   After fill_missing: 44,357 rows (+2,604 interpolated)
+2026-05-23 13:58:43 [INFO] data.preprocessor - Removed 115 outlier rows (>4.0σ).
+2026-05-23 13:58:43 [INFO] data.preprocessor -   After outliers:     44,242 rows (115 removed)
+2026-05-23 13:58:43 [INFO] data.preprocessor - Preprocessing complete -- 44,242 clean rows (from 41,928 raw).
+2026-05-23 13:58:43 [INFO] features.temporal - Added 15 temporal features.
+2026-05-23 13:58:45 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-23 13:58:45 [INFO] features.categorical - Loaded categorical mappings from D:\THESIS\model_trainer\artifacts\categorical_mappings.json
+2026-05-23 13:58:45 [INFO] models.lightgbm_model - Loaded LightGBM model <- D:\THESIS\model_trainer\artifacts\lightgbm_model.txt
+2026-05-23 13:58:45 [INFO] pipeline.evaluator - Evaluation report: Overall RMSE=3.8315, MAE=1.9674, MAPE=1.61%
+2026-05-23 13:58:45 [INFO] main - === EVALUATION REPORT ===
+2026-05-23 13:58:45 [INFO] main - Overall: {'rmse': 3.831500064203009, 'mae': 1.967421914267923, 'mape': 1.6059579741485381, 'r2': 0.9987319018380973, 'directional_accuracy': 59.36030103480715}
+2026-05-23 13:58:45 [INFO] main - Products evaluated: 49
+2026-05-23 13:58:45 [INFO] main - Total samples: 5991
+2026-05-23 13:58:45 [WARNING] main - Could not generate plots. Ensure seaborn and matplotlib are installed: No module named 'seaborn'
+2026-05-23 13:58:51 [INFO] pipeline.trainer - === INCREMENTAL TRAINING PIPELINE ===
+2026-05-23 13:58:51 [INFO] data.fetcher - Fetching ALL food price records ...
+2026-05-23 13:59:04 [INFO] data.fetcher - Fetched 41,928 rows total.
+2026-05-23 13:59:04 [INFO] pipeline.trainer - Step 1/8 -- Preprocessing ...
+2026-05-23 13:59:04 [INFO] data.preprocessor - Preprocessing 41,928 rows ...
+2026-05-23 13:59:04 [WARNING] data.preprocessor - Dropped 3 invalid rows (null/negative price).
+2026-05-23 13:59:04 [INFO] data.preprocessor -   After drop_invalid: 41,925 rows (3 removed)
+2026-05-23 13:59:04 [INFO] data.preprocessor - Aggregated 627 rows with duplicate product+variant+date combinations.
+2026-05-23 13:59:04 [INFO] data.preprocessor -   After dedup:        41,298 rows (627 merged)
+2026-05-23 13:59:04 [INFO] data.preprocessor -   After fill_missing: 44,357 rows (+3,059 interpolated)
+2026-05-23 13:59:05 [INFO] data.preprocessor - Removed 114 outlier rows (>4.0σ).
+2026-05-23 13:59:05 [INFO] data.preprocessor -   After outliers:     44,243 rows (114 removed)
+2026-05-23 13:59:05 [INFO] data.preprocessor - Preprocessing complete -- 44,243 clean rows (from 41,928 raw).
+2026-05-23 13:59:05 [INFO] pipeline.trainer - Step 2/8 -- Feature engineering ...
+2026-05-23 13:59:05 [INFO] features.temporal - Added 15 temporal features.
+2026-05-23 13:59:07 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-23 13:59:07 [INFO] features.categorical - Loaded categorical mappings from D:\THESIS\model_trainer\artifacts\categorical_mappings.json
+2026-05-23 13:59:07 [INFO] pipeline.trainer - Step 3/8 -- Splitting data ...
+2026-05-23 13:59:07 [INFO] pipeline.trainer - Data split -- train: 31,939 rows, val: 6,420 rows (16.7%)
+2026-05-23 13:59:07 [INFO] pipeline.trainer - LightGBM using 54 historical data features. No reasoning features included.
+2026-05-23 13:59:07 [INFO] pipeline.trainer - Step 4/8 -- Training LightGBM (absolute prices) ...
+2026-05-23 13:59:07 [INFO] models.lightgbm_model - Incremental training -- loaded model from disk.
+2026-05-23 13:59:10 [INFO] models.lightgbm_model - LightGBM validation -- RMSE: 3.8044  MAE: 1.9122  MAPE: 1.55%
+2026-05-23 13:59:10 [INFO] models.lightgbm_model - Saved LightGBM model -> D:\THESIS\model_trainer\artifacts\lightgbm_model.txt
+2026-05-23 13:59:22 [INFO] models.lightgbm_model - Trained quantile models for confidence intervals.
+2026-05-23 13:59:22 [INFO] pipeline.trainer - Step 5/8 -- Training LSTM (Stage 1: base temporal model) ...
+2026-05-23 13:59:22 [INFO] models.lstm_model - LSTM using 16 input features: ['price_lag_1d', 'price_lag_7d', 'price_lag_30d', 'price_rolling_mean_7d', 'price_rolling_mean_30d', 'price_pct_change_1d', 'price_pct_change_7d', 'price_rsi_14d', 'price_macd', 'price_macd_signal', 'price_rolling_std_7d', 'price_rolling_std_30d', 'month_sin', 'month_cos', 'dow_sin', 'dow_cos']
+2026-05-23 13:59:24 [INFO] pipeline.trainer - LSTM sequences -- train: 26233, val: 3714, features: 16
+2026-05-23 13:59:24 [INFO] models.lstm_model - LSTM incremental fine-tuning (LR=0.0001, epochs=66)
+2026-05-23 13:59:38 [INFO] models.lstm_model - Epoch   1/66  train=0.046417  val=0.036000  lr=9.94e-05  patience=0/35
+2026-05-23 14:00:22 [INFO] models.lstm_model - Epoch   5/66  train=0.042975  val=0.036817  lr=8.55e-05  patience=4/35
+2026-05-23 14:01:17 [INFO] models.lstm_model - Epoch  10/66  train=0.039877  val=0.038482  lr=5.05e-05  patience=9/35
+2026-05-23 14:02:10 [INFO] models.lstm_model - Epoch  15/66  train=0.038099  val=0.039867  lr=1.55e-05  patience=14/35
+2026-05-23 14:03:03 [INFO] models.lstm_model - Epoch  20/66  train=0.037708  val=0.040518  lr=1.00e-04  patience=19/35
+2026-05-23 14:03:56 [INFO] models.lstm_model - Epoch  25/66  train=0.036736  val=0.042098  lr=9.62e-05  patience=24/35
+2026-05-23 14:04:50 [INFO] models.lstm_model - Epoch  30/66  train=0.034809  val=0.040902  lr=8.55e-05  patience=29/35
+2026-05-23 14:05:45 [INFO] models.lstm_model - Epoch  35/66  train=0.033265  val=0.042650  lr=6.94e-05  patience=34/35
+2026-05-23 14:05:56 [INFO] models.lstm_model - Early stopping at epoch 36 (best epoch: 1, best val_loss: 0.036000)
+2026-05-23 14:05:56 [INFO] models.lstm_model - LSTM validation — RMSE: 2.8892  MAE: 1.1740  MAPE: 0.85%
+2026-05-23 14:05:56 [INFO] models.lstm_model - Saved LSTM training history to D:\THESIS\model_trainer\artifacts\lstm_history.json
+2026-05-23 14:05:56 [INFO] pipeline.trainer - Step 6/8 -- Evaluating blended hybrid ensemble ...
+2026-05-23 14:05:57 [INFO] models.ensemble - Blended hybrid trained (LGBM_Weight=0.50, LSTM_Weight=0.50) --
+  LSTM-only:   RMSE=2.8892  DirAcc=48.07%
+  LGBM-only:   RMSE=3.0285  DirAcc=62.23%
+  Hybrid:      RMSE=2.6832  DirAcc=56.47%
+  Improvement vs LSTM: 7.1%
+2026-05-23 14:05:57 [INFO] models.ensemble - Saved residual stats -> D:\THESIS\model_trainer\artifacts\ensemble_residual_stats.pkl
+2026-05-23 14:05:57 [INFO] pipeline.trainer - Step 7/8 -- Saving model version ...
+2026-05-23 14:05:57 [INFO] models.model_store - Pruned old version: v011_2026-04-30T13-28-47
+2026-05-23 14:05:57 [INFO] models.model_store - Created model version v011_2026-05-23T06-05-57 (5 files)
+2026-05-23 14:05:57 [INFO] pipeline.drift_detector - Saved reference distribution (44243 samples).
+2026-05-23 14:05:57 [INFO] pipeline.trainer - Step 8/8 -- Generating visual training dashboards ...
+2026-05-23 14:05:57 [INFO] pipeline.trainer - Generating modern training and evaluation visual dashboards ...
+2026-05-23 14:05:57 [INFO] pipeline.trainer - Generated training loss curves visual -> D:\THESIS\model_trainer\artifacts\loss_curves.png
+2026-05-23 14:05:58 [INFO] pipeline.trainer - Generated feature importance visual -> D:\THESIS\model_trainer\artifacts\feature_importance.png
+2026-05-23 14:05:59 [INFO] pipeline.trainer - Generated validation prediction curves visual for Rice -> D:\THESIS\model_trainer\artifacts\evaluation_results.png
+2026-05-23 14:05:59 [INFO] pipeline.trainer - ============================================================
+2026-05-23 14:05:59 [INFO] pipeline.trainer - TRAINING SUMMARY
+2026-05-23 14:05:59 [INFO] pipeline.trainer - ============================================================
+2026-05-23 14:05:59 [INFO] pipeline.trainer -   LightGBM (standalone): RMSE=3.8044  MAE=1.9122  MAPE=1.55%
+2026-05-23 14:05:59 [INFO] pipeline.trainer -   LSTM (base):           RMSE=2.8892  MAE=1.1740  MAPE=0.85%
+2026-05-23 14:05:59 [INFO] pipeline.trainer -   HYBRID ENSEMBLE:       RMSE=2.6832  MAE=1.3205  MAPE=1.03%
+2026-05-23 14:05:59 [INFO] pipeline.trainer - ============================================================
+2026-05-23 14:05:59 [INFO] pipeline.trainer - === TRAINING COMPLETE ===
+2026-05-23 14:05:59 [INFO] main - Training complete. Metrics: {'lgbm': {'rmse': 3.804384600030777, 'mae': 1.9121904298727965, 'mape': 1.5520653197775434, 'r2': 0.9987423848434661, 'directional_accuracy': 59.91824440619621}, 'lstm': {'rmse': 2.8892182538150926, 'mae': 1.1739580045394118, 'mape': 0.8483848406746258, 'r2': 0.999269356363492, 'directional_accuracy': 48.24031283327408}, 'ensemble': {'rmse': 2.6831530056502806, 'mae': 1.320548698288198, 'mape': 1.026176336788193, 'r2': 0.9993698618351906, 'directional_accuracy': 56.47231389805647}, 'timestamp': '2026-05-23T06:05:57.215988+00:00', 'data_rows': 44243, 'mode': 'incremental'}
+2026-05-23 14:12:17 [INFO] pipeline.trainer - === INCREMENTAL TRAINING PIPELINE ===
+2026-05-23 14:12:17 [INFO] data.fetcher - Fetching ALL food price records ...
+2026-05-23 14:12:29 [INFO] data.fetcher - Fetched 41,928 rows total.
+2026-05-23 14:12:29 [INFO] pipeline.trainer - Step 1/8 -- Preprocessing ...
+2026-05-23 14:12:29 [INFO] data.preprocessor - Preprocessing 41,928 rows ...
+2026-05-23 14:12:29 [WARNING] data.preprocessor - Dropped 3 invalid rows (null/negative price).
+2026-05-23 14:12:29 [INFO] data.preprocessor -   After drop_invalid: 41,925 rows (3 removed)
+2026-05-23 14:12:29 [INFO] data.preprocessor - Aggregated 173 rows with duplicate product+variant+date combinations.
+2026-05-23 14:12:29 [INFO] data.preprocessor -   After dedup:        41,752 rows (173 merged)
+2026-05-23 14:12:30 [INFO] data.preprocessor -   After fill_missing: 44,357 rows (+2,605 interpolated)
+2026-05-23 14:12:30 [INFO] data.preprocessor - Removed 115 outlier rows (>4.0σ).
+2026-05-23 14:12:30 [INFO] data.preprocessor -   After outliers:     44,242 rows (115 removed)
+2026-05-23 14:12:30 [INFO] data.preprocessor - Preprocessing complete -- 44,242 clean rows (from 41,928 raw).
+2026-05-23 14:12:30 [INFO] pipeline.trainer - Step 2/8 -- Feature engineering ...
+2026-05-23 14:12:30 [INFO] features.temporal - Added 15 temporal features.
+2026-05-23 14:12:33 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-23 14:12:33 [INFO] features.categorical - Loaded categorical mappings from D:\THESIS\model_trainer\artifacts\categorical_mappings.json
+2026-05-23 14:12:33 [INFO] pipeline.trainer - Step 3/8 -- Splitting data ...
+2026-05-23 14:12:33 [INFO] pipeline.trainer - Data split -- train: 32,366 rows, val: 6,438 rows (16.6%)
+2026-05-23 14:12:33 [INFO] pipeline.trainer - LightGBM using 54 historical data features. No reasoning features included.
+2026-05-23 14:12:33 [INFO] pipeline.trainer - Step 4/8 -- Training LightGBM (absolute prices) ...
+2026-05-23 14:12:33 [INFO] models.lightgbm_model - Incremental training -- loaded model from disk.
+2026-05-23 14:12:37 [INFO] models.lightgbm_model - LightGBM validation -- RMSE: 3.8205  MAE: 1.9105  MAPE: 1.55%
+2026-05-23 14:12:37 [INFO] models.lightgbm_model - Saved LightGBM model -> D:\THESIS\model_trainer\artifacts\lightgbm_model.txt
+2026-05-23 14:12:50 [INFO] models.lightgbm_model - Trained quantile models for confidence intervals.
+2026-05-23 14:12:50 [INFO] pipeline.trainer - Step 5/8 -- Training LSTM (Stage 1: base temporal model) ...
+2026-05-23 14:12:50 [INFO] models.lstm_model - LSTM using 16 input features: ['price_lag_1d', 'price_lag_7d', 'price_lag_30d', 'price_rolling_mean_7d', 'price_rolling_mean_30d', 'price_pct_change_1d', 'price_pct_change_7d', 'price_rsi_14d', 'price_macd', 'price_macd_signal', 'price_rolling_std_7d', 'price_rolling_std_30d', 'month_sin', 'month_cos', 'dow_sin', 'dow_cos']
+2026-05-23 14:12:53 [INFO] pipeline.trainer - LSTM sequences -- train: 26659, val: 3733, features: 16
+2026-05-23 14:12:53 [INFO] models.lstm_model - LSTM incremental fine-tuning (LR=0.0001, epochs=66)
+2026-05-23 14:13:08 [INFO] models.lstm_model - Epoch   1/66  train=0.044785  val=0.036438  lr=9.94e-05  patience=0/35
+2026-05-23 14:14:08 [INFO] models.lstm_model - Epoch   5/66  train=0.041960  val=0.037944  lr=8.55e-05  patience=4/35
+2026-05-23 14:15:30 [INFO] models.lstm_model - Epoch  10/66  train=0.038939  val=0.038724  lr=5.05e-05  patience=9/35
+2026-05-23 14:16:59 [INFO] models.lstm_model - Epoch  15/66  train=0.037216  val=0.041026  lr=1.55e-05  patience=14/35
+2026-05-23 14:18:17 [INFO] models.lstm_model - Epoch  20/66  train=0.036859  val=0.040921  lr=1.00e-04  patience=19/35
+2026-05-23 14:19:41 [INFO] models.lstm_model - Epoch  25/66  train=0.035985  val=0.040706  lr=9.62e-05  patience=24/35
+2026-05-23 14:20:43 [INFO] models.lstm_model - Epoch  30/66  train=0.034106  val=0.043849  lr=8.55e-05  patience=29/35
+2026-05-23 14:21:48 [INFO] models.lstm_model - Epoch  35/66  train=0.032754  val=0.043762  lr=6.94e-05  patience=34/35
+2026-05-23 14:22:04 [INFO] models.lstm_model - Early stopping at epoch 36 (best epoch: 1, best val_loss: 0.036438)
+2026-05-23 14:22:05 [INFO] models.lstm_model - LSTM validation — RMSE: 2.9078  MAE: 1.1750  MAPE: 0.85%
+2026-05-23 14:22:05 [INFO] models.lstm_model - Saved LSTM training history to D:\THESIS\model_trainer\artifacts\lstm_history.json
+2026-05-23 14:22:05 [INFO] pipeline.trainer - Step 6/8 -- Evaluating blended hybrid ensemble ...
+2026-05-23 14:22:06 [INFO] models.ensemble - Blended hybrid trained (LGBM_Weight=0.50, LSTM_Weight=0.50) --
+  LSTM-only:   RMSE=2.9078  DirAcc=47.82%
+  LGBM-only:   RMSE=3.0341  DirAcc=62.50%
+  Hybrid:      RMSE=2.6879  DirAcc=56.79%
+  Improvement vs LSTM: 7.6%
+2026-05-23 14:22:06 [INFO] models.ensemble - Saved residual stats -> D:\THESIS\model_trainer\artifacts\ensemble_residual_stats.pkl
+2026-05-23 14:22:06 [INFO] pipeline.trainer - Step 7/8 -- Saving model version ...
+2026-05-23 14:22:06 [INFO] models.model_store - Pruned old version: v011_2026-04-30T14-08-21
+2026-05-23 14:22:06 [INFO] models.model_store - Created model version v011_2026-05-23T06-22-06 (5 files)
+2026-05-23 14:22:06 [INFO] pipeline.drift_detector - Saved reference distribution (44242 samples).
+2026-05-23 14:22:06 [INFO] pipeline.trainer - Step 8/8 -- Generating visual training dashboards ...
+2026-05-23 14:22:06 [INFO] pipeline.trainer - Generating training and evaluation visual dashboards ...
+2026-05-23 14:22:07 [INFO] pipeline.trainer - Generated plot 1/8: Loss Curves -> D:\THESIS\model_trainer\artifacts\loss_curves.png
+2026-05-23 14:22:08 [INFO] pipeline.trainer - Generated plot 2/8: LR Schedule -> D:\THESIS\model_trainer\artifacts\lr_schedule.png
+2026-05-23 14:22:09 [INFO] pipeline.trainer - Generated plot 3/8: Feature Importance -> D:\THESIS\model_trainer\artifacts\feature_importance.png
+2026-05-23 14:22:09 [INFO] pipeline.trainer - Generated plot 7/8: Model Comparison -> D:\THESIS\model_trainer\artifacts\model_comparison.png
+2026-05-23 14:22:11 [INFO] pipeline.trainer - Generated plot 4/8: Predicted vs Actual (Corn Cracked) -> D:\THESIS\model_trainer\artifacts\evaluation_results.png
+2026-05-23 14:22:11 [INFO] pipeline.trainer - Generated plot 5/8: Residual Distribution -> D:\THESIS\model_trainer\artifacts\residual_distribution.png
+2026-05-23 14:22:12 [INFO] pipeline.trainer - Generated plot 6/8: Per-Category Metrics -> D:\THESIS\model_trainer\artifacts\per_category_metrics.png
+2026-05-23 14:22:13 [INFO] pipeline.trainer - Generated plot 8/8: Scatter Plot -> D:\THESIS\model_trainer\artifacts\scatter_predicted_vs_actual.png
+2026-05-23 14:22:13 [INFO] pipeline.trainer - ============================================================
+2026-05-23 14:22:13 [INFO] pipeline.trainer - TRAINING SUMMARY
+2026-05-23 14:22:13 [INFO] pipeline.trainer - ============================================================
+2026-05-23 14:22:13 [INFO] pipeline.trainer -   LightGBM (standalone): RMSE=3.8205  MAE=1.9105  MAPE=1.55%
+2026-05-23 14:22:13 [INFO] pipeline.trainer -   LSTM (base):           RMSE=2.9078  MAE=1.1750  MAPE=0.85%
+2026-05-23 14:22:13 [INFO] pipeline.trainer -   HYBRID ENSEMBLE:       RMSE=2.6879  MAE=1.3207  MAPE=1.02%
+2026-05-23 14:22:13 [INFO] pipeline.trainer - ============================================================
+2026-05-23 14:22:13 [INFO] pipeline.trainer - === TRAINING COMPLETE ===
+2026-05-23 14:22:13 [INFO] main - Training complete. Metrics: {'lgbm': {'rmse': 3.8205217519152983, 'mae': 1.9104722070548315, 'mape': 1.5515348233994373, 'r2': 0.9987414808930817, 'directional_accuracy': 60.201673460630765}, 'lstm': {'rmse': 2.907807298851051, 'mae': 1.1749884143044598, 'mape': 0.8471300163083482, 'r2': 0.9992694242005283, 'directional_accuracy': 47.92479602695992}, 'ensemble': {'rmse': 2.687872218157162, 'mae': 1.3207030767903822, 'mape': 1.0244203561446534, 'r2': 0.9993757604595062, 'directional_accuracy': 56.792383742218966}, 'timestamp': '2026-05-23T06:22:06.099780+00:00', 'data_rows': 44242, 'mode': 'incremental'}
+2026-05-23 14:32:07 [INFO] main - Running model evaluation ...
+2026-05-23 14:32:08 [INFO] data.fetcher - Fetching ALL food price records ...
+2026-05-23 14:32:21 [INFO] data.fetcher - Fetched 41,928 rows total.
+2026-05-23 14:32:21 [INFO] data.preprocessor - Preprocessing 41,928 rows ...
+2026-05-23 14:32:21 [WARNING] data.preprocessor - Dropped 3 invalid rows (null/negative price).
+2026-05-23 14:32:21 [INFO] data.preprocessor -   After drop_invalid: 41,925 rows (3 removed)
+2026-05-23 14:32:21 [INFO] data.preprocessor - Aggregated 126 rows with duplicate product+variant+date combinations.
+2026-05-23 14:32:21 [INFO] data.preprocessor -   After dedup:        41,799 rows (126 merged)
+2026-05-23 14:32:21 [INFO] data.preprocessor -   After fill_missing: 44,357 rows (+2,558 interpolated)
+2026-05-23 14:32:21 [INFO] data.preprocessor - Removed 114 outlier rows (>4.0σ).
+2026-05-23 14:32:21 [INFO] data.preprocessor -   After outliers:     44,243 rows (114 removed)
+2026-05-23 14:32:21 [INFO] data.preprocessor - Preprocessing complete -- 44,243 clean rows (from 41,928 raw).
+2026-05-23 14:32:21 [INFO] features.temporal - Added 15 temporal features.
+2026-05-23 14:32:24 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-23 14:32:24 [INFO] features.categorical - Loaded categorical mappings from D:\THESIS\model_trainer\artifacts\categorical_mappings.json
+2026-05-23 14:36:29 [INFO] main - Running model evaluation ...
+2026-05-23 14:36:29 [INFO] data.fetcher - Fetching ALL food price records ...
+2026-05-23 14:36:44 [INFO] data.fetcher - Fetched 41,928 rows total.
+2026-05-23 14:36:44 [INFO] data.preprocessor - Preprocessing 41,928 rows ...
+2026-05-23 14:36:44 [WARNING] data.preprocessor - Dropped 3 invalid rows (null/negative price).
+2026-05-23 14:36:44 [INFO] data.preprocessor -   After drop_invalid: 41,925 rows (3 removed)
+2026-05-23 14:36:44 [INFO] data.preprocessor - Aggregated 147 rows with duplicate product+variant+date combinations.
+2026-05-23 14:36:44 [INFO] data.preprocessor -   After dedup:        41,778 rows (147 merged)
+2026-05-23 14:36:44 [INFO] data.preprocessor -   After fill_missing: 44,357 rows (+2,579 interpolated)
+2026-05-23 14:36:44 [INFO] data.preprocessor - Removed 115 outlier rows (>4.0σ).
+2026-05-23 14:36:44 [INFO] data.preprocessor -   After outliers:     44,242 rows (115 removed)
+2026-05-23 14:36:44 [INFO] data.preprocessor - Preprocessing complete -- 44,242 clean rows (from 41,928 raw).
+2026-05-23 14:36:44 [INFO] features.temporal - Added 15 temporal features.
+2026-05-23 14:36:46 [INFO] features.lag_features - Added 30 lag / rolling features.
+2026-05-23 14:36:46 [INFO] features.categorical - Loaded categorical mappings from D:\THESIS\model_trainer\artifacts\categorical_mappings.json
+2026-05-23 14:36:46 [INFO] models.lightgbm_model - Loaded LightGBM model <- D:\THESIS\model_trainer\artifacts\lightgbm_model.txt
+2026-05-23 14:36:47 [INFO] models.lstm_model - Loaded LSTM model ← D:\THESIS\model_trainer\artifacts\lstm_model.pt (16 features)
+2026-05-23 14:36:47 [INFO] models.ensemble - Loaded residual stats <- D:\THESIS\model_trainer\artifacts\ensemble_residual_stats.pkl
+2026-05-23 14:36:47 [INFO] pipeline.evaluator - Evaluation report: Overall RMSE=2.7242, MAE=1.3555, MAPE=1.05%
+2026-05-23 14:36:47 [INFO] main - === EVALUATION REPORT (HYBRID ENSEMBLE) ===
+2026-05-23 14:36:47 [INFO] main - Overall: {'rmse': 2.7242175382387126, 'mae': 1.355483131959082, 'mape': 1.0538852860897, 'r2': 0.9993522491153758, 'directional_accuracy': 57.519899455383324}
+2026-05-23 14:36:47 [INFO] main - Products evaluated: 49
+2026-05-23 14:36:47 [INFO] main - Total samples: 3346
+2026-05-23 14:36:48 [INFO] utils.plotter - Generating evaluation plots in D:\THESIS\model_trainer\plots/ ...
+2026-05-23 14:36:48 [INFO] utils.plotter -   -> actual_vs_predicted_overall.png
+2026-05-23 14:36:49 [INFO] utils.plotter -   -> error_distribution.png
+2026-05-23 14:36:49 [INFO] utils.plotter -   -> mape_by_category.png
+2026-05-23 14:36:49 [INFO] utils.plotter -   -> highest_error_products.png
+2026-05-23 14:36:49 [INFO] utils.plotter - All plots saved to D:\THESIS\model_trainer\plots

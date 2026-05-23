@@ -1,13 +1,15 @@
 import { supabase } from "../../lib/supabase";
+import useSWR from "swr";
 
 export const DEFAULT_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&q=80&w=800";
+
+// ─── Types ─────────────────────────────────────────────────
 
 export interface Product {
   id: string;
   name: string;
   description: string;
   category: string;
-  emoji: string;
   image: string;
   variant: string;
   origin: string;
@@ -34,493 +36,104 @@ export interface NewsArticle {
   id: string;
   title: string;
   excerpt: string;
+  content: string;
   category: string;
   date: string;
   image: string;
   url: string;
   source: string;
+  sentimentScore?: number;
+  keywords?: string[];
+  affectedProducts?: string[];
 }
 
-export const CATEGORY_EMOJI: Record<string, string> = {
-  Rice: "🍚",
-  Corn: "🌽",
-  Vegetables: "🥬",
-  Fruits: "🍌",
-  Fish: "🐟",
-  Fishery: "🐟",
-  Poultry: "🐔",
-  Livestock: "🥩",
-  Oils: "🥥",
-  Sugar: "🍬",
-  Spices: "🧄",
-  Grains: "🌾",
-};
+// ─── Supabase Edge Function Base URL ───────────────────────
 
-export const categories = ["All", "Fish", "Corn", "Rice", "Vegetables", "Fruits", "Livestock", "Poultry", "Oils", "Sugar", "Spices"];
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const EDGE_FN_BASE = `${SUPABASE_URL}/functions/v1/foodcast`;
 
-function slugify(text: string) {
-  return text.toString().toLowerCase().trim().replace(/\s+/g, "-").replace(/[^\w\-]+/g, "").replace(/\-\-+/g, "-");
-}
-
-function linearSlope(values: number[]): number {
-  if (values.length < 2) return 0;
-  const n = values.length;
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-  for (let i = 0; i < n; i++) {
-    sumX += i;
-    sumY += values[i];
-    sumXY += i * values[i];
-    sumX2 += i * i;
-  }
-  return (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-}
-
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-interface RawPrice {
-  product_name: string;
-  product_category: string;
-  product_variant: string;
-  origin: string;
-  price_index: number;
-  report_date: string;
-  unit: string;
-}
-
-interface ProductRow {
-  id: string;
-  name: string;
-  variant: string;
-  origin: string;
-  category: string;
-  image_url: string;
-  description: string;
-}
-
-interface PredictionRow {
-  product_id: string;
-  prediction_date: string;
-  predicted_price: number;
-  lower_bound: number | null;
-  upper_bound: number | null;
-}
-
-let cachedProductsPromise: Promise<Product[]> | null = null;
-let lastFetchTime = 0;
-const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
-
-export async function fetchProducts(forceRefresh = false): Promise<Product[]> {
-  // 1. Memory Cache Check (Instant for intra-page navigation)
-  if (
-    !forceRefresh &&
-    cachedProductsPromise &&
-    Date.now() - lastFetchTime < CACHE_DURATION_MS
-  ) {
-    return cachedProductsPromise;
-  }
-
-  // 2. LocalStorage Cache Check (Instant for hard reloads < 200ms)
-  if (!forceRefresh && typeof window !== "undefined") {
-    try {
-      const stored = localStorage.getItem("foodcast_products_cache");
-      const storedTime = localStorage.getItem("foodcast_products_time");
-      if (stored && storedTime && Date.now() - parseInt(storedTime) < CACHE_DURATION_MS * 12) {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.length > 0) {
-          // If we have no active memory promise, fulfill it with localStorage data
-          if (!cachedProductsPromise) {
-            cachedProductsPromise = Promise.resolve(parsed);
-            lastFetchTime = parseInt(storedTime);
-            
-            // Optional: Kick off a silent background revalidation here
-            _fetchProducts().then(freshData => {
-              localStorage.setItem("foodcast_products_cache", JSON.stringify(freshData));
-              localStorage.setItem("foodcast_products_time", Date.now().toString());
-              cachedProductsPromise = Promise.resolve(freshData);
-              lastFetchTime = Date.now();
-            }).catch(console.error);
-          }
-          return cachedProductsPromise;
-        }
-      }
-    } catch (e) {
-      console.warn("LocalStorage cache access failed", e);
-    }
-  }
-
-  // 3. Network Fetch Fallback (Only blocks if cache is empty)
-  cachedProductsPromise = _fetchProducts().then(data => {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("foodcast_products_cache", JSON.stringify(data));
-        localStorage.setItem("foodcast_products_time", Date.now().toString());
-      } catch (e) {}
-    }
-    return data;
+async function edgeFetch<T>(path: string): Promise<T> {
+  const res = await fetch(`${EDGE_FN_BASE}/${path}`, {
+    headers: {
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json",
+    },
   });
-  
-  lastFetchTime = Date.now();
-  return cachedProductsPromise;
-}
 
-async function _fetchProducts(): Promise<Product[]> {
-  const oneYearAgo = new Date();
-  oneYearAgo.setDate(oneYearAgo.getDate() - 365);
-  const sinceDate = oneYearAgo.toISOString().split("T")[0];
-
-  async function fetchAll<T>(queryBuilder: any, pageSize: number = 1000): Promise<T[]> {
-    let allData: T[] = [];
-    let start = 0;
-    while (true) {
-      const { data, error } = await queryBuilder.range(start, start + pageSize - 1);
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      allData.push(...data);
-      if (data.length < pageSize) break;
-      start += pageSize;
-    }
-    return allData;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || `Edge function error: ${res.status}`);
   }
 
+  return res.json();
+}
+
+// ─── Data Fetching (calls Supabase Edge Function) ──────────
+
+export async function fetchProducts(): Promise<Product[]> {
   try {
-    const [productRows, priceRows, predRows] = await Promise.all([
-      fetchAll<ProductRow>(supabase.from("products").select("id, name, variant, origin, category, image_url, description")),
-      fetchAll<RawPrice>(supabase.from("food_prices").select("product_name, product_category, product_variant, origin, price_index, report_date, unit").gte("report_date", sinceDate).order("report_date", { ascending: true })),
-      fetchAll<PredictionRow>(supabase.from("predictions").select("product_id, prediction_date, predicted_price, lower_bound, upper_bound").order("prediction_date", { ascending: true })),
-    ]);
-
-    if (priceRows.length === 0) return [];
-
-    const productById = new Map<string, ProductRow>();
-    const productMetaByKey = new Map<string, ProductRow>();
-    for (const p of productRows) {
-      productById.set(p.id, p);
-      productMetaByKey.set(`${p.name}|${p.variant || ''}|${p.origin || ''}`, p);
-    }
-
-    const predsByProductId = new Map<string, PredictionRow[]>();
-    for (const pred of predRows) {
-      if (!predsByProductId.has(pred.product_id)) predsByProductId.set(pred.product_id, []);
-      predsByProductId.get(pred.product_id)!.push(pred);
-    }
-
-    const pricesByKey = new Map<string, RawPrice[]>();
-    for (const row of priceRows) {
-      const key = `${row.product_name}|${row.product_variant || ''}|${row.origin || ''}`;
-      if (!pricesByKey.has(key)) pricesByKey.set(key, []);
-      pricesByKey.get(key)!.push(row);
-    }
-
-    const products: Product[] = [];
-
-    for (const [key, rows] of pricesByKey) {
-      if (rows.length < 2) continue;
-
-      const baseName = rows[0].product_name;
-      const baseVariant = rows[0].product_variant || "";
-      const baseOrigin = rows[0].origin || "";
-
-      const metaRow = productMetaByKey.get(`${baseName}|${baseVariant}|${baseOrigin}`);
-
-      const category = metaRow?.category || rows[0].product_category || "Other";
-      const description = metaRow?.description || `${baseName} is a tracked commodity in the NCR agri-fishery market.`;
-      const image = metaRow?.image_url || "";
-      const variant = baseVariant;
-      const origin = baseOrigin;
-      const emoji = CATEGORY_EMOJI[category] || "📦";
-
-      const currentPrice = rows[rows.length - 1].price_index;
-      const prevIdx = Math.max(0, rows.length - 8);
-      const previousPrice = rows[prevIdx].price_index;
-
-      let allPredictions: PredictionRow[] = [];
-      if (metaRow) {
-        allPredictions = predsByProductId.get(metaRow.id) || [];
-      } else {
-        // Fallback if no exact meta row exists: match just by name
-        for (const p of productRows) {
-          if (p.name === baseName) {
-            const preds = predsByProductId.get(p.id);
-            if (preds && preds.length > allPredictions.length) {
-              allPredictions = preds;
-            }
-          }
-        }
-      }
-
-      let predictedPrice: number;
-      if (allPredictions.length > 0) {
-        const slice = allPredictions.slice(0, 7);
-        predictedPrice = Math.round((slice.reduce((sum, p) => sum + p.predicted_price, 0) / slice.length) * 100) / 100;
-      } else {
-        const recentPrices = rows.slice(-7).map((r) => r.price_index);
-        const slope = linearSlope(recentPrices);
-        predictedPrice = Math.round((currentPrice + slope * 7) * 100) / 100;
-      }
-
-      const changePct = currentPrice === 0 ? 0 : ((predictedPrice - currentPrice) / currentPrice) * 100;
-      const sentiment: "Bullish" | "Bearish" | "Neutral" = changePct > 1 ? "Bullish" : changePct < -1 ? "Bearish" : "Neutral";
-      const sparklineData = rows.slice(-7).map((r) => ({ value: r.price_index }));
-
-      const mlPredForChart = allPredictions.length > 0 ? allPredictions.map((p) => ({ date: p.prediction_date, predicted_price: p.predicted_price })) : null;
-
-      const forecastData = buildForecastData(rows, predictedPrice, mlPredForChart);
-      const volume = `${(rows.length * 150).toLocaleString()} kg`;
-
-      const dailyForecast = [];
-      const forecastDays = allPredictions.length > 0 ? allPredictions.slice(0, 30) : [];
-      
-      if (forecastDays.length > 0) {
-        for (let i = 0; i < forecastDays.length; i++) {
-          const p = forecastDays[i];
-          const prevPrice = i === 0 ? currentPrice : forecastDays[i - 1].predicted_price;
-          const diff = p.predicted_price - prevPrice;
-          const pct = (diff / prevPrice) * 100;
-          
-          let reasoning = "Market forces expected to stabilize with consistent inventory levels.";
-          if (pct > 0.5) {
-            reasoning = "Expected supply tightness combined with elevated local demand indicates upward pressure.";
-          } else if (pct < -0.5) {
-            reasoning = "Inflow of new harvests and eased supply chain bottlenecks are projected to ease prices.";
-          } else if (pct > 0.1) {
-            reasoning = "Slight uptick due to minor seasonal fluctuations and transport costs.";
-          } else if (pct < -0.1) {
-            reasoning = "Minor downward correction following market saturation in key trading posts.";
-          }
-          
-          dailyForecast.push({
-            date: p.prediction_date,
-            predicted_price: p.predicted_price,
-            reasoning
-          });
-        }
-      } else {
-        // Fallback for no ML predictions
-        const recentPrices = rows.slice(-7).map((r) => r.price_index);
-        const slope = linearSlope(recentPrices);
-        for (let i = 1; i <= 30; i++) {
-          const d = new Date(rows[rows.length - 1].report_date);
-          d.setDate(d.getDate() + i);
-          const pPrice = Math.round((currentPrice + slope * i) * 100) / 100;
-          
-          let reasoning = "Market forces expected to stabilize with consistent inventory levels.";
-          if (slope > 0.5) reasoning = "Expected supply tightness combined with elevated local demand indicates upward pressure.";
-          else if (slope < -0.5) reasoning = "Inflow of new harvests and eased supply chain bottlenecks are projected to ease prices.";
-          
-          dailyForecast.push({
-            date: d.toISOString().split("T")[0],
-            predicted_price: pPrice,
-            reasoning
-          });
-        }
-      }
-
-      products.push({
-        id: metaRow ? metaRow.id : slugify(`${baseName} ${baseVariant} ${baseOrigin}`),
-        name: baseName,
-        description,
-        category,
-        emoji,
-        image,
-        variant: baseVariant,
-        origin: baseOrigin,
-        currentPrice,
-        predictedPrice,
-        previousPrice,
-        volume,
-        sentiment,
-        sparklineData,
-        forecastData,
-        dailyForecast,
-      });
-    }
-
-    products.sort((a, b) => a.name.localeCompare(b.name));
-    return products;
+    return await edgeFetch<Product[]>("products");
   } catch (e) {
-    console.error("Error fetching data:", e);
+    console.error("Error fetching products:", e);
     return [];
+  }
+}
+
+export async function fetchNews(limit = 10): Promise<NewsArticle[]> {
+  try {
+    return await edgeFetch<NewsArticle[]>(`news?limit=${limit}`);
+  } catch (e) {
+    console.error("Error fetching news:", e);
+    return [];
+  }
+}
+
+// ─── Direct Supabase Queries (lightweight, no Edge Fn needed) ──
+
+export async function fetchCategories(): Promise<string[]> {
+  try {
+    return await edgeFetch<string[]>('categories?type=products');
+  } catch (e) {
+    console.error("Failed to fetch categories:", e);
+    return ["All"];
+  }
+}
+
+/** Convert a snake_case DB event_type to a pretty label: "policy_change" → "Policy Change" */
+export function formatEventType(dbKey: string): string {
+  return dbKey
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/** Convert a pretty label back to a snake_case DB key: "Policy Change" → "policy_change" */
+export function toEventTypeKey(label: string): string {
+  if (label === "All") return "All";
+  return label.toLowerCase().replace(/ /g, '_');
+}
+
+/** Fetch all unique news event_type values from the Edge function, returned as pretty labels. */
+export async function fetchNewsCategories(): Promise<string[]> {
+  try {
+    const rawCategories = await edgeFetch<string[]>('categories?type=news');
+    if (!rawCategories || rawCategories.length === 0) return ["All"];
+    
+    // The Edge Function returns the raw DB keys (e.g. 'policy_change')
+    // We filter out "All", format the rest, and prepend "All" again
+    const uniqueTypes = rawCategories.filter(c => c !== "All");
+    const labels = uniqueTypes.map(formatEventType).sort();
+    return ["All", ...labels];
+  } catch (e) {
+    console.error("Failed to fetch news categories:", e);
+    return ["All"];
   }
 }
 
 export async function fetchProductById(id: string): Promise<Product | null> {
   const allProducts = await fetchProducts();
   return allProducts.find((p) => p.id === id) ?? null;
-}
-
-export async function fetchProductHistory(productName: string, limit = 365): Promise<RawPrice[]> {
-  const { data, error } = await supabase
-    .from("food_prices")
-    .select("product_name, product_category, product_variant, origin, price_index, report_date, unit")
-    .eq("product_name", productName)
-    .order("report_date", { ascending: true })
-    .limit(limit);
-
-  if (error || !data) return [];
-  return data as RawPrice[];
-}
-
-function buildForecastData(
-  historyRows: RawPrice[],
-  fallbackPredictedPrice: number,
-  mlPredictions: { date: string; predicted_price: number }[] | null
-) {
-  // Use a unified map keyed by "YYYY-MM-DD" for daily granularity
-  const dayMap = new Map<string, { actual: number | null; predicted: number | null }>();
-
-  // 1. Populate actuals from history (average duplicates on the same day)
-  const dailyActuals = new Map<string, number[]>();
-  for (const r of historyRows) {
-    const key = r.report_date.split("T")[0]; // "YYYY-MM-DD"
-    if (!dailyActuals.has(key)) dailyActuals.set(key, []);
-    dailyActuals.get(key)!.push(r.price_index);
-  }
-  for (const [key, prices] of dailyActuals) {
-    const avg = Math.round((prices.reduce((a, b) => a + b, 0) / prices.length) * 100) / 100;
-    dayMap.set(key, { actual: avg, predicted: null });
-  }
-
-  // Find the last actual date for transition point
-  const sortedActualDates = Array.from(dailyActuals.keys()).sort();
-  const lastActualDate = sortedActualDates[sortedActualDates.length - 1];
-  const lastPrice = historyRows[historyRows.length - 1].price_index;
-
-  // 2. Populate predictions
-  if (mlPredictions && mlPredictions.length > 0) {
-    for (const p of mlPredictions) {
-      const key = p.date.split("T")[0];
-      if (dayMap.has(key)) {
-        // This date also has actual data — add prediction alongside it
-        dayMap.get(key)!.predicted = Math.round(p.predicted_price * 100) / 100;
-      } else {
-        dayMap.set(key, { actual: null, predicted: Math.round(p.predicted_price * 100) / 100 });
-      }
-    }
-  } else {
-    // Fallback: generate synthetic daily predictions for next 30 days
-    const recentPrices = historyRows.slice(-7).map((r) => r.price_index);
-    const slope = linearSlope(recentPrices);
-    const lastDate = new Date(lastActualDate);
-    for (let i = 1; i <= 30; i++) {
-      const futureDay = new Date(lastDate);
-      futureDay.setDate(futureDay.getDate() + i);
-      const key = futureDay.toISOString().split("T")[0];
-      const projectedPrice = Math.round((lastPrice + slope * i) * 100) / 100;
-      dayMap.set(key, { actual: null, predicted: projectedPrice });
-    }
-  }
-
-  // 3. Set the transition point: last actual date also gets a predicted value
-  //    so the predicted line starts from where actuals end
-  if (lastActualDate && dayMap.has(lastActualDate)) {
-    const entry = dayMap.get(lastActualDate)!;
-    if (entry.predicted === null) {
-      entry.predicted = entry.actual;
-    }
-  }
-
-  // 4. Build sorted result with readable date labels
-  const allDates = Array.from(dayMap.keys()).sort();
-  const result: { date: string; name: string; actual: number | null; predicted: number | null }[] = [];
-
-  for (const dateStr of allDates) {
-    const entry = dayMap.get(dateStr)!;
-    const d = new Date(dateStr + "T00:00:00");
-    const label = `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
-    result.push({
-      date: dateStr,
-      name: label,
-      actual: entry.actual,
-      predicted: entry.predicted,
-    });
-  }
-
-  return result;
-}
-
-let cachedNewsPromise: Promise<NewsArticle[]> | null = null;
-let cachedNewsData: NewsArticle[] | null = null;
-let lastNewsFetchTime = 0;
-
-export async function fetchNews(limit = 10, forceRefresh = false): Promise<NewsArticle[]> {
-  // 1. Memory Cache
-  if (!forceRefresh && cachedNewsData && cachedNewsData.length >= limit && Date.now() - lastNewsFetchTime < CACHE_DURATION_MS) {
-    return cachedNewsData;
-  }
-
-  // 2. LocalStorage Cache
-  if (!forceRefresh && typeof window !== "undefined") {
-    try {
-      const stored = localStorage.getItem("foodcast_news_cache");
-      const storedTime = localStorage.getItem("foodcast_news_time");
-      if (stored && storedTime && Date.now() - parseInt(storedTime) < CACHE_DURATION_MS * 12) {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.length >= limit) {
-          if (!cachedNewsPromise) {
-            cachedNewsData = parsed;
-            cachedNewsPromise = Promise.resolve(parsed);
-            lastNewsFetchTime = parseInt(storedTime);
-            
-            // Silent background revalidation
-            _fetchNews(limit).then(freshData => {
-              cachedNewsData = freshData;
-              localStorage.setItem("foodcast_news_cache", JSON.stringify(freshData));
-              localStorage.setItem("foodcast_news_time", Date.now().toString());
-              cachedNewsPromise = Promise.resolve(freshData);
-              lastNewsFetchTime = Date.now();
-            }).catch(console.error);
-          }
-          return cachedNewsPromise;
-        }
-      }
-    } catch (e) {
-      console.warn("LocalStorage news cache access failed", e);
-    }
-  }
-
-  // 3. Network Fetch Fallback
-  cachedNewsPromise = _fetchNews(limit).then(data => {
-    cachedNewsData = data;
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("foodcast_news_cache", JSON.stringify(data));
-        localStorage.setItem("foodcast_news_time", Date.now().toString());
-      } catch (e) {}
-    }
-    return data;
-  });
-  
-  lastNewsFetchTime = Date.now();
-  return cachedNewsPromise;
-}
-
-async function _fetchNews(limit = 10): Promise<NewsArticle[]> {
-  try {
-    const { data, error } = await supabase
-      .from("news_articles")
-      .select("id, title, content, event_type, published_at, image_url, url, source")
-      .order("published_at", { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error("Error fetching news:", error);
-      return [];
-    }
-
-    return (data || []).map(article => ({
-      id: article.id,
-      title: article.title,
-      excerpt: article.content ? (article.content.substring(0, 150) + "...") : "",
-      category: (article.event_type || "News").replace(/_/g, ' '),
-      date: new Date(article.published_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
-      image: article.image_url || "/news/market.png",
-      url: article.url,
-      source: article.source,
-    }));
-  } catch (e) {
-    console.error("Failed to fetch news:", e);
-    return [];
-  }
 }
 
 export async function fetchPaginatedNews(
@@ -531,13 +144,13 @@ export async function fetchPaginatedNews(
   dateFilter?: string
 ): Promise<{ data: NewsArticle[], total: number }> {
   try {
-    let query = supabase.from("news_articles").select("id, title, content, event_type, published_at, image_url, url, source", { count: "exact" });
+    let query = supabase.from("news_articles").select("id, title, content, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products", { count: "exact" });
 
     if (search) {
       query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%,source.ilike.%${search}%`);
     }
     if (category && category !== "All") {
-      query = query.eq("event_type", category.replace(/ /g, '_'));
+      query = query.eq("event_type", category);
     }
     if (dateFilter === "Today") {
       const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -561,11 +174,15 @@ export async function fetchPaginatedNews(
       id: article.id,
       title: article.title,
       excerpt: article.content ? (article.content.substring(0, 150) + "...") : "",
+      content: article.content || "",
       category: (article.event_type || "News").replace(/_/g, ' '),
       date: new Date(article.published_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
       image: article.image_url || "/news/market.png",
       url: article.url,
       source: article.source,
+      sentimentScore: article.sentiment_score,
+      keywords: article.keywords || [],
+      affectedProducts: article.affected_products || [],
     }));
 
     return { data: articles, total: count || 0 };
@@ -573,4 +190,24 @@ export async function fetchPaginatedNews(
     console.error("Failed to fetch paginated news:", e);
     return { data: [], total: 0 };
   }
+}
+
+// ─── SWR Hooks (Client-Side Caching & Deduplication) ───────
+// SWR prevents multiple components from making duplicate calls
+// to the Supabase Edge Function. It caches the result in-memory.
+
+export function useProducts() {
+  return useSWR<Product[]>("supabase_products", fetchProducts, {
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
+    dedupingInterval: 5 * 60 * 1000, // 5 min dedup
+  });
+}
+
+export function useNews(limit = 10) {
+  return useSWR<NewsArticle[]>(`supabase_news_${limit}`, () => fetchNews(limit), {
+    revalidateOnFocus: false,
+    revalidateIfStale: false,
+    dedupingInterval: 5 * 60 * 1000,
+  });
 }

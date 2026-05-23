@@ -105,10 +105,6 @@ class Settings:
     # ── Model Versioning ──
     max_model_versions: int = 10
 
-    # ── API ──
-    api_host: str = "0.0.0.0"
-    api_port: int = 8000
-
     # ── Paths ──
     artifacts_dir: Path = ARTIFACTS_DIR
     logs_dir: Path = LOGS_DIR

@@ -16,6 +16,7 @@ import torch.nn as nn
 import numpy as np
 import pandas as pd
 import joblib
+import json
 from pathlib import Path
 from typing import Optional, Dict, Tuple, List
 from torch.utils.data import Dataset, DataLoader
@@ -206,6 +207,7 @@ class LSTMModel:
         self._model_path = cfg.artifacts_dir / "lstm_model.pt"
         self._product_means_path = cfg.artifacts_dir / "lstm_product_means.pkl"
         self._meta_path = cfg.artifacts_dir / "lstm_meta.npz"
+        self._history_path = cfg.artifacts_dir / "lstm_history.json"
 
     # ──────────────────────────────────────────────
     # Sequence building (multi-feature)
@@ -427,6 +429,13 @@ class LSTMModel:
         best_epoch = 0
         patience_counter = 0
 
+        history = {
+            "epoch": [],
+            "train_loss": [],
+            "val_loss": [],
+            "lr": []
+        }
+
         for epoch in range(1, epochs + 1):
             self._model.train()
             train_loss = 0.0
@@ -456,6 +465,13 @@ class LSTMModel:
                         val_total += criterion(preds, targets).item() * len(targets)
                 val_loss = val_total / len(val_ds)
 
+            # Record epoch history
+            history["epoch"].append(epoch)
+            history["train_loss"].append(float(train_loss))
+            history["val_loss"].append(float(val_loss) if val_loss is not None else None)
+            history["lr"].append(float(optimizer.param_groups[0]['lr']))
+
+            if val_loader is not None:
                 if val_loss < best_val_loss:
                     best_val_loss = val_loss
                     patience_counter = 0
@@ -498,6 +514,14 @@ class LSTMModel:
                 f"LSTM validation — RMSE: {metrics['rmse']:.4f}  "
                 f"MAE: {metrics['mae']:.4f}  MAPE: {metrics['mape']:.2f}%"
             )
+
+        # Save training history as JSON
+        try:
+            with open(str(self._history_path), "w") as f:
+                json.dump(history, f, indent=2)
+            log.info(f"Saved LSTM training history to {self._history_path}")
+        except Exception as e:
+            log.error(f"Failed to save LSTM training history: {e}")
 
         self._save_meta()
         return metrics

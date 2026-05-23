@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Search,
   TrendingUp,
@@ -17,24 +18,15 @@ import ProductCard from "./components/ProductCard";
 import DailyMoverCard from "./components/DailyMoverCard";
 import NewsCard from "./components/NewsCard";
 import ScrollReveal from "./components/ScrollReveal";
-import { Product, fetchProducts, DEFAULT_PRODUCT_IMAGE, NewsArticle, fetchNews } from "./lib/data";
+import { DEFAULT_PRODUCT_IMAGE, useProducts, useNews } from "./lib/data";
 
 export default function HomePage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [newsList, setNewsList] = useState<NewsArticle[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: products = [], isLoading } = useProducts();
+  const { data: newsList = [] } = useNews(10);
+  const router = useRouter();
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-
-  useEffect(() => {
-    fetchProducts().then(data => {
-      setProducts(data);
-      setIsLoading(false);
-    });
-    fetchNews(10).then(data => {
-      setNewsList(data);
-    });
-  }, []);
 
   const searchSuggestions = useMemo(() => {
     if (!searchQuery || searchQuery.length < 1) return [];
@@ -280,7 +272,7 @@ export default function HomePage() {
                     onSubmit={(e) => {
                       e.preventDefault();
                       if (searchQuery.trim())
-                        window.location.href = `/Predict?q=${encodeURIComponent(searchQuery)}`;
+                        router.push(`/Predict?q=${encodeURIComponent(searchQuery)}`);
                     }}
                     className="relative max-w-lg"
                     role="search"
@@ -609,7 +601,6 @@ export default function HomePage() {
                   <DailyMoverCard
                     id={p.id}
                     name={p.name}
-                    emoji={p.emoji}
                     category={p.category}
                     image={p.image}
                     currentPrice={p.currentPrice}
@@ -742,7 +733,6 @@ export default function HomePage() {
                       name: p.name,
                       category: p.category,
                       image: p.image,
-                      emoji: p.emoji,
                       variants: []
                     });
                   }
@@ -762,7 +752,6 @@ export default function HomePage() {
                   >
                     <ProductCard
                       name={product.name}
-                      emoji={product.emoji}
                       category={product.category}
                       image={product.image}
                       variants={product.variants}
@@ -783,7 +772,6 @@ export default function HomePage() {
                       name: p.name,
                       category: p.category,
                       image: p.image,
-                      emoji: p.emoji,
                       variants: []
                     });
                   }
@@ -800,7 +788,6 @@ export default function HomePage() {
                   <ScrollReveal key={i} delay={i * 100} animation="scale-in">
                     <ProductCard
                       name={product.name}
-                      emoji={product.emoji}
                       image={product.image}
                       category={product.category}
                       variants={product.variants}

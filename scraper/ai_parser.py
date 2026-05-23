@@ -72,67 +72,102 @@ RULES:
 # Initialize Gemini client
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY_DA_PARSER"])
 
+
+def _repair_truncated_json(raw: str) -> list:
+    """
+    Attempt to repair truncated JSON arrays by closing open structures.
+    Returns parsed list or empty list on failure.
+    """
+    raw = raw.strip()
+
+    # Remove any trailing incomplete object (after the last complete '}')
+    last_close = raw.rfind("}")
+    if last_close == -1:
+        return []
+
+    raw = raw[:last_close + 1]
+
+    # Close the array if it's not closed
+    if not raw.rstrip().endswith("]"):
+        # Remove any trailing comma after the last object
+        raw = raw.rstrip().rstrip(",")
+        raw += "\n]"
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+
+
 def parse_pdf_text_with_ai(pdf_text, report_date, source_pdf):
     """
     Send extracted yellow table text to Gemini to clean, categorize,
     and output structured JSON rows.
     """
+    # Note: report_date and source_pdf are NOT requested from the AI.
+    # They are injected programmatically to reduce output token usage.
     prompt = f"""
 You are a data parser for Philippine DA agricultural commodity price reports.
 Extract all products from the following PDF text into a JSON array.
 Only include the yellow average price table. Ignore other formats.
 
-Each item must have the fields exactly as below:
+Each item must have ONLY these fields:
 - product_name: string — use the ENGLISH name only, must match the canonical reference below
 - product_category: string (one of {', '.join(CATEGORY_LIST)})
 - product_variant: string or null — the specific cut, type, size, grade, or breed. Must match canonical reference below.
 - unit: string (kg, piece, liter, etc.)
 - origin: string ('Local' or 'Imported', default to 'Local' if unspecified)
 - price_index: number (average price)
-- report_date: string (YYYY-MM-DD, use {report_date})
-- source_pdf: string (use {source_pdf})
+
+Do NOT include report_date or source_pdf fields, I will add those myself.
 
 {PRODUCT_VARIANT_REF}
 
 PDF text to parse:
 {pdf_text}
 
-Return ONLY valid JSON array, ready for insertion into the database.
-Do not include any extra text or explanation.
+Return ONLY a valid JSON array. No extra text or explanation.
 """
 
-    # Call Gemini
-    response = client.models.generate_content(
-        model="gemini-3-flash-preview",
-        contents=prompt,
-        config=genai.types.GenerateContentConfig(
-            max_output_tokens=8192
-        )
-    )
+    MAX_RETRIES = 2
+    data = []
 
-    try:
-        raw = response.text.strip()
-
-        # Strip markdown code fences if present (```json ... ``` or ``` ... ```)
-        raw = re.sub(r'^```(?:json)?\s*\n?', '', raw)
-        raw = re.sub(r'\n?```\s*$', '', raw)
-        raw = raw.strip()
-
-        # Try parsing directly first
+    for attempt in range(MAX_RETRIES):
         try:
+            response = client.models.generate_content(
+                model="gemini-3-flash-preview",
+                contents=prompt,
+                config=genai.types.GenerateContentConfig(
+                    max_output_tokens=32768,
+                    response_mime_type="application/json"
+                )
+            )
+
+            raw = response.text.strip()
             data = json.loads(raw)
-        except json.JSONDecodeError:
-            # Fallback: extract the first JSON array from the text
-            match = re.search(r'(\[[\s\S]*\])', raw)
-            if match:
-                data = json.loads(match.group(1))
+            break  # Success — exit retry loop
+
+        except json.JSONDecodeError as e:
+            print(f"  Attempt {attempt + 1}/{MAX_RETRIES}: JSON parse error ({e}). Trying truncation repair...")
+            repaired = _repair_truncated_json(raw)
+            if repaired:
+                print(f"  Repair recovered {len(repaired)} rows from truncated output.")
+                data = repaired
+                break
+            elif attempt < MAX_RETRIES - 1:
+                print(f"  Repair failed. Retrying...")
             else:
-                print("Failed to find JSON array in Gemini output")
-                print("RAW OUTPUT:", raw)
-                data = []
-    except Exception as e:
-        print("Failed to parse Gemini output as JSON:", e)
-        print("RAW OUTPUT (Exception):", raw if 'raw' in locals() else 'N/A')
-        data = []
+                print(f"  All {MAX_RETRIES} attempts failed. Skipping this PDF.")
+                print(f"  RAW OUTPUT (last 200 chars): ...{raw[-200:]}")
+
+        except Exception as e:
+            print(f"  Attempt {attempt + 1}/{MAX_RETRIES}: Gemini API error: {e}")
+            if attempt >= MAX_RETRIES - 1:
+                print(f"  All {MAX_RETRIES} attempts failed. Skipping this PDF.")
+
+    # Inject report_date and source_pdf into each row
+    for row in data:
+        row["report_date"] = str(report_date)
+        row["source_pdf"] = source_pdf
 
     return data

@@ -27,7 +27,7 @@ const ForecastChart = dynamic(() => import("../../components/ForecastChart"), {
 });
 import ProductCard from "../../components/ProductCard";
 import ScrollReveal from "../../components/ScrollReveal";
-import { Product, fetchProducts, fetchNews, DEFAULT_PRODUCT_IMAGE } from "../../lib/data";
+import { Product, useProducts, fetchNews, DEFAULT_PRODUCT_IMAGE } from "../../lib/data";
 
 export default function ProductPage({
   params,
@@ -35,19 +35,12 @@ export default function ProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [product, setProduct] = useState<Product | null>(null);
+  const { data: products = [] } = useProducts();
+  const product = useMemo(() => products.find((p) => p.id === id) || null, [products, id]);
+  
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [aiReasoning, setAiReasoning] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-  useEffect(() => {
-    fetchProducts().then(data => {
-      setProducts(data);
-      const found = data.find((p) => p.id === id);
-      setProduct(found || null);
-    });
-  }, [id]);
 
   // Fetch AI Reasoning from Gemini when product loads
   useEffect(() => {
@@ -888,7 +881,6 @@ export default function ProductPage({
                           name: p.name,
                           category: p.category,
                           image: p.image,
-                          emoji: p.emoji,
                           variants: []
                         });
                       }
@@ -909,7 +901,6 @@ export default function ProductPage({
                         <ScrollReveal delay={i * 80} animation="fade-up">
                           <ProductCard
                             name={product.name}
-                            emoji={product.emoji}
                             image={product.image}
                             category={product.category}
                             variants={product.variants}

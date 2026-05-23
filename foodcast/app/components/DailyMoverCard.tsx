@@ -7,7 +7,6 @@ import { DEFAULT_PRODUCT_IMAGE } from "../lib/data";
 interface DailyMoverCardProps {
   id: string;
   name: string;
-  emoji: string;
   image: string;
   category: string;
   currentPrice: number;
@@ -54,7 +53,6 @@ const DailyMoverCard = ({
 
   return (
     <Link
-      prefetch={false}
       href={`/Product/${id}`}
       className="daily-mover-card group relative flex flex-col rounded-2xl border border-gray-100/80
         bg-white overflow-hidden

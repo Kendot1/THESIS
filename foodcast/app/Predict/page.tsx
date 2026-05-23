@@ -11,7 +11,7 @@ const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
   ssr: false,
 });
 import ScrollReveal from "../components/ScrollReveal";
-import { Product, fetchProducts, categories, CATEGORY_EMOJI, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
+import { Product, useProducts, fetchCategories, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
 
 export default function PredictPage() {
   return (
@@ -25,6 +25,8 @@ function PredictPageContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
+  const { data: products = [] } = useProducts();
+  const [categories, setCategories] = useState<string[]>(["All"]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showAllRows, setShowAllRows] = useState(false);
@@ -34,19 +36,31 @@ function PredictPageContent() {
   const allMarketsRef = useRef<HTMLElement>(null);
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [isHoveringFeatured, setIsHoveringFeatured] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    fetchProducts().then(setProducts);
+    fetchCategories().then((cats) => {
+      setCategories(cats);
+    });
   }, []);
 
   // Responsive visible categories
   useEffect(() => {
     const updateCount = () => {
-      if (window.innerWidth < 640) setVisibleCategoryCount(2);
-      else if (window.innerWidth < 1024) setVisibleCategoryCount(4);
-      else setVisibleCategoryCount(6);
+      // Container width is window width minus the page padding (px-5 on mobile, px-10 on desktop)
+      const padding = window.innerWidth >= 1024 ? 80 : 40;
+      const containerWidth = Math.min(window.innerWidth, 1280) - padding;
+      
+      const moreButtonWidth = 100;
+      const gapWidth = 8; // gap-2 = 8px
+      const availableWidthForCats = containerWidth - moreButtonWidth;
+      
+      // The average category button width is smaller than 120px, closer to 90-100px including gaps.
+      // So we divide by 95px to pack more buttons before breaking into "More"
+      const estimatedCount = Math.floor(availableWidthForCats / 95);
+      
+      setVisibleCategoryCount(Math.max(2, estimatedCount));
     };
+    
     updateCount();
     window.addEventListener('resize', updateCount);
     return () => window.removeEventListener('resize', updateCount);
@@ -171,7 +185,6 @@ function PredictPageContent() {
       name: string;
       category: string;
       image: string;
-      emoji: string;
       variants: {
         id: string;
         variant: string;
@@ -188,7 +201,6 @@ function PredictPageContent() {
           name: p.name,
           category: p.category,
           image: p.image,
-          emoji: p.emoji,
           variants: []
         });
       }
@@ -393,7 +405,7 @@ function PredictPageContent() {
           </div>
         </section>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-7xl mx-auto px-5 lg:px-10 py-12">
 
           {/* ─── Top Section: Featured + Sidebars ─────── */}
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
@@ -613,8 +625,8 @@ function PredictPageContent() {
               </div>
 
               {/* Category Tabs with More Button */}
-              <div className="relative mb-8 flex items-center gap-2" ref={dropdownRef}>
-                <div className="flex items-center gap-2 overflow-x-auto pb-4 scroll-smooth scrollbar-hide">
+              <div className="relative mb-8 flex flex-nowrap items-center gap-2 w-full" ref={dropdownRef}>
+                <div className="flex items-center gap-2 flex-nowrap shrink-0">
                   {categories.slice(0, visibleCategoryCount).map((cat) => {
                     const isActive = selectedCategory === cat;
                     const count = categoryCounts[cat] || 0;
@@ -639,7 +651,7 @@ function PredictPageContent() {
 
                 {/* More Button */}
                 {categories.length > visibleCategoryCount && (
-                  <div className="relative mb-4">
+                  <div className="relative shrink-0">
                     <button
                       onClick={() => setShowMoreCategories(!showMoreCategories)}
                       className={`flex items-center gap-1.5 px-5 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 border ${categories.slice(visibleCategoryCount).includes(selectedCategory)
@@ -692,7 +704,6 @@ function PredictPageContent() {
                     <ProductCard
                       key={idx}
                       name={product.name}
-                      emoji={product.emoji}
                       image={product.image}
                       category={product.category}
                       variants={product.variants}

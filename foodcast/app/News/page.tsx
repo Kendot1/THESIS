@@ -1,27 +1,57 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import NewsCard from "../components/NewsCard";
 import ScrollReveal from "../components/ScrollReveal";
-import { Search, Filter, Calendar, Newspaper, ArrowLeft, TrendingUp, Clock } from "lucide-react";
-import { fetchPaginatedNews, NewsArticle } from "../lib/data";
+import { Search, Filter, Calendar, Newspaper, ArrowLeft, TrendingUp, Clock, Tag, ExternalLink, ChevronDown } from "lucide-react";
+import { fetchPaginatedNews, fetchNewsCategories, toEventTypeKey, NewsArticle } from "../lib/data";
 import Link from "next/link";
 
 export default function NewsPage() {
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [isFeaturedOpen, setIsFeaturedOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [dateFilter, setDateFilter] = useState("All");
   const [totalRecords, setTotalRecords] = useState(0);
   const PAGE_SIZE = 10;
 
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [isDateOpen, setIsDateOpen] = useState(false);
+  const categoryRef = useRef<HTMLDivElement>(null);
+  const dateRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryRef.current && !categoryRef.current.contains(event.target as Node)) setIsCategoryOpen(false);
+      if (dateRef.current && !dateRef.current.contains(event.target as Node)) setIsDateOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const [categories, setCategories] = useState<string[]>(["All"]);
+
+  // Fetch categories dynamically from Supabase on mount
+  useEffect(() => {
+    fetchNewsCategories().then(setCategories);
+  }, []);
+
   // Initial load & filter changes
   useEffect(() => {
     setLoading(true);
-    fetchPaginatedNews(0, PAGE_SIZE, searchQuery, selectedCategory, dateFilter).then(({ data, total }) => {
+    const dbCategory = selectedCategory === "All" ? "All" : toEventTypeKey(selectedCategory);
+    fetchPaginatedNews(0, PAGE_SIZE, searchQuery, dbCategory, dateFilter).then(({ data, total }) => {
       setNews(data);
       setTotalRecords(total);
       setLoading(false);
@@ -32,17 +62,26 @@ export default function NewsPage() {
     if (loadingMore) return;
     setLoadingMore(true);
     const start = news.length;
-    const { data } = await fetchPaginatedNews(start, PAGE_SIZE, searchQuery, selectedCategory, dateFilter);
+    const dbCategory = selectedCategory === "All" ? "All" : toEventTypeKey(selectedCategory);
+    const { data } = await fetchPaginatedNews(start, PAGE_SIZE, searchQuery, dbCategory, dateFilter);
     setNews(prev => [...prev, ...data]);
     setLoadingMore(false);
   };
-
-  const categories = ["All", "Policy Change", "Market Trend", "Weather Event", "Supply Chain", "Global Trade"];
 
   const featuredArticle = news.length > 0 ? news[0] : null;
   const displayNews = searchQuery || selectedCategory !== "All" || dateFilter !== "All"
     ? news
     : news.slice(1);
+
+  // Lock body scroll when featured modal is open
+  useEffect(() => {
+    if (isFeaturedOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isFeaturedOpen]);
 
   return (
     <>
@@ -72,7 +111,10 @@ export default function NewsPage() {
             {/* Featured Article - Only show if no filters active */}
             {!searchQuery && selectedCategory === "All" && dateFilter === "All" && featuredArticle && (
               <ScrollReveal delay={200}>
-                <div className="group relative bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 flex flex-col lg:flex-row transition-all duration-500 hover:shadow-accent/10">
+                <div 
+                  onClick={() => setIsFeaturedOpen(true)}
+                  className="group relative bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 flex flex-col lg:flex-row transition-all duration-500 hover:shadow-accent/10 cursor-pointer"
+                >
                   <div className="lg:w-1/2 h-[200px] lg:h-auto overflow-hidden">
                     <img src={featuredArticle.image} alt={featuredArticle.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
                   </div>
@@ -89,7 +131,13 @@ export default function NewsPage() {
                     <p className="text-gray-500 text-sm md:text-base mb-8 line-clamp-3 leading-relaxed">
                       {featuredArticle.excerpt}
                     </p>
-                    <a href={featuredArticle.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 text-primary-800 font-black uppercase tracking-widest text-xs hover:text-accent-dark transition-colors group/btn">
+                    <a
+                      href={featuredArticle.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-3 text-primary-800 font-black uppercase tracking-widest text-xs hover:text-accent-dark transition-colors group/btn z-10"
+                    >
                       Read Full Report
                       <span className="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center transition-all group-hover/btn:translate-x-2 group-hover/btn:bg-accent group-hover/btn:text-white">
                         <ArrowLeft className="w-4 h-4 rotate-180" />
@@ -97,6 +145,72 @@ export default function NewsPage() {
                     </a>
                   </div>
                 </div>
+
+                {/* Featured Modal Overlay via Portal */}
+                {isMounted && isFeaturedOpen && createPortal(
+                  <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+                    onClick={(e) => { e.stopPropagation(); setIsFeaturedOpen(false); }}
+                  >
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="relative z-10 bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-modal-in flex flex-col"
+                    >
+                      <div className="relative h-56 sm:h-64 flex-shrink-0 overflow-hidden">
+                        <img
+                          src={featuredArticle.image}
+                          alt={featuredArticle.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                        <div className="absolute bottom-5 left-6 right-6 flex items-center gap-3">
+                          <span className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                            <Tag className="w-3 h-3" />
+                            {featuredArticle.category}
+                          </span>
+                          <span className="text-white/70 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+                            <Clock className="w-3 h-3" />
+                            {featuredArticle.date}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-6 sm:p-8 overflow-y-auto flex-1">
+                        <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-2 leading-tight" style={{ fontFamily: "var(--font-display)" }}>
+                          {featuredArticle.title}
+                        </h2>
+                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">
+                          Source: {featuredArticle.source || "Market News"}
+                        </div>
+                        <div className="w-12 h-0.5 bg-gradient-to-r from-primary-700 to-accent rounded-full mb-6" />
+                        <div className="text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-line">
+                          {featuredArticle.content || featuredArticle.excerpt}
+                        </div>
+                      </div>
+
+                      <div className="flex-shrink-0 px-6 sm:px-8 py-5 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+                        <button
+                          onClick={() => setIsFeaturedOpen(false)}
+                          className="px-6 py-2.5 bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold uppercase tracking-widest rounded-xl transition-all active:scale-95"
+                        >
+                          Close
+                        </button>
+                        {featuredArticle.url && (
+                          <a
+                            href={featuredArticle.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-900 text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-primary-800 transition-all shadow-lg hover:shadow-primary-900/30 active:scale-95"
+                          >
+                            Visit Source
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                , document.body)}
               </ScrollReveal>
             )}
           </div>
@@ -117,30 +231,79 @@ export default function NewsPage() {
                 />
               </div>
 
-              <div className="flex items-center gap-4 w-full lg:w-auto">
-                <div className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded-2xl shadow-sm">
-                  <div className="flex items-center gap-2 px-3 py-2 border-r border-gray-100">
-                    <Filter className="w-4 h-4 text-primary-700" />
-                    <select
-                      className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none appearance-none cursor-pointer"
-                      value={selectedCategory}
-                      onChange={(e) => setSelectedCategory(e.target.value)}
+              <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+                <div className="flex flex-wrap items-center bg-white border border-gray-200 rounded-2xl shadow-sm">
+                  
+                  {/* Category Dropdown */}
+                  <div className="relative border-r border-gray-100" ref={categoryRef}>
+                    <button
+                      onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                      className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 rounded-l-2xl transition-colors focus:outline-none"
                     >
-                      {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                    </select>
+                      <Filter className="w-4 h-4 text-primary-700" />
+                      <span className="text-xs font-bold text-gray-700">{selectedCategory}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isCategoryOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    {isCategoryOpen && (
+                      <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="flex flex-col py-1">
+                          {categories.map((cat) => (
+                            <button
+                              key={cat}
+                              onClick={() => {
+                                setSelectedCategory(cat);
+                                setIsCategoryOpen(false);
+                              }}
+                              className={`px-4 py-2 text-left text-xs font-bold transition-colors ${
+                                selectedCategory === cat ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
+                              }`}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-2">
-                    <Calendar className="w-4 h-4 text-primary-700" />
-                    <select
-                      className="bg-transparent text-xs font-bold text-gray-700 focus:outline-none appearance-none cursor-pointer"
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
+
+                  {/* Date Dropdown */}
+                  <div className="relative" ref={dateRef}>
+                    <button
+                      onClick={() => setIsDateOpen(!isDateOpen)}
+                      className="flex items-center gap-2 px-4 py-3 hover:bg-gray-50 rounded-r-2xl transition-colors focus:outline-none"
                     >
-                      <option value="All">All Time</option>
-                      <option value="Today">Last 24 Hours</option>
-                      <option value="Recent">Last 30 Days</option>
-                    </select>
+                      <Calendar className="w-4 h-4 text-primary-700" />
+                      <span className="text-xs font-bold text-gray-700">
+                        {dateFilter === "All" ? "All Time" : dateFilter === "Today" ? "Last 24 Hours" : "Last 30 Days"}
+                      </span>
+                      <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isDateOpen ? "rotate-180" : ""}`} />
+                    </button>
+                    {isDateOpen && (
+                      <div className="absolute top-full right-0 mt-2 w-44 bg-white border border-gray-100 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="flex flex-col py-1">
+                          {[
+                            { value: "All", label: "All Time" },
+                            { value: "Today", label: "Last 24 Hours" },
+                            { value: "Recent", label: "Last 30 Days" }
+                          ].map((option) => (
+                            <button
+                              key={option.value}
+                              onClick={() => {
+                                setDateFilter(option.value);
+                                setIsDateOpen(false);
+                              }}
+                              className={`px-4 py-2 text-left text-xs font-bold transition-colors ${
+                                dateFilter === option.value ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+
                 </div>
               </div>
             </div>
@@ -175,7 +338,7 @@ export default function NewsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                 {displayNews.map((article, i) => (
                   <ScrollReveal key={article.id} delay={(i % PAGE_SIZE) * 30} animation="fade-up">
-                    <NewsCard {...article} />
+                    <NewsCard {...article} content={article.content} />
                   </ScrollReveal>
                 ))}
               </div>

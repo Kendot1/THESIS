@@ -1,10 +1,14 @@
 """
 FOODCAST Model Trainer -- CLI Entry Point.
 
+Runs as a pure ML pipeline (no web server needed).
+Continuous training is automated via GitHub Actions.
+
 Usage:
   python main.py train --mode full
   python main.py train --mode incremental
-  python main.py serve
+  python main.py train --mode daily
+  python main.py predict --horizon monthly
   python main.py schedule
   python main.py evaluate
 """
@@ -39,19 +43,7 @@ def cmd_train(args):
     log.info(f"Training complete. Metrics: {metrics}")
 
 
-def cmd_serve(args):
-    """Start the FastAPI server."""
-    import uvicorn
-    from config.settings import get_settings
 
-    cfg = get_settings()
-    log.info(f"Starting API server on {cfg.api_host}:{cfg.api_port}")
-    uvicorn.run(
-        "api.main:app",
-        host=cfg.api_host,
-        port=cfg.api_port,
-        reload=args.reload,
-    )
 
 
 def cmd_schedule(args):
@@ -90,7 +82,11 @@ def cmd_evaluate(args):
     df = encoder.transform(df)
     df = df.dropna()
 
-    _, test_df = preprocessor.time_split(df, test_days=30)
+    from models.lstm_model import LSTMModel
+    from models.ensemble import EnsembleModel
+    import pandas as pd
+
+    train_df, test_df = preprocessor.time_split(df, test_size=0.15)
 
     if test_df.empty:
         log.error("No test data available.")
@@ -108,16 +104,55 @@ def cmd_evaluate(args):
 
     lgbm = LightGBMModel()
     lgbm.load()
-    test_df = test_df.copy()
-    test_df["predicted_price"] = lgbm.predict(test_df[feature_cols])
+    
+    lstm = LSTMModel()
+    lstm.load()
+    
+    ensemble = EnsembleModel()
+    ensemble.load()
+
+    # Build sequences for LSTM inference
+    seq_len = lstm._seq_len
+    train_tail = train_df.groupby(["product_category", "product_name", "product_variant", "origin"]).tail(seq_len - 1)
+    test_full_df = pd.concat([train_tail, test_df]).sort_values(["product_category", "product_name", "product_variant", "origin", "report_date"]).reset_index(drop=True)
+
+    X_test_seq, _, test_indices, test_products, test_anchors = lstm.build_sequences_inference(test_full_df)
+
+    if len(X_test_seq) == 0:
+        log.error("Failed to build sequences for evaluation.")
+        return
+
+    # Get predictions
+    lstm_preds = lstm.predict(X_test_seq, products=test_products, current_prices=test_anchors)
+    X_test_lgbm = test_full_df.iloc[test_indices][feature_cols].copy()
+    lgbm_preds = lgbm.predict(X_test_lgbm)
+
+    # Blend
+    stats = ensemble.get_residual_stats()
+    lstm_w = stats.get("lstm_weight", 0.5) if stats else 0.5
+    lgbm_w = stats.get("lgbm_weight", 0.5) if stats else 0.5
+    hybrid_preds = (lstm_preds * lstm_w) + (lgbm_preds * lgbm_w)
+
+    eval_df = test_full_df.iloc[test_indices].copy()
+    eval_df["predicted_price"] = hybrid_preds
 
     evaluator = ModelEvaluator()
-    report = evaluator.generate_report(test_df)
+    report = evaluator.generate_report(eval_df)
 
-    log.info("=== EVALUATION REPORT ===")
+    log.info("=== EVALUATION REPORT (HYBRID ENSEMBLE) ===")
     log.info(f"Overall: {report['overall']}")
     log.info(f"Products evaluated: {report['n_products']}")
     log.info(f"Total samples: {report['n_total_samples']}")
+
+    # Generate and save plots locally
+    try:
+        from utils.plotter import generate_evaluation_plots
+        import os
+        
+        plot_dir = os.path.join(os.path.dirname(__file__), "plots")
+        generate_evaluation_plots(eval_df, report, output_dir=plot_dir)
+    except ImportError as e:
+        log.warning(f"Could not generate plots. Ensure matplotlib is installed: {e}")
 
 
 
@@ -149,12 +184,7 @@ def main():
     )
     train_parser.set_defaults(func=cmd_train)
 
-    # serve
-    serve_parser = subparsers.add_parser("serve", help="Start the API server")
-    serve_parser.add_argument(
-        "--reload", action="store_true", help="Enable hot reload (development)"
-    )
-    serve_parser.set_defaults(func=cmd_serve)
+
 
     # schedule
     sched_parser = subparsers.add_parser("schedule", help="Start the daily scheduler")

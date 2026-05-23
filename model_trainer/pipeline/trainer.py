@@ -216,11 +216,162 @@ class TrainingPipeline:
         # Store reference distribution for future drift detection
         self._drift.save_reference(clean_df)
 
+        # ── Step 8: Generate visual dashboards ──
+        log.info("Step 8/8 -- Generating visual training dashboards ...")
+        try:
+            self._generate_plots(train_df, val_df, feature_cols, combined_metrics)
+        except Exception as e:
+            log.error(f"Visual dashboard generation failed: {e}")
+
         # ── Summary ──
         self._log_training_summary(combined_metrics)
 
         log.info("=== TRAINING COMPLETE ===")
         return combined_metrics
+
+    def _generate_plots(self, train_df: pd.DataFrame, val_df: pd.DataFrame, feature_cols: list, combined_metrics: dict = None):
+        """Generate all 8 thesis-quality visual dashboards."""
+        log.info("Generating training and evaluation visual dashboards ...")
+        from utils.plotting import (
+            plot_lstm_loss, plot_learning_rate, plot_feature_importance,
+            plot_predictions_vs_actuals, plot_residual_distribution,
+            plot_per_category_metrics, plot_model_comparison,
+            plot_scatter_predicted_vs_actual,
+        )
+
+        artifacts = self._cfg.artifacts_dir
+        history_path = artifacts / "lstm_history.json"
+
+        # 1. LSTM Training vs Validation Loss Curve
+        try:
+            if history_path.exists():
+                plot_lstm_loss(history_path, artifacts / "loss_curves.png")
+                log.info(f"Generated plot 1/8: Loss Curves -> {artifacts / 'loss_curves.png'}")
+        except Exception as e:
+            log.error(f"Plot 1 (loss curves) failed: {e}")
+
+        # 2. Learning Rate Schedule
+        try:
+            if history_path.exists():
+                plot_learning_rate(history_path, artifacts / "lr_schedule.png")
+                log.info(f"Generated plot 2/8: LR Schedule -> {artifacts / 'lr_schedule.png'}")
+        except Exception as e:
+            log.error(f"Plot 2 (LR schedule) failed: {e}")
+
+        # 3. Feature Importance
+        try:
+            importance = self._lgbm.feature_importance()
+            if importance:
+                plot_feature_importance(importance, artifacts / "feature_importance.png", top_n=15)
+                log.info(f"Generated plot 3/8: Feature Importance -> {artifacts / 'feature_importance.png'}")
+        except Exception as e:
+            log.error(f"Plot 3 (feature importance) failed: {e}")
+
+        # 7. Model Comparison (does not need validation inference)
+        try:
+            if combined_metrics:
+                plot_model_comparison(combined_metrics, artifacts / "model_comparison.png")
+                log.info(f"Generated plot 7/8: Model Comparison -> {artifacts / 'model_comparison.png'}")
+        except Exception as e:
+            log.error(f"Plot 7 (model comparison) failed: {e}")
+
+        # Plots 4, 5, 6, 8 require validation inference
+        try:
+            if not val_df.empty:
+                seq_len = self._lstm._seq_len
+                train_tail = train_df.groupby(["product_category", "product_name", "product_variant", "origin"]).tail(seq_len - 1)
+                val_full_df = pd.concat([train_tail, val_df]).sort_values(["product_category", "product_name", "product_variant", "origin", "report_date"]).reset_index(drop=True)
+
+                X_val_seq, y_val_seq, val_indices, val_products, val_anchors = \
+                    self._lstm.build_sequences_inference(val_full_df)
+
+                if len(X_val_seq) > 0:
+                    # Get predictions from all models
+                    lstm_preds = self._lstm.predict(X_val_seq, products=val_products, current_prices=val_anchors)
+                    X_val_lgbm = val_full_df.iloc[val_indices][feature_cols].copy()
+                    lgbm_preds = self._lgbm.predict(X_val_lgbm)
+
+                    stats = self._ensemble.get_residual_stats()
+                    lstm_w = stats.get("lstm_weight", 0.5) if stats else 0.5
+                    lgbm_w = stats.get("lgbm_weight", 0.5) if stats else 0.5
+                    hybrid_preds = (lstm_preds * lstm_w) + (lgbm_preds * lgbm_w)
+
+                    _, lower_bound, upper_bound = self._lgbm.predict_with_intervals(X_val_lgbm)
+                    hybrid_error = hybrid_preds - lgbm_preds
+                    hybrid_lower = lower_bound + hybrid_error
+                    hybrid_upper = upper_bound + hybrid_error
+
+                    y_val_actual = val_full_df["price_index"].values[val_indices]
+
+                    # 4. Predicted vs Actual Time Series (representative product)
+                    try:
+                        product_counts = {}
+                        for p in val_products:
+                            product_counts[p] = product_counts.get(p, 0) + 1
+
+                        if product_counts:
+                            rep_product = max(product_counts, key=product_counts.get)
+                            rep_indices = [i for i, p in enumerate(val_products) if p == rep_product]
+
+                            if len(rep_indices) > 1:
+                                y_true_rep = y_val_actual[rep_indices]
+                                hybrid_rep = hybrid_preds[rep_indices]
+                                lstm_rep = lstm_preds[rep_indices]
+                                lgbm_rep = lgbm_preds[rep_indices]
+                                lower_rep = hybrid_lower[rep_indices]
+                                upper_rep = hybrid_upper[rep_indices]
+
+                                clean_prod_name = rep_product.split("||")[1] if "||" in rep_product else rep_product
+
+                                plot_predictions_vs_actuals(
+                                    y_true=y_true_rep, y_pred=hybrid_rep,
+                                    product_name=clean_prod_name, save_path=artifacts / "evaluation_results.png",
+                                    lstm_pred=lstm_rep, lgbm_pred=lgbm_rep,
+                                    lower_bound=lower_rep, upper_bound=upper_rep
+                                )
+                                log.info(f"Generated plot 4/8: Predicted vs Actual ({clean_prod_name}) -> {artifacts / 'evaluation_results.png'}")
+                    except Exception as e:
+                        log.error(f"Plot 4 (predicted vs actual) failed: {e}")
+
+                    # 5. Residual Distribution
+                    try:
+                        plot_residual_distribution(
+                            y_val_actual, hybrid_preds,
+                            save_path=artifacts / "residual_distribution.png",
+                            model_name="Hybrid Ensemble"
+                        )
+                        log.info(f"Generated plot 5/8: Residual Distribution -> {artifacts / 'residual_distribution.png'}")
+                    except Exception as e:
+                        log.error(f"Plot 5 (residual distribution) failed: {e}")
+
+                    # 6. Per-Category Metrics
+                    try:
+                        eval_df = val_full_df.iloc[val_indices].copy()
+                        eval_df["predicted_price"] = hybrid_preds
+                        from pipeline.evaluator import ModelEvaluator
+                        evaluator = ModelEvaluator()
+                        cat_metrics = evaluator.evaluate_per_category(eval_df).to_dict("records")
+                        if cat_metrics:
+                            plot_per_category_metrics(cat_metrics, artifacts / "per_category_metrics.png")
+                            log.info(f"Generated plot 6/8: Per-Category Metrics -> {artifacts / 'per_category_metrics.png'}")
+                    except Exception as e:
+                        log.error(f"Plot 6 (per-category metrics) failed: {e}")
+
+                    # 8. Scatter Plot (Predicted vs Actual)
+                    try:
+                        cat_labels = val_full_df["product_category"].values[val_indices]
+                        plot_scatter_predicted_vs_actual(
+                            y_val_actual, hybrid_preds,
+                            save_path=artifacts / "scatter_predicted_vs_actual.png",
+                            model_name="Hybrid Ensemble",
+                            category_labels=np.array(cat_labels)
+                        )
+                        log.info(f"Generated plot 8/8: Scatter Plot -> {artifacts / 'scatter_predicted_vs_actual.png'}")
+                    except Exception as e:
+                        log.error(f"Plot 8 (scatter plot) failed: {e}")
+
+        except Exception as e:
+            log.error(f"Validation inference for plots failed: {e}")
 
     # ──────────────────────────────────────────────
     def _build_features(self, df: pd.DataFrame, fit: bool = True) -> pd.DataFrame:
