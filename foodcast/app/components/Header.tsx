@@ -80,7 +80,11 @@ const Header = () => {
             {/* Desktop Nav */}
             <ul className="hidden md:flex items-center gap-4">
               {links.map((link) => {
-                const isActive = pathname === link.href || (link.dropdown && link.dropdown.some(d => d.href === pathname));
+                const isActive = 
+                  pathname === link.href || 
+                  (link.dropdown && link.dropdown.some(d => d.href === pathname)) ||
+                  (link.href === "/MarketData" && pathname.startsWith("/Product"));
+                  
                 const isDropdownOpen = openDropdown === link.label;
 
                 if (link.dropdown) {
@@ -193,7 +197,10 @@ const Header = () => {
           <div className="pt-4 pb-10 px-4">
             <ul className="flex flex-col gap-3 items-center justify-center">
               {links.map((link, i) => {
-                const isActive = pathname === link.href || (link.dropdown && link.dropdown.some(d => d.href === pathname));
+                const isActive = 
+                  pathname === link.href || 
+                  (link.dropdown && link.dropdown.some(d => d.href === pathname)) ||
+                  (link.href === "/MarketData" && pathname.startsWith("/Product"));
 
                 if (link.dropdown) {
                   return (
