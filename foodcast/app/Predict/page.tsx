@@ -213,6 +213,7 @@ function PredictPageContent() {
       name: string;
       category: string;
       image: string;
+      unit: string;
       variants: {
         id: string;
         variant: string;
@@ -229,6 +230,7 @@ function PredictPageContent() {
           name: p.name,
           category: p.category,
           image: p.image,
+          unit: p.unit,
           variants: []
         });
       }
@@ -741,6 +743,7 @@ function PredictPageContent() {
                       image={product.image}
                       category={product.category}
                       variants={product.variants}
+                      unit={product.unit}
                       initialVariantId={bestVariant.id}
                       compact
                     />

@@ -378,6 +378,7 @@ async function handleProducts() {
     const image = metaRow?.image_url || DEFAULT_PRODUCT_IMAGE;
 
     const currentPrice = rows[rows.length - 1].price_index;
+    const unit = rows[rows.length - 1].unit || "kg";
     const prevIdx = Math.max(0, rows.length - 8);
     const previousPrice = rows[prevIdx].price_index;
 
@@ -459,6 +460,7 @@ async function handleProducts() {
       predictedPrice,
       previousPrice,
       volume,
+      unit,
       sentiment,
       sparklineData,
       forecastData,

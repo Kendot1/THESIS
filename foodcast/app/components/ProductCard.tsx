@@ -20,6 +20,7 @@ interface ProductCardProps {
   variants: ProductVariant[];
   compact?: boolean;
   initialVariantId?: string;
+  unit?: string;
 }
 
 const ProductCard = ({
@@ -29,6 +30,7 @@ const ProductCard = ({
   variants,
   compact = false,
   initialVariantId,
+  unit,
 }: ProductCardProps) => {
   const [selectedVariantId, setSelectedVariantId] = useState(initialVariantId || variants[0]?.id);
 
@@ -211,11 +213,11 @@ const ProductCard = ({
         <div className="mt-auto mb-5 flex items-end justify-between gap-2 min-w-0">
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="text-[8px] text-gray-400 uppercase font-bold tracking-wider">Market</span>
-            <span className="text-sm font-black text-gray-900 truncate">₱{currentPrice.toFixed(1)}</span>
+            <span className="text-sm font-black text-gray-900 truncate">₱{currentPrice.toFixed(1)}{unit ? ` / ${unit}` : ''}</span>
           </div>
           <div className="flex flex-col gap-0.5 items-end min-w-0">
             <span className="text-[8px] text-gray-400 uppercase font-bold tracking-wider">Predicted</span>
-            <span className={`text-sm font-black truncate ${isUp ? "text-positive" : "text-negative"}`}>₱{predictedPrice.toFixed(1)}</span>
+            <span className={`text-sm font-black truncate ${isUp ? "text-positive" : "text-negative"}`}>₱{predictedPrice.toFixed(1)}{unit ? ` / ${unit}` : ''}</span>
           </div>
         </div>
 

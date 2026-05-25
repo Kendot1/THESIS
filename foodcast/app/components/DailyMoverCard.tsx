@@ -18,6 +18,7 @@ interface DailyMoverCardProps {
   }[];
   variant?: string;
   origin?: string;
+  unit?: string;
 }
 
 const DailyMoverCard = ({
@@ -29,6 +30,7 @@ const DailyMoverCard = ({
   predictedPrice,
   variant,
   origin,
+  unit,
 }: DailyMoverCardProps) => {
   const change = ((predictedPrice - currentPrice) / currentPrice) * 100;
   const priceChange = predictedPrice - currentPrice;
@@ -118,6 +120,7 @@ const DailyMoverCard = ({
             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">Current Price</span>
             <span className="text-2xl sm:text-3xl font-black text-gray-900 tabular-nums leading-none">
               ₱{currentPrice.toFixed(2)}
+              {unit && <span className="text-sm sm:text-base text-gray-500 ml-1 font-medium">/ {unit}</span>}
             </span>
             
           </div>
@@ -125,6 +128,7 @@ const DailyMoverCard = ({
             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">Tomorrow</span>
             <span className={`text-lg sm:text-xl font-bold tabular-nums leading-none ${isUp ? 'text-positive' : 'text-negative'}`}>
               ₱{predictedPrice.toFixed(2)}
+              {unit && <span className="text-xs sm:text-sm opacity-70 ml-1 font-medium">/ {unit}</span>}
             </span>
           </div>
         </div>

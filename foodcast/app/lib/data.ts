@@ -17,6 +17,7 @@ export interface Product {
   predictedPrice: number;
   previousPrice: number;
   volume: string;
+  unit: string;
   sentiment: "Bullish" | "Bearish" | "Neutral";
   sparklineData: { value: number }[];
   forecastData: {

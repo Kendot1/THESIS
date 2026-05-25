@@ -608,6 +608,7 @@ export default function HomePage() {
                     forecastData={p.forecastData}
                     variant={p.variant}
                     origin={p.origin}
+                    unit={p.unit}
                   />
                 </div>
               ))}
@@ -733,6 +734,7 @@ export default function HomePage() {
                       name: p.name,
                       category: p.category,
                       image: p.image,
+                      unit: p.unit,
                       variants: []
                     });
                   }
@@ -755,6 +757,7 @@ export default function HomePage() {
                       category={product.category}
                       image={product.image}
                       variants={product.variants}
+                      unit={product.unit}
                       compact
                     />
                   </div>
@@ -772,6 +775,7 @@ export default function HomePage() {
                       name: p.name,
                       category: p.category,
                       image: p.image,
+                      unit: p.unit,
                       variants: []
                     });
                   }
@@ -791,6 +795,7 @@ export default function HomePage() {
                       image={product.image}
                       category={product.category}
                       variants={product.variants}
+                      unit={product.unit}
                     />
                   </ScrollReveal>
                 ));

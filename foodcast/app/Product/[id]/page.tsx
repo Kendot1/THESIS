@@ -501,7 +501,7 @@ export default function ProductPage({
                                       >
                                         <div className="flex flex-col">
                                           <span className="text-xs font-bold">{v.variant || "Standard"}</span>
-                                          <span className="text-[10px] opacity-60">₱{v.currentPrice.toFixed(2)}</span>
+                                          <span className="text-[10px] opacity-60">₱{v.currentPrice.toFixed(2)}{v.unit ? ` / ${v.unit}` : ''}</span>
                                         </div>
                                         {v.id === product.id && <CheckCircle2 className="w-4 h-4 text-accent" />}
                                       </Link>
@@ -698,6 +698,7 @@ export default function ProductPage({
                                     </div>
                                     <span className="text-xs font-black text-gray-900 tabular-nums">
                                       ₱{forecast.predicted_price.toFixed(2)}
+                                      {product.unit && <span className="text-[10px] text-gray-500 font-medium ml-0.5">/ {product.unit}</span>}
                                     </span>
                                   </div>
                                   {isExpanded && (
@@ -724,7 +725,7 @@ export default function ProductPage({
                     {[
                       {
                         label: "Market Price",
-                        value: `₱${product.currentPrice.toFixed(2)}`,
+                        value: `₱${product.currentPrice.toFixed(2)}${product.unit ? ` / ${product.unit}` : ''}`,
                         icon: <BarChart3 className="w-4 h-4" />,
                         sub: "Live NCR Rate",
                         color: "text-primary-800",
@@ -937,6 +938,7 @@ export default function ProductPage({
                           name: p.name,
                           category: p.category,
                           image: p.image,
+                          unit: p.unit,
                           variants: []
                         });
                       }
@@ -960,6 +962,7 @@ export default function ProductPage({
                             image={product.image}
                             category={product.category}
                             variants={product.variants}
+                            unit={product.unit}
                             compact
                           />
                         </ScrollReveal>

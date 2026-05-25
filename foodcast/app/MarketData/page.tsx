@@ -436,6 +436,9 @@ export default function MarketDataPage() {
                       <SortHeader label="Origin" sortKeyName="origin" center />
                     </th>
                     <th className="text-center px-6 lg:px-8 py-4">
+                      <SortHeader label="Unit" sortKeyName="volume" center />
+                    </th>
+                    <th className="text-center px-6 lg:px-8 py-4">
                       <SortHeader label="Current Price" sortKeyName="currentPrice" center />
                     </th>
                     <th className="text-center px-6 lg:px-8 py-4">
@@ -483,6 +486,11 @@ export default function MarketDataPage() {
                           ) : (
                             <span className="text-xs text-gray-400 font-bold">-</span>
                           )}
+                        </td>
+                        <td className="px-6 lg:px-8 py-3 text-center">
+                          <span className="text-sm font-bold text-gray-900 tabular-nums">
+                            {p.unit ? p.unit : "-"}
+                          </span>
                         </td>
                         <td className="px-6 lg:px-8 py-3 text-center">
                           <span className="text-sm font-bold text-gray-900 tabular-nums">
