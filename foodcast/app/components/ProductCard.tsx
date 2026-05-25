@@ -184,9 +184,9 @@ const ProductCard = ({
         </div>
 
         {/* Row 4: Variant Pills */}
-        {availableVariantsForOrigin.length > 1 ? (
-          <div className="mb-2 sm:mb-3 relative z-30">
-            <div className="flex overflow-x-auto scrollbar-hide flex-nowrap gap-1.5 sm:gap-2 pb-0.5">
+        <div className="min-h-[24px] sm:min-h-[28px] mb-2 sm:mb-3 relative z-30 flex items-start">
+          {availableVariantsForOrigin.length > 1 && (
+            <div className="flex overflow-x-auto scrollbar-hide flex-nowrap gap-1.5 sm:gap-2 pb-0.5 w-full">
               {availableVariantsForOrigin.map((v) => (
                 <button
                   key={v.id}
@@ -204,8 +204,8 @@ const ProductCard = ({
                 </button>
               ))}
             </div>
-          </div>
-        ) : null}
+          )}
+        </div>
 
         {/* Row 5: Side-by-side Prices */}
         <div className="mt-auto mb-5 flex items-end justify-between gap-2 min-w-0">

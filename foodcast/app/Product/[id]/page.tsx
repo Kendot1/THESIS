@@ -954,7 +954,7 @@ export default function ProductPage({
                         key={i}
                         className="snap-start shrink-0 w-[180px] sm:w-[240px] lg:w-[280px]"
                       >
-                        <ScrollReveal delay={i * 80} animation="fade-up">
+                        <ScrollReveal delay={i * 80} animation="fade-up" className="h-full">
                           <ProductCard
                             name={product.name}
                             image={product.image}

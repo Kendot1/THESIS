@@ -785,7 +785,7 @@ export default function HomePage() {
                 });
 
                 return Array.from(groupedMap.values()).map((product, i) => (
-                  <ScrollReveal key={i} delay={i * 100} animation="scale-in">
+                  <ScrollReveal key={i} delay={i * 100} animation="scale-in" className="h-full">
                     <ProductCard
                       name={product.name}
                       image={product.image}
