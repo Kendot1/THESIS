@@ -37,6 +37,34 @@ function PredictPageContent() {
   const [featuredIndex, setFeaturedIndex] = useState(0);
   const [isHoveringFeatured, setIsHoveringFeatured] = useState(false);
 
+  // Swipe gesture support for mobile/touch screens
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+    touchEndX.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current || featuredItems.length <= 1) return;
+    const diffX = touchStartX.current - touchEndX.current;
+    const threshold = 50;
+
+    if (diffX > threshold) {
+      setFeaturedIndex((prev) => (prev + 1) % featuredItems.length);
+    } else if (diffX < -threshold) {
+      setFeaturedIndex((prev) => (prev - 1 + featuredItems.length) % featuredItems.length);
+    }
+
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
   useEffect(() => {
     fetchCategories().then((cats) => {
       setCategories(cats);
@@ -49,18 +77,18 @@ function PredictPageContent() {
       // Container width is window width minus the page padding (px-5 on mobile, px-10 on desktop)
       const padding = window.innerWidth >= 1024 ? 80 : 40;
       const containerWidth = Math.min(window.innerWidth, 1280) - padding;
-      
+
       const moreButtonWidth = 100;
       const gapWidth = 8; // gap-2 = 8px
       const availableWidthForCats = containerWidth - moreButtonWidth;
-      
+
       // The average category button width is smaller than 120px, closer to 90-100px including gaps.
       // So we divide by 95px to pack more buttons before breaking into "More"
       const estimatedCount = Math.floor(availableWidthForCats / 95);
-      
+
       setVisibleCategoryCount(Math.max(2, estimatedCount));
     };
-    
+
     updateCount();
     window.addEventListener('resize', updateCount);
     return () => window.removeEventListener('resize', updateCount);
@@ -335,7 +363,7 @@ function PredictPageContent() {
 
             <div className="relative z-20 max-w-lg">
               <form role="search" aria-label="Search products" onSubmit={(e) => { e.preventDefault(); scrollToAllMarkets(); }}>
-                <div className="flex items-center bg-white/60 border border-white/15 rounded-2xl overflow-hidden backdrop-blur-sm transition-all duration-300 focus-within:border-accent/50 focus-within:bg-white/95 focus-within:shadow-[0_0_30px_rgba(126,217,87,0.1)]">
+                <div className="flex items-center bg-white/85 border border-white/15 rounded-2xl overflow-hidden backdrop-blur-sm transition-all duration-300 focus-within:border-accent/50 focus-within:bg-white/95 focus-within:shadow-[0_0_30px_rgba(126,217,87,0.1)]">
                   <Search className="w-5 h-5 text-black/55 ml-4 shrink-0" aria-hidden="true" />
                   <input
                     type="text"
@@ -347,7 +375,10 @@ function PredictPageContent() {
                     className="flex-1 px-3 py-3 bg-transparent text-black placeholder-black/65 text-xs sm:text-sm focus:outline-none"
                     autoComplete="off"
                   />
-                  <button type="submit" className="mr-2 px-6 py-2 bg-orange rounded-xl text-white text-xs sm:text-sm transition-all duration-300 hover:bg-orange-light hover:shadow-[0_4px_16px_rgba(255,145,77,0.4)] active:scale-95 shrink-0">
+                  <button type="submit"
+                    className=" px-6 py-3 bg-orange-dark/90 text-white text-xs sm:text-sm
+                          transition-all duration-300 hover:bg-orange hover:shadow-[0_4px_16px_rgba(255,145,77,0.4)]
+                          active:scale-95 shrink-0">
                     Search
                   </button>
                 </div>
@@ -414,8 +445,11 @@ function PredictPageContent() {
             <div
               onMouseEnter={() => setIsHoveringFeatured(true)}
               onMouseLeave={() => setIsHoveringFeatured(false)}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               className="lg:col-span-8 bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-xl 
-                        flex flex-col group hover:shadow-2xl transition-all duration-500"
+                        flex flex-col group hover:shadow-2xl transition-all duration-500 md:cursor-grab md:active:cursor-grabbing select-none"
             >
               <div className="p-6 sm:p-8 flex-1 flex flex-col">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -501,31 +535,31 @@ function PredictPageContent() {
                       />
                     ))}
                   </div>
-                <div className="flex items-center gap-3 hidden md:flex">
-                  <button
-                    onClick={() => setFeaturedIndex((prev) => (prev - 1 + featuredItems.length) % featuredItems.length)}
-                    className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-full 
+                  <div className="flex items-center gap-3 hidden md:flex">
+                    <button
+                      onClick={() => setFeaturedIndex((prev) => (prev - 1 + featuredItems.length) % featuredItems.length)}
+                      className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-full 
                     text-xs font-bold text-gray-600 hover:border-primary-200 
                     hover:text-primary-800 transition-all active:scale-95"
-                  >
-                    <ChevronLeft className="w-3 h-3" />
-                    {(() => {
-                      const p = featuredItems[(featuredIndex - 1 + featuredItems.length) % featuredItems.length];
-                      return p?.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p?.name;
-                    })()}
-                  </button>
-                  <button
-                    onClick={() => setFeaturedIndex((prev) => (prev + 1) % featuredItems.length)}
-                    className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-600 hover:border-primary-200 hover:text-primary-800 transition-all active:scale-95"
-                  >
-                    {(() => {
-                      const p = featuredItems[(featuredIndex + 1) % featuredItems.length];
-                      return p?.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p?.name;
-                    })()}
-                    <ChevronRight className="w-3 h-3" />
-                  </button>
+                    >
+                      <ChevronLeft className="w-3 h-3" />
+                      {(() => {
+                        const p = featuredItems[(featuredIndex - 1 + featuredItems.length) % featuredItems.length];
+                        return p?.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p?.name;
+                      })()}
+                    </button>
+                    <button
+                      onClick={() => setFeaturedIndex((prev) => (prev + 1) % featuredItems.length)}
+                      className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-full text-xs font-bold text-gray-600 hover:border-primary-200 hover:text-primary-800 transition-all active:scale-95"
+                    >
+                      {(() => {
+                        const p = featuredItems[(featuredIndex + 1) % featuredItems.length];
+                        return p?.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p?.name;
+                      })()}
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
-              </div>
               )}
             </div>
 

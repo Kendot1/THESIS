@@ -37,7 +37,7 @@ export default function ProductPage({
   const { id } = use(params);
   const { data: products = [] } = useProducts();
   const product = useMemo(() => products.find((p) => p.id === id) || null, [products, id]);
-  
+
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [aiReasoning, setAiReasoning] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -45,14 +45,14 @@ export default function ProductPage({
   // Fetch AI Reasoning from Gemini when product loads
   useEffect(() => {
     if (!product) return;
-    
+
     let isMounted = true;
     const generateAnalysis = async () => {
       setIsAnalyzing(true);
       try {
         const news = await fetchNews(3); // Get 3 latest news
         const newsContext = news.map(n => `- ${n.title}: ${n.excerpt}`).join("\n");
-        
+
         const response = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -124,6 +124,31 @@ export default function ProductPage({
   const [isOriginDropdownOpen, setIsOriginDropdownOpen] = useState(false);
   const aiConfidence = useMemo(() => Math.floor(Math.random() * (98 - 85 + 1) + 85), [id]);
 
+  const [forecastRange, setForecastRange] = useState<"3" | "7" | "month" | "all">("all");
+  const [mobileForecastExpanded, setMobileForecastExpanded] = useState(false);
+
+  const filteredForecasts = useMemo(() => {
+    if (!product || !product.dailyForecast) return [];
+    const forecasts = product.dailyForecast;
+    if (forecastRange === "3") {
+      return forecasts.slice(0, 3);
+    }
+    if (forecastRange === "7") {
+      return forecasts.slice(0, 7);
+    }
+    if (forecastRange === "month") {
+      if (forecasts.length === 0) return [];
+      const firstDate = new Date(forecasts[0].date);
+      const currentYear = firstDate.getFullYear();
+      const currentMonth = firstDate.getMonth();
+      return forecasts.filter((f) => {
+        const d = new Date(f.date);
+        return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
+      });
+    }
+    return forecasts;
+  }, [product, forecastRange]);
+
   /* ─── Slider Logic (Predict style) ──────────── */
   const sliderRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
@@ -166,7 +191,7 @@ export default function ProductPage({
               <div className="h-4 w-48 bg-gray-200 rounded-md animate-pulse" />
             </div>
           </div>
-          
+
           <div className="max-w-7xl mx-auto px-5 lg:px-10 pt-3 sm:py-5">
             {/* Header Skeleton */}
             <div className="bg-primary-900 mb-6 sm:mb-8 rounded-2xl p-5 sm:p-8">
@@ -202,7 +227,7 @@ export default function ProductPage({
                   </div>
                   <div className="flex-1 bg-gray-50 rounded-2xl animate-pulse" />
                 </div>
-                
+
                 {/* AI Reasoning Skeleton */}
                 <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
                   <div className="flex items-center gap-3 mb-6">
@@ -231,7 +256,7 @@ export default function ProductPage({
                     <div className="h-8 w-24 bg-gray-200 rounded-lg" />
                   </div>
                 </div>
-                
+
                 {/* News Skeleton */}
                 <div className="bg-white rounded-3xl border border-gray-100 p-6">
                   <div className="h-5 w-40 bg-gray-200 rounded-lg mb-6 animate-pulse" />
@@ -308,7 +333,7 @@ export default function ProductPage({
 
   const uniqueOrigins = Array.from(new Set(variants.map(v => v.origin || "Local")));
 
-  const availableVariantsForOrigin = product 
+  const availableVariantsForOrigin = product
     ? variants.filter(v => (v.origin || "Local") === (product.origin || "Local"))
     : [];
 
@@ -362,9 +387,9 @@ export default function ProductPage({
                 <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-accent/10 rounded-full blur-3xl -mr-16 -mt-16 sm:-mr-20 sm:-mt-20" />
                 <div className="absolute bottom-0 left-0 w-24 sm:w-32 h-24 sm:h-32 bg-white/5 rounded-full blur-2xl -ml-8 -mb-8 sm:-ml-10 sm:-mb-10" />
 
-                <div className="relative space-y-8">
+                <div className="relative space-y-5">
                   {/* Top Row: Image + Identity */}
-                  <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 sm:gap-10">
+                  <div className="flex flex-row items-start gap-3 sm:flex-row sm:items-end sm:gap-10">
                     <div className="shrink-0 w-25 h-25 sm:w-35 sm:h-35 rounded-xl bg-white overflow-hidden shadow-2xl border-4 border-white/20 transform hover:scale-105 transition-transform duration-500">
                       <img
                         src={product.image || DEFAULT_PRODUCT_IMAGE}
@@ -379,41 +404,36 @@ export default function ProductPage({
                       />
                     </div>
 
-                    <div className="flex-1 flex flex-col items-center sm:items-start">
-                      <div className="flex flex-col gap-3 mb-2 ">
-                        <div className="space-y-4">
-                          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                    <div className="flex-1 flex flex-col items-start sm:items-start min-w-0">
+                      <div className="flex flex-col gap-1.5 sm:gap-3 mb-1 sm:mb-2 w-full">
+                        <div className="space-y-2 sm:space-y-4">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-3">
                             <span
-                              className={`inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold px-4 py-1.5 rounded-full shadow-lg ${sentimentColor} backdrop-blur-md`}
+                              className={`inline-flex items-center gap-1 text-[8px] sm:text-xs font-bold px-2 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-lg ${sentimentColor} backdrop-blur-md`}
                             >
                               {sentimentIcon}
                               {trendLabel}
                             </span>
-                            <span className="text-[10px] sm:text-xs font-bold text-accent bg-accent/10 px-4 py-1.5 rounded-full border border-accent/20">
+                            <span className="text-[8px] sm:text-xs font-bold text-accent bg-accent/10 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full border border-accent/20">
                               {product.category}
                             </span>
                           </div>
-
                         </div>
                         <h1
-                          className="text-2xl sm:text-5xl font-bold text-white leading-tight mb-2"
+                          className="text-lg sm:text-5xl font-bold text-white leading-tight mb-0.5 sm:mb-2 truncate w-full"
                           style={{ fontFamily: "var(--font-display)" }}
                         >
                           {product.name}
                         </h1>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-accent-light/80 text-xs sm:text-lg font-medium">
-                          {/* Removed redundant static variant/origin text as it's now in the dropdown buttons */}
-                          <div className="flex items-center gap-2" />
-
+                        <div className="flex flex-row items-center gap-2 text-accent-light/80 text-xs sm:text-lg font-medium flex-wrap">
                           {/* Origin Selector */}
-                          <div className="relative mt-2 sm:mt-0 sm:ml-2">
+                          <div className="relative">
                             <button
                               onClick={() => uniqueOrigins.length > 1 && setIsOriginDropdownOpen(!isOriginDropdownOpen)}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all backdrop-blur-md border ${
-                                uniqueOrigins.length > 1 
-                                  ? "bg-white/10 hover:bg-white/20 border-white/10 cursor-pointer" 
-                                  : "bg-white/5 border-white/5 cursor-default"
-                              }`}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all backdrop-blur-md border ${uniqueOrigins.length > 1
+                                ? "bg-white/10 hover:bg-white/20 border-white/10 cursor-pointer"
+                                : "bg-white/5 border-white/5 cursor-default"
+                                }`}
                             >
                               <span className="text-xs sm:text-sm font-bold text-white whitespace-nowrap uppercase tracking-wider">{product.origin || "Local"}</span>
                               {uniqueOrigins.length > 1 && (
@@ -450,14 +470,13 @@ export default function ProductPage({
                           </div>
 
                           {/* Variant Selector */}
-                          <div className="relative mt-2 sm:mt-0 sm:ml-2">
+                          <div className="relative">
                             <button
                               onClick={() => availableVariantsForOrigin.length > 1 && setIsDropdownOpen(!isDropdownOpen)}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all backdrop-blur-md border ${
-                                availableVariantsForOrigin.length > 1 
-                                  ? "bg-white/10 hover:bg-white/20 border-white/10 cursor-pointer" 
-                                  : "bg-white/5 border-white/5 cursor-default"
-                              }`}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all backdrop-blur-md border ${availableVariantsForOrigin.length > 1
+                                ? "bg-white/10 hover:bg-white/20 border-white/10 cursor-pointer"
+                                : "bg-white/5 border-white/5 cursor-default"
+                                }`}
                             >
                               <span className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">{product.variant || "Standard"}</span>
                               {availableVariantsForOrigin.length > 1 && (
@@ -499,7 +518,7 @@ export default function ProductPage({
                   </div>
 
                   {/* Bottom Row: Description */}
-                  <div className="pt-8 border-t border-white/10">
+                  <div className="pt-3 border-t border-white/10">
                     <p className="text-white/70 text-xs sm:text-base leading-relaxed text-justify max-w-4xl">
                       {product.description}
                     </p>
@@ -523,7 +542,7 @@ export default function ProductPage({
                         >
                           Market Price Forecast
                         </h2>
-                        <p className="text-gray-500 text-sm">
+                        <p className="text-gray-500 text-xs sm:text-sm">
                           Real-time price insights with AI forecasting
                         </p>
                       </div>
@@ -615,17 +634,54 @@ export default function ProductPage({
 
                       {/* Daily Forecast */}
                       <div className="flex flex-col h-full">
-                        <div className="flex items-center justify-between mb-4 pr-2">
-                          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                            Daily Forecast
-                          </h3>
-                          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">
-                            Predicted Price
-                          </h3>
+                        {/* Interactive date range filters replacing static title */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-2 border-b border-gray-50 pb-4">
+                          <div className="flex items-center p-1 bg-gray-50 rounded-xl border border-gray-100 w-fit">
+                            {[
+                              { label: "3 Days", value: "3" },
+                              { label: "7 Days", value: "7" },
+                              { label: "This Month", value: "month" },
+                              { label: "All Time", value: "all" },
+                            ].map((item) => (
+                              <button
+                                key={item.value}
+                                onClick={() => setForecastRange(item.value as any)}
+                                className={`px-2.5 py-1.5 text-[10px] font-bold rounded-lg transition-all ${forecastRange === item.value
+                                  ? "bg-white text-primary-800 shadow-sm border border-gray-100"
+                                  : "text-gray-400 hover:text-gray-600"
+                                  }`}
+                              >
+                                {item.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <div className="flex-1 relative min-h-[300px] md:min-h-0">
-                          <div className="md:absolute md:inset-0 space-y-3 overflow-y-auto scrollbar-hide pr-2">
-                            {product.dailyForecast.map((forecast, i) => {
+
+                        {/* Collapsible dropdown button for mobile view only */}
+                        <div className="block md:hidden mb-4">
+                          <button
+                            onClick={() => setMobileForecastExpanded(!mobileForecastExpanded)}
+                            className="w-full flex items-center justify-between p-2 bg-white hover:bg-gray-50 border border-gray-100 rounded-2xl shadow-sm transition-all text-left group active:scale-[0.99]"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+                                <Calendar className="w-5 h-5" />
+                              </div>
+                              <span className="text-xs font-bold text-gray-900">
+                                View Daily Forecast
+                              </span>
+                            </div>
+                            <ChevronDown
+                              className={`w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-transform duration-300 ${mobileForecastExpanded ? "rotate-180" : ""
+                                }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Scrollable list container - limited to 5 rows and scrollable on mobile, absolute on desktop */}
+                        <div className={`flex-1 relative ${mobileForecastExpanded ? "block animate-in fade-in slide-in-from-top-4 duration-300" : "hidden md:block"} min-h-[300px] md:min-h-0`}>
+                          <div className="max-h-[300px] overflow-y-auto md:max-h-none md:absolute md:inset-0 space-y-3 scrollbar-hide pr-2">
+                            {filteredForecasts.map((forecast, i) => {
                               const dateObj = new Date(forecast.date);
                               const dateStr = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
                               const isExpanded = expandedDate === forecast.date;

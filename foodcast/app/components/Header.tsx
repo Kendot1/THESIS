@@ -56,7 +56,7 @@ const Header = () => {
     <header role="banner">
       <nav
         aria-label="Main navigation"
-        className={`fixed top-0 left-0 right-0 z-50 shadow-[0_1px_24px_rgba(0,0,0,0.15)] transition-all duration-500 ease-out ${scrolled
+        className={`fixed top-0 left-0 right-0 z-[100] shadow-[0_1px_24px_rgba(0,0,0,0.15)] transition-all duration-500 ease-out ${scrolled
           ? "py-4 bg-surface/90 backdrop-blur-2xl" : "py-4 bg-surface backdrop-blur-xl"}`}
       >
         <div className="max-w-7xl mx-auto px-5 lg:px-10 flex items-center justify-between">
@@ -80,11 +80,11 @@ const Header = () => {
             {/* Desktop Nav */}
             <ul className="hidden md:flex items-center gap-4">
               {links.map((link) => {
-                const isActive = 
-                  pathname === link.href || 
+                const isActive =
+                  pathname === link.href ||
                   (link.dropdown && link.dropdown.some(d => d.href === pathname)) ||
                   (link.href === "/MarketData" && pathname.startsWith("/Product"));
-                  
+
                 const isDropdownOpen = openDropdown === link.label;
 
                 if (link.dropdown) {
@@ -197,8 +197,8 @@ const Header = () => {
           <div className="pt-4 pb-10 px-4">
             <ul className="flex flex-col gap-3 items-center justify-center">
               {links.map((link, i) => {
-                const isActive = 
-                  pathname === link.href || 
+                const isActive =
+                  pathname === link.href ||
                   (link.dropdown && link.dropdown.some(d => d.href === pathname)) ||
                   (link.href === "/MarketData" && pathname.startsWith("/Product"));
 
@@ -240,7 +240,7 @@ const Header = () => {
                             after:absolute after:bottom-0 after:left-1/4 after:h-[3px] after:bg-orange-dark
                             after:w-1/2 after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-300 after:origin-center
                           `
-                          : `text-primary-800 bg-primary-50/50`
+                          : `text-primary-800`
                         }
                       `}
                       style={{ animationDelay: `${i * 60}ms` }}

@@ -24,7 +24,7 @@ export default function HomePage() {
   const { data: products = [], isLoading } = useProducts();
   const { data: newsList = [] } = useNews(10);
   const router = useRouter();
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
@@ -59,7 +59,7 @@ export default function HomePage() {
     const el = sliderRef.current;
     if (!el) return;
     const cardWidth = window.innerWidth < 640 ? 315 : window.innerWidth < 1024 ? 435 : 495;
-    
+
     if (dir === "left") {
       if (el.scrollLeft <= 10) el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
       else el.scrollBy({ left: -cardWidth, behavior: "smooth" });
@@ -73,7 +73,7 @@ export default function HomePage() {
     const el = trendingRef.current;
     if (!el) return;
     const cardWidth = window.innerWidth < 640 ? 200 : 260;
-    
+
     if (dir === "left") {
       if (el.scrollLeft <= 10) el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
       else el.scrollBy({ left: -cardWidth, behavior: "smooth" });
@@ -87,7 +87,7 @@ export default function HomePage() {
     const el = newsRef.current;
     if (!el) return;
     const cardWidth = window.innerWidth < 640 ? 300 : 380;
-    
+
     if (dir === "left") {
       if (el.scrollLeft <= 10) el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
       else el.scrollBy({ left: -cardWidth, behavior: "smooth" });
@@ -278,7 +278,7 @@ export default function HomePage() {
                     role="search"
                     aria-label="Search food products"
                   >
-                    <div className="flex items-center bg-white/60 border border-white/15 rounded-2xl 
+                    <div className="flex items-center bg-white/85 border border-white/15 rounded-2xl 
                     overflow-hidden backdrop-blur-sm transition-all duration-300 
                     focus-within:border-accent/50 focus-within:bg-white/95 focus-within:shadow-[0_0_30px_rgba(126,217,87,0.1)]">
                       <Search
@@ -299,8 +299,8 @@ export default function HomePage() {
                       />
                       <button
                         type="submit"
-                        className="mr-2 px-6 py-2 bg-orange rounded-xl text-white text-xs sm:text-sm
-                          transition-all duration-300 hover:bg-orange-light hover:shadow-[0_4px_16px_rgba(255,145,77,0.4)]
+                        className=" px-6 py-3 bg-orange-dark/90 text-white text-xs sm:text-sm
+                          transition-all duration-300 hover:bg-orange hover:shadow-[0_4px_16px_rgba(255,145,77,0.4)]
                           active:scale-95 shrink-0"
                       >
                         Search

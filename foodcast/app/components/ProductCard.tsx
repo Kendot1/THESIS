@@ -69,7 +69,7 @@ const ProductCard = ({
 
   return (
     <div
-      className="product-card group relative flex flex-col h-full bg-white rounded-[2rem] border-2 border-gray-100/80 
+      className="product-card group relative flex flex-col h-full min-w-[150px] bg-white rounded-[1.5rem] sm:rounded-[2rem] border-2 border-gray-100/80 
         overflow-hidden transition-all duration-500 ease-out
         md:hover:shadow-[0_25px_60px_rgba(0,0,0,0.08)] md:hover:border-primary-100/50
         active:scale-[0.98] active:bg-gray-50/30"
@@ -77,7 +77,7 @@ const ProductCard = ({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Row 1: Product Image Container (Flush with edges) */}
-      <div className={`relative overflow-hidden bg-gray-50 transition-all duration-700 ${compact ? "h-[140px] mb-4" : "h-[180px] mb-5"}`}>
+      <div className={`relative overflow-hidden bg-gray-50 transition-all duration-700 ${compact ? "h-[120px] sm:h-[140px] mb-3" : "h-[150px] sm:h-[180px] mb-4"}`}>
         <img
           key={selectedVariant.image || image || DEFAULT_PRODUCT_IMAGE} // Force re-render of img tag to trigger animation if needed, or at least change instantly
           src={selectedVariant.image || image || DEFAULT_PRODUCT_IMAGE}
@@ -108,7 +108,7 @@ const ProductCard = ({
         </div>
       </div>
 
-      <div className="flex flex-col flex-grow px-4 sm:px-5 pb-4 sm:pb-5">
+      <div className="flex flex-col flex-grow px-3 sm:px-5 pb-3 sm:pb-5">
         {/* Row 2: Origin Label (SOURCE style) */}
         <div className="min-h-[16px] mb-1 relative z-40">
           {uniqueOrigins.length > 1 ? (
@@ -176,7 +176,7 @@ const ProductCard = ({
         {/* Row 3: Product Name */}
         <div>
           <h3
-            className={`font-bold text-gray-900 md:group-hover:text-primary-800 transition-colors duration-300 ${compact ? 'text-[18px] mb-2' : 'text-[22px] mb-2'}`}
+            className={`font-bold text-gray-900 md:group-hover:text-primary-800 transition-colors duration-300 leading-tight ${compact ? 'text-[15px] sm:text-[18px] mb-1.5' : 'text-[18px] sm:text-[22px] mb-2'}`}
             style={{ fontFamily: "var(--font-display)" }}
           >
             {variant && variant !== "Standard" ? `${name} (${variant})` : name}
@@ -184,9 +184,9 @@ const ProductCard = ({
         </div>
 
         {/* Row 4: Variant Pills */}
-        <div className="mb-3 relative z-30 min-h-[32px]">
-          {availableVariantsForOrigin.length > 1 && (
-            <div className="flex flex-wrap gap-2 overflow-hidden max-h-[32px]">
+        {availableVariantsForOrigin.length > 1 ? (
+          <div className="mb-2 sm:mb-3 relative z-30">
+            <div className="flex overflow-x-auto scrollbar-hide flex-nowrap gap-1.5 sm:gap-2 pb-0.5">
               {availableVariantsForOrigin.map((v) => (
                 <button
                   key={v.id}
@@ -195,8 +195,8 @@ const ProductCard = ({
                     e.stopPropagation();
                     setSelectedVariantId(v.id);
                   }}
-                  className={`text-[10px] font-semibold tracking-wider px-3 py-1.5 rounded-full transition-all duration-300 border-2 flex-shrink-0 ${selectedVariantId === v.id
-                    ? "bg-primary-900 text-white border-primary-900 shadow-md"
+                  className={`text-[9px] sm:text-[10px] font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full transition-all duration-300 border flex-shrink-0 ${selectedVariantId === v.id
+                    ? "bg-primary-900 text-white border-primary-900 shadow-sm"
                     : "bg-white text-gray-600 border-gray-100 hover:border-primary-200 hover:text-primary-700 active:bg-primary-50"
                     }`}
                 >
@@ -204,18 +204,18 @@ const ProductCard = ({
                 </button>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        ) : null}
 
         {/* Row 5: Side-by-side Prices */}
-        <div className="mt-auto mb-5 grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[9px] text-gray-400 uppercase font-semibold tracking-widest">Market</span>
-            <span className="text-base font-black text-gray-900">₱{currentPrice.toFixed(1)}</span>
+        <div className="mt-auto mb-5 flex items-end justify-between gap-2 min-w-0">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-[8px] text-gray-400 uppercase font-bold tracking-wider">Market</span>
+            <span className="text-sm font-black text-gray-900 truncate">₱{currentPrice.toFixed(1)}</span>
           </div>
-          <div className="flex flex-col gap-0.5 items-end text-right">
-            <span className="text-[9px] text-gray-400 uppercase font-semibold tracking-widest">Predicted</span>
-            <span className={`text-base font-black ${isUp ? "text-positive" : "text-negative"}`}>₱{predictedPrice.toFixed(1)}</span>
+          <div className="flex flex-col gap-0.5 items-end min-w-0">
+            <span className="text-[8px] text-gray-400 uppercase font-bold tracking-wider">Predicted</span>
+            <span className={`text-sm font-black truncate ${isUp ? "text-positive" : "text-negative"}`}>₱{predictedPrice.toFixed(1)}</span>
           </div>
         </div>
 
@@ -223,7 +223,7 @@ const ProductCard = ({
         <div className="relative z-30">
           <Link
             href={`/Product/${id}`}
-            className="flex items-center justify-center w-full py-3.5 bg-primary-900 text-white rounded-full font-bold text-xs 
+            className="flex items-center justify-center w-full py-2.5 sm:py-3.5 bg-primary-900 text-white rounded-full font-bold text-[11px] sm:text-xs 
             transition-all duration-300 shadow-lg shadow-primary-900/10 
             md:hover:bg-primary-800 md:hover:shadow-primary-900/25 md:hover:-translate-y-0.5 active:scale-[0.97]"
           >

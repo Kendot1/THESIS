@@ -9,12 +9,12 @@ import SparklineChart from "../components/SparklineChart";
 import ScrollReveal from "../components/ScrollReveal";
 import { Product, useProducts, fetchCategories } from "../lib/data";
 
-type SortKey = "name" | "category" | "currentPrice" | "predictedPrice" | "change" | "volume";
+type SortKey = "name" | "category" | "origin" | "currentPrice" | "predictedPrice" | "change" | "volume";
 type SortDir = "asc" | "desc";
 
 export default function MarketDataPage() {
   const { data: products = [], isLoading } = useProducts();
-  
+
   const [query, setQuery] = useState("");
   const [categories, setCategories] = useState<string[]>(["All"]);
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -83,6 +83,16 @@ export default function MarketDataPage() {
     return counts;
   }, [products]);
 
+  const originCounts = useMemo(() => {
+    const counts: Record<string, number> = { All: products.length };
+    products.forEach(p => {
+      if (p.origin) {
+        counts[p.origin] = (counts[p.origin] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [products]);
+
   const uniqueOrigins = useMemo(() => {
     const origins = new Set<string>();
     products.forEach(p => {
@@ -123,6 +133,9 @@ export default function MarketDataPage() {
           break;
         case "category":
           comp = a.category.localeCompare(b.category);
+          break;
+        case "origin":
+          comp = (a.origin || "").localeCompare(b.origin || "");
           break;
         case "currentPrice":
           comp = a.currentPrice - b.currentPrice;
@@ -264,8 +277,8 @@ export default function MarketDataPage() {
 
         <div className="max-w-7xl mx-auto px-5 lg:px-10 py-6 sm:py-8 lg:py-10">
           {/* ─── Filters ─────────────────────────────────── */}
-          <ScrollReveal className="relative z-50">
-            <div className="mb-5">
+          <ScrollReveal className="relative z-30">
+            <div className="mb-5 space-y-4">
               <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
                 {/* Search & Filter Trigger */}
                 <div className="flex items-center gap-2 flex-1">
@@ -420,6 +433,9 @@ export default function MarketDataPage() {
                       <SortHeader label="Category" sortKeyName="category" center />
                     </th>
                     <th className="text-center px-6 lg:px-8 py-4">
+                      <SortHeader label="Origin" sortKeyName="origin" center />
+                    </th>
+                    <th className="text-center px-6 lg:px-8 py-4">
                       <SortHeader label="Current Price" sortKeyName="currentPrice" center />
                     </th>
                     <th className="text-center px-6 lg:px-8 py-4">
@@ -451,11 +467,6 @@ export default function MarketDataPage() {
                               <span className="font-bold text-sm text-gray-900 group-hover:text-primary-800 transition-colors">
                                 {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name}
                               </span>
-                              {p.origin && (
-                                <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
-                                  {p.origin}
-                                </span>
-                              )}
                             </div>
                           </div>
                         </td>
@@ -463,6 +474,15 @@ export default function MarketDataPage() {
                           <span className="inline-block text-[10px] font-bold text-primary-700 bg-primary-100/50 backdrop-blur-sm px-2.5 py-1 rounded-lg">
                             {p.category}
                           </span>
+                        </td>
+                        <td className="px-6 lg:px-8 py-3 text-center">
+                          {p.origin ? (
+                            <span className="inline-block text-[10px] font-bold text-orange-dark bg-orange-light/10 px-2.5 py-1 rounded-lg uppercase tracking-wider">
+                              {p.origin}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400 font-bold">-</span>
+                          )}
                         </td>
                         <td className="px-6 lg:px-8 py-3 text-center">
                           <span className="text-sm font-bold text-gray-900 tabular-nums">
@@ -516,14 +536,14 @@ export default function MarketDataPage() {
                           <div className="text-base font-bold text-gray-900">
                             {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name}
                           </div>
-                          {p.origin && (
-                            <div className="text-[10px] text-gray-500 font-medium mb-1 uppercase tracking-wider">
-                              {p.origin}
-                            </div>
-                          )}
-                          <span className="text-[10px] font-bold text-primary-700 bg-primary-100 px-2 py-0.5 rounded-lg">
+                          <span className="text-[10px] font-bold text-primary-700 bg-primary-100/60 px-2 py-0.5 rounded-lg mr-1.5 uppercase">
                             {p.category}
                           </span>
+                          {p.origin && (
+                            <span className="text-[10px] font-bold text-orange-dark bg-orange-light/10 px-2 py-0.5 rounded-lg uppercase tracking-wide">
+                              {p.origin}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div

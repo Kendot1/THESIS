@@ -75,6 +75,7 @@ const stats = [
 export default function AboutPage() {
   const [selectedStep, setSelectedStep] = useState<(typeof methodologySteps)[0] | null>(null);
   const [selectedPillar, setSelectedPillar] = useState<number | null>(null);
+  const [selectedMethodologyMobile, setSelectedMethodologyMobile] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -93,7 +94,7 @@ export default function AboutPage() {
               <div className="h-6 w-32 bg-white/10 rounded-full mb-6 animate-pulse" />
               <div className="h-12 sm:h-16 w-3/4 max-w-2xl bg-white/10 rounded-2xl mb-6 animate-pulse" />
               <div className="h-20 w-full max-w-3xl bg-white/5 rounded-2xl mb-12 animate-pulse" />
-              
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 border-t border-white/10 pt-8 mt-12">
                 {[1, 2, 3, 4].map(i => (
                   <div key={i} className="flex items-center gap-3 animate-pulse">
@@ -209,8 +210,8 @@ export default function AboutPage() {
                   </h1>
 
                   <p className="text-white/55 text-xs sm:text-base leading-relaxed text-justify max-w-2xl">
-                    FOODCAST is an AI-powered system that predicts prices and analyzes the market 
-                    for farm and fishery products in Metro Manila (NCR). It uses smart technology 
+                    FOODCAST is an AI-powered system that predicts prices and analyzes the market
+                    for farm and fishery products in Metro Manila (NCR). It uses smart technology
                     to show where prices are going, helping you make better decisions.
                   </p>
                 </div>
@@ -236,17 +237,17 @@ export default function AboutPage() {
                       </h2>
                       <div className="space-y-4 text-xs sm:text-base text-gray-600 text-justify leading-relaxed">
                         <p>
-                          The food market in the Philippines often faces sharp price 
+                          The food market in the Philippines often faces sharp price
                           changes that affect everyone.
                         </p>
                         <p>
-                          FOODCAST helps by providing AI price forecasts that let 
-                          buyers and sellers see what's coming next, making it 
+                          FOODCAST helps by providing AI price forecasts that let
+                          buyers and sellers see what's coming next, making it
                           easier to plan ahead.
                         </p>
                         <p>
-                          Our system aggregates 45,000+ historical price records from 
-                          the Department of Agriculture, feeding them into a hybrid 
+                          Our system aggregates 45,000+ historical price records from
+                          the Department of Agriculture, feeding them into a hybrid
                           LSTM and LightGBM model to generate highly accurate forecasts.
                         </p>
                       </div>
@@ -279,13 +280,13 @@ export default function AboutPage() {
 
             {/* ─── Methodology ─────────────────────────────── */}
             <section
-              className="relative py-20 bg-white overflow-hidden"
+              className="relative py-15 sm:py-20 bg-white overflow-hidden"
               aria-labelledby="methodology-heading"
             >
               {/* Subtle Background Elements */}
-              <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-                <div className="absolute top-0 right-0 w-80 h-80 bg-accent/5 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2" />
-                <div className="absolute bottom-0 left-0 w-80 h-80 bg-primary-50 rounded-full blur-3xl opacity-50 translate-y-1/2 -translate-x-1/2" />
+              <div className="absolute inset-0 pointer-events-none bg-primary-900" aria-hidden="true">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-accent rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2" />
+                <div className="absolute bottom-0 left-0 w-80 h-80 bg-accent rounded-full blur-3xl opacity-50 translate-y-1/2 -translate-x-1/2" />
               </div>
 
               <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
@@ -293,7 +294,7 @@ export default function AboutPage() {
                   <div className="text-center mb-16">
                     <h2
                       id="methodology-heading"
-                      className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-5"
+                      className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white/80 mb-5"
                       style={{ fontFamily: "var(--font-display)" }}
                     >
                       How It{" "}
@@ -301,21 +302,21 @@ export default function AboutPage() {
                         Works
                       </span>
                     </h2>
-                    <p className="text-gray-600 max-w-2xl mx-auto text-base sm:text-lg">
+                    <p className="text-white/50 max-w-2xl mx-auto text-sm sm:text-base">
                       A rigorous, end-to-end machine learning pipeline that turns raw market data into actionable intelligence.
                     </p>
                   </div>
                 </ScrollReveal>
 
-                {/* Interactive Split-Screen Dashboard */}
-                <div className="relative mt-16 max-w-6xl mx-auto">
+                {/* Desktop: Interactive Split-Screen Dashboard */}
+                <div className="relative mt-16 max-w-6xl mx-auto hidden lg:block">
                   {(() => {
                     const activeStep = selectedStep || methodologySteps[0];
                     return (
-                      <div className="flex flex-col lg:flex-row gap-8 lg:gap-16">
-                        
+                      <div className="flex flex-row gap-16">
+
                         {/* Left Column: Navigation Tabs */}
-                        <div className="lg:w-1/3 flex flex-col gap-3 z-10">
+                        <div className="w-1/3 flex flex-col gap-3 z-10">
                           {methodologySteps.map((step) => {
                             const isActive = activeStep.step === step.step;
                             return (
@@ -323,25 +324,25 @@ export default function AboutPage() {
                                 key={step.step}
                                 onClick={() => setSelectedStep(step)}
                                 className={`group flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 text-left border-2
-                                  ${isActive 
-                                    ? "bg-white border-accent shadow-[0_8px_30px_rgba(126,217,87,0.15)] scale-[1.02]" 
-                                    : "bg-surface border-transparent hover:bg-white hover:border-gray-100 hover:shadow-sm"
+                                  ${isActive
+                                    ? "bg-primary-800 border-accent shadow-[0_8px_30px_rgba(126,217,87,0.15)] scale-[1.02]"
+                                    : "bg-surface border-transparent hover:bg-primary-200 hover:shadow-sm"
                                   }`}
                               >
                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0
-                                  ${isActive 
-                                    ? "bg-accent text-white" 
-                                    : "bg-gray-100 text-gray-400 group-hover:bg-accent/10 group-hover:text-accent"
+                                  ${isActive
+                                    ? "bg-accent text-white"
+                                    : "bg-surface text-primary-800 border-2 border-gray-500 group-hover:bg-accent/10 group-hover:text-gray-900"
                                   }`}>
                                   {step.icon}
                                 </div>
                                 <div>
                                   <div className={`text-[10px] font-bold uppercase tracking-widest mb-1 transition-colors
-                                    ${isActive ? "text-accent" : "text-gray-400"}`}>
+                                    ${isActive ? "text-accent" : "text-gray-400 group-hover:text-gray-900"}`}>
                                     Phase 0{step.step}
                                   </div>
                                   <div className={`font-bold transition-colors
-                                    ${isActive ? "text-gray-900" : "text-gray-600 group-hover:text-gray-900"}`}>
+                                    ${isActive ? "text-white/80" : "text-gray-600 group-hover:text-gray-900"}`}>
                                     {step.title}
                                   </div>
                                 </div>
@@ -351,14 +352,14 @@ export default function AboutPage() {
                         </div>
 
                         {/* Right Column: Active Step Showcase */}
-                        <div className="lg:w-2/3 relative z-10">
-                          <div className="sticky top-32 bg-white rounded-[2.5rem] p-8 lg:p-14 border border-gray-100 shadow-[0_20px_60px_rgba(11,61,46,0.06)] overflow-hidden h-full min-h-[400px] flex flex-col justify-center transition-all duration-500">
-                            
+                        <div className="w-2/3 relative z-10">
+                          <div className="sticky top-32 bg-surface rounded-[2.5rem] p-14 border border-gray-100 shadow-[0_20px_60px_rgba(11,61,46,0.06)] overflow-hidden h-full min-h-[400px] flex flex-col justify-center transition-all duration-500">
+
                             {/* Decorative Background Elements */}
                             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2" />
-                            
+
                             {/* Huge Ghost Number */}
-                            <div className="absolute -bottom-10 -right-4 text-[12rem] lg:text-[16rem] font-black text-gray-50 select-none pointer-events-none leading-none tracking-tighter">
+                            <div className="absolute -bottom-10 -right-4 text-[16rem] font-black text-primary-800/10 select-none pointer-events-none leading-none tracking-tighter">
                               0{activeStep.step}
                             </div>
 
@@ -389,8 +390,66 @@ export default function AboutPage() {
                     );
                   })()}
                 </div>
+
+                {/* Mobile: Card Grid (matches Predict page "All Products" card consistency) */}
+                <div className="lg:hidden grid grid-cols-1 gap-3 mt-10">
+                  {methodologySteps.map((step) => (
+                    <button
+                      key={step.step}
+                      onClick={() => setSelectedMethodologyMobile(
+                        selectedMethodologyMobile === step.step - 1 ? null : step.step - 1
+                      )}
+                      className={`relative flex flex-col h-full rounded-2xl border-2 overflow-hidden transition-all duration-500 text-left p-4 ${selectedMethodologyMobile === step.step - 1
+                        ? "bg-primary-800 border-accent shadow-[0_8px_30px_rgba(126,217,87,0.15)]"
+                        : "bg-surface border-transparent"
+                        }`}
+                    >
+                      {/* Ghost Number */}
+                      <div className={`absolute -bottom-3 -right-1 text-7xl font-black select-none pointer-events-none leading-none ${selectedMethodologyMobile === step.step - 1 ? "text-white/[0.1]" : "text-primary-800/[0.05]"
+                        }`}>
+                        0{step.step}
+                      </div>
+
+                      <div className="flex items-center gap-3.5">
+                        {/* Icon */}
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0 ${selectedMethodologyMobile === step.step - 1
+                          ? "bg-accent text-white"
+                          : "bg-surface text-primary-800 border-2 border-gray-500"
+                          }`}>
+                          {step.icon}
+                        </div>
+
+                        {/* Phase & Title Stack */}
+                        <div className="flex flex-col">
+                          {/* Phase Label */}
+                          <div className={`text-[8px] font-bold uppercase tracking-widest mb-0.5 transition-colors ${selectedMethodologyMobile === step.step - 1 ? "text-accent" : "text-gray-400"
+                            }`}>
+                            Phase 0{step.step}
+                          </div>
+
+                          {/* Title */}
+                          <h3 className={`text-[13px] font-bold leading-tight transition-colors ${selectedMethodologyMobile === step.step - 1 ? "text-white/80" : "text-gray-600"
+                            }`}>
+                            {step.title}
+                          </h3>
+                        </div>
+                      </div>
+
+                      {/* Description — shown when selected */}
+                      <div className={`grid transition-all duration-500 ease-in-out ${selectedMethodologyMobile === step.step - 1 ? "grid-rows-[1fr] opacity-100 mt-3" : "grid-rows-[0fr] opacity-0"
+                        }`}>
+                        <div className="overflow-hidden">
+                          <p className="text-white/55 text-[11px] leading-relaxed border-t border-white/10 pt-3">
+                            {step.description}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </section>
+
 
             <section className="py-20 bg-surface relative overflow-hidden" aria-labelledby="team-heading">
               {/* Subtle Background Elements */}
@@ -408,7 +467,7 @@ export default function AboutPage() {
                       Built for the Filipino Market
                     </h2>
                     <p className="text-gray-600 text-xs sm:text-base max-w-2xl mx-auto leading-relaxed">
-                      FOODCAST is a community-focused system designed to help you make 
+                      FOODCAST is a community-focused system designed to help you make
                       better market choices through technology and clear data.
                     </p>
                   </div>
@@ -477,7 +536,7 @@ export default function AboutPage() {
                             className="w-full text-left p-6 relative z-10 focus:outline-none"
                           >
                             {/* Ghost Numbering */}
-                            <div className={`absolute -top-4 -right-2 text-8xl font-black text-black select-none pointer-events-none transition-all duration-1000 ease-out ${isExpanded ? "opacity-[0.05] translate-y-2 scale-110" : "opacity-[0.02] translate-y-0 scale-100"
+                            <div className={`absolute -top-3 -right-1 text-8xl font-black text-black select-none pointer-events-none transition-all duration-1000 ease-out ${isExpanded ? "opacity-[0.05] translate-y-2 scale-110" : "opacity-[0.05] translate-y-0 scale-100"
                               }`}>
                               {i + 1}
                             </div>
