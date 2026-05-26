@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -11,19 +12,20 @@ import {
   ChevronRight,
   ArrowRight,
 } from "lucide-react";
-import Header from "./components/Header";
-import Footer from "./components/Footer";
 import WaveDivider from "./components/WaveDivider";
 import ProductCard from "./components/ProductCard";
 import DailyMoverCard from "./components/DailyMoverCard";
 import NewsCard from "./components/NewsCard";
 import ScrollReveal from "./components/ScrollReveal";
-import { DEFAULT_PRODUCT_IMAGE, useProducts, useNews } from "./lib/data";
+import { DEFAULT_PRODUCT_IMAGE, Product, NewsArticle } from "./lib/data";
+import { useProducts, useNews } from "./lib/hooks";
+import { useLanguage } from "./lib/i18n/LanguageContext";
 
 export default function HomePage() {
   const { data: products = [], isLoading } = useProducts();
   const { data: newsList = [] } = useNews(10);
   const router = useRouter();
+  const { t, isTransitioning } = useLanguage();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -46,8 +48,40 @@ export default function HomePage() {
   /* ─── Trending slider state ─────────────────────── */
   const trendingRef = useRef<HTMLDivElement>(null);
 
-  const trendingProducts = products.slice(0, 4);
-  const allProducts = products;
+  /* ─── Derived Data (Memoized) ─────────────────────── */
+  const dailyMovers = useMemo(() => {
+    return [...products]
+      .sort((a, b) => {
+        const changeA = a.currentPrice === 0 ? 0 : Math.abs((a.predictedPrice - a.currentPrice) / a.currentPrice);
+        const changeB = b.currentPrice === 0 ? 0 : Math.abs((b.predictedPrice - b.currentPrice) / b.currentPrice);
+        return changeB - changeA;
+      })
+      .slice(0, 15);
+  }, [products]);
+
+  const trendingGrouped = useMemo(() => {
+    const groupedMap = new Map<string, any>();
+    const trending = products.slice(0, 4);
+    trending.forEach(p => {
+      if (!groupedMap.has(p.name)) {
+        groupedMap.set(p.name, {
+          name: p.name,
+          category: p.category,
+          image: p.image,
+          unit: p.unit,
+          variants: []
+        });
+      }
+      groupedMap.get(p.name).variants.push({
+        id: p.id,
+        variant: p.variant,
+        origin: p.origin,
+        currentPrice: p.currentPrice,
+        predictedPrice: p.predictedPrice
+      });
+    });
+    return Array.from(groupedMap.values());
+  }, [products]);
 
   /* ─── News slider state ─────────────────────────── */
   const newsRef = useRef<HTMLDivElement>(null);
@@ -149,11 +183,9 @@ export default function HomePage() {
     };
   }, [isPaused, autoSlide]);
 
-  if (isLoading) {
+  if (isLoading || isTransitioning) {
     return (
-      <>
-        <Header />
-        <main className="min-h-screen bg-surface">
+      <main className="min-h-screen bg-surface">
           {/* Hero Section Skeleton */}
           <section className="relative min-h-[85vh] flex items-center bg-primary-900 overflow-hidden">
             <div className="relative max-w-7xl mx-auto px-5 lg:px-10 sm:px-5 w-full">
@@ -214,23 +246,23 @@ export default function HomePage() {
               </div>
             </div>
           </section>
-        </main>
-      </>
+      </main>
     );
   }
 
   return (
     <>
-      <Header />
       <main id="main-content">
         {/* ─── Hero Section ────────────────────────────── */}
         <section className="relative min-h-[85vh] flex items-center shadow-xl/20">          {/* Ambient orbs */}
           {/* Background Image */}
           <div className="absolute inset-0 -z-10 overflow-hidden">
-            <img
+            <Image
               src="/Bg-2.jpg"
               alt="background"
-              className="w-full h-full object-cover blur-xs scale-105 "
+              fill
+              priority
+              className="object-cover blur-xs scale-105"
             />
             <div className="absolute inset-0 bg-primary-900/70" />
           </div>
@@ -243,7 +275,7 @@ export default function HomePage() {
                 <div className="animate-fade-in-up inline-flex items-center gap-1 px-2 py-1 bg-accent/10 border border-accent/20 rounded-full mb-8">
                   <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
                   <span className="text-white/80 text-xs tracking-wide">
-                    AI-Powered Price Forecasting
+                    {t("heroBadge")}
                   </span>
                 </div>
 
@@ -251,19 +283,18 @@ export default function HomePage() {
                   className="animate-fade-in-up delay-100 text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-surface leading-[1.1] mb-6 "
                   style={{ fontFamily: "var(--font-display)" }}
                 >
-                  Know Tomorrow&apos;s
+                  {t("heroTitle1")}
                   <br />
                   <span className="bg-gradient-to-r from-[#009966] via-[#BF7B16] to-[#FF984F] bg-clip-text text-transparent">
-                    Food Prices
+                    {t("heroTitle2")}
                   </span>
                   <br />
-                  Today
+                  {t("heroTitle3")}
                 </h2>
 
                 <p className="animate-fade-in-up delay-200 text-white/65 text-xs 
                 sm:text-base max-w-xl leading-relaxed mb-10">
-                  AI-Based Forecasting and Market Analysis of Agri-Fishery Food
-                  Prices in NCR Markets. Make data-driven decisions.
+                  {t("heroSubtitle")}
                 </p>
 
                 {/* Search Bar */}
@@ -287,7 +318,7 @@ export default function HomePage() {
                       />
                       <input
                         type="text"
-                        placeholder="Search for a product"
+                        placeholder={t("searchPlaceholder")}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onFocus={() => setIsSearchFocused(true)}
@@ -303,7 +334,7 @@ export default function HomePage() {
                           transition-all duration-300 hover:bg-orange hover:shadow-[0_4px_16px_rgba(255,145,77,0.4)]
                           active:scale-95 shrink-0"
                       >
-                        Search
+                        {t("searchButton")}
                       </button>
                     </div>
 
@@ -312,25 +343,29 @@ export default function HomePage() {
                       <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border 
                       border-gray-100 shadow-[0_12px_48px_rgba(0,0,0,0.15)] overflow-hidden z-50 animate-fade-in">
                         <div className="px-3 py-2 border-b border-gray-100">
-                          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Suggestions</span>
+                          <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t("suggestions")}</span>
                         </div>
-                        {searchSuggestions.map((p) => {
+                        {searchSuggestions.map((p, i) => {
                           const change = p.currentPrice === 0 ? 0 : ((p.predictedPrice - p.currentPrice) / p.currentPrice) * 100;
                           const isUp = change >= 0;
                           return (
                             <Link
                               prefetch={false}
-                              key={p.id}
+                              key={`${p.id}-${p.variant || 'std'}-${p.origin || 'loc'}-${i}`}
                               href={`/Product/${p.id}`}
                               className="flex items-center gap-3 px-4 py-3 hover:bg-primary-50/60 transition-colors duration-200 border-b border-gray-50 last:border-0"
                             >
-                              <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl shrink-0">
-                                <img
+                              <div className="relative w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl shrink-0 overflow-hidden">
+                                <Image
                                   src={p.image || DEFAULT_PRODUCT_IMAGE}
                                   alt={p.name}
-                                  className="w-full h-full object-cover rounded-xl"
+                                  fill
+                                  className="object-cover"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
+                                    if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
+                                       target.srcset = "";
+                                    }
                                     if (target.src !== DEFAULT_PRODUCT_IMAGE) {
                                       target.src = DEFAULT_PRODUCT_IMAGE;
                                     }
@@ -339,7 +374,7 @@ export default function HomePage() {
                               </div>
                               <div className="flex-1 min-w-0 text-left">
                                 <div className="text-sm font-semibold text-gray-900 truncate">
-                                  {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name}
+                                  {t(p.name)} {p.variant && p.variant !== "Standard" ? `(${p.variant})` : ""}
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span className="text-[10px] text-gray-400">{p.category}</span>
@@ -368,9 +403,9 @@ export default function HomePage() {
                 {/* Stats row */}
                 <div className="animate-fade-in-up delay-500 flex flex-wrap gap-8 mt-10">
                   {[
-                    { value: `${products.length}`, label: "Products Tracked" },
-                    { value: "98.5%", label: "Prediction Success" },
-                    { value: "Real-time", label: "Data Updates" },
+                    { value: `${products.length}`, label: t("productsTracked") },
+                    { value: "98.5%", label: t("predictionSuccess") },
+                    { value: "Real-time", label: t("dataUpdates") },
                   ].map((stat) => (
                     <div
                       key={stat.label}
@@ -395,9 +430,9 @@ export default function HomePage() {
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                        <span className="text-[11px] font-semibold text-white/70 tracking-wide uppercase">Market Pulse</span>
+                        <span className="text-[11px] font-semibold text-white/70 tracking-wide uppercase">{t("marketPulse")}</span>
                       </div>
-                      <span className="text-[10px] text-white/50 tabular-nums">NCR Region</span>
+                      <span className="text-[10px] text-white/50 tabular-nums">{t("ncrRegion")}</span>
                     </div>
                   </div>
 
@@ -452,11 +487,11 @@ export default function HomePage() {
                     <div className="flex items-center gap-4 mt-2">
                       <div className="flex items-center gap-1.5">
                         <div className="w-3 h-[2px] bg-accent rounded" />
-                        <span className="text-[9px] text-white/35">Actual</span>
+                        <span className="text-[9px] text-white/35">{t("actual")}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <div className="w-3 h-[2px] bg-accent/50 rounded" style={{ backgroundImage: "repeating-linear-gradient(90deg, #7ED957 0, #7ED957 3px, transparent 3px, transparent 6px)" }} />
-                        <span className="text-[9px] text-white/35">Predicted</span>
+                        <span className="text-[9px] text-white/35">{t("predicted")}</span>
                       </div>
                     </div>
                   </div>
@@ -467,14 +502,18 @@ export default function HomePage() {
                       const change = ((p.predictedPrice - p.currentPrice) / p.currentPrice * 100);
                       const isUp = change > 0;
                       return (
-                        <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-white/4 border border-white/5 hover:bg-white/8 transition-all duration-300">
-                          <div className="w-10 h-10 rounded-lg bg-white/10 overflow-hidden flex items-center justify-center shrink-0 border border-white/10">
-                            <img
+                        <div key={`${p.id}-${p.variant || 'std'}-${idx}`} className="flex items-center gap-3 p-2.5 rounded-xl bg-white/4 border border-white/5 hover:bg-white/8 transition-all duration-300">
+                          <div className="relative w-10 h-10 rounded-lg bg-white/10 overflow-hidden flex items-center justify-center shrink-0 border border-white/10">
+                            <Image
                               src={p.image || DEFAULT_PRODUCT_IMAGE}
                               alt={p.name}
-                              className="w-full h-full object-cover"
+                              fill
+                              className="object-cover"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
+                                if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
+                                   target.srcset = "";
+                                }
                                 if (target.src !== DEFAULT_PRODUCT_IMAGE) {
                                   target.src = DEFAULT_PRODUCT_IMAGE;
                                 }
@@ -510,8 +549,8 @@ export default function HomePage() {
                   <div className="flex items-center gap-2.5">
                     <Brain className="w-5 h-5 text-accent" />
                     <div>
-                      <div className="text-xs font-bold text-white">AI Smart System</div>
-                      <div className="text-[10px] text-white/35">Active & Learning</div>
+                      <div className="text-xs font-bold text-white">{t("aiSmartSystem")}</div>
+                      <div className="text-[10px] text-white/35">{t("activeLearning")}</div>
                     </div>
                   </div>
                 </div>
@@ -524,8 +563,8 @@ export default function HomePage() {
                   <div className="flex items-center gap-2.5">
                     <BarChart3 className="w-5 h-5 text-orange" />
                     <div>
-                      <div className="text-xs font-bold text-white">{products.length} Products</div>
-                      <div className="text-[10px] text-white/35">Tracked in NCR</div>
+                      <div className="text-xs font-bold text-white">{products.length} {t("products")}</div>
+                      <div className="text-[10px] text-white/35">{t("trackedInNcr")}</div>
                     </div>
                   </div>
                 </div>
@@ -553,10 +592,10 @@ export default function HomePage() {
                     style={{ fontFamily: "var(--font-display)" }}
                   >
                     <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
-                    Daily Market Movers
+                    {t("dailyMarketMovers")}
                   </h2>
                   <p className="text-gray-500 mt-1 sm:mt-2 text-xs sm:text-sm">
-                    Biggest price changes today &bull; Live updates
+                    {t("biggestPriceChanges")}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -592,9 +631,9 @@ export default function HomePage() {
                 setTimeout(() => setIsPaused(false), 5000);
               }}
             >
-              {allProducts.map((p, i) => (
+              {dailyMovers.map((p, i) => (
                 <div
-                  key={p.id}
+                  key={`${p.id}-${p.variant || 'std'}-${p.origin || 'loc'}-${i}`}
                   className="snap-start shrink-0 w-[280px] sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)]"
                   style={{ animationDelay: `${i * 80}ms` }}
                 >
@@ -624,13 +663,13 @@ export default function HomePage() {
                 <div>
                   <h2
                     id="news-heading"
-                    className="flex items-center gap-2 text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900"
+                    className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900"
                     style={{ fontFamily: "var(--font-display)" }}
                   >
-                    Latest Market News
+                    {t("latestNews")}
                   </h2>
                   <p className="text-gray-500 mt-1 sm:mt-2 text-xs sm:text-sm">
-                    Updates from the agri-fishery sector & NCR markets
+                    {t("newsSubtitle")}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -662,7 +701,7 @@ export default function HomePage() {
             >
               {newsList.map((item, i) => (
                 <div
-                  key={item.id}
+                  key={`${item.id}-${i}`}
                   className="snap-start shrink-0 w-[280px] sm:w-[350px]"
                   style={{ animationDelay: `${i * 100}ms` }}
                 >
@@ -725,31 +764,9 @@ export default function HomePage() {
               aria-label="Trending products slider"
               role="region"
             >
-              {(() => {
-                const groupedMap = new Map<string, any>();
-
-                trendingProducts.forEach(p => {
-                  if (!groupedMap.has(p.name)) {
-                    groupedMap.set(p.name, {
-                      name: p.name,
-                      category: p.category,
-                      image: p.image,
-                      unit: p.unit,
-                      variants: []
-                    });
-                  }
-                  groupedMap.get(p.name).variants.push({
-                    id: p.id,
-                    variant: p.variant,
-                    origin: p.origin,
-                    currentPrice: p.currentPrice,
-                    predictedPrice: p.predictedPrice
-                  });
-                });
-
-                return Array.from(groupedMap.values()).map((product, i) => (
+              {trendingGrouped.map((product, i) => (
                   <div
-                    key={i}
+                    key={product.name}
                     className="snap-start shrink-0 w-[180px] sm:w-[240px]"
                   >
                     <ProductCard
@@ -761,35 +778,12 @@ export default function HomePage() {
                       compact
                     />
                   </div>
-                ));
-              })()}
+                ))}
             </div>
 
             <div className="hidden lg:grid grid-cols-4 gap-6">
-              {(() => {
-                const groupedMap = new Map<string, any>();
-
-                trendingProducts.forEach(p => {
-                  if (!groupedMap.has(p.name)) {
-                    groupedMap.set(p.name, {
-                      name: p.name,
-                      category: p.category,
-                      image: p.image,
-                      unit: p.unit,
-                      variants: []
-                    });
-                  }
-                  groupedMap.get(p.name).variants.push({
-                    id: p.id,
-                    variant: p.variant,
-                    origin: p.origin,
-                    currentPrice: p.currentPrice,
-                    predictedPrice: p.predictedPrice
-                  });
-                });
-
-                return Array.from(groupedMap.values()).map((product, i) => (
-                  <ScrollReveal key={i} delay={i * 100} animation="scale-in" className="h-full">
+              {trendingGrouped.map((product, i) => (
+                  <ScrollReveal key={product.name} delay={i * 100} animation="scale-in" className="h-full">
                     <ProductCard
                       name={product.name}
                       image={product.image}
@@ -798,8 +792,7 @@ export default function HomePage() {
                       unit={product.unit}
                     />
                   </ScrollReveal>
-                ));
-              })()}
+                ))}
             </div>
 
             <div className="flex sm:hidden justify-center mt-4">
@@ -834,58 +827,53 @@ export default function HomePage() {
                   className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-5"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
-                  What is{" "}
+                  {t("whatIsFoodcast")}{" "}
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light">
                     FOODCAST
                   </span>
                   ?
                 </h2>
                 <p className="text-white/55 max-w-2xl mx-auto text-xs sm:text-base leading-relaxed">
-                  An AI-powered platform that forecasts agri-fishery food prices
-                  in National Capital Region (NCR) markets using advanced machine
-                  learning algorithms.
+                  {t("whatIsFoodcastDesc")}
                 </p>
               </div>
             </ScrollReveal>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
               {[
                 {
                   icon: <Brain className="w-5 h-5 sm:w-7 sm:h-7" />,
-                  title: "AI-Driven Analysis",
-                  description:
-                    "Machine learning models trained on historical data to predict future price trends with high accuracy.",
+                  title: t("aiDrivenAnalysis"),
+                  description: t("aiDrivenAnalysisDesc"),
                 },
                 {
                   icon: <TrendingUp className="w-5 h-5 sm:w-7 sm:h-7" />,
-                  title: "Real-Time Forecasting",
-                  description:
-                    "Get up-to-date predictions on agri-fishery product prices across major NCR markets.",
+                  title: t("realTimeForecasting"),
+                  description: t("realTimeForecastingDesc"),
                 },
                 {
                   icon: <BarChart3 className="w-5 h-5 sm:w-7 sm:h-7" />,
-                  title: "Data Visualization",
-                  description:
-                    "Interactive charts and graphs that make complex market data easy to understand and act upon.",
+                  title: t("dataVisualization"),
+                  description: t("dataVisualizationDesc"),
                 },
               ].map((feature, i) => (
-                <ScrollReveal key={feature.title} delay={i * 150} animation="fade-up">
+                <ScrollReveal key={feature.title} delay={i * 150} animation="fade-up" className="h-full">
                   <div className="group relative bg-primary-700/70 border border-white/10 rounded-2xl py-4 px-5 sm:p-7 transition-all duration-600 
-                    hover:scale-105 flex flex-col justify-start sm:min-h-[200px] ">
-                    <div className="flex flex-wrap items-center gap-x-4">
-                      <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl bg-accent/10 flex items-center justify-center text-accent mb-5">
+                    hover:scale-105 flex flex-col h-full">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl bg-accent/10 flex items-center justify-center text-accent shrink-0">
                         {feature.icon}
                       </div>
                       <h3
-                        className="text-base sm:text-lg font-semibold text-white mb-4 truncate"
+                        className="text-base sm:text-lg font-semibold text-white leading-tight"
                         style={{ fontFamily: "var(--font-display)" }}
                       >
                         {feature.title}
                       </h3>
-                      <p className="text-white/45 text-xs sm:text-sm leading-relaxed">
-                        {feature.description}
-                      </p>
                     </div>
+                    <p className="text-white/45 text-xs sm:text-sm leading-relaxed">
+                      {feature.description}
+                    </p>
                   </div>
                 </ScrollReveal>
               ))}
@@ -910,27 +898,26 @@ export default function HomePage() {
                     className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-5"
                     style={{ fontFamily: "var(--font-display)" }}
                   >
-                    Start Forecasting Today
+                    {t("startForecastingToday")}
                   </h2>
                   <p className="text-white/90 max-w-lg mx-auto mb-10 text-sm sm:text-base">
-                    Access AI-driven food price predictions and make smarter
-                    decisions for your market strategy.
+                    {t("startForecastingDesc")}
                   </p>
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                     <Link
                       href="/Predict"
-                      className="px-8 py-3 bg-primary-600 text-white font-semibold rounded-2xl text-sm border border-primary-300
-                        transition-all duration-300 hover:bg-primary-500 hover:shadow-[0_6px_24px_rgba(126,217,87,0.4)] hover:-translate-y-0.5
-                        active:translate-y-0 active:scale-[0.98]"
+                      className="px-8 py-3 bg-primary-800 text-white font-bold rounded-2xl text-sm
+                        transition-all duration-300 shadow-[0_0_20px_rgba(38,92,15,0.4)]
+                        hover:bg-primary-700 hover:shadow-[0_0_30px_rgba(38,92,15,0.6)]"
                     >
-                      Explore Forecasts
+                      {t("exploreForecastsBtn")}
                     </Link>
                     <Link
                       href="/About"
                       className="px-8 py-3 bg-transparent border border-white/20 text-white font-semibold rounded-2xl text-sm
                         transition-all duration-300 hover:bg-white/25 hover:border-white/40"
                     >
-                      Learn More
+                      {t("learnMore")}
                     </Link>
                   </div>
                 </div>
@@ -939,7 +926,6 @@ export default function HomePage() {
           </div>
         </section>
       </main>
-      <Footer />
     </>
   );
 }

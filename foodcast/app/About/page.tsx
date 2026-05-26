@@ -13,66 +13,68 @@ import {
   Target,
   X,
   ChevronRight,
+  Activity,
+  Link as LinkIcon,
 } from "lucide-react";
 import { Drawer } from "vaul";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import Image from "next/image";
 import WaveDivider from "../components/WaveDivider";
 import ScrollReveal from "../components/ScrollReveal";
+import { useLanguage } from "../lib/i18n/LanguageContext";
 
-const methodologySteps = [
-  {
-    step: 1,
-    icon: <Database className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Data Gathering & Sourcing",
-    description:
-      "Collecting daily historical price data from the Department of Agriculture (Bantay Presyo) for NCR markets, while continuously scraping real-time market news to form a robust foundation.",
-  },
-  {
-    step: 2,
-    icon: <Layers className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Data Cleaning & Preparation",
-    description:
-      "Sanitizing raw datasets by removing anomalies, interpolating missing values, and integrating news sentiment scores to ensure the data is perfectly structured for machine learning.",
-  },
-  {
-    step: 3,
-    icon: <Brain className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Deep Trend Analysis (LSTM)",
-    description:
-      "Processing the chronological data through our Long Short-Term Memory (LSTM) neural networks to recognize deep, long-term market trends and complex seasonal patterns.",
-  },
-  {
-    step: 4,
-    icon: <Target className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Residual Correction (LightGBM)",
-    description:
-      "Passing the initial LSTM predictions into an advanced gradient boosting model (LightGBM) designed specifically to correct short-term deviations, price shocks, and sudden volatility.",
-  },
-  {
-    step: 5,
-    icon: <Cpu className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Hybrid Ensemble Optimization",
-    description:
-      "Combining both models using a dynamic shrinkage algorithm. This ensures our final hybrid forecast consistently outperforms traditional standalone models.",
-  },
-  {
-    step: 6,
-    icon: <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />,
-    title: "Continuous Learning",
-    description:
-      "The pipeline automatically ingests new daily market prices and intelligence reports, continuously retraining its predictive weights to adapt to real-world market shifts.",
-  },
-];
 
-const stats = [
-  { value: "60+", label: "Products Tracked", icon: <BarChart3 className="w-5 h-5" /> },
-  { value: "94.2%", label: "Model Accuracy", icon: <Target className="w-5 h-5" /> },
-  { value: "45K+", label: "Market Data Points", icon: <Database className="w-5 h-5" /> },
-  { value: "Daily", label: "Automated Syncs", icon: <TrendingUp className="w-5 h-5" /> },
-];
 
 export default function AboutPage() {
+  const { t, isTransitioning } = useLanguage();
+
+  const stats = [
+    { value: "60+", label: t("productsTracked"), icon: <BarChart3 className="w-5 h-5" /> },
+    { value: "94.2%", label: t("modelAccuracy"), icon: <Target className="w-5 h-5" /> },
+    { value: "45K+", label: t("marketDataPoints"), icon: <Database className="w-5 h-5" /> },
+    { value: "Daily", label: t("automatedSyncs"), icon: <TrendingUp className="w-5 h-5" /> },
+  ];
+
+  const methodologySteps = [
+    {
+      step: 1,
+      icon: <Database className="w-5 h-5 sm:w-6 sm:h-6" />,
+      title: t("methStep1Title"),
+      description: t("methStep1Desc"),
+    },
+    {
+      step: 2,
+      icon: <Layers className="w-5 h-5 sm:w-6 sm:h-6" />,
+      title: t("methStep2Title"),
+      description: t("methStep2Desc"),
+    },
+    {
+      step: 3,
+      icon: <Brain className="w-5 h-5 sm:w-6 sm:h-6" />,
+      title: t("methStep3Title"),
+      description: t("methStep3Desc"),
+    },
+    {
+      step: 4,
+      icon: <Target className="w-5 h-5 sm:w-6 sm:h-6" />,
+      title: t("methStep4Title"),
+      description: t("methStep4Desc"),
+    },
+    {
+      step: 5,
+      icon: <Cpu className="w-5 h-5 sm:w-6 sm:h-6" />,
+      title: t("methStep5Title"),
+      description: t("methStep5Desc"),
+    },
+    {
+      step: 6,
+      icon: <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6" />,
+      title: t("methStep6Title"),
+      description: t("methStep6Desc"),
+    },
+  ];
+
   const [selectedStep, setSelectedStep] = useState<(typeof methodologySteps)[0] | null>(null);
   const [selectedPillar, setSelectedPillar] = useState<number | null>(null);
   const [selectedMethodologyMobile, setSelectedMethodologyMobile] = useState<number | null>(null);
@@ -83,7 +85,7 @@ export default function AboutPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  if (isLoading) {
+  if (isLoading || isTransitioning) {
     return (
       <div className="flex flex-col min-h-screen bg-surface">
         <Header />
@@ -142,10 +144,9 @@ export default function AboutPage() {
         const pillarData = [
           {
             icon: <Users className="w-7 h-7" />,
-            title: "Data-Driven",
-            subtitle: "Market Insights",
-            description:
-              "Built on rigorous academic research and real-world market data from NCR to ensure local relevance.",
+            title: t("pillar1Title"),
+            subtitle: t("pillar1Sub"),
+            description: t("pillar1Desc"),
             gradient: "from-accent/[0.03] to-accent/[0.08]",
             activeColor: "text-accent",
             activeBg: "bg-primary-900",
@@ -153,10 +154,9 @@ export default function AboutPage() {
           },
           {
             icon: <Brain className="w-7 h-7" />,
-            title: "AI-Powered",
-            subtitle: "Smart Predictions",
-            description:
-              "Uses advanced AI technology to analyze price trends and provide clear forecasts for users.",
+            title: t("pillar2Title"),
+            subtitle: t("pillar2Sub"),
+            description: t("pillar2Desc"),
             gradient: "from-accent/[0.06] to-accent/[0.12]",
             activeColor: "text-accent",
             activeBg: "bg-primary-900",
@@ -164,10 +164,9 @@ export default function AboutPage() {
           },
           {
             icon: <Shield className="w-7 h-7" />,
-            title: "Open & Transparent",
-            subtitle: "Public Trust",
-            description:
-              "Clear methodologies and reproducible results designed for institutional, academic, and public use.",
+            title: t("pillar3Title"),
+            subtitle: t("pillar3Sub"),
+            description: t("pillar3Desc"),
             gradient: "from-accent/[0.09] to-accent/[0.18]",
             activeColor: "text-accent",
             activeBg: "bg-primary-900",
@@ -181,10 +180,12 @@ export default function AboutPage() {
             <section className="relative py-12 sm:py-15 pt-28 sm:pt-30">
               {/* Background Image */}
               <div className="absolute inset-0 -z-10">
-                <img
+                <Image
                   src="/Bg-1.jpg"
                   alt="background"
-                  className="w-full h-full object-cover blur-xs scale-105 "
+                  fill
+                  priority
+                  className="object-cover blur-xs scale-105"
                 />
                 <div className="absolute inset-0 bg-primary-900/70" />
               </div>
@@ -194,7 +195,7 @@ export default function AboutPage() {
                   <div className="animate-fade-in-up inline-flex items-center gap-1 px-2 py-1 bg-accent/10 border border-accent/20 rounded-full mb-8">
                     <Brain className="w-4 h-4 text-accent animate-pulse" />
                     <span className="text-white/80 text-xs tracking-wide">
-                      About the Project
+                      {t("aboutProject")}
                     </span>
                   </div>
 
@@ -202,7 +203,7 @@ export default function AboutPage() {
                     className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-[1.1] mb-6"
                     style={{ fontFamily: "var(--font-display)" }}
                   >
-                    What is{" "}
+                    {t("whatIs")}{" "}
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-dark to-accent-light">
                       FOODCAST
                     </span>
@@ -210,9 +211,7 @@ export default function AboutPage() {
                   </h1>
 
                   <p className="text-white/55 text-xs sm:text-base leading-relaxed text-justify max-w-2xl">
-                    FOODCAST is an AI-powered system that predicts prices and analyzes the market
-                    for farm and fishery products in Metro Manila (NCR). It uses smart technology
-                    to show where prices are going, helping you make better decisions.
+                    {t("aboutHeroDesc")}
                   </p>
                 </div>
               </div>
@@ -229,27 +228,16 @@ export default function AboutPage() {
                         className="text-2xl sm:text-3xl font-bold text-gray-900 mb-5"
                         style={{ fontFamily: "var(--font-display)" }}
                       >
-                        Empowering Smarter
+                        {t("empoweringSmarter")}
                         <br />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-800 to-primary-600">
-                          Market Decisions
+                          {t("marketDecisions")}
                         </span>
                       </h2>
                       <div className="space-y-4 text-xs sm:text-base text-gray-600 text-justify leading-relaxed">
-                        <p>
-                          The food market in the Philippines often faces sharp price
-                          changes that affect everyone.
-                        </p>
-                        <p>
-                          FOODCAST helps by providing AI price forecasts that let
-                          buyers and sellers see what's coming next, making it
-                          easier to plan ahead.
-                        </p>
-                        <p>
-                          Our system aggregates 45,000+ historical price records from
-                          the Department of Agriculture, feeding them into a hybrid
-                          LSTM and LightGBM model to generate highly accurate forecasts.
-                        </p>
+                        <p>{t("aboutIntro1")}</p>
+                        <p>{t("aboutIntro2")}</p>
+                        <p>{t("aboutIntro3")}</p>
                       </div>
                     </div>
                   </ScrollReveal>
@@ -297,13 +285,10 @@ export default function AboutPage() {
                       className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white/80 mb-5"
                       style={{ fontFamily: "var(--font-display)" }}
                     >
-                      How It{" "}
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-700 to-accent">
-                        Works
-                      </span>
+                      {t("howItWorks")}
                     </h2>
                     <p className="text-white/50 max-w-2xl mx-auto text-sm sm:text-base">
-                      A rigorous, end-to-end machine learning pipeline that turns raw market data into actionable intelligence.
+                      {t("howItWorksDesc")}
                     </p>
                   </div>
                 </ScrollReveal>
@@ -464,11 +449,10 @@ export default function AboutPage() {
                       className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-5"
                       style={{ fontFamily: "var(--font-display)" }}
                     >
-                      Built for the Filipino Market
+                      {t("builtForFilipino")}
                     </h2>
                     <p className="text-gray-600 text-xs sm:text-base max-w-2xl mx-auto leading-relaxed">
-                      FOODCAST is a community-focused system designed to help you make
-                      better market choices through technology and clear data.
+                      {t("builtDesc1")}
                     </p>
                   </div>
                 </ScrollReveal>

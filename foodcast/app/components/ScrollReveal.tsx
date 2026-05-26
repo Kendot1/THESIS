@@ -78,7 +78,11 @@ const ScrollReveal = ({
     <div
       ref={ref}
       className={`${className} ${isVisible ? animationClasses[animation] : "opacity-0"}`}
-      style={{ animationDelay: isVisible ? `${delay}ms` : undefined }}
+      style={{
+        animationDelay: isVisible ? `${delay}ms` : undefined,
+        display: className?.includes("h-full") ? "flex" : undefined,
+        flexDirection: className?.includes("h-full") ? "column" : undefined,
+      }}
     >
       {children}
     </div>

@@ -1,7 +1,9 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 import { Calendar, ArrowRight, Tag, X, ExternalLink, Clock } from "lucide-react";
+import { useLanguage } from "../lib/i18n/LanguageContext";
 
 interface NewsCardProps {
   id: string;
@@ -19,6 +21,7 @@ interface NewsCardProps {
 }
 
 const NewsCard = ({ id, title, excerpt, category, date, image, url, source, content, sentimentScore, keywords, affectedProducts }: NewsCardProps) => {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -59,15 +62,16 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source, cont
       >
         {/* Image Container */}
         <div className="relative h-48 overflow-hidden">
-          <img
+          <Image
             src={image}
             alt={title}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            fill
+            className="object-cover transition-transform duration-700 group-hover:scale-110"
           />
           <div className="absolute top-4 left-4 flex gap-2">
-            <span className="px-3 py-1 bg-white/90 backdrop-blur-md rounded-full text-[10px] font-bold text-primary-800 uppercase tracking-wider flex items-center gap-1.5 shadow-sm capitalize">
+            <span className="px-3 py-1 bg-white/95 rounded-full text-[10px] font-bold text-primary-800 uppercase tracking-wider flex items-center gap-1.5 shadow-sm capitalize">
               <Tag className="w-3 h-3" />
-              {category}
+              {t(category)}
             </span>
           </div>
         </div>
@@ -89,7 +93,7 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source, cont
 
           <div className="mt-auto flex items-center justify-between">
             <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
-              {source || "Market News"}
+              {source || t("marketNews")}
             </div>
             <a
               href={url}
@@ -98,7 +102,7 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source, cont
               onClick={(e) => e.stopPropagation()}
               className="inline-flex items-center gap-2 text-xs font-bold text-primary-700 hover:text-primary-900 transition-colors group/link z-10"
             >
-              Read More
+              {t("readMore")}
               <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/link:translate-x-1" />
             </a>
           </div>
@@ -121,18 +125,19 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source, cont
           >
             {/* Modal Header Image */}
             <div className="relative h-56 sm:h-64 flex-shrink-0 overflow-hidden">
-              <img
+              <Image
                 src={image}
                 alt={title}
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
               {/* Category & Date overlay */}
               <div className="absolute bottom-5 left-6 right-6 flex items-center gap-3">
-                <span className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <span className="px-3 py-1.5 bg-black/40 rounded-full text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                   <Tag className="w-3 h-3" />
-                  {category}
+                  {t(category)}
                 </span>
                 <span className="text-white/70 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
                   <Clock className="w-3 h-3" />
@@ -148,7 +153,7 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source, cont
               </h2>
 
               <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">
-                Source: {source || "Market News"}
+                {t("source")}: {source || t("marketNews")}
               </div>
 
 
@@ -167,7 +172,7 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source, cont
                 onClick={() => setIsOpen(false)}
                 className="px-6 py-2.5 bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold uppercase tracking-widest rounded-xl transition-all active:scale-95"
               >
-                Close
+                {t("close")}
               </button>
               {url && (
                 <a
@@ -176,7 +181,7 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source, cont
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-900 text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-primary-800 transition-all shadow-lg hover:shadow-primary-900/30 active:scale-95"
                 >
-                  Visit Source
+                  {t("visitSource")}
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               )}

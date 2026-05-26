@@ -2,7 +2,9 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import Image from "next/image";
 import ScrollReveal from "../components/ScrollReveal";
+import { useLanguage } from "../lib/i18n/LanguageContext";
 import {
     Zap,
     Activity,
@@ -78,16 +80,19 @@ const resourceGroups = [
 function ResourceCard({ resource }: { resource: any }) {
     const Icon = resource.icon;
     const [imgError, setImgError] = useState(false);
+    const { t } = useLanguage();
 
     return (
         <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] p-8 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 flex flex-col h-full min-h-[300px] transition-all duration-300 hover:shadow-[0_20px_50px_rgba(0,0,0,0.08)]">
             <div className="flex items-center gap-5 mb-5">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gray-50 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden p-3">
+                <div className="relative w-14 h-14 sm:w-16 sm:h-16 bg-gray-50 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden p-3">
                     {resource.logo && !imgError ? (
-                        <img 
+                        <Image 
                             src={resource.logo} 
                             alt={resource.name} 
-                            className="w-full h-full object-contain"
+                            fill
+                            unoptimized
+                            className="object-contain p-3"
                             style={{ display: imgError ? 'none' : 'block' }}
                             onError={() => setImgError(true)}
                         />
@@ -112,7 +117,7 @@ function ResourceCard({ resource }: { resource: any }) {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-[#0B3D2E] text-xs sm:text-sm font-bold uppercase tracking-wider hover:text-orange transition-colors group"
             >
-                Learn More
+                {t("learnMore")}
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </a>
         </div>
@@ -132,13 +137,14 @@ function SectionHeading({ title }: { title: string }) {
 
 export default function ResourcesPage() {
     const [isLoading, setIsLoading] = useState(true);
+    const { t, isTransitioning } = useLanguage();
 
     useEffect(() => {
         const timer = setTimeout(() => setIsLoading(false), 200);
         return () => clearTimeout(timer);
     }, []);
 
-    if (isLoading) {
+    if (isLoading || isTransitioning) {
         return (
             <div className="flex flex-col min-h-screen bg-surface">
                 <Header />
@@ -202,10 +208,12 @@ export default function ResourcesPage() {
                 {/* Hero */}
                 <section className="relative py-12 sm:py-20 pt-28 sm:pt-36 overflow-hidden bg-primary-900">
                     <div className="absolute inset-0">
-                        <img
+                        <Image
                             src="/Bg-4.jpg"
                             alt="background"
-                            className="w-full h-full object-cover blur-sm scale-105 opacity-60"
+                            fill
+                            priority
+                            className="object-cover blur-sm scale-105 opacity-60"
                         />
                         <div className="absolute inset-0 bg-primary-900/60" />
                     </div>
@@ -215,13 +223,13 @@ export default function ResourcesPage() {
                                 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-white mb-4"
                                 style={{ fontFamily: "var(--font-display)" }}
                             >
-                                Resources <span className="text-white/60">&</span> <br className="sm:hidden" />
+                                {t("resources")} <span className="text-white/60">&</span> <br className="sm:hidden" />
                                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-light to-accent">
-                                    References
+                                    {t("references")}
                                 </span>
                             </h1>
                             <p className="text-white/60 max-w-2xl text-sm sm:text-lg leading-relaxed">
-                                Explore the comprehensive ecosystem of technologies, datasets, and tools that power the FOODCAST Price Prediction Platform.
+                                {t("resourcesDesc")}
                             </p>
                         </ScrollReveal>
                     </div>

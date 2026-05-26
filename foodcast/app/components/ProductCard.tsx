@@ -1,8 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowUpRight, ArrowDownRight, Eye } from "lucide-react";
 import { DEFAULT_PRODUCT_IMAGE } from "../lib/data";
+import { useLanguage } from "../lib/i18n/LanguageContext";
 
 interface ProductVariant {
   id: string;
@@ -66,6 +68,7 @@ const ProductCard = ({
     }
   };
 
+  const { t } = useLanguage();
   const change = currentPrice === 0 ? 0 : ((predictedPrice - currentPrice) / currentPrice) * 100;
   const isUp = change >= 0;
 
@@ -80,15 +83,17 @@ const ProductCard = ({
     >
       {/* Row 1: Product Image Container (Flush with edges) */}
       <div className={`relative overflow-hidden bg-gray-50 transition-all duration-700 ${compact ? "h-[120px] sm:h-[140px] mb-3" : "h-[150px] sm:h-[180px] mb-4"}`}>
-        <img
+        <Image
           key={selectedVariant.image || image || DEFAULT_PRODUCT_IMAGE} // Force re-render of img tag to trigger animation if needed, or at least change instantly
           src={selectedVariant.image || image || DEFAULT_PRODUCT_IMAGE}
           alt={name}
-          loading="lazy"
-          decoding="async"
-          className="w-full h-full object-cover transition-transform duration-1000 md:group-hover:scale-110"
+          fill
+          className="object-cover transition-transform duration-1000 md:group-hover:scale-110"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
+            if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
+               target.srcset = "";
+            }
             if (target.src !== DEFAULT_PRODUCT_IMAGE) {
               target.src = DEFAULT_PRODUCT_IMAGE;
             }
@@ -97,7 +102,7 @@ const ProductCard = ({
 
         {/* Rate Change Badge (Pill Style) */}
         <div className="absolute top-3 right-3 z-10">
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/20 shadow-sm ${isUp ? "bg-white/90 text-positive" : "bg-white/90 text-negative"}`}>
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/20 shadow-sm ${isUp ? "bg-white/90 text-positive" : "bg-white/90 text-negative"}`}>
             <span className="text-[10px] font-black uppercase tracking-wider">
               {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
             </span>
@@ -123,7 +128,7 @@ const ProductCard = ({
                 }}
                 className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-transparent cursor-pointer hover:text-primary-800 transition-colors focus:outline-none"
               >
-                <span>{currentOrigin}</span>
+                <span>{t(currentOrigin)}</span>
                 <svg className={`w-3 h-3 transition-transform ${isOriginDropdownOpen ? 'rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -155,7 +160,7 @@ const ProductCard = ({
                               : "hover:bg-gray-50 text-gray-600"
                             }`}
                         >
-                          <span className="text-[10px] font-bold uppercase tracking-widest">{o}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest">{t(o)}</span>
                           {currentOrigin === o && (
                             <svg className="w-3.5 h-3.5 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="20 6 9 17 4 12" />
@@ -170,7 +175,7 @@ const ProductCard = ({
             </div>
           ) : (
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-              {currentOrigin}
+              {t(currentOrigin)}
             </span>
           )}
         </div>
@@ -181,7 +186,7 @@ const ProductCard = ({
             className={`font-bold text-gray-900 md:group-hover:text-primary-800 transition-colors duration-300 leading-tight ${compact ? 'text-[15px] sm:text-[18px] mb-1.5' : 'text-[18px] sm:text-[22px] mb-2'}`}
             style={{ fontFamily: "var(--font-display)" }}
           >
-            {variant && variant !== "Standard" ? `${name} (${variant})` : name}
+            {t(name)} {variant && variant !== "Standard" ? `(${variant})` : ""}
           </h3>
         </div>
 
@@ -212,11 +217,11 @@ const ProductCard = ({
         {/* Row 5: Side-by-side Prices */}
         <div className="mt-auto mb-5 flex items-end justify-between gap-2 min-w-0">
           <div className="flex flex-col gap-0.5 min-w-0">
-            <span className="text-[8px] text-gray-400 uppercase font-bold tracking-wider">Market</span>
+            <span className="text-[8px] text-gray-400 uppercase font-bold tracking-wider">{t("market")}</span>
             <span className="text-sm font-black text-gray-900 truncate">₱{currentPrice.toFixed(1)}{unit ? ` / ${unit}` : ''}</span>
           </div>
           <div className="flex flex-col gap-0.5 items-end min-w-0">
-            <span className="text-[8px] text-gray-400 uppercase font-bold tracking-wider">Predicted</span>
+            <span className="text-[8px] text-gray-400 uppercase font-bold tracking-wider">{t("predicted")}</span>
             <span className={`text-sm font-black truncate ${isUp ? "text-positive" : "text-negative"}`}>₱{predictedPrice.toFixed(1)}{unit ? ` / ${unit}` : ''}</span>
           </div>
         </div>
@@ -229,7 +234,7 @@ const ProductCard = ({
             transition-all duration-300 shadow-lg shadow-primary-900/10 
             md:hover:bg-primary-800 md:hover:shadow-primary-900/25 md:hover:-translate-y-0.5 active:scale-[0.97]"
           >
-            View Forecast
+            {t("viewForecast")}
           </Link>
         </div>
       </div>

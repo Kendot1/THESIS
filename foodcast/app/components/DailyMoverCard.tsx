@@ -1,55 +1,56 @@
 "use client";
 import React, { useId } from "react";
 import Link from "next/link";
-import { TrendingUp, TrendingDown, ChevronRight } from "lucide-react";
-import { DEFAULT_PRODUCT_IMAGE } from "../lib/data";
+import Image from "next/image";
+import { TrendingUp, TrendingDown, ChevronRight, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import SparklineChart from "./SparklineChart";
+import { DEFAULT_PRODUCT_IMAGE, ForecastDataPoint } from "../lib/data";
+import { useLanguage } from "../lib/i18n/LanguageContext";
 
 interface DailyMoverCardProps {
   id: string;
   name: string;
-  image: string;
   category: string;
+  image?: string;
   currentPrice: number;
   predictedPrice: number;
-  forecastData: {
-    name: string;
-    actual: number | null;
-    predicted: number | null;
-  }[];
+  forecastData: ForecastDataPoint[];
   variant?: string;
   origin?: string;
-  unit?: string;
+  unit: string;
 }
 
 const DailyMoverCard = ({
   id,
   name,
-  image,
   category,
+  image,
   currentPrice,
   predictedPrice,
+  forecastData,
   variant,
   origin,
   unit,
 }: DailyMoverCardProps) => {
+  const { t } = useLanguage();
   const change = ((predictedPrice - currentPrice) / currentPrice) * 100;
   const priceChange = predictedPrice - currentPrice;
   const isUp = change >= 0;
   const baseId = useId();
 
-  const displayName = variant && variant !== "Standard" ? `${name} (${variant})` : name;
+  const displayName = t(name) + (variant && variant !== "Standard" ? ` (${variant})` : "");
 
   // Generate a practical market insight
   const getInsight = () => {
     const absChange = Math.abs(change);
     if (isUp) {
-      if (absChange > 5) return "Prices surging — consider buying early to secure best rates.";
-      if (absChange > 2) return "Moderate price increase expected in local retail markets.";
-      return "Slight upward price trend forecast for tomorrow.";
+      if (absChange > 5) return t("insightSurging");
+      if (absChange > 2) return t("insightModerateUp");
+      return t("insightSlightUp");
     } else {
-      if (absChange > 5) return "Sharp price drop expected — look out for deals in your market.";
-      if (absChange > 2) return "Prices are coming down — favorable buying conditions expected.";
-      return "Slight downward price trend forecast for tomorrow.";
+      if (absChange > 5) return t("insightDrop");
+      if (absChange > 2) return t("insightModerateDown");
+      return t("insightSlightDown");
     }
   };
 
@@ -64,12 +65,16 @@ const DailyMoverCard = ({
     >
       {/* Product Image Banner */}
       <div className="relative h-[120px] sm:h-[135px] w-full overflow-hidden bg-gray-100">
-        <img
+        <Image
           src={image || DEFAULT_PRODUCT_IMAGE}
           alt={displayName}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          fill
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
+            if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
+               target.srcset = "";
+            }
             if (target.src !== DEFAULT_PRODUCT_IMAGE) {
               target.src = DEFAULT_PRODUCT_IMAGE;
             }
@@ -80,18 +85,18 @@ const DailyMoverCard = ({
         
         {/* Category & Origin badge on image */}
         <div className="absolute top-3 left-3 flex items-center gap-1.5">
-          <span className="text-[10px] sm:text-[11px] font-bold text-white/95 bg-black/40 backdrop-blur-sm px-2.5 py-1 rounded-full uppercase tracking-wider">
-            {category}
+          <span className="text-[10px] sm:text-[11px] font-bold text-white/95 bg-black/60 px-2.5 py-1 rounded-full uppercase tracking-wider">
+            {t(category)}
           </span>
           {origin && (
-            <span className="text-[10px] sm:text-[11px] font-semibold text-white/80 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-full">
-              {origin}
+            <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-500 font-bold uppercase tracking-widest text-[8px] sm:text-[9px]">
+              {t(origin)}
             </span>
           )}
         </div>
 
         {/* Trend badge on image */}
-        <div className={`absolute top-3 right-3 flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full backdrop-blur-sm
+        <div className={`absolute top-3 right-3 flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full
           ${isUp
             ? "bg-positive/25 text-green-100 border border-positive/10"
             : "bg-negative/25 text-red-100 border border-negative/10"
@@ -117,7 +122,7 @@ const DailyMoverCard = ({
         {/* Price Row */}
         <div className="flex items-baseline justify-between gap-2 mb-3">
           <div>
-            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">Current Price</span>
+            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">{t("currentPrice")}</span>
             <span className="text-2xl sm:text-3xl font-black text-gray-900 tabular-nums leading-none">
               ₱{currentPrice.toFixed(2)}
               {unit && <span className="text-sm sm:text-base text-gray-500 ml-1 font-medium">/ {unit}</span>}
@@ -125,7 +130,7 @@ const DailyMoverCard = ({
             
           </div>
           <div className="text-right">
-            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">Tomorrow</span>
+            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">{t("tomorrow")}</span>
             <span className={`text-lg sm:text-xl font-bold tabular-nums leading-none ${isUp ? 'text-positive' : 'text-negative'}`}>
               ₱{predictedPrice.toFixed(2)}
               {unit && <span className="text-xs sm:text-sm opacity-70 ml-1 font-medium">/ {unit}</span>}
@@ -149,10 +154,10 @@ const DailyMoverCard = ({
               : 'text-negative bg-negative/8'
             }`}
           >
-            {isUp ? "+" : ""}₱{priceChange.toFixed(2)} expected change
+            {isUp ? "+" : ""}₱{priceChange.toFixed(2)} {t("expectedChange")}
           </div>
           <span className="text-xs text-gray-400 font-medium flex items-center gap-0.5 group-hover:text-primary-700 transition-colors">
-            Details <ChevronRight className="w-3.5 h-3.5" />
+            {t("details")} <ChevronRight className="w-3.5 h-3.5" />
           </span>
         </div>
       </div>

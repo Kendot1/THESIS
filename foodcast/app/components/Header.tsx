@@ -1,10 +1,13 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Search, Menu, X, ChevronDown, Globe } from "lucide-react";
+import { useLanguage } from "../lib/i18n/LanguageContext";
 
-const Header = () => {
+export default function Header() {
+  const { language, setLanguage, t } = useLanguage();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -34,16 +37,15 @@ const Header = () => {
   }, []);
 
   const links = [
-    { href: "/", label: "Home" },
-    { href: "/Predict", label: "Predict" },
-    { href: "/MarketData", label: "Market Data" },
-    { href: "/News", label: "News" },
+    { href: "/", label: t("home") },
+    { href: "/Predict", label: t("predict") },
+    { href: "/MarketData", label: t("marketData") },
+    { href: "/News", label: t("news") },
     {
-      label: "About",
-      href: "/About",
+      label: t("more"),
       dropdown: [
-        { href: "/About", label: "About Foodcast" },
-        { href: "/Resources", label: "Resources" }
+        { href: "/About", label: t("aboutProject") },
+        { href: "/Resources", label: t("resources") },
       ]
     },
   ];
@@ -57,7 +59,7 @@ const Header = () => {
       <nav
         aria-label="Main navigation"
         className={`fixed top-0 left-0 right-0 z-[100] shadow-[0_1px_24px_rgba(0,0,0,0.15)] transition-all duration-500 ease-out ${scrolled
-          ? "py-4 bg-surface/90 backdrop-blur-2xl" : "py-4 bg-surface backdrop-blur-xl"}`}
+          ? "py-4 bg-surface/95 shadow-sm" : "py-4 bg-surface/90"}`}
       >
         <div className="max-w-7xl mx-auto px-5 lg:px-10 flex items-center justify-between">
           {/* Logo */}
@@ -66,12 +68,13 @@ const Header = () => {
             className="flex items-center gap-3"
             aria-label="FOODCAST home"
           >
-            <img
+            <Image
               src="/FoodcastLogo.svg"
               alt="FOODCAST"
               width={180}
               height={50}
               className="transition-all duration-300 group-hover:scale-[1.03] group-hover:brightness-110"
+              priority
             />
           </Link>
 
@@ -167,10 +170,22 @@ const Header = () => {
               })}
             </ul>
 
+            <div className="hidden md:flex items-center gap-3 ml-6 pl-6 border-l border-gray-100">
+              {/* Language Toggle */}
+              <button
+                onClick={() => setLanguage(language === "en" ? "tl" : "en")}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-100 hover:text-primary-800 transition-colors"
+                aria-label="Toggle Language"
+              >
+                <Globe className="w-4 h-4 text-gray-400" />
+                {language === "en" ? "EN" : "TL"}
+              </button>
+            </div>
+
             {/* Mobile Toggle */}
             <button
               className="md:hidden flex items-center justify-center w-10 h-10 
-              rounded-xl bg-transparent hover:bg-[#d2c5b6] transition-all duration-200 active:scale-95 "
+              rounded-xl bg-transparent hover:bg-[#d2c5b6] transition-all duration-200 active:scale-95 ml-auto"
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileOpen}
@@ -258,11 +273,22 @@ const Header = () => {
                 );
               })}
             </ul>
+
+            <div className="mt-8 pt-6 border-t border-gray-100 flex justify-center">
+              <button
+                onClick={() => {
+                  setLanguage(language === "en" ? "tl" : "en");
+                  setMobileOpen(false);
+                }}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white border border-gray-200 text-sm font-bold text-gray-700 shadow-sm active:scale-95 transition-all"
+              >
+                <Globe className="w-5 h-5 text-gray-400" />
+                {language === "en" ? "Switch to Tagalog (TL)" : "Switch to English (EN)"}
+              </button>
+            </div>
           </div>
         </div>
       </nav>
     </header>
   );
 };
-
-export default Header;

@@ -1,17 +1,20 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { Home, Search, Table2, Info, Mail, MapPin, TrendingUp } from "lucide-react";
 import GrassField from "./GrassField";
+import { useLanguage } from "../lib/i18n/LanguageContext";
 
 const Footer = () => {
+  const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
 
   const navLinks = [
-    { href: "/", label: "Home", icon: <Home className="w-4 h-4" /> },
-    { href: "/Predict", label: "Predict", icon: <TrendingUp className="w-4 h-4" /> },
-    { href: "/MarketData", label: "Market Data", icon: <Table2 className="w-4 h-4" /> },
-    { href: "/Resources", label: "Resources", icon: <Mail className="w-4 h-4" /> },
-    { href: "/About", label: "About", icon: <Info className="w-4 h-4" /> },
+    { href: "/", label: t("home"), icon: <Home className="w-4 h-4" /> },
+    { href: "/Predict", label: t("predict"), icon: <TrendingUp className="w-4 h-4" /> },
+    { href: "/MarketData", label: t("marketData"), icon: <Table2 className="w-4 h-4" /> },
+    { href: "/Resources", label: t("resources"), icon: <Mail className="w-4 h-4" /> },
+    { href: "/About", label: t("about"), icon: <Info className="w-4 h-4" /> },
   ];
 
   return (
@@ -31,11 +34,10 @@ const Footer = () => {
             <div className="md:col-span-1">
               <div className="inline-flex items-center justify-center p-3 bg-white/80 rounded-2xl mb-6 backdrop-blur-sm
                 transition-all duration-300">
-                <img src="/FoodcastLogo.svg" alt="FOODCAST" width={130} height={60} />
+                <Image src="/FoodcastLogo.svg" alt="FOODCAST" width={130} height={60} />
               </div>
               <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs mb-6">
-                AI-Based Forecasting and Market Analysis of Agri-Fishery Food Prices
-                in NCR Markets using Machine Learning Algorithms.
+                {t("footerDesc")}
               </p>
               <div className="flex gap-6">
                 <div className="flex items-center gap-2">
@@ -44,7 +46,7 @@ const Footer = () => {
                   </div>
                   <div>
                     <div className="text-white/80 text-xs font-semibold">98.5%</div>
-                    <div className="text-white/60 text-[10px]">Accuracy</div>
+                    <div className="text-white/60 text-[10px]">{t("accuracy")}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -53,7 +55,7 @@ const Footer = () => {
                   </div>
                   <div>
                     <div className="text-white/80 text-xs font-semibold">NCR</div>
-                    <div className="text-white/60 text-[10px]">Coverage</div>
+                    <div className="text-white/60 text-[10px]">{t("coverage")}</div>
                   </div>
                 </div>
               </div>
@@ -62,7 +64,7 @@ const Footer = () => {
             {/* Navigation Column */}
             <div>
               <h4 className="text-white/80 font-semibold mb-4 sm:mb-6 text-sm uppercase tracking-wider" style={{ fontFamily: "var(--font-display)" }}>
-                Quick Links
+                {t("quickLinks")}
               </h4>
               <nav aria-label="Footer navigation">
                 <ul className="grid grid-cols-2 sm:grid-cols-1 gap-3">
@@ -83,12 +85,10 @@ const Footer = () => {
             {/* About Column */}
             <div>
               <h4 className="text-white font-semibold mb-4 sm:mb-6 text-white/80 text-sm uppercase tracking-wider" style={{ fontFamily: "var(--font-display)" }}>
-                About the Project
+                {t("aboutProject")}
               </h4>
               <p className="text-white/60 text-xs sm:text-sm leading-relaxed mb-5">
-                FOODCAST is a thesis project that leverages machine learning to help
-                consumers, vendors, and policymakers anticipate food price movements
-                in the Philippines&apos; NCR.
+                {t("footerAboutDesc")}
               </p>
               <div className="flex items-center gap-2 text-white/40 text-[10px] sm:text-xs">
                 <Mail className="w-3.5 h-3.5" />
@@ -104,10 +104,10 @@ const Footer = () => {
               aria-hidden="true"
             />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-              <p className="text-white/35 text-[10px] sm:text-[11px]">© {currentYear} FOODCAST — AgriTech Food Forecast. All rights reserved.</p>
+              <p className="text-white/35 text-[10px] sm:text-[11px]">© {currentYear} FOODCAST — AgriTech Food Forecast. {t("allRightsReserved")}</p>
               <div className="flex items-center gap-1.5 text-white/30 text-[9px] sm:text-[10px]">
                 <div className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-pulse" />
-                <span>Powered by Machine Learning</span>
+                <span>{t("poweredBy")}</span>
               </div>
             </div>
           </div>

@@ -10,6 +10,7 @@ import {
   type ISeriesApi,
   type Time,
 } from "lightweight-charts";
+import { useLanguage } from "../lib/i18n/LanguageContext";
 
 interface DataPoint {
   date: string;
@@ -40,6 +41,7 @@ const ForecastChart = ({
   const chartRef = useRef<IChartApi | null>(null);
   const actualSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
   const predictedSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
+  const { t } = useLanguage();
 
   // Build series data
   const { actualData, predictedData } = useMemo(() => {
@@ -163,7 +165,7 @@ const ForecastChart = ({
       crosshairMarkerBorderColor: "#0B3B24",
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
-      title: "Actual",
+      title: t("actualPrice"),
     });
 
     // Predicted price series (dashed green area)
@@ -178,7 +180,7 @@ const ForecastChart = ({
       crosshairMarkerBorderColor: "#7ED957",
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
-      title: "Predicted",
+      title: t("predictedPrice"),
     });
 
     chartRef.current = chart;
@@ -211,11 +213,11 @@ const ForecastChart = ({
 
       if (actualData && (actualData as any).value !== undefined) {
         priceData = actualData;
-        title = "Actual Price";
+        title = t("actualPrice");
         color = "#0B3B24";
       } else if (predictedData && (predictedData as any).value !== undefined) {
         priceData = predictedData;
-        title = "Predicted Price";
+        title = t("predictedPrice");
         color = "#7ED957";
       }
 
@@ -344,11 +346,11 @@ const ForecastChart = ({
         <div className="flex items-center gap-6 mt-3 -mb-1 ml-2">
           <div className="flex items-center gap-2">
             <div className="forecast-legend-dot" style={{ background: "#0B3B24" }} />
-            <span className="text-[10px] font-medium text-gray-900">Actual Price</span>
+            <span className="text-[10px] font-medium text-gray-900">{t("actualPrice")}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="forecast-legend-dot" style={{ background: "#7ED957" }} />
-            <span className="text-[10px] font-medium text-gray-900">Predicted Price</span>
+            <span className="text-[10px] font-medium text-gray-900">{t("predictedPrice")}</span>
           </div>
         </div>
       )}

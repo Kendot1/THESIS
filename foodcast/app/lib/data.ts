@@ -1,9 +1,15 @@
 import { supabase } from "../../lib/supabase";
-import useSWR from "swr";
 
 export const DEFAULT_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&q=80&w=800";
 
 // ─── Types ─────────────────────────────────────────────────
+
+export interface ForecastDataPoint {
+  date: string;
+  name: string;
+  actual: number | null;
+  predicted: number | null;
+}
 
 export interface Product {
   id: string;
@@ -20,12 +26,7 @@ export interface Product {
   unit: string;
   sentiment: "Bullish" | "Bearish" | "Neutral";
   sparklineData: { value: number }[];
-  forecastData: {
-    date: string;
-    name: string;
-    actual: number | null;
-    predicted: number | null;
-  }[];
+  forecastData: ForecastDataPoint[];
   dailyForecast: {
     date: string;
     predicted_price: number;
@@ -54,12 +55,19 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const EDGE_FN_BASE = `${SUPABASE_URL}/functions/v1/foodcast`;
 
-async function edgeFetch<T>(path: string): Promise<T> {
+const memoryCache: Record<string, { data: any; expiry: number }> = {};
+
+const LOCAL_CACHE_PREFIX = "foodcast_cache_";
+const CACHE_TTL = 1000 * 60 * 60; // 1 hour persistent cache
+
+async function fetchFromNetwork<T>(path: string): Promise<T> {
+  const now = Date.now();
   const res = await fetch(`${EDGE_FN_BASE}/${path}`, {
     headers: {
       "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       "Content-Type": "application/json",
     },
+    cache: "no-store", // Bypass Next.js cache limit
   });
 
   if (!res.ok) {
@@ -67,7 +75,59 @@ async function edgeFetch<T>(path: string): Promise<T> {
     throw new Error(err.error || `Edge function error: ${res.status}`);
   }
 
-  return res.json();
+  const data = await res.json();
+  
+  // Update memory cache (1 minute)
+  memoryCache[path] = { data, expiry: now + 60 * 1000 };
+  
+  // Update localStorage (1 hour)
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(LOCAL_CACHE_PREFIX + path, JSON.stringify({
+        data,
+        expiry: now + CACHE_TTL
+      }));
+    } catch (e) {
+      console.warn("LocalStorage cache write failed (quota exceeded?):", e);
+    }
+  }
+  
+  return data;
+}
+
+async function edgeFetch<T>(path: string): Promise<T> {
+  const now = Date.now();
+  
+  // 1. Check in-memory cache (fastest)
+  if (memoryCache[path] && memoryCache[path].expiry > now) {
+    return memoryCache[path].data;
+  }
+
+  // 2. Check persistent browser cache
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem(LOCAL_CACHE_PREFIX + path);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.expiry > now) {
+          // Rehydrate memory cache
+          memoryCache[path] = { data: parsed.data, expiry: parsed.expiry };
+          
+          // Trigger a background revalidation if data is older than 5 minutes
+          if (now > parsed.expiry - CACHE_TTL + (5 * 60 * 1000)) {
+             fetchFromNetwork(path).catch(console.error);
+          }
+          
+          return parsed.data;
+        }
+      }
+    } catch (e) {
+      console.warn("LocalStorage cache read failed:", e);
+    }
+  }
+
+  // 3. Fallback to network fetch (causes loading state)
+  return fetchFromNetwork<T>(path);
 }
 
 // ─── Data Fetching (calls Supabase Edge Function) ──────────
@@ -193,22 +253,4 @@ export async function fetchPaginatedNews(
   }
 }
 
-// ─── SWR Hooks (Client-Side Caching & Deduplication) ───────
-// SWR prevents multiple components from making duplicate calls
-// to the Supabase Edge Function. It caches the result in-memory.
-
-export function useProducts() {
-  return useSWR<Product[]>("supabase_products", fetchProducts, {
-    revalidateOnFocus: false,
-    revalidateIfStale: false,
-    dedupingInterval: 5 * 60 * 1000, // 5 min dedup
-  });
-}
-
-export function useNews(limit = 10) {
-  return useSWR<NewsArticle[]>(`supabase_news_${limit}`, () => fetchNews(limit), {
-    revalidateOnFocus: false,
-    revalidateIfStale: false,
-    dedupingInterval: 5 * 60 * 1000,
-  });
-}
+// Hooks have been moved to hooks.ts to support Server Components

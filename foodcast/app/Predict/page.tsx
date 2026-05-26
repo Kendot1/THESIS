@@ -2,16 +2,17 @@
 import { useState, useMemo, useRef, useEffect, Suspense, useDeferredValue } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Search, TrendingUp, Filter, X, ArrowRight, ChevronLeft, ChevronRight, ArrowRightLeft, Sparkles, AlertCircle, Bookmark, Share2, Grid, List, MoreHorizontal, Flame, ChevronDown } from "lucide-react";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
 import dynamic from "next/dynamic";
 const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
   ssr: false,
 });
 import ScrollReveal from "../components/ScrollReveal";
-import { Product, useProducts, fetchCategories, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
+import { Product, fetchCategories, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
+import { useLanguage } from "../lib/i18n/LanguageContext";
+import { useProducts } from "../lib/hooks";
 
 export default function PredictPage() {
   return (
@@ -22,10 +23,11 @@ export default function PredictPage() {
 }
 
 function PredictPageContent() {
+  const { t, isTransitioning } = useLanguage();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
-  const { data: products = [] } = useProducts();
+  const { data: products = [], isLoading } = useProducts();
   const [categories, setCategories] = useState<string[]>(["All"]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -259,11 +261,9 @@ function PredictPageContent() {
     ).slice(0, 5);
   }, [query, products]);
 
-  if (products.length === 0) {
+  if (products.length === 0 || isLoading || isTransitioning) {
     return (
-      <>
-        <Header />
-        <main className="min-h-screen bg-surface">
+      <main className="min-h-screen bg-surface">
           <section className="relative py-12 sm:py-15 pt-28 sm:pt-30 bg-primary-900 overflow-hidden">
             <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
               <div className="h-10 sm:h-12 w-48 sm:w-64 bg-white/10 rounded-xl mb-4 animate-pulse" />
@@ -333,34 +333,33 @@ function PredictPageContent() {
               </div>
             </section>
           </div>
-        </main>
-        <Footer />
-      </>
+      </main>
     );
   }
 
   return (
     <>
-      <Header />
       <main id="main-content" className="min-h-screen relative z-20">
 
         <section className="relative py-12 sm:py-15 pt-28 sm:pt-30">
           {/* Background Image */}
           <div className="absolute inset-0 -z-10">
-            <img
+            <Image
               src="/Bg-5.jpg"
               alt="background"
-              className="w-full h-full object-cover blur-[1px] "
+              fill
+              priority
+              className="object-cover blur-[1px]"
             />
             <div className="absolute inset-0 bg-primary-900/80" />
           </div>
 
           <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
             <h1 className="text-2xl sm:text-3xl lg:text-5xl font-bold text-white mb-3 sm:mb-4" style={{ fontFamily: "var(--font-display)" }}>
-              Search <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light">Products</span>
+              {t("searchProducts")}
             </h1>
             <p className="text-white/50 max-w-xl mb-8 text-sm sm:text-base">
-              Explore price forecasts for agri-fishery products across NCR markets
+              {t("exploreForecasts")}
             </p>
 
             <div className="relative z-20 max-w-lg">
@@ -369,7 +368,7 @@ function PredictPageContent() {
                   <Search className="w-5 h-5 text-black/55 ml-4 shrink-0" aria-hidden="true" />
                   <input
                     type="text"
-                    placeholder="Search for a product"
+                    placeholder={t("searchPlaceholder")}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => setIsSearchFocused(true)}
@@ -377,11 +376,8 @@ function PredictPageContent() {
                     className="flex-1 px-3 py-3 bg-transparent text-black placeholder-black/65 text-xs sm:text-sm focus:outline-none"
                     autoComplete="off"
                   />
-                  <button type="submit"
-                    className=" px-6 py-3 bg-orange-dark/90 text-white text-xs sm:text-sm
-                          transition-all duration-300 hover:bg-orange hover:shadow-[0_4px_16px_rgba(255,145,77,0.4)]
-                          active:scale-95 shrink-0">
-                    Search
+                  <button type="submit" className="mr-2 px-6 py-2 bg-orange rounded-xl text-white text-xs sm:text-sm transition-all duration-300 hover:bg-orange-light hover:shadow-[0_4px_16px_rgba(255,145,77,0.4)] active:scale-95 shrink-0">
+                    {t("searchButton")}
                   </button>
                 </div>
               </form>
@@ -389,20 +385,24 @@ function PredictPageContent() {
               {isSearchFocused && searchSuggestions.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl border border-gray-100 shadow-[0_12px_48px_rgba(0,0,0,0.15)] overflow-hidden z-50 animate-fade-in">
                   <div className="px-3 py-2 border-b border-gray-100">
-                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Suggestions</span>
+                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t("suggestions")}</span>
                   </div>
                   {searchSuggestions.map((p) => {
                     const change = p.currentPrice === 0 ? 0 : ((p.predictedPrice - p.currentPrice) / p.currentPrice) * 100;
                     const isUp = change >= 0;
                     return (
                       <Link prefetch={false} key={p.id} href={`/Product/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-primary-50/60 transition-colors duration-200 border-b border-gray-50 last:border-0">
-                        <div className="w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl shrink-0">
-                          <img
+                        <div className="relative w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl shrink-0 overflow-hidden">
+                          <Image
                             src={p.image || DEFAULT_PRODUCT_IMAGE}
                             alt={p.name}
-                            className="w-full h-full object-cover rounded-xl"
+                            fill
+                            className="object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
+                              if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
+                                 target.srcset = "";
+                              }
                               if (target.src !== DEFAULT_PRODUCT_IMAGE) {
                                 target.src = DEFAULT_PRODUCT_IMAGE;
                               }
@@ -456,13 +456,17 @@ function PredictPageContent() {
               <div className="p-6 sm:p-8 flex-1 flex flex-col">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner flex items-center justify-center text-3xl">
-                      <img
+                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner flex items-center justify-center text-3xl overflow-hidden">
+                      <Image
                         src={featuredProduct.image || DEFAULT_PRODUCT_IMAGE}
                         alt={featuredProduct.name}
-                        className="w-full h-full object-cover rounded-xl"
+                        fill
+                        className="object-cover"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
+                          if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
+                             target.srcset = "";
+                          }
                           if (target.src !== DEFAULT_PRODUCT_IMAGE) {
                             target.src = DEFAULT_PRODUCT_IMAGE;
                           }
@@ -471,7 +475,7 @@ function PredictPageContent() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 text-primary-600 text-[10px] uppercase font-bold mb-1">
-                        <span>Featured Market Pulse</span>
+                        <span>{t("featuredMarketPulse")}</span>
                       </div>
                       <h2 className="text-xl sm:text-3xl font-bold text-gray-900 leading-tight">
                         {featuredProduct.variant && featuredProduct.variant !== "Standard" ? `${featuredProduct.name} (${featuredProduct.variant})` : featuredProduct.name}
@@ -497,7 +501,7 @@ function PredictPageContent() {
                 </div>
 
                 <div className="mb-4 text-wrap">
-                  <p className="text-gray-500  text-sm max-w-2xl line-clamp-2">
+                  <p className="text-gray-500 text-sm max-w-2xl line-clamp-2">
                     {featuredProduct.description}
                   </p>
                 </div>
@@ -515,11 +519,11 @@ function PredictPageContent() {
 
               <div className="px-8 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400 font-medium ">
                 <div className="flex gap-6">
-                  <span>Forecast Updated Today</span>
+                  <span>{t("forecastUpdatedToday")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-positive animate-pulse" />
-                  Live Market Data
+                  {t("liveMarketData")}
                 </div>
               </div>
 
@@ -604,20 +608,24 @@ function PredictPageContent() {
               <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow h-fit">
                 <div className="mb-6">
                   <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                    Trending Products
+                    {t("trendingProducts")}
                   </h3>
                 </div>
                 <div className="space-y-4">
                   {trendingProductsSide.map((p, i) => (
                     <Link prefetch={false} key={p.id} href={`/Product/${p.id}`} className="flex items-center justify-between group p-2 -mx-2 rounded-xl hover:bg-gray-50 transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg overflow-hidden border border-gray-100 shrink-0">
-                          <img
+                        <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-gray-100 shrink-0">
+                          <Image
                             src={p.image || DEFAULT_PRODUCT_IMAGE}
                             alt={p.name}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
+                              if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
+                                 target.srcset = "";
+                              }
                               if (target.src !== DEFAULT_PRODUCT_IMAGE) {
                                 target.src = DEFAULT_PRODUCT_IMAGE;
                               }
@@ -643,9 +651,9 @@ function PredictPageContent() {
                   ))}
                 </div>
               </div>
-              <Link href="/MarketData"
+              <Link href="/Table"
                 className="block w-full max-h-13 py-4 bg-primary-900 hover:bg-primary-800 text-white text-center font-bold rounded-2xl transition-all shadow-lg shadow-primary-900/10 text-sm active:scale-[0.98]">
-                View Full Table
+                {t("viewFullTable")}
               </Link>
             </div>
           </section>
@@ -655,8 +663,8 @@ function PredictPageContent() {
             <section ref={allMarketsRef} className="mt-12 scroll-mt-32 overflow-visible relative z-30">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-4">
                 <div>
-                  <h2 className="text-2xl lg:text-3xl font-black text-gray-900 mb-1">All Markets</h2>
-                  <p className="text-sm text-gray-500">Comprehensive price forecasts for all commodities</p>
+                  <h2 className="text-2xl lg:text-3xl font-black text-gray-900 mb-1">{t("allMarkets")}</h2>
+                  <p className="text-sm text-gray-500">{t("comprehensivePriceForecasts")}</p>
                 </div>
               </div>
 
@@ -676,7 +684,7 @@ function PredictPageContent() {
                           : "bg-white border-gray-100 text-gray-700 hover:border-primary-200 hover:bg-primary-50/30 hover:text-primary-800"
                           }`}
                       >
-                        <span className="text-xs font-bold">{cat}</span>
+                        <span className="text-xs font-bold">{t(cat)}</span>
                         <span className={`text-[10px] font-medium opacity-60 ${isActive ? "text-white" : "text-gray-400"}`}>
                           ({count})
                         </span>
@@ -716,7 +724,7 @@ function PredictPageContent() {
                               className={`w-full flex items-center justify-between px-5 py-2.5 text-xs font-bold transition-colors hover:bg-gray-50
                                  ${isActive ? "text-primary-800 bg-primary-50/50" : "text-gray-600 hover:text-primary-800"}`}
                             >
-                              <span>{cat}</span>
+                              <span>{t(cat)}</span>
                               <span className="text-[10px] opacity-60">({count})</span>
                             </button>
                           );
@@ -758,7 +766,7 @@ function PredictPageContent() {
                     className="group relative px-10 py-4 bg-white border border-gray-200 rounded-[2rem] text-primary-900 font-black uppercase tracking-[0.2em] text-[10px] hover:text-white transition-all duration-500 overflow-hidden shadow-lg hover:shadow-primary-900/20 active:scale-95"
                   >
                     <span className="relative z-10 flex items-center gap-2">
-                      Load More
+                      {t("loadMore")} <MoreHorizontal className="w-5 h-5" />
                     </span>
                     <div className="absolute inset-0 bg-primary-900 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
                   </button>
@@ -769,7 +777,6 @@ function PredictPageContent() {
 
         </div>
       </main>
-      <Footer />
     </>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 import { use, useMemo, useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowLeft,
   ArrowRight,
@@ -27,7 +28,9 @@ const ForecastChart = dynamic(() => import("../../components/ForecastChart"), {
 });
 import ProductCard from "../../components/ProductCard";
 import ScrollReveal from "../../components/ScrollReveal";
-import { Product, useProducts, fetchNews, DEFAULT_PRODUCT_IMAGE } from "../../lib/data";
+import { Product, fetchNews, DEFAULT_PRODUCT_IMAGE } from "../../lib/data";
+import { useLanguage } from "../../lib/i18n/LanguageContext";
+import { useProducts } from "../../lib/hooks";
 
 export default function ProductPage({
   params,
@@ -35,6 +38,7 @@ export default function ProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t } = useLanguage();
   const { data: products = [] } = useProducts();
   const product = useMemo(() => products.find((p) => p.id === id) || null, [products, id]);
 
@@ -289,16 +293,16 @@ export default function ProductPage({
         <main className="pt-20 min-h-screen bg-surface flex flex-col items-center justify-center">
           <div className="text-6xl mb-4">🔍</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Product Not Found
+            {t("productNotFound")}
           </h1>
           <p className="text-gray-500 mb-6">
-            The product you&apos;re looking for doesn&apos;t exist.
+            {t("productNotFoundDesc")}
           </p>
           <Link
             href="/Predict"
             className="px-6 py-3 bg-primary-800 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors"
           >
-            Back to Predict
+            {t("backToPredict")}
           </Link>
         </main>
         <Footer />
@@ -328,7 +332,7 @@ export default function ProductPage({
         ? "text-negative bg-negative/10"
         : "text-gray-600 bg-gray-100";
 
-  const trendLabel = product.sentiment === "Bullish" ? "Price Rising" : product.sentiment === "Bearish" ? "Price Dropping" : "Stable";
+  const trendLabel = product.sentiment === "Bullish" ? t("priceRising") : product.sentiment === "Bearish" ? t("priceDropping") : t("stable");
 
 
   const uniqueOrigins = Array.from(new Set(variants.map(v => v.origin || "Local")));
@@ -367,10 +371,9 @@ export default function ProductPage({
                 <Link
                   href="/Predict"
                   className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary-800 transition-colors"
-                  aria-label="Back to Predict"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Back to Predict
+                  {t("backToPredict")}
                 </Link>
                 <span className="text-gray-300" aria-hidden="true">/</span>
                 <span className="text-sm font-medium text-gray-900">
@@ -390,13 +393,17 @@ export default function ProductPage({
                 <div className="relative space-y-5">
                   {/* Top Row: Image + Identity */}
                   <div className="flex flex-row items-start gap-3 sm:flex-row sm:items-end sm:gap-10">
-                    <div className="shrink-0 w-25 h-25 sm:w-35 sm:h-35 rounded-xl bg-white overflow-hidden shadow-2xl border-4 border-white/20 transform hover:scale-105 transition-transform duration-500">
-                      <img
+                    <div className="relative shrink-0 w-24 h-24 sm:w-32 sm:h-32 rounded-xl bg-white overflow-hidden shadow-2xl border-4 border-white/20 transform hover:scale-105 transition-transform duration-500">
+                      <Image
                         src={product.image || DEFAULT_PRODUCT_IMAGE}
                         alt={product.name}
-                        className="w-full h-full object-cover rounded-xl"
+                        fill
+                        className="object-cover rounded-xl"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
+                          if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
+                             target.srcset = "";
+                          }
                           if (target.src !== DEFAULT_PRODUCT_IMAGE) {
                             target.src = DEFAULT_PRODUCT_IMAGE;
                           }
@@ -415,7 +422,7 @@ export default function ProductPage({
                               {trendLabel}
                             </span>
                             <span className="text-[8px] sm:text-xs font-bold text-accent bg-accent/10 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full border border-accent/20">
-                              {product.category}
+                              {t(product.category)}
                             </span>
                           </div>
                         </div>
@@ -423,7 +430,7 @@ export default function ProductPage({
                           className="text-lg sm:text-5xl font-bold text-white leading-tight mb-0.5 sm:mb-2 truncate w-full"
                           style={{ fontFamily: "var(--font-display)" }}
                         >
-                          {product.name}
+                          {t(product.name)}
                         </h1>
                         <div className="flex flex-row items-center gap-2 text-accent-light/80 text-xs sm:text-lg font-medium flex-wrap">
                           {/* Origin Selector */}
@@ -435,7 +442,7 @@ export default function ProductPage({
                                 : "bg-white/5 border-white/5 cursor-default"
                                 }`}
                             >
-                              <span className="text-xs sm:text-sm font-bold text-white whitespace-nowrap uppercase tracking-wider">{product.origin || "Local"}</span>
+                              <span className="text-xs sm:text-sm font-bold text-white whitespace-nowrap uppercase tracking-wider">{t(product.origin || "Local")}</span>
                               {uniqueOrigins.length > 1 && (
                                 <ChevronDown className={`w-4 h-4 text-white/60 transition-transform ${isOriginDropdownOpen ? 'rotate-180' : ''}`} />
                               )}
@@ -458,7 +465,7 @@ export default function ProductPage({
                                             : "hover:bg-gray-50 text-gray-600"
                                             }`}
                                         >
-                                          <span className="text-xs font-bold uppercase tracking-widest">{origin}</span>
+                                          <span className="text-xs font-bold uppercase tracking-widest">{t(origin)}</span>
                                           {(product.origin || "Local") === origin && <CheckCircle2 className="w-4 h-4 text-accent" />}
                                         </Link>
                                       ) : null;
@@ -540,10 +547,10 @@ export default function ProductPage({
                           className="text-2xl sm:text-2xl font-bold text-gray-900 mb-1"
                           style={{ fontFamily: "var(--font-display)" }}
                         >
-                          Market Price Forecast
+                          {t("marketPriceForecast")}
                         </h2>
                         <p className="text-gray-500 text-xs sm:text-sm">
-                          Real-time price insights with AI forecasting
+                          {t("marketPriceForecastDesc")}
                         </p>
                       </div>
                       <div className="flex items-center p-1 bg-gray-50 rounded-xl border border-gray-100 w-fit">
@@ -586,10 +593,10 @@ export default function ProductPage({
                             className="text-lg font-bold text-gray-900"
                             style={{ fontFamily: "var(--font-display)" }}
                           >
-                            AI Market Analysis
+                            {t("aiMarketAnalysis")}
                           </h2>
                           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">
-                            30-Day Outlook & Digest
+                            {t("aiMarketAnalysisDesc")}
                           </p>
                         </div>
                       </div>
@@ -600,7 +607,7 @@ export default function ProductPage({
                             {aiConfidence}% Confidence
                           </span>
                         </div>
-                        <span className="text-[8px] text-gray-400 font-bold mt-1 uppercase">Updated 2h ago</span>
+                        <span className="text-[8px] text-gray-400 font-bold mt-1 uppercase">{t("updatedAgo")}</span>
                       </div>
                     </div>
 
@@ -608,13 +615,13 @@ export default function ProductPage({
                       {/* Market Reasoning */}
                       <div className="flex flex-col">
                         <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
-                          Market Reasoning
+                          {t("marketReasoning")}
                         </h3>
                         <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 h-full relative">
                           {isAnalyzing ? (
                             <div className="flex flex-col items-center justify-center h-full gap-3 opacity-50">
                               <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                              <span className="text-xs font-medium text-gray-500">AI is analyzing market news...</span>
+                              <span className="text-xs font-medium text-gray-500">{t("aiAnalyzing")}</span>
                             </div>
                           ) : aiReasoning ? (
                             <p className="text-sm text-gray-600 leading-relaxed text-justify animate-in fade-in duration-500">
@@ -622,11 +629,9 @@ export default function ProductPage({
                             </p>
                           ) : (
                             <p className="text-sm text-gray-600 leading-relaxed text-justify">
-                              Based on our AI models analyzing historical market data, {product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name} shows a{" "}
-                              {isUp ? "strong upward" : "moderate downward"} trend.{" "}
-                              {isUp
-                                ? "Supply constraints and seasonal demand spikes indicate prices will likely rise significantly in the coming weeks."
-                                : "Inflow of new harvests and eased supply chain bottlenecks are projected to ease prices."}
+                              {t("aiFallbackIntro")} <span className="font-bold">{product.variant && product.variant !== "Standard" ? `${t(product.name)} (${product.variant})` : t(product.name)}</span> {t("showsA")}
+                              <span className="font-bold">{isUp ? t("strongUpward") : t("moderateDownward")}</span> {t("trend")}
+                              {isUp ? t("supplyConstraints") : t("inflowHarvests")}
                             </p>
                           )}
                         </div>
@@ -668,7 +673,7 @@ export default function ProductPage({
                                 <Calendar className="w-5 h-5" />
                               </div>
                               <span className="text-xs font-bold text-gray-900">
-                                View Daily Forecast
+                                {t("viewDailyForecast")}
                               </span>
                             </div>
                             <ChevronDown
@@ -724,19 +729,19 @@ export default function ProductPage({
                   <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
                     {[
                       {
-                        label: "Market Price",
+                        label: t("marketPrice"),
                         value: `₱${product.currentPrice.toFixed(2)}${product.unit ? ` / ${product.unit}` : ''}`,
                         icon: <BarChart3 className="w-4 h-4" />,
-                        sub: "Live NCR Rate",
+                        sub: t("liveNCRRate"),
                         color: "text-primary-800",
                         bg: "bg-primary-50/50",
                         border: "border-primary-100",
                       },
                       {
-                        label: "Volatility",
+                        label: t("volatility"),
                         value: `${isUp ? "+" : ""}${priceChangePercent.toFixed(1)}%`,
                         icon: isUp ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />,
-                        sub: "Weekly Change",
+                        sub: t("weeklyChange"),
                         color: isUp ? "text-positive" : "text-negative",
                         bg: isUp ? "bg-positive/5" : "bg-negative/5",
                         border: isUp ? "border-positive/20" : "border-negative/20",
@@ -766,32 +771,32 @@ export default function ProductPage({
                     const isBearish = product.sentiment === "Bearish";
                     const insight = isBullish
                       ? {
-                        title: "Buying Opportunity",
-                        message: `Prices rising by ${priceChangePercent.toFixed(1)}%. Markets are getting tighter.`,
-                        action: "Buy Now",
-                        recommendation: "Increase stock levels now to avoid higher costs later.",
-                        status: "Suggested Buy",
+                        title: t("buyingOpportunity"),
+                        message: `${t("pricesRisingBy")} ${priceChangePercent.toFixed(1)}%. ${t("marketsTighter")}`,
+                        action: "buyNow",
+                        recommendation: t("increaseStock"),
+                        status: t("suggestedBuy"),
                         statusBg: "bg-positive/10 text-positive",
                         pulseColor: "bg-positive",
                         glowColor: "from-positive/10 to-accent/5",
                       }
                       : isBearish
                         ? {
-                          title: "Wait to Purchase",
-                          message: `Prices dropping by ${Math.abs(priceChangePercent).toFixed(1)}%.`,
-                          action: "Wait",
-                          recommendation: "Wait for the price to drop further to save money.",
-                          status: "Hold Off",
+                          title: t("waitToPurchase"),
+                          message: `${t("pricesDroppingBy")} ${Math.abs(priceChangePercent).toFixed(1)}%.`,
+                          action: "waitAction",
+                          recommendation: t("waitForDrop"),
+                          status: t("holdOff"),
                           statusBg: "bg-negative/10 text-negative",
                           pulseColor: "bg-negative",
                           glowColor: "from-negative/10 to-accent/5",
                         }
                         : {
-                          title: "Stable Market",
-                          message: "Prices are following normal seasonal patterns.",
-                          action: "No Action",
-                          recommendation: "Continue your normal buying schedule.",
-                          status: "Monitor",
+                          title: t("stableMarket"),
+                          message: t("normalSeasonal"),
+                          action: "noAction",
+                          recommendation: t("continueNormal"),
+                          status: t("monitor"),
                           statusBg: "bg-gray-100 text-gray-600",
                           pulseColor: "bg-gray-400",
                           glowColor: "from-gray-100 to-transparent",
@@ -824,11 +829,11 @@ export default function ProductPage({
 
                           <div className="w-full pt-6 border-t border-gray-100 flex flex-col gap-4">
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Next Action</span>
-                              <span className="text-xs font-black text-primary-800 uppercase tracking-tight">{insight.action}</span>
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("nextAction")}</span>
+                              <span className="text-xs font-black text-primary-800 uppercase tracking-tight">{t(insight.action)}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Confidence Level</span>
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("confidenceLevel")}</span>
                               <div className="flex gap-1">
                                 {[1, 2, 3, 4, 5].map((s) => (
                                   <div key={s} className={`w-2 h-2 rounded-full ${s <= 4 ? "bg-accent" : "bg-gray-200"}`} />
@@ -854,9 +859,9 @@ export default function ProductPage({
                         </div>
                         <div>
                           <h3 className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
-                            Smart Alternatives
+                            {t("smartAlternatives")}
                           </h3>
-                          <p className="text-[10px] text-white/50 font-bold uppercase tracking-tighter">Better Value</p>
+                          <p className="text-[10px] text-white/50 font-bold uppercase tracking-tighter">{t("betterValue")}</p>
                         </div>
                       </div>
 
@@ -868,13 +873,17 @@ export default function ProductPage({
                             className="group flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-accent/40 transition-all duration-300"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/10 shrink-0 bg-white/5">
-                                <img
+                              <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-white/10 shrink-0 bg-white/5">
+                                <Image
                                   src={a.image || DEFAULT_PRODUCT_IMAGE}
                                   alt={a.name}
-                                  className="w-full h-full object-cover"
+                                  fill
+                                  className="object-cover"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
+                                    if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
+                                       target.srcset = "";
+                                    }
                                     if (target.src !== DEFAULT_PRODUCT_IMAGE) {
                                       target.src = DEFAULT_PRODUCT_IMAGE;
                                     }
@@ -908,16 +917,16 @@ export default function ProductPage({
                       className="text-xl sm:text-2xl font-bold text-gray-900"
                       style={{ fontFamily: "var(--font-display)" }}
                     >
-                      Suggested Products
+                      {t("suggestedProducts")}
                     </h2>
-                    <p className="text-gray-500 text-xs mt-1">Based on category and trends</p>
+                    <p className="text-gray-500 text-xs mt-1">{t("suggestedProductsDesc")}</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <Link
                       href="/MarketData"
                       className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-primary-800 hover:text-accent transition-colors"
                     >
-                      View all <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      {t("viewAll")} <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </Link>
                   </div>
                 </ScrollReveal>

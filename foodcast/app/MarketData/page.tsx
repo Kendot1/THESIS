@@ -2,17 +2,18 @@
 import { useState, useMemo, useEffect, useRef, useDeferredValue } from "react";
 import Link from "next/link";
 import { Search, ArrowUpDown, Filter, Eye, ArrowLeft, ChevronLeft, ChevronRight, X, SlidersHorizontal, ChevronDown } from "lucide-react";
-import { useRouter } from "next/navigation";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import { useRouter, useSearchParams } from "next/navigation";
 import SparklineChart from "../components/SparklineChart";
 import ScrollReveal from "../components/ScrollReveal";
-import { Product, useProducts, fetchCategories } from "../lib/data";
+import { Product, fetchCategories } from "../lib/data";
+import { useLanguage } from "../lib/i18n/LanguageContext";
+import { useProducts } from "../lib/hooks";
 
 type SortKey = "name" | "category" | "origin" | "currentPrice" | "predictedPrice" | "change" | "volume";
 type SortDir = "asc" | "desc";
 
 export default function MarketDataPage() {
+  const { t, isTransitioning } = useLanguage();
   const { data: products = [], isLoading } = useProducts();
 
   const [query, setQuery] = useState("");
@@ -189,11 +190,9 @@ export default function MarketDataPage() {
     </button>
   );
 
-  if (isLoading) {
+  if (isLoading || isTransitioning) {
     return (
-      <>
-        <Header />
-        <main className="min-h-screen bg-surface">
+      <main className="min-h-screen bg-surface">
           {/* Header Skeleton */}
           <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-7 sm:py-10 pt-22 sm:pt-25 overflow-hidden">
             <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
@@ -223,9 +222,9 @@ export default function MarketDataPage() {
               <div className="divide-y divide-gray-50">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                   <div key={i} className="flex items-center justify-between p-4 sm:px-8 py-5">
-                    <div className="flex flex-col gap-2 w-1/4">
-                      <div className="h-4 w-3/4 bg-gray-200 rounded-md animate-pulse" />
-                      <div className="h-3 w-1/2 bg-gray-100 rounded-md animate-pulse" />
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-positive animate-pulse" />
+                        <span className="text-gray-400 font-medium">{t("dataRefreshed")}</span>
                     </div>
                     <div className="h-6 w-20 bg-primary-100 rounded-lg animate-pulse hidden sm:block" />
                     <div className="h-5 w-16 bg-gray-200 rounded-md animate-pulse" />
@@ -236,15 +235,12 @@ export default function MarketDataPage() {
               </div>
             </div>
           </div>
-        </main>
-        <Footer />
-      </>
+      </main>
     );
   }
 
   return (
     <>
-      <Header />
       <main id="main-content">
         {/* ─── Header ──────────────────────────────────── */}
         <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-7 sm:py-10 pt-22 sm:pt-25 overflow-hidden">
@@ -258,19 +254,19 @@ export default function MarketDataPage() {
               className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-white/50 hover:text-white/80 transition-colors mb-4 sm:mb-5"
             >
               <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              Back to Home
+              {t("backToHome")}
             </Link>
             <h1
-              className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2"
+              className="text-[2rem] sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white mb-4 sm:mb-6 animate-fade-in-up"
               style={{ fontFamily: "var(--font-display)" }}
             >
-              Market{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light">
-                Data
+              {t("market")}{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent-light relative inline-block">
+                {t("data")}
               </span>
             </h1>
-            <p className="text-white/50 max-w-xl text-sm sm:text-base">
-              Comprehensive data view of all tracked agri-fishery products
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/70 max-w-2xl font-light animate-fade-in-up" style={{ animationDelay: "100ms" }}>
+              {t("marketDataSubtitle")}
             </p>
           </div>
         </section>
@@ -286,7 +282,7 @@ export default function MarketDataPage() {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-primary-600 transition-colors" />
                     <input
                       type="text"
-                      placeholder="Search markets or products..."
+                      placeholder={t("searchMarketsPlaceholder")}
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder-gray-400
@@ -325,7 +321,7 @@ export default function MarketDataPage() {
                             }`}
                           aria-pressed={isActive}
                         >
-                          {cat}
+                          {t(cat)}
                           <span className={`text-[10px] font-medium opacity-60 ${isActive ? "text-white" : "text-gray-400"}`}>
                             ({count})
                           </span>
@@ -345,7 +341,7 @@ export default function MarketDataPage() {
                           }`}
                         aria-expanded={showMoreCategories}
                       >
-                        {categories.slice(visibleCount).includes(selectedCategory) ? selectedCategory : "More"}
+                        {categories.slice(visibleCount).includes(selectedCategory) ? t(selectedCategory) : t("more")}
                         <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${showMoreCategories ? "rotate-180" : ""}`} />
                       </button>
 
@@ -365,7 +361,7 @@ export default function MarketDataPage() {
                                 className={`w-full flex items-center justify-between px-5 py-2.5 text-xs font-bold transition-colors hover:bg-gray-50
                                   ${isActive ? "text-primary-800 bg-primary-50/50" : "text-gray-600 hover:text-primary-800"}`}
                               >
-                                <span>{cat}</span>
+                                <span>{t(cat)}</span>
                                 <span className="text-[10px] opacity-60">({count})</span>
                               </button>
                             );
@@ -381,35 +377,35 @@ export default function MarketDataPage() {
               {isFilterOpen && (
                 <div className="mt-4 p-6 bg-white rounded-[2rem] border border-gray-100 shadow-xl animate-in fade-in slide-in-from-top-4 duration-300">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-sm font-bold text-gray-900">Advanced Filter Options</h3>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">{t("advancedFilters")}</span>
                     <button onClick={() => setIsFilterOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
                       <X className="w-4 h-4 text-gray-400" />
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Price Range</label>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("priceRange")}</label>
                       <select
                         value={priceRange}
                         onChange={(e) => setPriceRange(e.target.value)}
                         className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-primary-500"
                       >
-                        <option>All Prices</option>
-                        <option>Below ₱50</option>
-                        <option>₱50 - ₱100</option>
-                        <option>Above ₱100</option>
+                        <option value="All">{t("allPrices")}</option>
+                        <option value="Below ₱50">{t("below50")}</option>
+                        <option value="₱50 - ₱100">₱50 - ₱100</option>
+                        <option value="Above ₱100">{t("above100")}</option>
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Market / Origin</label>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("marketOrigin")}</label>
                       <select
                         value={selectedOrigin}
                         onChange={(e) => setSelectedOrigin(e.target.value)}
                         className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-primary-500"
                       >
-                        <option value="All">All Locations</option>
+                        <option value="All">{t("allLocations")}</option>
                         {uniqueOrigins.map(origin => (
-                          <option key={origin} value={origin}>{origin}</option>
+                          <option key={origin} value={origin}>{t(origin)}</option>
                         ))}
                       </select>
                     </div>
@@ -420,32 +416,32 @@ export default function MarketDataPage() {
           </ScrollReveal>
 
           {/* ─── Data Table ───────────────────────────────── */}
-          <div className="bg-white/40 backdrop-blur-md rounded-[1.5rem] border border-white/50 shadow-xl overflow-hidden relative z-10">
+          <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-xl overflow-hidden relative z-10">
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full" role="grid" aria-label="Product prices table">
                 <thead>
                   <tr className="border-b border-black/5 text-white bg-primary-700">
                     <th className="text-left px-6 lg:px-8 py-4">
-                      <SortHeader label="Product" sortKeyName="name" />
+                      <SortHeader label={t("product")} sortKeyName="name" />
                     </th>
                     <th className="text-center px-6 lg:px-8 py-4 ">
-                      <SortHeader label="Category" sortKeyName="category" center />
+                      <SortHeader label={t("category")} sortKeyName="category" center />
                     </th>
                     <th className="text-center px-6 lg:px-8 py-4">
-                      <SortHeader label="Origin" sortKeyName="origin" center />
+                      <SortHeader label={t("origin")} sortKeyName="origin" center />
                     </th>
                     <th className="text-center px-6 lg:px-8 py-4">
-                      <SortHeader label="Unit" sortKeyName="volume" center />
+                      <SortHeader label={t("unit")} sortKeyName="volume" center />
                     </th>
                     <th className="text-center px-6 lg:px-8 py-4">
-                      <SortHeader label="Current Price" sortKeyName="currentPrice" center />
+                      <SortHeader label={t("currentPrice")} sortKeyName="currentPrice" center />
                     </th>
                     <th className="text-center px-6 lg:px-8 py-4">
-                      <SortHeader label="Predicted" sortKeyName="predictedPrice" center />
+                      <SortHeader label={t("predictedPrice")} sortKeyName="predictedPrice" center />
                     </th>
                     <th className="text-center px-6 lg:px-8 py-4">
-                      <SortHeader label="Change" sortKeyName="change" center />
+                      <SortHeader label={t("change")} sortKeyName="change" center />
                     </th>
                   </tr>
                 </thead>
@@ -468,20 +464,20 @@ export default function MarketDataPage() {
                           <div className="flex items-center gap-4">
                             <div className="flex flex-col">
                               <span className="font-bold text-sm text-gray-900 group-hover:text-primary-800 transition-colors">
-                                {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name}
+                                {t(p.name)} {p.variant && p.variant !== "Standard" ? `(${p.variant})` : ""}
                               </span>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 lg:px-8 py-3 text-center">
-                          <span className="inline-block text-[10px] font-bold text-primary-700 bg-primary-100/50 backdrop-blur-sm px-2.5 py-1 rounded-lg">
-                            {p.category}
+                          <span className="inline-block text-[10px] font-bold text-primary-700 bg-primary-50 px-2.5 py-1 rounded-lg">
+                            {t(p.category)}
                           </span>
                         </td>
                         <td className="px-6 lg:px-8 py-3 text-center">
                           {p.origin ? (
                             <span className="inline-block text-[10px] font-bold text-orange-dark bg-orange-light/10 px-2.5 py-1 rounded-lg uppercase tracking-wider">
-                              {p.origin}
+                              {t(p.origin)}
                             </span>
                           ) : (
                             <span className="text-xs text-gray-400 font-bold">-</span>
@@ -542,14 +538,14 @@ export default function MarketDataPage() {
                       <div className="flex items-center gap-3">
                         <div>
                           <div className="text-base font-bold text-gray-900">
-                            {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name}
+                            {t(p.name)} {p.variant && p.variant !== "Standard" ? `(${p.variant})` : ""}
                           </div>
                           <span className="text-[10px] font-bold text-primary-700 bg-primary-100/60 px-2 py-0.5 rounded-lg mr-1.5 uppercase">
-                            {p.category}
+                            {t(p.category)}
                           </span>
                           {p.origin && (
                             <span className="text-[10px] font-bold text-orange-dark bg-orange-light/10 px-2 py-0.5 rounded-lg uppercase tracking-wide">
-                              {p.origin}
+                              {t(p.origin)}
                             </span>
                           )}
                         </div>
@@ -566,7 +562,7 @@ export default function MarketDataPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
-                          Current
+                          {t("current")}
                         </div>
                         <div className="text-sm font-bold text-gray-900 tabular-nums">
                           ₱{p.currentPrice.toFixed(2)}
@@ -574,7 +570,7 @@ export default function MarketDataPage() {
                       </div>
                       <div>
                         <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
-                          Predicted
+                          {t("predicted")}
                         </div>
                         <div className={`text-sm font-black tabular-nums ${isUp ? "text-positive" : "text-negative"}`}>
                           ₱{p.predictedPrice.toFixed(2)}
@@ -589,10 +585,10 @@ export default function MarketDataPage() {
             {sortedProducts.length === 0 && (
               <div className="text-center py-12 sm:py-16">
                 <h3 className="text-sm sm:text-base font-semibold text-gray-700 mb-1">
-                  No results found
+                  {t("noResults")}
                 </h3>
                 <p className="text-gray-500 text-xs sm:text-sm">
-                  Try different filters or search terms
+                  {t("tryDifferentFilters")}
                 </p>
               </div>
             )}
@@ -600,8 +596,8 @@ export default function MarketDataPage() {
             {/* Pagination + Summary row */}
             <div className="px-4 sm:px-6 py-4 bg-surface-warm/50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-[11px] sm:text-xs font-medium text-gray-500">
-                  Showing <span className="text-primary-800 font-bold">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="text-primary-800 font-bold">{Math.min(currentPage * itemsPerPage, sortedProducts.length)}</span> of <span className="text-primary-800 font-bold">{sortedProducts.length}</span> products
+                <span className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  {t("showing")} <span className="text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> {t("to")} <span className="text-gray-900">{Math.min(currentPage * itemsPerPage, sortedProducts.length)}</span> {t("of")} <span className="text-gray-900">{sortedProducts.length}</span> {t("products")}
                 </span>
               </div>
 
@@ -658,13 +654,12 @@ export default function MarketDataPage() {
               )}
 
               <span className="text-[11px] sm:text-xs text-gray-400 font-medium">
-                Data refreshed hourly
+                {t("dataRefreshedHourly")}
               </span>
             </div>
           </div>
         </div>
       </main>
-      <Footer />
     </>
   );
 }
