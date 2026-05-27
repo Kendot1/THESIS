@@ -5,9 +5,19 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from "react-le
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { MarketLocation, getNearestMarkets } from "../lib/markets";
-import { Search, Navigation, MapPin, TrendingUp, TrendingDown, ExternalLink, Crosshair, Locate, Box } from "lucide-react";
+import { MapPin, ExternalLink, Layers } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "../lib/i18n/LanguageContext";
+
+// Map styles configuration
+const MAP_STYLES = [
+  { id: 'standard', name: 'Standard', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap contributors' },
+  { id: 'satellite', name: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community' },
+  { id: 'humanitarian', name: 'Humanitarian', url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap contributors, Tiles style by Humanitarian OpenStreetMap Team hosted by OpenStreetMap France' },
+  { id: 'positron', name: 'Positron (Light)', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap &copy; CARTO' },
+  { id: 'dark_matter', name: 'Dark Matter', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap &copy; CARTO' },
+  { id: 'esri_street', name: 'Esri Street', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012' }
+];
 
 // Fix Leaflet's default icon path issues in Next.js
 const customMarkerIcon = new L.Icon({
@@ -29,42 +39,44 @@ const userMarkerIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-// Create custom colored markers
+// Pre-create the icons to prevent massive memory leaks and re-renders
+const selectedIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const nearestIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const defaultIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 const getMarkerIcon = (isNearest: boolean, isSelected: boolean) => {
-  if (isSelected) {
-    return new L.Icon({
-      iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
-      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41]
-    });
-  }
-  if (isNearest) {
-    return new L.Icon({
-      iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png",
-      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41]
-    });
-  }
-  return new L.Icon({
-    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-  });
+  if (isSelected) return selectedIcon;
+  if (isNearest) return nearestIcon;
+  return defaultIcon;
 };
 
 // Component to handle map view updates when selected market changes
 function MapController({ center, zoom }: { center: [number, number] | null, zoom: number }) {
   const map = useMap();
-  
+
   // Fix leaflet size issues in dynamic containers
   useEffect(() => {
     // Immediate checks after render
@@ -93,7 +105,7 @@ function MapController({ center, zoom }: { center: [number, number] | null, zoom
       map.setView(center, zoom, { animate: true, duration: 1 });
     }
     // Deep equality check on center array to prevent infinite re-renders
-  }, [center?.[0], center?.[1], zoom, map]); 
+  }, [center?.[0], center?.[1], zoom, map]);
   return null;
 }
 
@@ -105,10 +117,15 @@ interface MarketMapProps {
   onMarketSelect: (id: string) => void;
 }
 
+
+
 export default function MarketMap({ markets, marketStats, userLocation, selectedMarketId, onMarketSelect }: MarketMapProps) {
   const { t } = useLanguage();
   const router = useRouter();
-  
+  const [mapStyleId, setMapStyleId] = useState('standard');
+  const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
+  const activeStyle = MAP_STYLES.find(s => s.id === mapStyleId) || MAP_STYLES[0];
+
   // NCR Bounds to restrict panning
   const ncrBounds = L.latLngBounds(
     [14.33, 120.88], // SouthWest
@@ -116,8 +133,8 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
   );
 
   const selectedMarket = markets.find(m => m.id === selectedMarketId);
-  const mapCenter: [number, number] = selectedMarket 
-    ? [selectedMarket.lat, selectedMarket.lng] 
+  const mapCenter: [number, number] = selectedMarket
+    ? [selectedMarket.lat, selectedMarket.lng]
     : userLocation ? [userLocation.lat, userLocation.lng] : [14.5995, 120.9842]; // Default: Manila
 
   return (
@@ -128,23 +145,58 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
         minZoom={11}
         maxBounds={ncrBounds}
         maxBoundsViscosity={1.0}
+        preferCanvas={true} // Performance optimization
         style={{ height: "100%", width: "100%", position: "absolute", top: 0, left: 0, zIndex: 0 }}
         zoomControl={false}
       >
         <MapController center={mapCenter} zoom={selectedMarket ? 15 : 12} />
-        
-        {/* Custom Zoom Control Positioned at top-right corner with a gap */}
-        <div className="leaflet-top leaflet-right absolute z-[1000]">
-          <div className="leaflet-control-zoom leaflet-bar leaflet-control !mt-4 !mr-4 lg:!mt-6 lg:!mr-6 border-none shadow-lg rounded-2xl overflow-hidden bg-white">
+
+
+        {/* Custom Map Controls - Top Right */}
+        <div className="leaflet-top leaflet-right absolute z-[1000] pointer-events-none flex flex-col items-end gap-3 pt-4 pr-4 lg:pt-6 lg:pr-6 w-full">
+          {/* Zoom Controls */}
+          <div className="leaflet-control-zoom leaflet-bar leaflet-control !m-0 border-none shadow-lg rounded-2xl overflow-hidden bg-white pointer-events-auto">
             <a className="leaflet-control-zoom-in !w-8 !h-8 !text-lg lg:!w-10 lg:!h-10 lg:!text-xl flex items-center justify-center hover:bg-gray-50 border-b border-gray-100 text-gray-700" href="#" title="Zoom in" role="button" aria-label="Zoom in" onClick={(e) => e.preventDefault()}>+</a>
             <a className="leaflet-control-zoom-out !w-8 !h-8 !text-lg lg:!w-10 lg:!h-10 lg:!text-xl flex items-center justify-center hover:bg-gray-50 text-gray-700" href="#" title="Zoom out" role="button" aria-label="Zoom out" onClick={(e) => e.preventDefault()}>−</a>
           </div>
+
+          {/* Style Selector */}
+          <div className="leaflet-control !m-0 pointer-events-auto relative">
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsStyleMenuOpen(!isStyleMenuOpen); }}
+              className="w-8 h-8 lg:w-10 lg:h-10 bg-white rounded-2xl shadow-lg flex items-center justify-center text-gray-700 hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
+              title="Change Map Style"
+            >
+              <Layers className="w-4 h-4 lg:w-5 lg:h-5" />
+            </button>
+
+            {isStyleMenuOpen && (
+              <div className="absolute top-0 right-12 lg:right-14 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex flex-col py-2 animate-in fade-in zoom-in-95 duration-200">
+                <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50 mb-1">
+                  Map Style
+                </div>
+                {MAP_STYLES.map(style => (
+                  <button
+                    key={style.id}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMapStyleId(style.id); setIsStyleMenuOpen(false); }}
+                    className={`px-4 py-2.5 text-left text-xs lg:text-sm font-medium transition-colors hover:bg-gray-50 ${mapStyleId === style.id ? 'text-primary-700 bg-primary-50/50' : 'text-gray-700'}`}
+                  >
+                    {style.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* We use standard OpenStreetMap tiles */}
+        {/* Dynamic Tile Layer */}
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+          key={activeStyle.id}
+          attribution={activeStyle.attribution}
+          url={activeStyle.url}
+          keepBuffer={4} // Performance: Keep tiles loaded off-screen
+          updateWhenZooming={false} // Performance: Don't load during zoom animation
+          updateWhenIdle={true}
         />
 
         {/* User Location */}
@@ -158,10 +210,10 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
                 </div>
               </Popup>
             </Marker>
-            <Circle 
-              center={[userLocation.lat, userLocation.lng]} 
-              radius={2000} 
-              pathOptions={{ fillColor: '#3b82f6', fillOpacity: 0.1, color: '#3b82f6', weight: 1 }} 
+            <Circle
+              center={[userLocation.lat, userLocation.lng]}
+              radius={2000}
+              pathOptions={{ fillColor: '#3b82f6', fillOpacity: 0.1, color: '#3b82f6', weight: 1 }}
             />
           </>
         )}
@@ -170,11 +222,11 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
         {markets.map((market, index) => {
           const stats = marketStats[market.name] || { count: 0, avgChange: 0 };
           const hasData = stats.count > 0;
-          
+
           // Determine states for icon coloring
           const isNearest = userLocation !== null && index === 0;
           const isSelected = market.id === selectedMarketId;
-          
+
           return (
             <Marker
               key={market.id}
@@ -188,13 +240,13 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
                 <div className="w-full flex flex-col">
                   {/* Image Header - Edge to Edge */}
                   <div className="w-full h-32 relative bg-gray-100 shrink-0">
-                    <img 
-                      src={market.image || "https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=2070&auto=format&fit=crop"} 
+                    <img
+                      src={market.image || "https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=2070&auto=format&fit=crop"}
                       alt={market.name}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-                    
+
                     {/* Badge */}
                     <div className="absolute top-3 left-3 text-white">
                       <span className="text-[8px] font-bold uppercase tracking-widest bg-black/40 backdrop-blur-md px-2 py-1 rounded-full border border-white/10">
@@ -216,7 +268,7 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
                   <div className="p-4 bg-white">
                     <p className="text-[11px] text-gray-500 leading-relaxed mb-3">{market.description}</p>
 
-                    <button 
+                    <button
                       onClick={() => router.push(`/MarketData?origin=${encodeURIComponent(market.name)}`)}
                       className="w-full flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold py-3 rounded-xl transition-all shadow-md shadow-primary-600/20 hover:shadow-lg hover:shadow-primary-600/30 active:scale-[0.98]"
                     >
