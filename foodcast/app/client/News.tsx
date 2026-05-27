@@ -1,8 +1,8 @@
 "use client";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+
+
 import NewsCard from "../components/NewsCard";
 import ScrollReveal from "../components/ScrollReveal";
 import Image from "next/image";
@@ -94,7 +94,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
 
   return (
     <>
-      <Header />
+
       <main className="min-h-screen bg-surface">
         {/* Premium Hero Section */}
         <section className="relative bg-primary-900 pt-30 md:pt-40 pb-10 md:pb-20 overflow-hidden">
@@ -396,7 +396,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
           )}
         </section>
       </main>
-      <Footer />
+
     </>
   );
 }

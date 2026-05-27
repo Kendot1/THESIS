@@ -27,7 +27,13 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
   const [selectedOrigin, setSelectedOrigin] = useState("All");
   const [showMoreCategories, setShowMoreCategories] = useState(false);
   const [visibleCount, setVisibleCount] = useState(6);
+  const [isPriceRangeOpen, setIsPriceRangeOpen] = useState(false);
+  const [isOriginOpen, setIsOriginOpen] = useState(false);
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const priceRangeRef = useRef<HTMLDivElement>(null);
+  const originRef = useRef<HTMLDivElement>(null);
+  
   const itemsPerPage = 12;
   const router = useRouter();
 
@@ -49,11 +55,17 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
     return () => window.removeEventListener('resize', updateCount);
   }, []);
 
-  // Close category dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowMoreCategories(false);
+      }
+      if (priceRangeRef.current && !priceRangeRef.current.contains(event.target as Node)) {
+        setIsPriceRangeOpen(false);
+      }
+      if (originRef.current && !originRef.current.contains(event.target as Node)) {
+        setIsOriginOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -383,31 +395,92 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                     </button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
+                    <div className="space-y-2" ref={priceRangeRef}>
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("priceRange")}</label>
-                      <select
-                        value={priceRange}
-                        onChange={(e) => setPriceRange(e.target.value)}
-                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-primary-500"
-                      >
-                        <option value="All">{t("allPrices")}</option>
-                        <option value="Below ₱50">{t("below50")}</option>
-                        <option value="₱50 - ₱100">₱50 - ₱100</option>
-                        <option value="Above ₱100">{t("above100")}</option>
-                      </select>
+                      <div className="relative">
+                        <button
+                          onClick={() => setIsPriceRangeOpen(!isPriceRangeOpen)}
+                          className="w-full flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors focus:outline-none focus:border-primary-500"
+                        >
+                          <span className="text-xs font-bold text-gray-700">
+                            {priceRange === "All" || priceRange === "All Prices" ? t("allPrices") : 
+                             priceRange === "Below ₱50" ? t("below50") : 
+                             priceRange === "₱50 - ₱100" ? "₱50 - ₱100" : 
+                             t("above100")}
+                          </span>
+                          <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isPriceRangeOpen ? "rotate-180" : ""}`} />
+                        </button>
+                        {isPriceRangeOpen && (
+                          <div className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-100 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="flex flex-col py-1">
+                              {[
+                                { value: "All Prices", label: t("allPrices") },
+                                { value: "Below ₱50", label: t("below50") },
+                                { value: "₱50 - ₱100", label: "₱50 - ₱100" },
+                                { value: "Above ₱100", label: t("above100") }
+                              ].map((option) => (
+                                <button
+                                  key={option.value}
+                                  onClick={() => {
+                                    setPriceRange(option.value);
+                                    setIsPriceRangeOpen(false);
+                                  }}
+                                  className={`px-4 py-2 text-left text-xs font-bold transition-colors ${
+                                    (priceRange === option.value || (priceRange === "All" && option.value === "All Prices")) ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
+                                  }`}
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2" ref={originRef}>
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("marketOrigin")}</label>
-                      <select
-                        value={selectedOrigin}
-                        onChange={(e) => setSelectedOrigin(e.target.value)}
-                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-primary-500"
-                      >
-                        <option value="All">{t("allLocations")}</option>
-                        {uniqueOrigins.map(origin => (
-                          <option key={origin} value={origin}>{t(origin)}</option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <button
+                          onClick={() => setIsOriginOpen(!isOriginOpen)}
+                          className="w-full flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors focus:outline-none focus:border-primary-500"
+                        >
+                          <span className="text-xs font-bold text-gray-700 truncate mr-2">
+                            {selectedOrigin === "All" ? t("allLocations") : t(selectedOrigin)}
+                          </span>
+                          <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 text-gray-400 transition-transform ${isOriginOpen ? "rotate-180" : ""}`} />
+                        </button>
+                        {isOriginOpen && (
+                          <div className="absolute top-full left-0 mt-2 w-full max-h-60 overflow-y-auto bg-white border border-gray-100 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] z-50 animate-in fade-in slide-in-from-top-2 duration-200 scrollbar-hide">
+                            <div className="flex flex-col py-1">
+                              <button
+                                onClick={() => {
+                                  setSelectedOrigin("All");
+                                  setIsOriginOpen(false);
+                                }}
+                                className={`px-4 py-2 text-left text-xs font-bold transition-colors ${
+                                  selectedOrigin === "All" ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
+                                }`}
+                              >
+                                {t("allLocations")}
+                              </button>
+                              {uniqueOrigins.map((origin) => (
+                                <button
+                                  key={origin}
+                                  onClick={() => {
+                                    setSelectedOrigin(origin);
+                                    setIsOriginOpen(false);
+                                  }}
+                                  className={`px-4 py-2 text-left text-xs font-bold transition-colors ${
+                                    selectedOrigin === origin ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
+                                  }`}
+                                >
+                                  {t(origin)}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

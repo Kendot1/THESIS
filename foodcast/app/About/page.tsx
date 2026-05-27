@@ -17,8 +17,8 @@ import {
   Link as LinkIcon,
 } from "lucide-react";
 import { Drawer } from "vaul";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+
+
 import Image from "next/image";
 import WaveDivider from "../components/WaveDivider";
 import ScrollReveal from "../components/ScrollReveal";
@@ -88,7 +88,7 @@ export default function AboutPage() {
   if (isLoading || isTransitioning) {
     return (
       <div className="flex flex-col min-h-screen bg-surface">
-        <Header />
+
         <main className="flex-grow">
           {/* Hero Skeleton */}
           <section className="relative py-12 sm:py-20 pt-28 sm:pt-36 bg-primary-900 overflow-hidden">
@@ -131,14 +131,14 @@ export default function AboutPage() {
             </div>
           </section>
         </main>
-        <Footer />
+
       </div>
     );
   }
 
   return (
     <>
-      <Header />
+
       {/* Pillar Data for the Filipino Market section */}
       {(() => {
         const pillarData = [
@@ -568,7 +568,7 @@ export default function AboutPage() {
           </main>
         );
       })()}
-      <Footer />
+
     </>
   );
 }

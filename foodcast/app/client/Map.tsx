@@ -34,47 +34,46 @@ export default function MapClient({ marketStats, initialMarkets }: MapProps) {
   const [markets, setMarkets] = useState<(MarketLocation & { distance?: number })[]>(initialMarkets);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false); // Mobile drawer state
 
-  // Helper: apply location result
-  const applyLocation = (lat: number, lng: number, isApproximate = false) => {
+  // Auto-dismiss location error after 4 seconds
+  useEffect(() => {
+    if (locError) {
+      const timer = setTimeout(() => setLocError(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [locError]);
+
+  // Helper: check accuracy and apply location result
+  const applyLocation = (pos: GeolocationPosition, resolve?: (val: boolean) => void) => {
+    // Reject locations that are not precise (e.g. IP-based desktop locations)
+    // 2000 meters is a reasonable cutoff for GPS/Wi-Fi vs IP-based accuracy.
+    if (pos.coords.accuracy > 2000) {
+      setLocError("Please enable GPS/Location Services for accurate tracking.");
+      setIsLocating(false);
+      if (resolve) resolve(false);
+      return;
+    }
+
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
     setUserLoc({ lat, lng });
-    setLocError(isApproximate ? "Showing approximate location (IP-based). For accurate location, enable Location Services in your device settings." : null);
+    setLocError(null);
+    setSelectedMarketId(null);
     const sorted = getNearestMarkets(initialMarkets, lat, lng);
     setMarkets(sorted);
     setIsLocating(false);
+    if (resolve) resolve(true);
   };
 
-  // Tier 3 Fallback: IP-based geolocation
-  const fallbackToIPLocation = async (): Promise<boolean> => {
-    try {
-      const res = await fetch("https://ipapi.co/json/");
-      if (!res.ok) throw new Error("IP lookup failed");
-      const data = await res.json();
-      if (data.latitude && data.longitude) {
-        applyLocation(data.latitude, data.longitude, true);
-        return true;
-      }
-      throw new Error("No coordinates");
-    } catch {
-      return false;
-    }
-  };
-
-  // Tier 2 Fallback: Browser geolocation WITHOUT high accuracy (uses Wi-Fi/cell, faster)
+  // Fallback: Browser geolocation WITHOUT high accuracy (uses Wi-Fi/cell, faster)
   const tryLowAccuracy = (): Promise<boolean> => {
     return new Promise((resolve) => {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          applyLocation(pos.coords.latitude, pos.coords.longitude);
-          resolve(true);
-        },
-        async () => {
-          // Both browser methods failed — try IP as last resort
-          const ipSuccess = await fallbackToIPLocation();
-          if (!ipSuccess) {
-            setLocError("Could not determine location. Please enable Location Services in your device settings.");
-            setIsLocating(false);
-          }
-          resolve(ipSuccess);
+        (pos) => applyLocation(pos, resolve),
+        () => {
+          // Both browser methods failed
+          setLocError("Please enable GPS/Location Services for accurate tracking.");
+          setIsLocating(false);
+          resolve(false);
         },
         { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
       );
@@ -85,29 +84,22 @@ export default function MapClient({ marketStats, initialMarkets }: MapProps) {
   const requestLocation = () => {
     setIsLocating(true);
     setLocError(null);
-    setSelectedMarketId(null);
 
     if ("geolocation" in navigator) {
-      // Tier 1: Try high-accuracy first (GPS on phones)
+      // Try high-accuracy first (GPS on phones)
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          applyLocation(pos.coords.latitude, pos.coords.longitude);
-        },
+        (pos) => applyLocation(pos),
         () => {
-          // High accuracy failed — try low accuracy (Tier 2)
+          // High accuracy failed — try low accuracy
           console.warn("High-accuracy geolocation failed, trying low accuracy...");
           tryLowAccuracy();
         },
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
       );
     } else {
-      // No browser geolocation at all — try IP fallback
-      fallbackToIPLocation().then(success => {
-        if (!success) {
-          setLocError("Geolocation not supported by this browser.");
-          setIsLocating(false);
-        }
-      });
+      // No browser geolocation at all
+      setLocError("Please enable GPS/Location Services for accurate tracking.");
+      setIsLocating(false);
     }
   };
 
@@ -173,9 +165,13 @@ export default function MapClient({ marketStats, initialMarkets }: MapProps) {
             </span>
           </button>
 
-          {/* Location error toast on map - only show if no location found */}
+          {/* Location error toast - Top Center */}
           {locError && !userLoc && (
-            <div className="absolute bottom-24 lg:bottom-6 left-6 z-[1001] bg-red-50 border border-red-200 text-red-700 text-xs font-medium px-4 py-3 rounded-xl shadow-lg max-w-xs">
+            <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[2000] bg-red-50 border border-red-200 text-red-700 text-xs lg:text-sm font-bold px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 max-w-[90vw] text-center w-max transition-all duration-300 ease-out animate-in fade-in slide-in-from-top-4">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+              </span>
               {locError}
             </div>
           )}
@@ -216,11 +212,6 @@ export default function MapClient({ marketStats, initialMarkets }: MapProps) {
               <p className="hidden lg:block text-sm text-gray-500 font-medium">
                 Find nearest markets and live commodity prices.
               </p>
-              {locError && !userLoc && (
-                <p className="text-xs text-orange-600 mt-2 font-medium bg-orange-50 px-3 py-2 rounded-lg">
-                  {locError}
-                </p>
-              )}
               {userLoc && (
                 <p className="text-xs text-primary-600 mt-2 font-medium bg-primary-50 px-3 py-2 rounded-lg flex items-center gap-1.5">
                   <Locate className="w-3 h-3" />

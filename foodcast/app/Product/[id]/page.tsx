@@ -20,8 +20,8 @@ import {
   ChevronDown,
   Activity,
 } from "lucide-react";
-import Header from "../../components/Header";
-import Footer from "../../components/Footer";
+
+
 import dynamic from "next/dynamic";
 const ForecastChart = dynamic(() => import("../../components/ForecastChart"), {
   ssr: false,
@@ -188,7 +188,7 @@ export default function ProductPage({
   if (products.length === 0) {
     return (
       <>
-        <Header />
+
         <main className="min-h-screen bg-surface pt-20">
           <div className="border-b border-gray-100/50 bg-white/5">
             <div className="max-w-7xl mx-auto px-5 lg:px-10 pt-3 h-10 flex items-center">
@@ -281,7 +281,7 @@ export default function ProductPage({
             </div>
           </div>
         </main>
-        <Footer />
+
       </>
     );
   }
@@ -289,7 +289,7 @@ export default function ProductPage({
   if (!product) {
     return (
       <>
-        <Header />
+
         <main className="pt-20 min-h-screen bg-surface flex flex-col items-center justify-center">
           <div className="text-6xl mb-4">🔍</div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
@@ -305,7 +305,7 @@ export default function ProductPage({
             {t("backToPredict")}
           </Link>
         </main>
-        <Footer />
+
       </>
     );
   }
@@ -351,7 +351,7 @@ export default function ProductPage({
 
   return (
     <>
-      <Header />
+
       <main id="main-content" className="relative pt-20 min-h-screen bg-surface overflow-hidden">
         {/* ─── Page Top Design ────────────────────────── */}
         <div className="absolute top-0 left-0 right-0 h-[500px] pointer-events-none overflow-hidden" aria-hidden="true">
@@ -984,7 +984,7 @@ export default function ProductPage({
           </div>
         </div>
       </main>
-      <Footer />
+
     </>
   );
 }

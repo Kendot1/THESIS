@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+
+
 import Image from "next/image";
 import ScrollReveal from "../components/ScrollReveal";
 import { useLanguage } from "../lib/i18n/LanguageContext";
@@ -147,7 +147,7 @@ export default function ResourcesPage() {
     if (isLoading || isTransitioning) {
         return (
             <div className="flex flex-col min-h-screen bg-surface">
-                <Header />
+
                 <main className="flex-grow">
                     {/* Hero Skeleton */}
                     <section className="relative py-12 sm:py-20 pt-28 sm:pt-36 overflow-hidden bg-primary-900">
@@ -196,14 +196,14 @@ export default function ResourcesPage() {
                         </div>
                     </section>
                 </main>
-                <Footer />
+
             </div>
         );
     }
 
     return (
         <div className="flex flex-col min-h-screen bg-surface">
-            <Header />
+
             <main id="main-content" className="flex-grow">
                 {/* Hero */}
                 <section className="relative py-12 sm:py-20 pt-28 sm:pt-36 overflow-hidden bg-primary-900">
@@ -255,7 +255,7 @@ export default function ResourcesPage() {
                     </div>
                 </section>
             </main>
-            <Footer />
+
         </div>
     )
 }
