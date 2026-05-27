@@ -4,10 +4,16 @@ import Image from "next/image";
 import { Home, Search, Table2, Info, Mail, MapPin, TrendingUp } from "lucide-react";
 import GrassField from "./GrassField";
 import { useLanguage } from "../lib/i18n/LanguageContext";
+import { usePathname } from "next/navigation";
 
 const Footer = () => {
   const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
+  const pathname = usePathname();
+
+  if (pathname === '/Map') {
+    return null;
+  }
 
   const navLinks = [
     { href: "/", label: t("home"), icon: <Home className="w-4 h-4" /> },

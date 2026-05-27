@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
+import "leaflet/dist/leaflet.css";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import { LanguageProvider } from "./lib/i18n/LanguageContext";

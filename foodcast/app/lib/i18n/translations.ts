@@ -8,6 +8,7 @@ export const translations = {
   resources: { en: "Resources", tl: "Mga Mapagkukunan" },
   features: { en: "Features", tl: "Mga Tampok" },
   more: { en: "More", tl: "Iba Pa" },
+  marketMap: { en: "Market Map", tl: "Mapa ng Palengke" },
   language: { en: "Language", tl: "Wika" },
   
   // Home Page

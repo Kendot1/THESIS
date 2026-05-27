@@ -44,6 +44,7 @@ export default function Header() {
     {
       label: t("more"),
       dropdown: [
+        { href: "/Map", label: t("marketMap") },
         { href: "/About", label: t("aboutProject") },
         { href: "/Resources", label: t("resources") },
       ]
@@ -178,7 +179,7 @@ export default function Header() {
                 aria-label="Toggle Language"
               >
                 <Globe className="w-4 h-4 text-gray-400" />
-                {language === "en" ? "EN" : "TL"}
+                {language === "en" ? "EN" : "FIL"}
               </button>
             </div>
 
@@ -283,7 +284,7 @@ export default function Header() {
                 className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white border border-gray-200 text-sm font-bold text-gray-700 shadow-sm active:scale-95 transition-all"
               >
                 <Globe className="w-5 h-5 text-gray-400" />
-                {language === "en" ? "Switch to Tagalog (TL)" : "Switch to English (EN)"}
+                {language === "en" ? "Switch to Filipino (FIL)" : "Switch to English (EN)"}
               </button>
             </div>
           </div>
