@@ -1,8 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
-export const runtime = "edge";
-
+export const maxDuration = 60; // Allow more time for Gemini/Groq processing
 export async function POST(req: Request) {
   try {
     const body = await req.json();

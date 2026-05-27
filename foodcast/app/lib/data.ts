@@ -67,7 +67,7 @@ async function fetchFromNetwork<T>(path: string): Promise<T> {
       "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       "Content-Type": "application/json",
     },
-    cache: "no-store", // Bypass Next.js cache limit
+    cache: 'no-store',
   });
 
   if (!res.ok) {
