@@ -7,6 +7,7 @@ import SparklineChart from "../components/SparklineChart";
 import ScrollReveal from "../components/ScrollReveal";
 import { Product, fetchCategories } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
+import { encryptId } from "../../lib/idCipher";
 import { useProducts } from "../lib/hooks";
 
 type SortKey = "name" | "category" | "origin" | "currentPrice" | "predictedPrice" | "change" | "volume";
@@ -529,8 +530,8 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                     return (
                       <tr
                         key={p.id}
-                        onClick={() => router.push(`/Product/${p.id}`)}
-                        onMouseEnter={() => router.prefetch(`/Product/${p.id}`)}
+                        onClick={() => router.push(`/Product/${encryptId(p.id)}`)}
+                        onMouseEnter={() => router.prefetch(`/Product/${encryptId(p.id)}`)}
                         className="group transition-all duration-300 hover:bg-primary-50/40 cursor-pointer"
                       >
                         <td className="px-6 lg:px-8 py-3">
@@ -603,8 +604,8 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                 return (
                   <div
                     key={p.id}
-                    onClick={() => router.push(`/Product/${p.id}`)}
-                    onMouseEnter={() => router.prefetch(`/Product/${p.id}`)}
+                    onClick={() => router.push(`/Product/${encryptId(p.id)}`)}
+                    onMouseEnter={() => router.prefetch(`/Product/${encryptId(p.id)}`)}
                     className="p-5 active:bg-white/60 transition-colors cursor-pointer"
                   >
                     <div className="flex items-start justify-between gap-3 mb-4">

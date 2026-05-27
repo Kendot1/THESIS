@@ -20,6 +20,7 @@ import ScrollReveal from "../components/ScrollReveal";
 import { DEFAULT_PRODUCT_IMAGE, Product, NewsArticle } from "../lib/data";
 import { useProducts, useNews } from "../lib/hooks";
 import { useLanguage } from "../lib/i18n/LanguageContext";
+import { encryptId } from "../../lib/idCipher";
 
 interface HomeProps {
   initialProducts: Product[];
@@ -359,7 +360,7 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
                             <Link
                               prefetch={false}
                               key={`${p.id}-${p.variant || 'std'}-${p.origin || 'loc'}-${i}`}
-                              href={`/Product/${p.id}`}
+                              href={`/Product/${encryptId(p.id)}`}
                               className="flex items-center gap-3 px-4 py-3 hover:bg-primary-50/60 transition-colors duration-200 border-b border-gray-50 last:border-0"
                             >
                               <div className="relative w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl shrink-0 overflow-hidden">

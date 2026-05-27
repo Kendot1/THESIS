@@ -31,13 +31,15 @@ import ScrollReveal from "../../components/ScrollReveal";
 import { Product, fetchNews, DEFAULT_PRODUCT_IMAGE } from "../../lib/data";
 import { useLanguage } from "../../lib/i18n/LanguageContext";
 import { useProducts } from "../../lib/hooks";
+import { decryptId, encryptId } from "../../../lib/idCipher";
 
 export default function ProductPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
+  const { id: encryptedId } = use(params);
+  const id = decryptId(encryptedId);
   const { t } = useLanguage();
   const { data: products = [] } = useProducts();
   const product = useMemo(() => products.find((p) => p.id === id) || null, [products, id]);
@@ -456,9 +458,9 @@ export default function ProductPage({
                                     {uniqueOrigins.map((origin) => {
                                       const targetId = getProductForNewOrigin(origin);
                                       return targetId ? (
-                                        <Link
-                                          key={origin}
-                                          href={`/Product/${targetId}`}
+                                          <Link
+                                            key={origin}
+                                            href={`/Product/${encryptId(targetId as string)}`}
                                           onClick={() => setIsOriginDropdownOpen(false)}
                                           className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${(product.origin || "Local") === origin
                                             ? "bg-primary-50 text-primary-900 shadow-sm"
@@ -499,7 +501,7 @@ export default function ProductPage({
                                     {availableVariantsForOrigin.map((v) => (
                                       <Link
                                         key={v.id}
-                                        href={`/Product/${v.id}`}
+                                        href={`/Product/${encryptId(v.id)}`}
                                         onClick={() => setIsDropdownOpen(false)}
                                         className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${v.id === product.id
                                           ? "bg-primary-50 text-primary-900 shadow-sm"
@@ -869,7 +871,7 @@ export default function ProductPage({
                         {smartAlternatives.map(a => (
                           <Link
                             key={a.id}
-                            href={`/Product/${a.id}`}
+                            href={`/Product/${encryptId(a.id)}`}
                             className="group flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-accent/40 transition-all duration-300"
                           >
                             <div className="flex items-center gap-3">
