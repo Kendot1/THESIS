@@ -1,5 +1,6 @@
 "use client";
 import { use, useMemo, useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -40,6 +41,23 @@ export default function ProductPage({
 }) {
   const { id: encryptedId } = use(params);
   const id = decryptId(encryptedId);
+  const router = useRouter();
+
+  useEffect(() => {
+    // If decryptId returned the same token and it looks like a raw UUID,
+    // replace the location with the encrypted token so URLs become opaque.
+    try {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (encryptedId && id === encryptedId && uuidRegex.test(encryptedId)) {
+        const token = encryptId(encryptedId);
+        if (token && token !== encryptedId) {
+          router.replace(`/Product/${token}`);
+        }
+      }
+    } catch (e) {
+      // no-op
+    }
+  }, [encryptedId, id, router]);
   const { t } = useLanguage();
   const { data: products = [] } = useProducts();
   const product = useMemo(() => products.find((p) => p.id === id) || null, [products, id]);
