@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight, ArrowDownRight, Eye } from "lucide-react";
 import { DEFAULT_PRODUCT_IMAGE } from "../lib/data";
+import { encryptId } from "../../lib/idCipher";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 
 interface ProductVariant {
@@ -229,7 +230,7 @@ const ProductCard = ({
         {/* Row 6: View Button (Mockup Style) */}
         <div className="relative z-30">
           <Link
-            href={`/Product/${id}`}
+            href={`/Product/${encryptId(id)}`}
             className="flex items-center justify-center w-full py-2.5 sm:py-3.5 bg-primary-900 text-white rounded-full font-bold text-[11px] sm:text-xs 
             transition-all duration-300 shadow-lg shadow-primary-900/10 
             md:hover:bg-primary-800 md:hover:shadow-primary-900/25 md:hover:-translate-y-0.5 active:scale-[0.97]"
@@ -241,7 +242,7 @@ const ProductCard = ({
 
       {/* Subtle Link for the whole card area (excluding buttons) */}
       <Link
-        href={`/Product/${id}`}
+        href={`/Product/${encryptId(id)}`}
         className="absolute inset-0 z-20 rounded-[2rem]"
         aria-label={`View details for ${name}`}
       />

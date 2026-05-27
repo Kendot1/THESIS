@@ -12,6 +12,7 @@ const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
 import ScrollReveal from "../components/ScrollReveal";
 import { Product, fetchCategories, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
+import { encryptId } from "../../lib/idCipher";
 import { useProducts } from "../lib/hooks";
 
 interface PredictProps {
@@ -395,7 +396,7 @@ function PredictContent({ initialProducts }: PredictProps) {
                     const change = p.currentPrice === 0 ? 0 : ((p.predictedPrice - p.currentPrice) / p.currentPrice) * 100;
                     const isUp = change >= 0;
                     return (
-                      <Link prefetch={false} key={p.id} href={`/Product/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-primary-50/60 transition-colors duration-200 border-b border-gray-50 last:border-0">
+                      <Link prefetch={false} key={p.id} href={`/Product/${encryptId(p.id)}`} className="flex items-center gap-3 px-4 py-3 hover:bg-primary-50/60 transition-colors duration-200 border-b border-gray-50 last:border-0">
                         <div className="relative w-12 h-12 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-xl shrink-0 overflow-hidden">
                           <Image
                             src={p.image || DEFAULT_PRODUCT_IMAGE}
@@ -585,7 +586,7 @@ function PredictContent({ initialProducts }: PredictProps) {
                 </div>
                 <div className="space-y-6">
                   {majorChanges.map((p, i) => (
-                    <Link prefetch={false} key={p.id} href={`/Product/${p.id}`} className="flex items-start gap-4 group">
+                    <Link prefetch={false} key={p.id} href={`/Product/${encryptId(p.id)}`} className="flex items-start gap-4 group">
                       <span className="text-lg font-black text-gray-100 group-hover:text-primary-100 transition-colors leading-none">{i + 1}</span>
                       <div className="flex-1">
                         <h4 className="text-sm font-bold text-gray-800 group-hover:text-primary-800 transition-colors leading-tight mb-1 line-clamp-2">
@@ -617,7 +618,7 @@ function PredictContent({ initialProducts }: PredictProps) {
                 </div>
                 <div className="space-y-4">
                   {trendingProductsSide.map((p, i) => (
-                    <Link prefetch={false} key={p.id} href={`/Product/${p.id}`} className="flex items-center justify-between group p-2 -mx-2 rounded-xl hover:bg-gray-50 transition-colors">
+                    <Link prefetch={false} key={p.id} href={`/Product/${encryptId(p.id)}`} className="flex items-center justify-between group p-2 -mx-2 rounded-xl hover:bg-gray-50 transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-gray-100 shrink-0">
                           <Image
@@ -655,7 +656,7 @@ function PredictContent({ initialProducts }: PredictProps) {
                   ))}
                 </div>
               </div>
-              <Link href="/Table"
+              <Link href="/MarketData"
                 className="block w-full max-h-13 py-4 bg-primary-900 hover:bg-primary-800 text-white text-center font-bold rounded-2xl transition-all shadow-lg shadow-primary-900/10 text-sm active:scale-[0.98]">
                 {t("viewFullTable")}
               </Link>
