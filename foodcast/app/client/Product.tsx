@@ -19,7 +19,6 @@ import {
   ChevronRight,
   ChevronDown,
   Activity,
-  Info,
 } from "lucide-react";
 
 
@@ -364,17 +363,6 @@ export default function Product({
     return fallback ? fallback.id : null;
   };
 
-  let parsedDesc = null;
-  if (product?.description) {
-    try {
-      if (product.description.trim().startsWith('{')) {
-        parsedDesc = JSON.parse(product.description);
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-
   return (
     <>
 
@@ -410,123 +398,66 @@ export default function Product({
           </div>
 
           <div className="max-w-7xl mx-auto px-5 lg:px-10 pt-3 sm:py-5">
-            {/* ─── Header & Metadata ────────────────────── */}
-            <div className="mb-8">
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div>
-                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight leading-tight mb-3">
-                    {product.name}
-                  </h1>
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                    <span className="px-3 sm:px-4 py-1.5 bg-primary-50/80 text-primary-900 text-sm font-semibold rounded-full border border-primary-100/50 flex items-center gap-2">
-                      <Layers className="w-4 h-4 text-primary-600" />
-                      {product.category}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* ─── Product Header ──────────────────────────── */}
+            <ScrollReveal delay={200} className="relative z-40">
+              <div className="relative bg-gradient-to-br from-primary-800 to-primary-900 mb-6 sm:mb-8 rounded-2xl p-5 sm:p-8 shadow-2xl">
+                <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-accent/10 rounded-full blur-3xl -mr-16 -mt-16 sm:-mr-20 sm:-mt-20" />
+                <div className="absolute bottom-0 left-0 w-24 sm:w-32 h-24 sm:h-32 bg-white/5 rounded-full blur-2xl -ml-8 -mb-8 sm:-ml-10 sm:-mb-10" />
 
-            {/* ─── Main Content Layout (Dashboard Style) ──────── */}
-            <div className="grid lg:grid-cols-12 gap-8 items-start">
-              {/* Left Column: Forecast & Core Stats */}
-              <div className="lg:col-span-8 space-y-8">
-                
-                {/* ─── Hero Section (Product Header) ──────── */}
-                <div className="relative rounded-[2rem] overflow-hidden mb-8 bg-gradient-to-br from-primary-900 to-primary-800 shadow-xl">
-                  {/* ... Decorative Shapes ... */}
-                  <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white/[0.03] rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
-                  <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-accent/[0.05] rounded-full blur-2xl translate-y-1/3 -translate-x-1/4 pointer-events-none" />
-                  
-                  <div className="relative p-6 sm:p-8 lg:p-10">
-                    <div className="flex flex-col md:flex-row gap-6 sm:gap-8 items-start md:items-center">
-                      
-                      {/* Left: Product Image */}
-                      <div className="w-full md:w-[220px] lg:w-[280px] shrink-0">
-                        <div className="relative aspect-square sm:aspect-video md:aspect-square rounded-[1.5rem] overflow-hidden shadow-2xl ring-1 ring-white/20">
-                          <Image
-                            src={product.image || DEFAULT_PRODUCT_IMAGE}
-                            alt={product.name}
-                            fill
-                            className="object-cover transition-transform duration-700 hover:scale-105"
-                            sizes="(max-width: 768px) 100vw, 280px"
-                            priority
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
-                        </div>
-                      </div>
+                <div className="relative space-y-5">
+                  {/* Top Row: Image + Identity */}
+                  <div className="flex flex-row items-start gap-3 sm:flex-row sm:items-end sm:gap-10">
+                    <div className="relative shrink-0 w-24 h-24 sm:w-32 sm:h-32 rounded-xl bg-white overflow-hidden shadow-2xl border-4 border-white/20 transform hover:scale-105 transition-transform duration-500">
+                      <Image
+                        src={product.image || DEFAULT_PRODUCT_IMAGE}
+                        alt={product.name}
+                        fill
+                        priority
+                        className="object-cover rounded-xl"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
+                             target.srcset = "";
+                          }
+                          if (target.src !== DEFAULT_PRODUCT_IMAGE) {
+                            target.src = DEFAULT_PRODUCT_IMAGE;
+                          }
+                        }}
+                      />
+                    </div>
 
-                      {/* Right: Price & Quick Stats */}
-                      <div className="flex-1 min-w-0 w-full text-white">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
-                          {/* Current Price */}
-                          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-white/10">
-                            <span className="text-white/60 text-xs sm:text-sm font-medium uppercase tracking-wider block mb-2">{t("currentPrice")}</span>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight">₱{product.currentPrice.toFixed(2)}</span>
-                              <span className="text-white/50 text-sm sm:text-base font-medium">/{product.unit || 'kg'}</span>
-                            </div>
-                            {product.previousPrice > 0 && (
-                              <div className="mt-2 flex items-center gap-1.5 text-xs sm:text-sm">
-                                {(() => {
-                                  const diff = product.currentPrice - product.previousPrice;
-                                  const percent = Math.abs((diff / product.previousPrice) * 100).toFixed(1);
-                                  const isUp = diff > 0;
-                                  const isNeutral = diff === 0;
-
-                                  if (isNeutral) {
-                                    return (
-                                      <span className="text-white/60 flex items-center gap-1">
-                                        <Minus className="w-3.5 h-3.5" /> No change
-                                      </span>
-                                    );
-                                  }
-                                  
-                                  return (
-                                    <span className={`flex items-center gap-1 font-medium ${isUp ? 'text-rose-400' : 'text-emerald-400'}`}>
-                                      {isUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                                      {percent}%
-                                    </span>
-                                  );
-                                })()}
-                                <span className="text-white/40 ml-1">vs yesterday</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Predicted Price */}
-                          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-white/10 relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                            <span className="text-white/60 text-xs sm:text-sm font-medium uppercase tracking-wider block mb-2">{t("predictedPrice")}</span>
-                            <div className="flex items-baseline gap-1 relative z-10">
-                              <span className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-accent">₱{product.predictedPrice.toFixed(2)}</span>
-                            </div>
-                            <div className="mt-2 flex items-center gap-2 relative z-10">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/20 text-accent-light text-xs font-semibold border border-accent/30">
-                                <Activity className="w-3 h-3" />
-                                30-Day Forecast
-                              </span>
-                            </div>
+                    <div className="flex-1 flex flex-col items-start sm:items-start min-w-0">
+                      <div className="flex flex-col gap-1.5 sm:gap-3 mb-1 sm:mb-2 w-full">
+                        <div className="space-y-2 sm:space-y-4">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-3">
+                            <span
+                              className={`inline-flex items-center gap-1 text-[8px] sm:text-xs font-bold px-2 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-lg ${sentimentColor} backdrop-blur-md`}
+                            >
+                              {sentimentIcon}
+                              {trendLabel}
+                            </span>
+                            <span className="text-[8px] sm:text-xs font-bold text-accent bg-accent/10 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full border border-accent/20">
+                              {t(product.category)}
+                            </span>
                           </div>
                         </div>
-
-                        {/* Dropdowns */}
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <div className="flex-1 relative">
+                        <h1
+                          className="text-lg sm:text-5xl font-bold text-white leading-tight mb-0.5 sm:mb-2 truncate w-full"
+                          style={{ fontFamily: "var(--font-display)" }}
+                        >
+                          {t(product.name)}
+                        </h1>
+                        <div className="flex flex-row items-center gap-2 text-accent-light/80 text-xs sm:text-lg font-medium flex-wrap">
+                          {/* Origin Selector */}
+                          <div className="relative">
                             <button
-                              type="button"
-                              onClick={() => {
-                                setIsOriginDropdownOpen(!isOriginDropdownOpen);
-                                setIsDropdownOpen(false);
-                              }}
-                              disabled={uniqueOrigins.length <= 1}
-                              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border backdrop-blur-md transition-all
-                                ${uniqueOrigins.length > 1
-                                  ? "bg-white/10 border-white/20 hover:bg-white/20 hover:border-white/30"
-                                  : "bg-white/5 border-white/5 cursor-default"
+                              onClick={() => uniqueOrigins.length > 1 && setIsOriginDropdownOpen(!isOriginDropdownOpen)}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all backdrop-blur-md border ${uniqueOrigins.length > 1
+                                ? "bg-white/10 hover:bg-white/20 border-white/10 cursor-pointer"
+                                : "bg-white/5 border-white/5 cursor-default"
                                 }`}
                             >
-                              <span className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">{product.origin || "Local"}</span>
+                              <span className="text-xs sm:text-sm font-bold text-white whitespace-nowrap uppercase tracking-wider">{t(product.origin || "Local")}</span>
                               {uniqueOrigins.length > 1 && (
                                 <ChevronDown className={`w-4 h-4 text-white/60 transition-transform ${isOriginDropdownOpen ? 'rotate-180' : ''}`} />
                               )}
@@ -535,27 +466,24 @@ export default function Product({
                             {uniqueOrigins.length > 1 && isOriginDropdownOpen && (
                               <>
                                 <div className="fixed inset-0 z-40" onClick={() => setIsOriginDropdownOpen(false)} />
-                                <div className="absolute top-full left-0 mt-2 w-[240px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                  <div className="max-h-[400px] overflow-y-auto scrollbar-hide p-2 space-y-1">
-                                    {uniqueOrigins.map((orig) => {
-                                      const mappedId = getProductForNewOrigin(orig);
-                                      if (!mappedId) return null;
-                                      return (
-                                        <Link
-                                          key={orig}
-                                          href={`/Product/${encryptId(mappedId)}`}
+                                <div className="absolute top-full left-0 mt-2 w-[160px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                  <div className="p-2 space-y-1">
+                                    {uniqueOrigins.map((origin) => {
+                                      const targetId = getProductForNewOrigin(origin);
+                                      return targetId ? (
+                                          <Link
+                                            key={origin}
+                                            href={`/Product/${encryptId(targetId as string)}`}
                                           onClick={() => setIsOriginDropdownOpen(false)}
-                                          className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${(product.origin || "Local") === orig
+                                          className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${(product.origin || "Local") === origin
                                             ? "bg-primary-50 text-primary-900 shadow-sm"
                                             : "hover:bg-gray-50 text-gray-600"
                                             }`}
                                         >
-                                          <div className="flex flex-col">
-                                            <span className="text-xs font-bold">{orig}</span>
-                                          </div>
-                                          {(product.origin || "Local") === orig && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                                          <span className="text-xs font-bold uppercase tracking-widest">{t(origin)}</span>
+                                          {(product.origin || "Local") === origin && <CheckCircle2 className="w-4 h-4 text-accent" />}
                                         </Link>
-                                      );
+                                      ) : null;
                                     })}
                                   </div>
                                 </div>
@@ -563,18 +491,13 @@ export default function Product({
                             )}
                           </div>
 
-                          <div className="flex-1 relative">
+                          {/* Variant Selector */}
+                          <div className="relative">
                             <button
-                              type="button"
-                              onClick={() => {
-                                setIsDropdownOpen(!isDropdownOpen);
-                                setIsOriginDropdownOpen(false);
-                              }}
-                              disabled={availableVariantsForOrigin.length <= 1}
-                              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border backdrop-blur-md transition-all
-                                ${availableVariantsForOrigin.length > 1
-                                  ? "bg-white/10 border-white/20 hover:bg-white/20 hover:border-white/30"
-                                  : "bg-white/5 border-white/5 cursor-default"
+                              onClick={() => availableVariantsForOrigin.length > 1 && setIsDropdownOpen(!isDropdownOpen)}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all backdrop-blur-md border ${availableVariantsForOrigin.length > 1
+                                ? "bg-white/10 hover:bg-white/20 border-white/10 cursor-pointer"
+                                : "bg-white/5 border-white/5 cursor-default"
                                 }`}
                             >
                               <span className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">{product.variant || "Standard"}</span>
@@ -612,66 +535,24 @@ export default function Product({
                           </div>
                         </div>
                       </div>
-                      <span className="text-white/30 text-[9px] sm:text-xs font-mono tracking-widest mt-4 block absolute top-2 right-4">NCR-ID: {product.id.split('-')[0].toUpperCase()}</span>
+                      <span className="text-white/30 text-[9px] sm:text-xs font-mono tracking-widest mt-4 block">NCR-ID: {product.id.split('-')[0].toUpperCase()}</span>
                     </div>
                   </div>
 
                   {/* Bottom Row: Description */}
-                  <div className="px-6 sm:px-8 lg:px-10 pb-6">
-                    <div className="pt-6 border-t border-white/10">
-                      {parsedDesc ? (
-                        <div className="space-y-6">
-                          <p className="text-white/90 text-sm sm:text-base leading-relaxed text-justify max-w-4xl font-medium">
-                            {parsedDesc.short_description}
-                          </p>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {parsedDesc.health_benefits && parsedDesc.health_benefits.length > 0 && (
-                              <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
-                                <h4 className="text-white font-semibold mb-3 flex items-center gap-2 text-sm sm:text-base">
-                                  <Sparkles className="w-4 h-4 text-emerald-300" />
-                                  Health Benefits
-                                </h4>
-                                <ul className="list-disc pl-5 space-y-1.5 text-white/70 text-xs sm:text-sm">
-                                  {parsedDesc.health_benefits.map((b: string, i: number) => (
-                                    <li key={i}>{b}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            {parsedDesc.recommended_uses && parsedDesc.recommended_uses.length > 0 && (
-                              <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
-                                <h4 className="text-white font-semibold mb-3 flex items-center gap-2 text-sm sm:text-base">
-                                  <Layers className="w-4 h-4 text-orange-300" />
-                                  Recommended Uses
-                                </h4>
-                                <ul className="list-disc pl-5 space-y-1.5 text-white/70 text-xs sm:text-sm">
-                                  {parsedDesc.recommended_uses.map((u: string, i: number) => (
-                                    <li key={i}>{u}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {parsedDesc.consumer_segment && (
-                            <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
-                              <span className="text-white/50 text-xs font-bold uppercase tracking-wider">Target</span>
-                              <span className="text-white font-medium text-sm">{parsedDesc.consumer_segment}</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        product.description && (
-                          <p className="text-white/70 text-xs sm:text-base leading-relaxed text-justify max-w-4xl">
-                            {product.description}
-                          </p>
-                        )
-                      )}
-                    </div>
+                  <div className="pt-3 border-t border-white/10">
+                    <p className="text-white/70 text-xs sm:text-base leading-relaxed text-justify max-w-4xl">
+                      {product.description}
+                    </p>
                   </div>
-                
+                </div>
+              </div>
+            </ScrollReveal>
+
+            {/* ─── Main Content Layout (Dashboard Style) ──────── */}
+            <div className="grid lg:grid-cols-12 gap-8 items-start">
+              {/* Left Column: Forecast & Core Stats */}
+              <div className="lg:col-span-8 space-y-8">
                 {/* Price Forecast Chart */}
                 <ScrollReveal>
                   <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow">
