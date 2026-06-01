@@ -12,18 +12,35 @@ export function encryptId(id: string): string {
       iv: iv,
       mode: CryptoJS.mode.CBC,
       padding: CryptoJS.pad.Pkcs7
-    }).toString();
-    // Return URL-safe base64
-    return encodeURIComponent(encrypted);
+    });
+    // Return Hex instead of base64 to avoid URL encoding issues with + and /
+    return encrypted.ciphertext.toString(CryptoJS.enc.Hex);
   } catch (e) {
-    return encodeURIComponent(id);
+    return id;
   }
 }
 
 export function decryptId(token: string): string {
   try {
-    const decoded = decodeURIComponent(token);
-    const bytes = CryptoJS.AES.decrypt(decoded, key, {
+    // If it looks like old base64 URL encoded token, try decoding it first
+    // but we expect hex now
+    const isHex = /^[0-9a-fA-F]+$/.test(token);
+    if (!isHex) {
+      // Fallback for old tokens (base64)
+      const decoded = decodeURIComponent(token);
+      const bytes = CryptoJS.AES.decrypt(decoded, key, {
+        iv: iv,
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7
+      });
+      const original = bytes.toString(CryptoJS.enc.Utf8);
+      return original || token;
+    }
+
+    const cipherParams = CryptoJS.lib.CipherParams.create({
+      ciphertext: CryptoJS.enc.Hex.parse(token)
+    });
+    const bytes = CryptoJS.AES.decrypt(cipherParams, key, {
       iv: iv,
       mode: CryptoJS.mode.CBC,
       padding: CryptoJS.pad.Pkcs7
