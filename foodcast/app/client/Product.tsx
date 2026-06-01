@@ -399,25 +399,28 @@ export default function Product({
 
           <div className="max-w-7xl mx-auto px-5 lg:px-10 pt-3 sm:py-5">
             {/* ─── Product Header ──────────────────────────── */}
+            {/* ─── Product Header ──────────────────────────── */}
             <ScrollReveal delay={200} className="relative z-40">
-              <div className="relative bg-gradient-to-br from-primary-800 to-primary-900 mb-6 sm:mb-8 rounded-2xl p-5 sm:p-8 shadow-2xl">
-                <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-accent/10 rounded-full blur-3xl -mr-16 -mt-16 sm:-mr-20 sm:-mt-20" />
-                <div className="absolute bottom-0 left-0 w-24 sm:w-32 h-24 sm:h-32 bg-white/5 rounded-full blur-2xl -ml-8 -mb-8 sm:-ml-10 sm:-mb-10" />
+              <div className="relative bg-gradient-to-br from-primary-800 to-primary-900 mb-6 sm:mb-8 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-2xl border border-white/10 overflow-hidden">
+                {/* Background Atmospheric Effects */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-accent/20 rounded-full blur-[80px] -mr-20 -mt-20 pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-[60px] -ml-10 -mb-10 pointer-events-none" />
 
-                <div className="relative space-y-5">
-                  {/* Top Row: Image + Identity */}
-                  <div className="flex flex-row items-start gap-3 sm:flex-row sm:items-end sm:gap-10">
-                    <div className="relative shrink-0 w-24 h-24 sm:w-32 sm:h-32 rounded-xl bg-white overflow-hidden shadow-2xl border-4 border-white/20 transform hover:scale-105 transition-transform duration-500">
+                <div className="relative space-y-4 sm:space-y-6">
+                  {/* Top Row: Image + Details */}
+                  <div className="flex flex-row gap-4 sm:gap-6 lg:gap-8 items-center sm:items-start">
+                    {/* 1. Image */}
+                    <div className="shrink-0 relative w-20 h-20 sm:w-28 sm:h-28 lg:w-36 lg:h-36 rounded-xl sm:rounded-2xl bg-white overflow-hidden shadow-xl border-[3px] sm:border-4 border-white/20 transform hover:scale-105 transition-transform duration-500">
                       <Image
                         src={product.image || DEFAULT_PRODUCT_IMAGE}
                         alt={product.name}
                         fill
                         priority
-                        className="object-cover rounded-xl"
+                        className="object-cover"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
-                             target.srcset = "";
+                            target.srcset = "";
                           }
                           if (target.src !== DEFAULT_PRODUCT_IMAGE) {
                             target.src = DEFAULT_PRODUCT_IMAGE;
@@ -426,124 +429,284 @@ export default function Product({
                       />
                     </div>
 
-                    <div className="flex-1 flex flex-col items-start sm:items-start min-w-0">
-                      <div className="flex flex-col gap-1.5 sm:gap-3 mb-1 sm:mb-2 w-full">
-                        <div className="space-y-2 sm:space-y-4">
-                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-3">
-                            <span
-                              className={`inline-flex items-center gap-1 text-[8px] sm:text-xs font-bold px-2 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-lg ${sentimentColor} backdrop-blur-md`}
-                            >
-                              {sentimentIcon}
-                              {trendLabel}
-                            </span>
-                            <span className="text-[8px] sm:text-xs font-bold text-accent bg-accent/10 px-2 sm:px-4 py-1 sm:py-1.5 rounded-full border border-accent/20">
-                              {t(product.category)}
-                            </span>
-                          </div>
-                        </div>
-                        <h1
-                          className="text-lg sm:text-5xl font-bold text-white leading-tight mb-0.5 sm:mb-2 truncate w-full"
-                          style={{ fontFamily: "var(--font-display)" }}
-                        >
-                          {t(product.name)}
-                        </h1>
-                        <div className="flex flex-row items-center gap-2 text-accent-light/80 text-xs sm:text-lg font-medium flex-wrap">
-                          {/* Origin Selector */}
-                          <div className="relative">
-                            <button
-                              onClick={() => uniqueOrigins.length > 1 && setIsOriginDropdownOpen(!isOriginDropdownOpen)}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all backdrop-blur-md border ${uniqueOrigins.length > 1
-                                ? "bg-white/10 hover:bg-white/20 border-white/10 cursor-pointer"
-                                : "bg-white/5 border-white/5 cursor-default"
-                                }`}
-                            >
-                              <span className="text-xs sm:text-sm font-bold text-white whitespace-nowrap uppercase tracking-wider">{t(product.origin || "Local")}</span>
-                              {uniqueOrigins.length > 1 && (
-                                <ChevronDown className={`w-4 h-4 text-white/60 transition-transform ${isOriginDropdownOpen ? 'rotate-180' : ''}`} />
-                              )}
-                            </button>
+                    {/* 2. Details (Title, Badges, Selectors) */}
+                    <div className="flex-1 flex flex-col justify-center sm:justify-start min-w-0">
+                      {/* Badges */}
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
+                        <span className={`inline-flex items-center gap-1 text-[8px] sm:text-[10px] font-bold px-2 sm:px-3 py-1 rounded-full shadow-lg ${sentimentColor} backdrop-blur-md`}>
+                          {sentimentIcon}
+                          {trendLabel}
+                        </span>
+                        <span className="text-[8px] sm:text-[10px] font-bold text-accent bg-accent/10 px-2 sm:px-3 py-1 rounded-full border border-accent/20">
+                          {t(product.category)}
+                        </span>
+                      </div>
 
-                            {uniqueOrigins.length > 1 && isOriginDropdownOpen && (
-                              <>
-                                <div className="fixed inset-0 z-40" onClick={() => setIsOriginDropdownOpen(false)} />
-                                <div className="absolute top-full left-0 mt-2 w-[160px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                  <div className="p-2 space-y-1">
-                                    {uniqueOrigins.map((origin) => {
-                                      const targetId = getProductForNewOrigin(origin);
-                                      return targetId ? (
-                                          <Link
-                                            key={origin}
-                                            href={`/Product/${encryptId(targetId as string)}`}
-                                          onClick={() => setIsOriginDropdownOpen(false)}
-                                          className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${(product.origin || "Local") === origin
-                                            ? "bg-primary-50 text-primary-900 shadow-sm"
-                                            : "hover:bg-gray-50 text-gray-600"
-                                            }`}
-                                        >
-                                          <span className="text-xs font-bold uppercase tracking-widest">{t(origin)}</span>
-                                          {(product.origin || "Local") === origin && <CheckCircle2 className="w-4 h-4 text-accent" />}
-                                        </Link>
-                                      ) : null;
-                                    })}
-                                  </div>
-                                </div>
-                              </>
+                      {/* Title */}
+                      <h1
+                        className="text-2xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight mb-0.5 sm:mb-1 truncate drop-shadow-sm"
+                        style={{ fontFamily: "var(--font-display)" }}
+                      >
+                        {t(product.name)}
+                      </h1>
+
+                      <span className="text-white/40 text-[9px] sm:text-[10px] font-mono tracking-widest mb-0 sm:mb-4 block uppercase">
+                        NCR-ID: {product.id.split('-')[0]}
+                      </span>
+
+                      {/* Selectors - Desktop only (Inline) */}
+                      <div className="hidden sm:flex flex-row flex-wrap gap-2 lg:gap-3">
+                        {/* Origin Selector */}
+                        <div className="relative">
+                          <button
+                            onClick={() => uniqueOrigins.length > 1 && setIsOriginDropdownOpen(!isOriginDropdownOpen)}
+                            className={`flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-2.5 rounded-xl transition-all backdrop-blur-md border shadow-sm ${uniqueOrigins.length > 1
+                              ? "bg-white/10 hover:bg-white/20 border-white/20 cursor-pointer"
+                              : "bg-white/5 border-white/5 cursor-default"
+                              }`}
+                          >
+                            <span className="text-[10px] text-white/50 font-bold uppercase tracking-widest pr-1">Origin</span>
+                            <span className="text-xs font-bold text-white uppercase">{t(product.origin || "Local")}</span>
+                            {uniqueOrigins.length > 1 && (
+                              <ChevronDown className={`w-4 h-4 text-white/60 transition-transform ${isOriginDropdownOpen ? 'rotate-180' : ''}`} />
                             )}
-                          </div>
+                          </button>
 
-                          {/* Variant Selector */}
-                          <div className="relative">
-                            <button
-                              onClick={() => availableVariantsForOrigin.length > 1 && setIsDropdownOpen(!isDropdownOpen)}
-                              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all backdrop-blur-md border ${availableVariantsForOrigin.length > 1
-                                ? "bg-white/10 hover:bg-white/20 border-white/10 cursor-pointer"
-                                : "bg-white/5 border-white/5 cursor-default"
-                                }`}
-                            >
-                              <span className="text-xs sm:text-sm font-bold text-white whitespace-nowrap">{product.variant || "Standard"}</span>
-                              {availableVariantsForOrigin.length > 1 && (
-                                <ChevronDown className={`w-4 h-4 text-white/60 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                              )}
-                            </button>
-
-                            {availableVariantsForOrigin.length > 1 && isDropdownOpen && (
-                              <>
-                                <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
-                                <div className="absolute top-full left-0 mt-2 w-[240px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                  <div className="max-h-[400px] overflow-y-auto scrollbar-hide p-2 space-y-1">
-                                    {availableVariantsForOrigin.map((v) => (
+                          {uniqueOrigins.length > 1 && isOriginDropdownOpen && (
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setIsOriginDropdownOpen(false)} />
+                              <div className="absolute top-full left-0 mt-2 w-[160px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                <div className="p-2 space-y-1">
+                                  {uniqueOrigins.map((origin) => {
+                                    const targetId = getProductForNewOrigin(origin);
+                                    return targetId ? (
                                       <Link
-                                        key={v.id}
-                                        href={`/Product/${encryptId(v.id)}`}
-                                        onClick={() => setIsDropdownOpen(false)}
-                                        className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${v.id === product.id
+                                        key={origin}
+                                        href={`/Product/${encryptId(targetId as string)}`}
+                                        onClick={() => setIsOriginDropdownOpen(false)}
+                                        className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${(product.origin || "Local") === origin
                                           ? "bg-primary-50 text-primary-900 shadow-sm"
                                           : "hover:bg-gray-50 text-gray-600"
                                           }`}
                                       >
-                                        <div className="flex flex-col">
-                                          <span className="text-xs font-bold">{v.variant || "Standard"}</span>
-                                          <span className="text-[10px] opacity-60">₱{v.currentPrice.toFixed(2)}{v.unit ? ` / ${v.unit}` : ''}</span>
-                                        </div>
-                                        {v.id === product.id && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                                        <span className="text-xs font-bold uppercase tracking-widest">{t(origin)}</span>
+                                        {(product.origin || "Local") === origin && <CheckCircle2 className="w-4 h-4 text-accent" />}
                                       </Link>
-                                    ))}
-                                  </div>
+                                    ) : null;
+                                  })}
                                 </div>
-                              </>
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Variant Selector */}
+                        <div className="relative">
+                          <button
+                            onClick={() => availableVariantsForOrigin.length > 1 && setIsDropdownOpen(!isDropdownOpen)}
+                            className={`flex items-center gap-2 px-3 py-2 lg:px-4 lg:py-2.5 rounded-xl transition-all backdrop-blur-md border shadow-sm ${availableVariantsForOrigin.length > 1
+                              ? "bg-white/10 hover:bg-white/20 border-white/20 cursor-pointer"
+                              : "bg-white/5 border-white/5 cursor-default"
+                              }`}
+                          >
+                            <span className="text-[10px] text-white/50 font-bold uppercase tracking-widest pr-1">Variant</span>
+                            <span className="text-xs font-bold text-white">{product.variant || "Standard"}</span>
+                            {availableVariantsForOrigin.length > 1 && (
+                              <ChevronDown className={`w-4 h-4 text-white/60 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                             )}
-                          </div>
+                          </button>
+
+                          {availableVariantsForOrigin.length > 1 && isDropdownOpen && (
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                              <div className="absolute top-full left-0 mt-2 w-[240px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                <div className="max-h-[400px] overflow-y-auto scrollbar-hide p-2 space-y-1">
+                                  {availableVariantsForOrigin.map((v) => (
+                                    <Link
+                                      key={v.id}
+                                      href={`/Product/${encryptId(v.id)}`}
+                                      onClick={() => setIsDropdownOpen(false)}
+                                      className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${v.id === product.id
+                                        ? "bg-primary-50 text-primary-900 shadow-sm"
+                                        : "hover:bg-gray-50 text-gray-600"
+                                        }`}
+                                    >
+                                      <div className="flex flex-col">
+                                        <span className="text-xs font-bold">{v.variant || "Standard"}</span>
+                                        <span className="text-[10px] opacity-60">₱{v.currentPrice.toFixed(2)}{v.unit ? ` / ${v.unit}` : ''}</span>
+                                      </div>
+                                      {v.id === product.id && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                                    </Link>
+                                  ))}
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
-                      <span className="text-white/30 text-[9px] sm:text-xs font-mono tracking-widest mt-4 block">NCR-ID: {product.id.split('-')[0].toUpperCase()}</span>
                     </div>
                   </div>
 
-                  {/* Bottom Row: Description */}
-                  <div className="pt-3 border-t border-white/10">
-                    <p className="text-white/70 text-xs sm:text-base leading-relaxed text-justify max-w-4xl">
-                      {product.description}
-                    </p>
+                  {/* Selectors - Mobile only (Full width row) */}
+                  <div className="flex sm:hidden flex-row gap-2 w-full pt-1">
+                    {/* Origin */}
+                    <div className="relative flex-1">
+                      <button
+                        onClick={() => uniqueOrigins.length > 1 && setIsOriginDropdownOpen(!isOriginDropdownOpen)}
+                        className={`flex items-center justify-between w-full px-3 py-2 rounded-xl transition-all backdrop-blur-md border shadow-sm ${uniqueOrigins.length > 1
+                          ? "bg-white/10 hover:bg-white/20 border-white/20 cursor-pointer"
+                          : "bg-white/5 border-white/5 cursor-default"
+                          }`}
+                      >
+                        <div className="flex flex-col items-start">
+                          <span className="text-[8px] text-white/50 font-bold uppercase tracking-widest">Origin</span>
+                          <span className="text-[10px] font-bold text-white uppercase">{t(product.origin || "Local")}</span>
+                        </div>
+                        {uniqueOrigins.length > 1 && (
+                          <ChevronDown className={`w-3 h-3 text-white/60 transition-transform ${isOriginDropdownOpen ? 'rotate-180' : ''}`} />
+                        )}
+                      </button>
+
+                      {uniqueOrigins.length > 1 && isOriginDropdownOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setIsOriginDropdownOpen(false)} />
+                          <div className="absolute top-full left-0 mt-2 w-[160px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="p-2 space-y-1">
+                              {uniqueOrigins.map((origin) => {
+                                const targetId = getProductForNewOrigin(origin);
+                                return targetId ? (
+                                  <Link
+                                    key={origin}
+                                    href={`/Product/${encryptId(targetId as string)}`}
+                                    onClick={() => setIsOriginDropdownOpen(false)}
+                                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${(product.origin || "Local") === origin
+                                      ? "bg-primary-50 text-primary-900 shadow-sm"
+                                      : "hover:bg-gray-50 text-gray-600"
+                                      }`}
+                                  >
+                                    <span className="text-xs font-bold uppercase tracking-widest">{t(origin)}</span>
+                                    {(product.origin || "Local") === origin && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                                  </Link>
+                                ) : null;
+                              })}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Variant */}
+                    <div className="relative flex-1">
+                      <button
+                        onClick={() => availableVariantsForOrigin.length > 1 && setIsDropdownOpen(!isDropdownOpen)}
+                        className={`flex items-center justify-between w-full px-3 py-2 rounded-xl transition-all backdrop-blur-md border shadow-sm ${availableVariantsForOrigin.length > 1
+                          ? "bg-white/10 hover:bg-white/20 border-white/20 cursor-pointer"
+                          : "bg-white/5 border-white/5 cursor-default"
+                          }`}
+                      >
+                        <div className="flex flex-col items-start overflow-hidden">
+                          <span className="text-[8px] text-white/50 font-bold uppercase tracking-widest">Variant</span>
+                          <span className="text-[10px] font-bold text-white truncate w-full text-left">{product.variant || "Standard"}</span>
+                        </div>
+                        {availableVariantsForOrigin.length > 1 && (
+                          <ChevronDown className={`w-3 h-3 text-white/60 transition-transform ${isDropdownOpen ? 'rotate-180' : ''} shrink-0`} />
+                        )}
+                      </button>
+
+                      {availableVariantsForOrigin.length > 1 && isDropdownOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setIsDropdownOpen(false)} />
+                          <div className="absolute top-full right-0 mt-2 w-[240px] bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="max-h-[400px] overflow-y-auto scrollbar-hide p-2 space-y-1">
+                              {availableVariantsForOrigin.map((v) => (
+                                <Link
+                                  key={v.id}
+                                  href={`/Product/${encryptId(v.id)}`}
+                                  onClick={() => setIsDropdownOpen(false)}
+                                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${v.id === product.id
+                                    ? "bg-primary-50 text-primary-900 shadow-sm"
+                                    : "hover:bg-gray-50 text-gray-600"
+                                    }`}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="text-xs font-bold">{v.variant || "Standard"}</span>
+                                    <span className="text-[10px] opacity-60">₱{v.currentPrice.toFixed(2)}{v.unit ? ` / ${v.unit}` : ''}</span>
+                                  </div>
+                                  {v.id === product.id && <CheckCircle2 className="w-4 h-4 text-accent" />}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Description - Full width bottom */}
+                  <div className="pt-3 sm:pt-5 border-t border-white/10">
+                    {(() => {
+                      try {
+                        const desc = typeof product.description === "string"
+                          ? JSON.parse(product.description)
+                          : product.description;
+
+                        if (desc && typeof desc === "object" && desc.short_description) {
+                          const parts: string[] = [];
+                          const productName = product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name;
+
+                          if (desc.health_benefits && desc.health_benefits.length > 0) {
+                            const benefits = desc.health_benefits as string[];
+                            if (benefits.length === 1) {
+                              parts.push(`**${productName}** is highly regarded for being ${benefits[0].toLowerCase()}.`);
+                            } else {
+                              const last = benefits[benefits.length - 1].toLowerCase();
+                              const rest = benefits.slice(0, -1).map((b: string) => b.toLowerCase()).join(", ");
+                              parts.push(`**${productName}** is highly regarded for being ${rest}, and ${last}.`);
+                            }
+                          } else if (desc.short_description) {
+                            parts.push(desc.short_description);
+                          } else {
+                            parts.push(`**${productName}** is a premium quality ${product.category.toLowerCase()} product.`);
+                          }
+
+                          if (desc.recommended_uses && desc.recommended_uses.length > 0) {
+                            const uses = desc.recommended_uses as string[];
+                            if (uses.length === 1) {
+                              parts.push(`It is frequently featured in ${uses[0].toLowerCase()}.`);
+                            } else {
+                              const last = uses[uses.length - 1].toLowerCase();
+                              const rest = uses.slice(0, -1).map((u: string) => u.toLowerCase()).join(", ");
+                              parts.push(`It is frequently featured in ${rest}, and ${last}.`);
+                            }
+                          }
+
+                          if (desc.consumer_segment) {
+                            parts.push(`This versatility makes it an excellent choice for ${desc.consumer_segment.toLowerCase()} consumers.`);
+                          }
+
+                          return (
+                            <p className="text-white/80 text-[11px] sm:text-sm lg:text-[15px] leading-relaxed max-w-5xl">
+                              {parts.map((part, index) => (
+                                <span key={index}>
+                                  {part.split("**").map((text, i) => (
+                                    i % 2 === 1 ? <strong key={i} className="text-white font-semibold">{text}</strong> : text
+                                  ))}
+                                  {index < parts.length - 1 ? " " : ""}
+                                </span>
+                              ))}
+                            </p>
+                          );
+                        }
+                      } catch {
+                        // Fallback
+                      }
+
+                      return (
+                        <p className="text-white/80 text-[11px] sm:text-sm lg:text-[15px] leading-relaxed max-w-5xl">
+                          {product.description}
+                        </p>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
