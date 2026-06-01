@@ -323,13 +323,7 @@ const ForecastChart = ({
 
   return (
     <div>
-      {productName && (
-        <div className="flex items-center gap-2 mb-2 px-1">
-          <span className="text-[10px] font-bold text-gray-900 uppercase tracking-wider">
-            {productName}
-          </span>
-        </div>
-      )}
+
       <div className="relative">
         <div
           ref={tooltipRef}

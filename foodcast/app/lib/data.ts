@@ -141,6 +141,33 @@ export async function fetchProducts(): Promise<Product[]> {
   }
 }
 
+// Fetch trending views from Supabase
+export async function fetchTrendingInteractions(): Promise<Record<string, number>> {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    const { data, error } = await supabase
+      .from('product_daily_views')
+      .select('product_id, view_count')
+      .gte('date', thirtyDaysAgo); // Last 30 days trends
+      
+    if (error) throw error;
+    
+    // Aggregate counts by product_id
+    const counts: Record<string, number> = {};
+    if (data) {
+      data.forEach(row => {
+        counts[row.product_id] = (counts[row.product_id] || 0) + row.view_count;
+      });
+    }
+    return counts;
+  } catch (e) {
+    console.error("Failed to fetch trending interactions:", e);
+    return {};
+  }
+}
+
 export async function fetchNews(limit = 10): Promise<NewsArticle[]> {
   try {
     return await edgeFetch<NewsArticle[]>(`news?limit=${limit}`);

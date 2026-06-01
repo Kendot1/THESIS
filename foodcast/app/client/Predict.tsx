@@ -13,7 +13,7 @@ import ScrollReveal from "../components/ScrollReveal";
 import { Product, fetchCategories, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { encryptId } from "../../lib/idCipher";
-import { useProducts } from "../lib/hooks";
+import { useProducts, useTrendingInteractions } from "../lib/hooks";
 
 interface PredictProps {
   initialProducts: Product[];
@@ -33,6 +33,7 @@ function PredictContent({ initialProducts }: PredictProps) {
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
   const { data: products = [], isLoading } = useProducts(initialProducts);
+  const { data: trendingInteractions } = useTrendingInteractions();
   const [categories, setCategories] = useState<string[]>(["All"]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -196,6 +197,12 @@ function PredictContent({ initialProducts }: PredictProps) {
 
     return uniqueProducts
       .sort((a, b) => {
+        // Primary sort: actual user interaction counts (daily views)
+        const viewsA = trendingInteractions?.[a.id] || 0;
+        const viewsB = trendingInteractions?.[b.id] || 0;
+        if (viewsA !== viewsB) return viewsB - viewsA;
+
+        // Fallback sort: sentiment and price changes
         const isBullishA = a.sentiment === "Bullish" ? 1 : 0;
         const isBullishB = b.sentiment === "Bullish" ? 1 : 0;
         if (isBullishA !== isBullishB) return isBullishB - isBullishA;
@@ -205,7 +212,7 @@ function PredictContent({ initialProducts }: PredictProps) {
         return changeB - changeA;
       })
       .slice(0, 5);
-  }, [products]);
+  }, [products, trendingInteractions]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { All: products.length };
@@ -505,12 +512,6 @@ function PredictContent({ initialProducts }: PredictProps) {
                   </div>
                 </div>
 
-                <div className="mb-4 text-wrap">
-                  <p className="text-gray-500 text-sm max-w-2xl line-clamp-2">
-                    {featuredProduct.description}
-                  </p>
-                </div>
-
                 {/* Retaining Previous Chart Design (with grid and legend) */}
                 <div className="mt-2">
                   <ForecastChart
@@ -522,20 +523,12 @@ function PredictContent({ initialProducts }: PredictProps) {
                 </div>
               </div>
 
-              <div className="px-8 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400 font-medium ">
-                <div className="flex gap-6">
-                  <span>{t("forecastUpdatedToday")}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-positive animate-pulse" />
-                  {t("liveMarketData")}
-                </div>
-              </div>
-
               {/* Carousel Pagination & Navigation */}
               {featuredItems.length > 1 && (
-                <div className="px-8 py-4 bg-gray-50/30 border-t border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1 px-1 -mx-1">
+                <div className="px-8 py-4 bg-gray-50/50 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                  
+                  {/* Left: Pagination */}
+                  <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1 px-1 -mx-1 w-full md:w-auto justify-center md:justify-start">
                     {featuredItems.map((_, i) => (
                       <button
                         key={i}
@@ -546,7 +539,15 @@ function PredictContent({ initialProducts }: PredictProps) {
                       />
                     ))}
                   </div>
-                  <div className="flex items-center gap-3 hidden md:flex">
+
+                  {/* Center: Live Market Data */}
+                  <div className="flex items-center justify-center gap-2 text-xs text-gray-400 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-positive animate-pulse" />
+                    {t("liveMarketData")}
+                  </div>
+
+                  {/* Right: Navigation */}
+                  <div className="flex items-center gap-3 hidden md:flex w-full md:w-auto justify-center md:justify-end">
                     <button
                       onClick={() => setFeaturedIndex((prev) => (prev - 1 + featuredItems.length) % featuredItems.length)}
                       className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-full 

@@ -38,3 +38,12 @@ export function useNews(limit = 10, fallbackData?: NewsArticle[]) {
     fallbackData: fallbackData || getSyncCache<NewsArticle[]>(`news?limit=${limit}`),
   });
 }
+
+import { fetchTrendingInteractions } from "./data";
+
+export function useTrendingInteractions() {
+  return useSWR<Record<string, number>>("trending_interactions", fetchTrendingInteractions, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60 * 1000, // 1 minute dedup for trending views
+  });
+}

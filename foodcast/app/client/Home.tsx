@@ -18,7 +18,7 @@ import DailyMoverCard from "../components/DailyMoverCard";
 import NewsCard from "../components/NewsCard";
 import ScrollReveal from "../components/ScrollReveal";
 import { DEFAULT_PRODUCT_IMAGE, Product, NewsArticle } from "../lib/data";
-import { useProducts, useNews } from "../lib/hooks";
+import { useProducts, useNews, useTrendingInteractions } from "../lib/hooks";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { encryptId } from "../../lib/idCipher";
 
@@ -30,6 +30,7 @@ interface HomeProps {
 export default function Home({ initialProducts, initialNews }: HomeProps) {
   const { data: products = [], isLoading } = useProducts(initialProducts);
   const { data: newsList = [] } = useNews(10, initialNews);
+  const { data: trendingInteractions } = useTrendingInteractions();
   const router = useRouter();
   const { t, isTransitioning } = useLanguage();
 
@@ -67,7 +68,17 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
 
   const trendingGrouped = useMemo(() => {
     const groupedMap = new Map<string, any>();
-    const trending = products.slice(0, 4);
+    
+    // Sort products by user interactions
+    const sortedProducts = [...products].sort((a, b) => {
+        const viewsA = trendingInteractions?.[a.id] || 0;
+        const viewsB = trendingInteractions?.[b.id] || 0;
+        return viewsB - viewsA;
+    });
+
+    // Take top interacted products
+    const trending = sortedProducts.slice(0, 4);
+    
     trending.forEach(p => {
       if (!groupedMap.has(p.name)) {
         groupedMap.set(p.name, {
@@ -87,7 +98,7 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
       });
     });
     return Array.from(groupedMap.values());
-  }, [products]);
+  }, [products, trendingInteractions]);
 
   /* ─── News slider state ─────────────────────────── */
   const newsRef = useRef<HTMLDivElement>(null);

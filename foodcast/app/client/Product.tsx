@@ -104,6 +104,30 @@ export default function Product({
     };
   }, [product]);
 
+  // Track daily user interaction for trending algorithm
+  useEffect(() => {
+    if (!product) return;
+    
+    try {
+      // Create a unique key per product per day
+      const today = new Date().toISOString().split('T')[0];
+      const storageKey = `foodcast_viewed_${product.id}_${today}`;
+      
+      if (!localStorage.getItem(storageKey)) {
+        // Send interaction tracking request
+        fetch(`/api/products/${product.id}/interact`, { method: "POST" })
+          .then(res => {
+            if (res.ok) {
+              localStorage.setItem(storageKey, "true");
+            }
+          })
+          .catch(err => console.error("Failed to track interaction", err));
+      }
+    } catch (e) {
+      // Ignore localStorage errors in incognito/restricted mode
+    }
+  }, [product]);
+
   const variants = useMemo(() => {
     if (!product) return [];
     return products.filter((p) => p.name === product.name);
