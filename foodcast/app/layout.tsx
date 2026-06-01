@@ -4,6 +4,7 @@ import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
+import SWRProvider from "./components/SWRProvider";
 import { LanguageProvider } from "./lib/i18n/LanguageContext";
 
 const inter = Inter({
@@ -56,9 +57,11 @@ export default function RootLayout({
           Skip to main content
         </a>
         <LanguageProvider>
-          <Header />
-          {children}
-          <Footer />
+          <SWRProvider>
+            <Header />
+            {children}
+            <Footer />
+          </SWRProvider>
         </LanguageProvider>
       </body>
     </html>

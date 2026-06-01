@@ -1,9 +1,11 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ArrowUpRight, ArrowDownRight, Eye } from "lucide-react";
-import { DEFAULT_PRODUCT_IMAGE } from "../lib/data";
+import { preload } from "swr";
+import { DEFAULT_PRODUCT_IMAGE, fetchProducts } from "../lib/data";
 import { encryptId } from "../../lib/idCipher";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 
@@ -35,6 +37,7 @@ const ProductCard = ({
   initialVariantId,
   unit,
 }: ProductCardProps) => {
+  const router = useRouter();
   const [selectedVariantId, setSelectedVariantId] = useState(initialVariantId || variants[0]?.id);
 
   const getCleanVariant = (vStr: string) => {
@@ -79,7 +82,13 @@ const ProductCard = ({
         overflow-hidden transition-all duration-500 ease-out
         md:hover:shadow-[0_25px_60px_rgba(0,0,0,0.08)] md:hover:border-primary-100/50
         active:scale-[0.98] active:bg-gray-50/30"
-      onMouseEnter={() => setIsHovered(true)}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        // Prefetch the product detail route on hover so it's instant on click
+        router.prefetch(`/Product/${encryptId(id)}`);
+        // Warm the SWR data cache so products are ready before navigation
+        preload("supabase_products", fetchProducts);
+      }}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Row 1: Product Image Container (Flush with edges) */}
