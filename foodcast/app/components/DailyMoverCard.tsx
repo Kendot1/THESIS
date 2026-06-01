@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { TrendingUp, TrendingDown, ChevronRight, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import SparklineChart from "./SparklineChart";
+import { encryptId } from "../../lib/idCipher";
 import { DEFAULT_PRODUCT_IMAGE, ForecastDataPoint } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 
@@ -56,7 +57,7 @@ const DailyMoverCard = ({
 
   return (
     <Link
-      href={`/Product/${id}`}
+      href={`/Product/${encryptId(id)}`}
       className="daily-mover-card group relative flex flex-col rounded-2xl border border-gray-100/80
         bg-white overflow-hidden
         transition-all duration-400 ease-out
