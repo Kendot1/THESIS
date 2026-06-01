@@ -616,75 +616,61 @@ export default function Product({
                     </div>
                   </div>
 
-                  {/* Fallback Description (only if not JSON) */}
-                  {!parsedDesc && product.description && (
-                    <div className="px-6 sm:px-8 lg:px-10 pb-6">
-                      <div className="pt-4 border-t border-white/10">
-                        <p className="text-white/70 text-xs sm:text-base leading-relaxed text-justify max-w-4xl">
-                          {product.description}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  {/* Bottom Row: Description */}
+                  <div className="px-6 sm:px-8 lg:px-10 pb-6">
+                    <div className="pt-6 border-t border-white/10">
+                      {parsedDesc ? (
+                        <div className="space-y-6">
+                          <p className="text-white/90 text-sm sm:text-base leading-relaxed text-justify max-w-4xl font-medium">
+                            {parsedDesc.short_description}
+                          </p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {parsedDesc.health_benefits && parsedDesc.health_benefits.length > 0 && (
+                              <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
+                                <h4 className="text-white font-semibold mb-3 flex items-center gap-2 text-sm sm:text-base">
+                                  <Sparkles className="w-4 h-4 text-emerald-300" />
+                                  Health Benefits
+                                </h4>
+                                <ul className="list-disc pl-5 space-y-1.5 text-white/70 text-xs sm:text-sm">
+                                  {parsedDesc.health_benefits.map((b: string, i: number) => (
+                                    <li key={i}>{b}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
 
-                {/* ─── Product Overview (JSON Card) ──────── */}
-                {parsedDesc && (
-                  <ScrollReveal>
-                    <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
-                      {/* Decorative Background */}
-                      <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary-50/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
-                      
-                      <div className="relative z-10">
-                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                          <Info className="w-6 h-6 text-primary-600" />
-                          Product Overview
-                        </h3>
-                        
-                        <p className="text-gray-700 leading-relaxed text-justify mb-8 text-sm sm:text-base">
-                          {parsedDesc.short_description}
-                        </p>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {parsedDesc.health_benefits && parsedDesc.health_benefits.length > 0 && (
-                            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-5 rounded-2xl border border-emerald-100">
-                              <h4 className="text-emerald-900 font-semibold mb-3 flex items-center gap-2 text-sm sm:text-base">
-                                <Sparkles className="w-4 h-4 text-emerald-600" />
-                                Health Benefits
-                              </h4>
-                              <ul className="list-disc pl-5 space-y-2 text-emerald-800/80 text-xs sm:text-sm">
-                                {parsedDesc.health_benefits.map((b: string, i: number) => (
-                                  <li key={i}>{b}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-  
-                          {parsedDesc.recommended_uses && parsedDesc.recommended_uses.length > 0 && (
-                            <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 p-5 rounded-2xl border border-orange-100">
-                              <h4 className="text-orange-900 font-semibold mb-3 flex items-center gap-2 text-sm sm:text-base">
-                                <Layers className="w-4 h-4 text-orange-600" />
-                                Recommended Uses
-                              </h4>
-                              <ul className="list-disc pl-5 space-y-2 text-orange-800/80 text-xs sm:text-sm">
-                                {parsedDesc.recommended_uses.map((u: string, i: number) => (
-                                  <li key={i}>{u}</li>
-                                ))}
-                              </ul>
+                            {parsedDesc.recommended_uses && parsedDesc.recommended_uses.length > 0 && (
+                              <div className="bg-white/5 backdrop-blur-sm p-5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
+                                <h4 className="text-white font-semibold mb-3 flex items-center gap-2 text-sm sm:text-base">
+                                  <Layers className="w-4 h-4 text-orange-300" />
+                                  Recommended Uses
+                                </h4>
+                                <ul className="list-disc pl-5 space-y-1.5 text-white/70 text-xs sm:text-sm">
+                                  {parsedDesc.recommended_uses.map((u: string, i: number) => (
+                                    <li key={i}>{u}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {parsedDesc.consumer_segment && (
+                            <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
+                              <span className="text-white/50 text-xs font-bold uppercase tracking-wider">Target</span>
+                              <span className="text-white font-medium text-sm">{parsedDesc.consumer_segment}</span>
                             </div>
                           )}
                         </div>
-                        
-                        {parsedDesc.consumer_segment && (
-                          <div className="mt-6 flex items-center gap-3">
-                            <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-semibold uppercase tracking-wider rounded-lg">Target Consumer</span>
-                            <span className="text-gray-900 font-medium text-sm">{parsedDesc.consumer_segment}</span>
-                          </div>
-                        )}
-                      </div>
+                      ) : (
+                        product.description && (
+                          <p className="text-white/70 text-xs sm:text-base leading-relaxed text-justify max-w-4xl">
+                            {product.description}
+                          </p>
+                        )
+                      )}
                     </div>
-                  </ScrollReveal>
-                )}
+                  </div>
                 
                 {/* Price Forecast Chart */}
                 <ScrollReveal>
