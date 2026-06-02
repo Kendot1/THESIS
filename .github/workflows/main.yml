@@ -117,3 +117,9 @@ jobs:
           
           # 4. Upload new artifacts to R2 for tomorrow
           python utils/r2_sync.py upload
+
+      - name: Trigger Vercel Rebuild
+        if: env.VERCEL_DEPLOY_HOOK_URL != ''
+        run: curl -X POST "${{ env.VERCEL_DEPLOY_HOOK_URL }}"
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
