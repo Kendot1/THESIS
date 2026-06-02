@@ -222,9 +222,7 @@ export default function Header() {
                   return (
                     <li key={link.label} className="w-full max-w-[280px] bg-white/40 rounded-3xl p-2 border border-black/5">
                       <div className="flex flex-col items-center">
-                        <span className={`px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400`}>
-                          {link.label}
-                        </span>
+
                         <div className="flex flex-col gap-2 w-full mt-1">
                           {link.dropdown.map((sub) => (
                             <Link

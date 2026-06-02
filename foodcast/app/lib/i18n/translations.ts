@@ -33,7 +33,7 @@ export const translations = {
   
   // Market Data Page
   searchPlaceholder: { en: "Search for a product...", tl: "Maghanap ng produkto..." },
-  searchMarketsPlaceholder: { en: "Search markets or products...", tl: "Maghanap ng palengke o produkto..." },
+  searchMarketsPlaceholder: { en: "Search products...", tl: "Maghanap ng produkto..." },
   searchButton: { en: "Search", tl: "Hanapin" },
   backToHome: { en: "Back to Home", tl: "Bumalik sa Home" },
   market: { en: "Market", tl: "Palengke" },

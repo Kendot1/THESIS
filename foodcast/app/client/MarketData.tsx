@@ -1,8 +1,12 @@
 "use client";
-import { useState, useMemo, useEffect, useRef, useDeferredValue } from "react";
+
+// External
+import React, { useState, useMemo, useEffect, useRef, useDeferredValue } from "react";
 import Link from "next/link";
 import { Search, ArrowUpDown, Filter, Eye, ArrowLeft, ChevronLeft, ChevronRight, X, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
+
+// Local
 import SparklineChart from "../components/SparklineChart";
 import ScrollReveal from "../components/ScrollReveal";
 import { Product, fetchCategories } from "../lib/data";
@@ -23,6 +27,12 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (groupName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }));
+  };
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [priceRange, setPriceRange] = useState("All Prices");
   const [selectedOrigin, setSelectedOrigin] = useState("All");
@@ -30,11 +40,11 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
   const [visibleCount, setVisibleCount] = useState(6);
   const [isPriceRangeOpen, setIsPriceRangeOpen] = useState(false);
   const [isOriginOpen, setIsOriginOpen] = useState(false);
-  
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const priceRangeRef = useRef<HTMLDivElement>(null);
   const originRef = useRef<HTMLDivElement>(null);
-  
+
   const itemsPerPage = 12;
   const router = useRouter();
 
@@ -139,11 +149,44 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
       return matchCategory && matchQuery && matchPrice && matchOrigin;
     });
 
-    results.sort((a, b) => {
+    const groups: Record<string, any> = {};
+    results.forEach(p => {
+      const key = `${p.name}::${p.origin || ""}`;
+      if (!groups[key]) {
+        groups[key] = {
+          id: p.id,
+          groupKey: key,
+          baseName: p.name,
+          category: p.category,
+          origin: p.origin,
+          unit: p.unit,
+          variants: [],
+        };
+      }
+      groups[key].variants.push(p);
+    });
+
+    let groupedArray = Object.values(groups).map(g => {
+      const currentPrices = g.variants.map((v: any) => v.currentPrice);
+      const predictedPrices = g.variants.map((v: any) => v.predictedPrice);
+
+      const avgChange = (g.variants.reduce((acc: number, v: any) => acc + ((v.predictedPrice - v.currentPrice) / v.currentPrice) * 100, 0) / g.variants.length);
+
+      return {
+        ...g,
+        currentPriceMin: Math.min(...currentPrices),
+        currentPriceMax: Math.max(...currentPrices),
+        predictedPriceMin: Math.min(...predictedPrices),
+        predictedPriceMax: Math.max(...predictedPrices),
+        avgChange,
+      };
+    });
+
+    groupedArray.sort((a, b) => {
       let comp = 0;
       switch (sortKey) {
         case "name":
-          comp = a.name.localeCompare(b.name);
+          comp = a.baseName.localeCompare(b.baseName);
           break;
         case "category":
           comp = a.category.localeCompare(b.category);
@@ -152,26 +195,54 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
           comp = (a.origin || "").localeCompare(b.origin || "");
           break;
         case "currentPrice":
-          comp = a.currentPrice - b.currentPrice;
+          comp = a.currentPriceMin - b.currentPriceMin;
           break;
         case "predictedPrice":
-          comp = a.predictedPrice - b.predictedPrice;
+          comp = a.predictedPriceMin - b.predictedPriceMin;
           break;
         case "change":
-          comp =
-            (a.predictedPrice - a.currentPrice) / a.currentPrice -
-            (b.predictedPrice - b.currentPrice) / b.currentPrice;
+          comp = a.avgChange - b.avgChange;
           break;
         case "volume":
-          comp =
-            parseInt(a.volume.replace(/,/g, "")) -
-            parseInt(b.volume.replace(/,/g, ""));
+          comp = (a.unit || "").localeCompare(b.unit || "");
           break;
       }
       return sortDir === "asc" ? comp : -comp;
     });
 
-    return results;
+    groupedArray.forEach(g => {
+      g.variants.sort((a: any, b: any) => {
+        let comp = 0;
+        switch (sortKey) {
+          case "name":
+            comp = (a.variant || a.name).localeCompare(b.variant || b.name);
+            break;
+          case "category":
+            comp = a.category.localeCompare(b.category);
+            break;
+          case "origin":
+            comp = (a.origin || "").localeCompare(b.origin || "");
+            break;
+          case "currentPrice":
+            comp = a.currentPrice - b.currentPrice;
+            break;
+          case "predictedPrice":
+            comp = a.predictedPrice - b.predictedPrice;
+            break;
+          case "change":
+            const aChange = (a.predictedPrice - a.currentPrice) / a.currentPrice;
+            const bChange = (b.predictedPrice - b.currentPrice) / b.currentPrice;
+            comp = aChange - bChange;
+            break;
+          case "volume":
+            comp = (a.unit || "").localeCompare(b.unit || "");
+            break;
+        }
+        return sortDir === "asc" ? comp : -comp;
+      });
+    });
+
+    return groupedArray;
   }, [deferredQuery, deferredCategory, sortKey, sortDir, products, priceRange, selectedOrigin]);
 
   const paginatedProducts = useMemo(() => {
@@ -206,48 +277,48 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
   if (isLoading || isTransitioning) {
     return (
       <main className="min-h-screen bg-surface">
-          {/* Header Skeleton */}
-          <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-7 sm:py-10 pt-22 sm:pt-25 overflow-hidden">
-            <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
-              <div className="h-4 w-32 bg-white/10 rounded-md mb-6 animate-pulse" />
-              <div className="h-10 sm:h-12 w-48 sm:w-64 bg-white/10 rounded-xl mb-4 animate-pulse" />
-              <div className="h-4 w-64 sm:w-96 bg-white/5 rounded-lg animate-pulse" />
-            </div>
-          </section>
+        {/* Header Skeleton */}
+        <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-7 sm:py-10 pt-22 sm:pt-25 overflow-hidden">
+          <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
+            <div className="h-4 w-32 bg-white/10 rounded-md mb-6 animate-pulse" />
+            <div className="h-10 sm:h-12 w-48 sm:w-64 bg-white/10 rounded-xl mb-4 animate-pulse" />
+            <div className="h-4 w-64 sm:w-96 bg-white/5 rounded-lg animate-pulse" />
+          </div>
+        </section>
 
-          <div className="max-w-7xl mx-auto px-5 lg:px-10 py-6 sm:py-8 lg:py-10">
-            {/* Filter Skeleton */}
-            <div className="mb-5 flex flex-col lg:flex-row gap-4">
-              <div className="flex gap-2 flex-1">
-                <div className="h-12 flex-1 bg-white border border-gray-100 rounded-2xl animate-pulse" />
-                <div className="h-12 w-12 bg-white border border-gray-100 rounded-2xl animate-pulse" />
-              </div>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="h-12 w-24 bg-white border border-gray-100 rounded-2xl animate-pulse hidden sm:block" />
-                ))}
-              </div>
+        <div className="max-w-7xl mx-auto px-5 lg:px-10 py-6 sm:py-8 lg:py-10">
+          {/* Filter Skeleton */}
+          <div className="mb-5 flex flex-col lg:flex-row gap-4">
+            <div className="flex gap-2 flex-1">
+              <div className="h-12 flex-1 bg-white border border-gray-100 rounded-2xl animate-pulse" />
+              <div className="h-12 w-12 bg-white border border-gray-100 rounded-2xl animate-pulse" />
             </div>
-
-            {/* Table Skeleton */}
-            <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-xl overflow-hidden">
-              <div className="h-14 bg-primary-700 animate-pulse border-b border-black/5" />
-              <div className="divide-y divide-gray-50">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                  <div key={i} className="flex items-center justify-between p-4 sm:px-8 py-5">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-positive animate-pulse" />
-                        <span className="text-gray-400 font-medium">{t("dataRefreshed")}</span>
-                    </div>
-                    <div className="h-6 w-20 bg-primary-100 rounded-lg animate-pulse hidden sm:block" />
-                    <div className="h-5 w-16 bg-gray-200 rounded-md animate-pulse" />
-                    <div className="h-5 w-16 bg-gray-200 rounded-md animate-pulse" />
-                    <div className="h-6 w-16 bg-gray-100 rounded-full animate-pulse" />
-                  </div>
-                ))}
-              </div>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="h-12 w-24 bg-white border border-gray-100 rounded-2xl animate-pulse hidden sm:block" />
+              ))}
             </div>
           </div>
+
+          {/* Table Skeleton */}
+          <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-xl overflow-hidden">
+            <div className="h-14 bg-primary-700 animate-pulse border-b border-black/5" />
+            <div className="divide-y divide-gray-50">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                <div key={i} className="flex items-center justify-between p-4 sm:px-8 py-5">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-positive animate-pulse" />
+                    <span className="text-gray-400 font-medium">{t("dataRefreshed")}</span>
+                  </div>
+                  <div className="h-6 w-20 bg-primary-100 rounded-lg animate-pulse hidden sm:block" />
+                  <div className="h-5 w-16 bg-gray-200 rounded-md animate-pulse" />
+                  <div className="h-5 w-16 bg-gray-200 rounded-md animate-pulse" />
+                  <div className="h-6 w-16 bg-gray-100 rounded-full animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </main>
     );
   }
@@ -301,7 +372,7 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                       className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder-gray-400
                         focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_4px_rgba(46,125,50,0.1)] transition-all shadow-sm"
                       id="table-search"
-                      aria-label="Search markets or products"
+                      aria-label="Search products"
                     />
                   </div>
                   <button
@@ -404,10 +475,10 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                           className="w-full flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors focus:outline-none focus:border-primary-500"
                         >
                           <span className="text-xs font-bold text-gray-700">
-                            {priceRange === "All" || priceRange === "All Prices" ? t("allPrices") : 
-                             priceRange === "Below ₱50" ? t("below50") : 
-                             priceRange === "₱50 - ₱100" ? "₱50 - ₱100" : 
-                             t("above100")}
+                            {priceRange === "All" || priceRange === "All Prices" ? t("allPrices") :
+                              priceRange === "Below ₱50" ? t("below50") :
+                                priceRange === "₱50 - ₱100" ? "₱50 - ₱100" :
+                                  t("above100")}
                           </span>
                           <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${isPriceRangeOpen ? "rotate-180" : ""}`} />
                         </button>
@@ -426,9 +497,8 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                                     setPriceRange(option.value);
                                     setIsPriceRangeOpen(false);
                                   }}
-                                  className={`px-4 py-2 text-left text-xs font-bold transition-colors ${
-                                    (priceRange === option.value || (priceRange === "All" && option.value === "All Prices")) ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
-                                  }`}
+                                  className={`px-4 py-2 text-left text-xs font-bold transition-colors ${(priceRange === option.value || (priceRange === "All" && option.value === "All Prices")) ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
+                                    }`}
                                 >
                                   {option.label}
                                 </button>
@@ -458,9 +528,8 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                                   setSelectedOrigin("All");
                                   setIsOriginOpen(false);
                                 }}
-                                className={`px-4 py-2 text-left text-xs font-bold transition-colors ${
-                                  selectedOrigin === "All" ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
-                                }`}
+                                className={`px-4 py-2 text-left text-xs font-bold transition-colors ${selectedOrigin === "All" ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
+                                  }`}
                               >
                                 {t("allLocations")}
                               </button>
@@ -471,9 +540,8 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                                     setSelectedOrigin(origin);
                                     setIsOriginOpen(false);
                                   }}
-                                  className={`px-4 py-2 text-left text-xs font-bold transition-colors ${
-                                    selectedOrigin === origin ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
-                                  }`}
+                                  className={`px-4 py-2 text-left text-xs font-bold transition-colors ${selectedOrigin === origin ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
+                                    }`}
                                 >
                                   {t(origin)}
                                 </button>
@@ -520,73 +588,141 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black/5">
-                  {paginatedProducts.map((p) => {
-                    const change =
-                      ((p.predictedPrice - p.currentPrice) /
-                        p.currentPrice) *
-                      100;
-                    const isUp = change >= 0;
+                  {paginatedProducts.map((g: any) => {
+                    const isExpanded = !!expandedGroups[g.groupKey];
+                    const hasVariants = g.variants.length > 1;
+
+                    const currentPriceStr = g.currentPriceMin === g.currentPriceMax
+                      ? `₱${g.currentPriceMin.toFixed(2)}`
+                      : `₱${g.currentPriceMin.toFixed(2)} - ₱${g.currentPriceMax.toFixed(2)}`;
+
+                    const predictedPriceStr = g.predictedPriceMin === g.predictedPriceMax
+                      ? `₱${g.predictedPriceMin.toFixed(2)}`
+                      : `₱${g.predictedPriceMin.toFixed(2)} - ₱${g.predictedPriceMax.toFixed(2)}`;
+
+                    const isUp = g.avgChange >= 0;
 
                     return (
-                      <tr
-                        key={p.id}
-                        onClick={() => router.push(`/Product/${encryptId(p.id)}`)}
-                        onMouseEnter={() => router.prefetch(`/Product/${encryptId(p.id)}`)}
-                        className="group transition-all duration-300 hover:bg-primary-50/40 cursor-pointer"
-                      >
-                        <td className="px-6 lg:px-8 py-3">
-                          <div className="flex items-center gap-4">
-                            <div className="flex flex-col">
-                              <span className="font-bold text-sm text-gray-900 group-hover:text-primary-800 transition-colors">
-                                {t(p.name)} {p.variant && p.variant !== "Standard" ? `(${p.variant})` : ""}
-                              </span>
+                      <React.Fragment key={g.groupKey}>
+                        <tr
+                          onClick={(e) => hasVariants ? toggleGroup(g.groupKey, e as any) : router.push(`/Product/${encryptId(g.variants[0].id)}`)}
+                          className={`group transition-all duration-300 hover:bg-primary-50/40 cursor-pointer ${isExpanded ? 'bg-primary-50/20' : ''}`}
+                        >
+                          <td className="px-6 lg:px-8 py-3">
+                            <div className="flex items-center gap-3">
+                              {hasVariants ? (
+                                <button className="p-1 rounded hover:bg-primary-100 transition-colors">
+                                  <ChevronRight className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                </button>
+                              ) : (
+                                <div className="w-6" />
+                              )}
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-sm text-gray-900 group-hover:text-primary-800 transition-colors">
+                                    {t(g.baseName)}
+                                  </span>
+                                  {hasVariants && (
+                                    <span className="text-[10px] font-bold text-primary-700 bg-primary-100 px-2 py-0.5 rounded-full">
+                                      {g.variants.length} {t("Variants")}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 lg:px-8 py-3 text-center">
-                          <span className="inline-block text-[10px] font-bold text-primary-700 bg-primary-50 px-2.5 py-1 rounded-lg">
-                            {t(p.category)}
-                          </span>
-                        </td>
-                        <td className="px-6 lg:px-8 py-3 text-center">
-                          {p.origin ? (
-                            <span className="inline-block text-[10px] font-bold text-orange-dark bg-orange-light/10 px-2.5 py-1 rounded-lg uppercase tracking-wider">
-                              {t(p.origin)}
+                          </td>
+                          <td className="px-6 lg:px-8 py-3 text-center">
+                            <span className="inline-block text-[10px] font-bold text-primary-700 bg-primary-50 px-2.5 py-1 rounded-lg">
+                              {t(g.category)}
                             </span>
-                          ) : (
-                            <span className="text-xs text-gray-400 font-bold">-</span>
-                          )}
-                        </td>
-                        <td className="px-6 lg:px-8 py-3 text-center">
-                          <span className="text-sm font-bold text-gray-900 tabular-nums">
-                            {p.unit ? p.unit : "-"}
-                          </span>
-                        </td>
-                        <td className="px-6 lg:px-8 py-3 text-center">
-                          <span className="text-sm font-bold text-gray-900 tabular-nums">
-                            ₱{p.currentPrice.toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="px-6 lg:px-8 py-3 text-center">
-                          <span
-                            className={`text-sm font-black tabular-nums transition-all ${isUp ? "text-positive group-hover:drop-shadow-[0_0_8px_rgba(46,125,50,0.3)]" : "text-negative group-hover:drop-shadow-[0_0_8px_rgba(198,40,40,0.3)]"
-                              }`}
-                          >
-                            ₱{p.predictedPrice.toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="px-6 lg:px-8 py-3 text-center">
-                          <div
-                            className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full transition-all duration-300 ${isUp
-                              ? "text-positive bg-positive/10 group-hover:bg-positive/20"
-                              : "text-negative bg-negative/10 group-hover:bg-negative/20"
-                              }`}
-                          >
-                            {isUp ? "▲" : "▼"}{" "}
-                            {Math.abs(change).toFixed(1)}%
-                          </div>
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="px-6 lg:px-8 py-3 text-center">
+                            {g.origin ? (
+                              <span className="inline-block text-[10px] font-bold text-orange-dark bg-orange-light/10 px-2.5 py-1 rounded-lg uppercase tracking-wider">
+                                {t(g.origin)}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400 font-bold">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 lg:px-8 py-3 text-center">
+                            <span className="text-sm font-bold text-gray-900 tabular-nums">
+                              {g.unit ? g.unit : "-"}
+                            </span>
+                          </td>
+                          <td className="px-6 lg:px-8 py-3 text-center">
+                            <span className="text-sm font-bold text-gray-900 tabular-nums whitespace-nowrap">
+                              {currentPriceStr}
+                            </span>
+                          </td>
+                          <td className="px-6 lg:px-8 py-3 text-center">
+                            <span
+                              className={`text-sm font-black tabular-nums transition-all whitespace-nowrap ${isUp ? "text-positive group-hover:drop-shadow-[0_0_8px_rgba(46,125,50,0.3)]" : "text-negative group-hover:drop-shadow-[0_0_8px_rgba(198,40,40,0.3)]"
+                                }`}
+                            >
+                              {predictedPriceStr}
+                            </span>
+                          </td>
+                          <td className="px-6 lg:px-8 py-3 text-center">
+                            <div
+                              className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full transition-all duration-300 ${isUp
+                                ? "text-positive bg-positive/10 group-hover:bg-positive/20"
+                                : "text-negative bg-negative/10 group-hover:bg-negative/20"
+                                }`}
+                            >
+                              {isUp ? "▲" : "▼"}{" "}
+                              {Math.abs(g.avgChange).toFixed(1)}%
+                            </div>
+                          </td>
+                        </tr>
+
+                        {isExpanded && hasVariants && g.variants.map((v: any) => {
+                          const vChange = ((v.predictedPrice - v.currentPrice) / v.currentPrice) * 100;
+                          const vIsUp = vChange >= 0;
+                          return (
+                            <tr
+                              key={v.id}
+                              onClick={() => router.push(`/Product/${encryptId(v.id)}`)}
+                              onMouseEnter={() => router.prefetch(`/Product/${encryptId(v.id)}`)}
+                              className="group transition-all duration-300 hover:bg-gray-50 cursor-pointer bg-gray-50/50"
+                            >
+                              <td className="px-6 lg:px-8 py-3 pl-14">
+                                <span className="font-medium text-sm text-gray-600 group-hover:text-primary-700 transition-colors">
+                                  {v.variant && v.variant !== "Standard" ? v.variant : t(v.name)}
+                                </span>
+                              </td>
+                              <td className="px-6 lg:px-8 py-3 text-center"></td>
+                              <td className="px-6 lg:px-8 py-3 text-center">
+                                {v.origin !== g.origin && v.origin && (
+                                  <span className="inline-block text-[10px] font-bold text-orange-dark bg-orange-light/10 px-2.5 py-1 rounded-lg uppercase tracking-wider">
+                                    {t(v.origin)}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 lg:px-8 py-3 text-center">
+                                {v.unit !== g.unit && v.unit && (
+                                  <span className="text-sm font-medium text-gray-600 tabular-nums">{v.unit}</span>
+                                )}
+                              </td>
+                              <td className="px-6 lg:px-8 py-3 text-center">
+                                <span className="text-sm font-medium text-gray-700 tabular-nums">
+                                  ₱{v.currentPrice.toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="px-6 lg:px-8 py-3 text-center">
+                                <span className={`text-sm font-bold tabular-nums ${vIsUp ? "text-positive" : "text-negative"}`}>
+                                  ₱{v.predictedPrice.toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="px-6 lg:px-8 py-3 text-center">
+                                <div className={`inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 rounded-full ${vIsUp ? "text-positive" : "text-negative"}`}>
+                                  {vIsUp ? "▲" : "▼"} {Math.abs(vChange).toFixed(1)}%
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
@@ -595,63 +731,111 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
 
             {/* Mobile Card Layout */}
             <div className="md:hidden divide-y divide-black/5 bg-white/20">
-              {paginatedProducts.map((p) => {
-                const change =
-                  ((p.predictedPrice - p.currentPrice) / p.currentPrice) *
-                  100;
-                const isUp = change >= 0;
+              {paginatedProducts.map((g: any) => {
+                const isExpanded = !!expandedGroups[g.groupKey];
+                const hasVariants = g.variants.length > 1;
+
+                const currentPriceStr = g.currentPriceMin === g.currentPriceMax
+                  ? `₱${g.currentPriceMin.toFixed(2)}`
+                  : `₱${g.currentPriceMin.toFixed(2)} - ₱${g.currentPriceMax.toFixed(2)}`;
+
+                const predictedPriceStr = g.predictedPriceMin === g.predictedPriceMax
+                  ? `₱${g.predictedPriceMin.toFixed(2)}`
+                  : `₱${g.predictedPriceMin.toFixed(2)} - ₱${g.predictedPriceMax.toFixed(2)}`;
+
+                const isUp = g.avgChange >= 0;
 
                 return (
-                  <div
-                    key={p.id}
-                    onClick={() => router.push(`/Product/${encryptId(p.id)}`)}
-                    onMouseEnter={() => router.prefetch(`/Product/${encryptId(p.id)}`)}
-                    className="p-5 active:bg-white/60 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-4">
-                      <div className="flex items-center gap-3">
-                        <div>
-                          <div className="text-base font-bold text-gray-900">
-                            {t(p.name)} {p.variant && p.variant !== "Standard" ? `(${p.variant})` : ""}
-                          </div>
-                          <span className="text-[10px] font-bold text-primary-700 bg-primary-100/60 px-2 py-0.5 rounded-lg mr-1.5 uppercase">
-                            {t(p.category)}
-                          </span>
-                          {p.origin && (
-                            <span className="text-[10px] font-bold text-orange-dark bg-orange-light/10 px-2 py-0.5 rounded-lg uppercase tracking-wide">
-                              {t(p.origin)}
-                            </span>
+                  <React.Fragment key={g.groupKey}>
+                    <div
+                      onClick={(e) => hasVariants ? toggleGroup(g.groupKey, e as any) : router.push(`/Product/${encryptId(g.variants[0].id)}`)}
+                      className={`p-5 active:bg-white/60 transition-colors cursor-pointer ${isExpanded ? 'bg-primary-50/20' : ''}`}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-3">
+                          {hasVariants && (
+                            <button className="p-1 rounded bg-white shadow-sm border border-gray-100">
+                              <ChevronRight className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                            </button>
                           )}
+                          <div>
+                            <div className="text-base font-bold text-gray-900 flex items-center gap-2">
+                              {t(g.baseName)}
+                              {hasVariants && (
+                                <span className="text-[10px] font-bold text-primary-700 bg-primary-100/60 px-2 py-0.5 rounded-lg uppercase">
+                                  {g.variants.length} {t("Variants")}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] font-bold text-primary-700 bg-primary-100/60 px-2 py-0.5 rounded-lg mr-1.5 uppercase">
+                              {t(g.category)}
+                            </span>
+                            {g.origin && (
+                              <span className="text-[10px] font-bold text-orange-dark bg-orange-light/10 px-2 py-0.5 rounded-lg uppercase tracking-wide">
+                                {t(g.origin)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div
+                          className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full ${isUp
+                            ? "text-positive bg-positive/10"
+                            : "text-negative bg-negative/10"
+                            }`}
+                        >
+                          {isUp ? "▲" : "▼"} {Math.abs(g.avgChange).toFixed(1)}%
                         </div>
                       </div>
-                      <div
-                        className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full ${isUp
-                          ? "text-positive bg-positive/10"
-                          : "text-negative bg-negative/10"
-                          }`}
-                      >
-                        {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
+                            {t("current")}
+                          </div>
+                          <div className="text-sm font-bold text-gray-900 tabular-nums">
+                            {currentPriceStr}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
+                            {t("predicted")}
+                          </div>
+                          <div className={`text-sm font-black tabular-nums ${isUp ? "text-positive" : "text-negative"}`}>
+                            {predictedPriceStr}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
-                          {t("current")}
+
+                    {isExpanded && hasVariants && g.variants.map((v: any) => {
+                      const vChange = ((v.predictedPrice - v.currentPrice) / v.currentPrice) * 100;
+                      const vIsUp = vChange >= 0;
+                      return (
+                        <div
+                          key={v.id}
+                          onClick={() => router.push(`/Product/${encryptId(v.id)}`)}
+                          onMouseEnter={() => router.prefetch(`/Product/${encryptId(v.id)}`)}
+                          className="p-4 pl-12 bg-gray-50/50 active:bg-gray-100 transition-colors cursor-pointer border-t border-gray-100/50"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium text-sm text-gray-700">
+                              {v.variant && v.variant !== "Standard" ? v.variant : t(v.name)}
+                            </span>
+                            <div className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${vIsUp ? "text-positive bg-positive/10" : "text-negative bg-negative/10"}`}>
+                              {vIsUp ? "▲" : "▼"} {Math.abs(vChange).toFixed(1)}%
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-6">
+                            <div>
+                              <div className="text-sm font-medium text-gray-600 tabular-nums">₱{v.currentPrice.toFixed(2)}</div>
+                            </div>
+                            <div>
+                              <div className={`text-sm font-bold tabular-nums ${vIsUp ? "text-positive" : "text-negative"}`}>₱{v.predictedPrice.toFixed(2)}</div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-sm font-bold text-gray-900 tabular-nums">
-                          ₱{p.currentPrice.toFixed(2)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
-                          {t("predicted")}
-                        </div>
-                        <div className={`text-sm font-black tabular-nums ${isUp ? "text-positive" : "text-negative"}`}>
-                          ₱{p.predictedPrice.toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                      );
+                    })}
+                  </React.Fragment>
                 );
               })}
             </div>
