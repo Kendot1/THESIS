@@ -2,19 +2,14 @@ name: Automated Data Scrapers
 
 on:
   schedule:
-    # Run the DA Historical PDF scraper every 12 hours (1 AM & 1 PM UTC)
+    # Run the full data pipeline every 12 hours (1 AM & 1 PM UTC)
     - cron: "0 1,13 * * *"
-    # Run the News Scraper every 12 hours (2 AM & 2 PM UTC)
-    - cron: "0 2,14 * * *"
-    # Run the Smart Daily Trainer every 12 hours (3 AM & 3 PM UTC, after scrapers)
-    - cron: "0 3,15 * * *"
   workflow_dispatch:
 
 jobs:
   scrape_da_prices:
     name: Scrape DA Historical Prices
     runs-on: ubuntu-latest
-    if: github.event.schedule == '0 1,13 * * *' || github.event_name == 'workflow_dispatch'
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -40,7 +35,7 @@ jobs:
   scrape_news:
     name: Scrape Market News
     runs-on: ubuntu-latest
-    if: github.event.schedule == '0 2,14 * * *' || github.event_name == 'workflow_dispatch'
+    needs: scrape_da_prices
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -69,7 +64,6 @@ jobs:
     name: Daily Model Training
     runs-on: ubuntu-latest
     needs: [scrape_da_prices, scrape_news]
-    if: github.event.schedule == '0 3,15 * * *' || github.event_name == 'workflow_dispatch'
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
