@@ -42,6 +42,9 @@ const ForecastChart = ({
   const actualSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
   const predictedSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
   const { t } = useLanguage();
+  // Keep a ref to t so the chart creation effect doesn't need t as a dependency
+  const tRef = useRef(t);
+  tRef.current = t;
 
   // Build series data
   const { actualData, predictedData } = useMemo(() => {
@@ -165,7 +168,7 @@ const ForecastChart = ({
       crosshairMarkerBorderColor: "#0B3B24",
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
-      title: t("actualPrice"),
+      title: tRef.current("actualPrice"),
     });
 
     // Predicted price series (dashed green area)
@@ -180,7 +183,7 @@ const ForecastChart = ({
       crosshairMarkerBorderColor: "#7ED957",
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
-      title: t("predictedPrice"),
+      title: tRef.current("predictedPrice"),
     });
 
     chartRef.current = chart;
@@ -213,11 +216,11 @@ const ForecastChart = ({
 
       if (actualData && (actualData as any).value !== undefined) {
         priceData = actualData;
-        title = t("actualPrice");
+        title = tRef.current("actualPrice");
         color = "#0B3B24";
       } else if (predictedData && (predictedData as any).value !== undefined) {
         priceData = predictedData;
-        title = t("predictedPrice");
+        title = tRef.current("predictedPrice");
         color = "#7ED957";
       }
 
@@ -271,7 +274,17 @@ const ForecastChart = ({
       actualSeriesRef.current = null;
       predictedSeriesRef.current = null;
     };
-  }, [showGrid, height, t]);
+  }, [showGrid, height]);
+
+  // Update series titles when language changes (without recreating the chart)
+  useEffect(() => {
+    if (actualSeriesRef.current) {
+      actualSeriesRef.current.applyOptions({ title: t("actualPrice") });
+    }
+    if (predictedSeriesRef.current) {
+      predictedSeriesRef.current.applyOptions({ title: t("predictedPrice") });
+    }
+  }, [t]);
 
   // Helper to fit content but preserve right allowance
   const fitContentWithAllowance = useCallback(() => {

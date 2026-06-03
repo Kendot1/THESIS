@@ -19,6 +19,7 @@ import {
   ChevronRight,
   ChevronDown,
   Activity,
+  Tag,
 } from "lucide-react";
 
 
@@ -35,8 +36,9 @@ import ProductCard from "../components/ProductCard";
 import ScrollReveal from "../components/ScrollReveal";
 import { Product as ProductType, fetchNews, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
-import { useProducts } from "../lib/hooks";
+import { useProducts, useNews } from "../lib/hooks";
 import { encryptId, decryptId } from "../../lib/idCipher";
+import { getInheritedTags } from "../lib/tags";
 
 // Helper to find logically related products based on culinary usage
 function getRelatedProducts(current: ProductType, allProducts: ProductType[]): ProductType[] {
@@ -107,8 +109,9 @@ export default function Product({
 }) {
   const { id: encryptedId } = use(params);
   const id = decryptId(encryptedId);
-  const { t, language } = useLanguage();
+  const { t, language, isTransitioning } = useLanguage();
   const { data: products = [] } = useProducts(initialProducts);
+  const { data: newsList = [] } = useNews(10);
   const product = useMemo(() => products.find((p) => p.id === id) || null, [products, id]);
 
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
@@ -273,7 +276,7 @@ export default function Product({
     };
   }, [suggestedProducts]);
 
-  if (products.length === 0) {
+  if (products.length === 0 || isTransitioning) {
     return (
       <>
 
@@ -539,7 +542,7 @@ export default function Product({
                               : "bg-white/5 border-white/5 cursor-default"
                               }`}
                           >
-                            <span className="text-[10px] text-white/50 font-bold uppercase tracking-widest pr-1">Origin</span>
+                            <span className="text-[10px] text-white/50 font-bold uppercase tracking-widest pr-1">{t("origin")}</span>
                             <span className="text-xs font-bold text-white uppercase">{t(product.origin || "Local")}</span>
                             {uniqueOrigins.length > 1 && (
                               <ChevronDown className={`w-4 h-4 text-white/60 transition-transform ${isOriginDropdownOpen ? 'rotate-180' : ''}`} />
@@ -583,8 +586,8 @@ export default function Product({
                               : "bg-white/5 border-white/5 cursor-default"
                               }`}
                           >
-                            <span className="text-[10px] text-white/50 font-bold uppercase tracking-widest pr-1">Variant</span>
-                            <span className="text-xs font-bold text-white">{product.variant || "Standard"}</span>
+                            <span className="text-[10px] text-white/50 font-bold uppercase tracking-widest pr-1">{t("variant")}</span>
+                            <span className="text-xs font-bold text-white">{t(product.variant || "Standard")}</span>
                             {availableVariantsForOrigin.length > 1 && (
                               <ChevronDown className={`w-4 h-4 text-white/60 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                             )}
@@ -633,7 +636,7 @@ export default function Product({
                           }`}
                       >
                         <div className="flex flex-col items-start">
-                          <span className="text-[8px] text-white/50 font-bold uppercase tracking-widest">Origin</span>
+                          <span className="text-[8px] text-white/50 font-bold uppercase tracking-widest">{t("origin")}</span>
                           <span className="text-[10px] font-bold text-white uppercase">{t(product.origin || "Local")}</span>
                         </div>
                         {uniqueOrigins.length > 1 && (
@@ -679,8 +682,8 @@ export default function Product({
                           }`}
                       >
                         <div className="flex flex-col items-start overflow-hidden">
-                          <span className="text-[8px] text-white/50 font-bold uppercase tracking-widest">Variant</span>
-                          <span className="text-[10px] font-bold text-white truncate w-full text-left">{product.variant || "Standard"}</span>
+                          <span className="text-[8px] text-white/50 font-bold uppercase tracking-widest">{t("variant")}</span>
+                          <span className="text-[10px] font-bold text-white truncate w-full text-left">{t(product.variant || "Standard")}</span>
                         </div>
                         {availableVariantsForOrigin.length > 1 && (
                           <ChevronDown className={`w-3 h-3 text-white/60 transition-transform ${isDropdownOpen ? 'rotate-180' : ''} shrink-0`} />
@@ -717,7 +720,7 @@ export default function Product({
                   </div>
 
                   {/* Description - Full width bottom */}
-                  <div className="pt-3 sm:pt-5 border-t border-white/10">
+                  <div className="mt-2 sm:mt-4 pt-3 sm:pt-4 border-t border-white/10">
                     {(() => {
                       try {
                         const desc = typeof product.description === "string"
@@ -731,31 +734,31 @@ export default function Product({
                           if (desc.health_benefits && desc.health_benefits.length > 0) {
                             const benefits = desc.health_benefits as string[];
                             if (benefits.length === 1) {
-                              parts.push(`**${productName}** is highly regarded for being ${benefits[0].toLowerCase()}.`);
+                              parts.push(`**${productName}** ${t("highlyRegardedFor")} ${benefits[0].toLowerCase()}.`);
                             } else {
                               const last = benefits[benefits.length - 1].toLowerCase();
                               const rest = benefits.slice(0, -1).map((b: string) => b.toLowerCase()).join(", ");
-                              parts.push(`**${productName}** is highly regarded for being ${rest}, and ${last}.`);
+                              parts.push(`**${productName}** ${t("highlyRegardedFor")} ${rest}, ${t("andWord")} ${last}.`);
                             }
                           } else if (desc.short_description) {
                             parts.push(desc.short_description);
                           } else {
-                            parts.push(`**${productName}** is a premium quality ${product.category.toLowerCase()} product.`);
+                            parts.push(`**${productName}** ${t("premiumQuality")} ${t(product.category).toLowerCase()} ${t("productWord")}.`);
                           }
 
                           if (desc.recommended_uses && desc.recommended_uses.length > 0) {
                             const uses = desc.recommended_uses as string[];
                             if (uses.length === 1) {
-                              parts.push(`It is frequently featured in ${uses[0].toLowerCase()}.`);
+                              parts.push(`${t("frequentlyFeaturedIn")} ${uses[0].toLowerCase()}.`);
                             } else {
                               const last = uses[uses.length - 1].toLowerCase();
                               const rest = uses.slice(0, -1).map((u: string) => u.toLowerCase()).join(", ");
-                              parts.push(`It is frequently featured in ${rest}, and ${last}.`);
+                              parts.push(`${t("frequentlyFeaturedIn")} ${rest}, ${t("andWord")} ${last}.`);
                             }
                           }
 
                           if (desc.consumer_segment) {
-                            parts.push(`This versatility makes it an excellent choice for ${desc.consumer_segment.toLowerCase()} consumers.`);
+                            parts.push(`${t("excellentChoiceFor")} ${desc.consumer_segment.toLowerCase()} ${t("consumersWord")}.`);
                           }
 
                           return (
@@ -779,6 +782,43 @@ export default function Product({
                         <p className="text-white/80 text-[11px] sm:text-sm lg:text-[15px] leading-relaxed max-w-5xl">
                           {product.description}
                         </p>
+                      );
+                    })()}
+
+                    {/* Inherited Tags */}
+                    {(() => {
+                      const tags = getInheritedTags(product.name, newsList);
+                      if (tags.length === 0) return null;
+                      
+                      const tagColors = [
+                        "bg-blue-500/20 text-blue-100 border-blue-400/30 hover:bg-blue-500/40",
+                        "bg-amber-500/20 text-amber-100 border-amber-400/30 hover:bg-amber-500/40",
+                        "bg-emerald-500/20 text-emerald-100 border-emerald-400/30 hover:bg-emerald-500/40",
+                        "bg-rose-500/20 text-rose-100 border-rose-400/30 hover:bg-rose-500/40",
+                        "bg-violet-500/20 text-violet-100 border-violet-400/30 hover:bg-violet-500/40",
+                        "bg-cyan-500/20 text-cyan-100 border-cyan-400/30 hover:bg-cyan-500/40",
+                        "bg-orange-500/20 text-orange-100 border-orange-400/30 hover:bg-orange-500/40",
+                        "bg-teal-500/20 text-teal-100 border-teal-400/30 hover:bg-teal-500/40",
+                      ];
+
+                      return (
+                        <div className="mt-4 pt-1">
+                          <h4 className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                            <Tag className="w-3 h-3" />
+                            {t("relatedTags") || "Related Tags"}
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {tags.map((tag, idx) => (
+                              <Link
+                                key={idx}
+                                href={`/tags/${encodeURIComponent(tag)}`}
+                                className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest rounded-md border transition-colors ${tagColors[idx % tagColors.length]}`}
+                              >
+                                {tag}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
                       );
                     })()}
                   </div>
@@ -812,7 +852,7 @@ export default function Product({
                             onClick={() => setChartPeriod(period)}
                             className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${chartPeriod === period ? "bg-white text-primary-800 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-600"}`}
                           >
-                            {period}
+                            {t(period.toLowerCase() as any)}
                           </button>
                         ))}
                       </div>

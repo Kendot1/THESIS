@@ -479,7 +479,7 @@ async function handleNews(url: URL) {
 
   const { data, error } = await supabase
     .from("news_articles")
-    .select("id, title, title_tl, content, content_tl, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products")
+    .select("id, title, title_tl, content, content_tl, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products, time_validity_days, probability, effect_magnitude")
     .order("published_at", { ascending: false })
     .limit(limit);
 
@@ -500,6 +500,9 @@ async function handleNews(url: URL) {
     sentimentScore: article.sentiment_score,
     keywords: article.keywords || [],
     affectedProducts: article.affected_products || [],
+    timeValidityDays: article.time_validity_days,
+    probability: article.probability,
+    effectMagnitude: article.effect_magnitude,
   }));
 }
 

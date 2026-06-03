@@ -193,7 +193,7 @@ const ProductCard = ({
         {/* Row 3: Product Name */}
         <div>
           <h3
-            className={`font-bold text-gray-900 md:group-hover:text-primary-800 transition-colors duration-300 leading-tight ${compact ? 'text-[15px] sm:text-[18px] mb-1.5' : 'text-[18px] sm:text-[22px] mb-2'}`}
+            className={`font-bold text-gray-900 md:group-hover:text-primary-800 transition-colors duration-300 leading-tight ${compact ? 'text-[14px] sm:text-[17px] mb-1.5' : 'text-[16px] sm:text-[20px] mb-2'} line-clamp-2`}
             style={{ fontFamily: "var(--font-display)" }}
           >
             {t(name)} {variant && variant !== "Standard" ? `(${variant})` : ""}
@@ -224,15 +224,15 @@ const ProductCard = ({
           )}
         </div>
 
-        {/* Row 5: Side-by-side Prices */}
-        <div className="mt-auto mb-5 flex items-end justify-between gap-2 min-w-0">
-          <div className="flex flex-col gap-0.5 min-w-0">
-            <span className="text-[8px] text-gray-400 uppercase font-bold tracking-wider">{t("market")}</span>
-            <span className="text-sm font-black text-gray-900 truncate">₱{currentPrice.toFixed(1)}{unit ? ` / ${unit}` : ''}</span>
+        {/* Row 5: Prices (Stacked vertically for tight mobile widths) */}
+        <div className="mt-auto mb-4 sm:mb-5 flex flex-col gap-1.5 sm:gap-2 min-w-0">
+          <div className="flex items-center justify-between gap-1 w-full min-w-0">
+            <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-bold tracking-wider shrink-0">{t("market")}</span>
+            <span className="text-[12px] sm:text-[14px] font-black text-gray-900 truncate">₱{currentPrice.toFixed(1)}{unit ? `/${unit}` : ''}</span>
           </div>
-          <div className="flex flex-col gap-0.5 items-end min-w-0">
-            <span className="text-[8px] text-gray-400 uppercase font-bold tracking-wider">{t("predicted")}</span>
-            <span className={`text-sm font-black truncate ${isUp ? "text-positive" : "text-negative"}`}>₱{predictedPrice.toFixed(1)}{unit ? ` / ${unit}` : ''}</span>
+          <div className="flex items-center justify-between gap-1 w-full min-w-0">
+            <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-bold tracking-wider shrink-0">{t("predicted")}</span>
+            <span className={`text-[12px] sm:text-[14px] font-black truncate ${isUp ? "text-positive" : "text-negative"}`}>₱{predictedPrice.toFixed(1)}{unit ? `/${unit}` : ''}</span>
           </div>
         </div>
 
@@ -240,7 +240,7 @@ const ProductCard = ({
         <div className="relative z-30">
           <Link
             href={`/Product/${encryptId(id)}`}
-            className="flex items-center justify-center w-full py-2.5 sm:py-3.5 bg-primary-900 text-white rounded-full font-bold text-[11px] sm:text-xs 
+            className="flex items-center justify-center w-full py-2 sm:py-3 bg-primary-900 text-white rounded-full font-bold text-[10px] sm:text-[12px] 
             transition-all duration-300 shadow-lg shadow-primary-900/10 
             md:hover:bg-primary-800 md:hover:shadow-primary-900/25 md:hover:-translate-y-0.5 active:scale-[0.97]"
           >

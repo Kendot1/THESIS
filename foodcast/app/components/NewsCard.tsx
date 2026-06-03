@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
+import Link from "next/link";
 import { Calendar, ArrowRight, Tag, X, ExternalLink, Clock } from "lucide-react";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 
@@ -167,9 +168,42 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
               <div className="w-12 h-0.5 bg-gradient-to-r from-primary-700 to-accent rounded-full mb-6" />
 
               {/* Full article content */}
-              <div className="text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-line">
+              <div className="text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-line mb-8">
                 {fullContent}
               </div>
+
+              {/* Tags Section */}
+              {keywords && keywords.length > 0 && (() => {
+                const tagColors = [
+                  "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
+                  "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
+                  "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
+                  "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100",
+                  "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100",
+                  "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100",
+                  "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100",
+                  "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100",
+                ];
+                return (
+                  <div className="pt-6 border-t border-gray-100">
+                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <Tag className="w-3.5 h-3.5" />
+                      {t("relatedTags") || "Related Tags"}
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {keywords.map((kw, idx) => (
+                        <Link
+                          key={idx}
+                          href={`/tags/${encodeURIComponent(kw)}`}
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${tagColors[idx % tagColors.length]}`}
+                        >
+                          {kw}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Modal Footer */}

@@ -112,7 +112,10 @@ If relevant:
   "sentiment_score": <float -1.0 to 1.0. Negative = prices will INCREASE (bad for consumers). Positive = prices will DECREASE (good for consumers). 0 = neutral/stable>,
   "event_type": "<supply_shock | demand_spike | policy_change | import_export | price_movement | weather | fuel_energy | general>",
   "affected_products": ["<from: Rice, Well Milled Rice, Regular Milled Rice, Chicken, Pork, Beef, Egg, Bangus, Tilapia, Galunggong, Red Onion, White Onion, Garlic, Tomato, Cabbage, Eggplant, Squash, String Beans, Kangkong, Pechay Tagalog, Ampalaya, Siling Labuyo, Ginger, Potato, Carrot, Banana, Calamansi, Sugar, Cooking Oil, Corn>"],
-  "keywords": ["<e.g.: typhoon, drought, price hike, import ban, fuel surge, El Nino, tariff, smuggling>"],
+  "keywords": ["<MAXIMUM 3 broad market drivers, e.g.: Fuel Hike, Weather Disturbance, Import Policy, Typhoon, Price Surge. Avoid specific nouns like 'Meralco' or 'Diesel'>"],
+  "time_validity_days": <integer. How long will this event affect the market? e.g., 7 for a quick spike, 30 for a seasonal issue, 90 for El Nino>,
+  "probability": <float 0.0 to 1.0. How likely is this to actually affect prices? e.g., 0.9 for a confirmed tariff hike, 0.4 for a rumored shortage>,
+  "effect_magnitude": "<low | medium | high. How strong is the expected price impact?>",
   "summary": "<1-2 sentence summary focused on the PRICE IMPACT in English>",
   "title_tl": "<Translate the article's title into natural Filipino, ensuring proper grammar and punctuation>",
   "summary_tl": "<Translate the 1-2 sentence summary into natural, conversational Filipino. PAY SPECIAL ATTENTION TO PUNCTUATION: ensure proper use of commas, periods, and quotation marks where appropriate to make the sentences read clearly.>"
@@ -456,6 +459,9 @@ class NewsScraper:
             "affected_products": llm_result.get("affected_products", []),
             "event_type": llm_result.get("event_type", "general"),
             "image_url": image_url,
+            "time_validity_days": llm_result.get("time_validity_days", 7),
+            "probability": llm_result.get("probability", 1.0),
+            "effect_magnitude": llm_result.get("effect_magnitude", "medium"),
         }
 
     # ------------------------------------------------------------------
@@ -579,7 +585,7 @@ class NewsScraper:
                                 {"role": "user", "content": user_prompt},
                             ],
                             "temperature": 0.0,
-                            "max_tokens": 400,
+                            "max_tokens": 800,
                         },
                     )
                     resp.raise_for_status()
@@ -637,6 +643,9 @@ class NewsScraper:
                 "affected_products": article["affected_products"],
                 "event_type": article["event_type"],
                 "image_url": article.get("image_url", ""),
+                "time_validity_days": article.get("time_validity_days", 7),
+                "probability": article.get("probability", 1.0),
+                "effect_magnitude": article.get("effect_magnitude", "medium"),
             }).execute()
             
             if not resp.data:

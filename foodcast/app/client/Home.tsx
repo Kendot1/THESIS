@@ -21,6 +21,7 @@ import { DEFAULT_PRODUCT_IMAGE, Product, NewsArticle } from "../lib/data";
 import { useProducts, useNews, useTrendingInteractions } from "../lib/hooks";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { encryptId } from "../../lib/idCipher";
+import { getInheritedTags } from "../lib/tags";
 
 interface HomeProps {
   initialProducts: Product[];

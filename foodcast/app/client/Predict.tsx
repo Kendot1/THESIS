@@ -13,7 +13,8 @@ import ScrollReveal from "../components/ScrollReveal";
 import { Product, fetchCategories, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { encryptId } from "../../lib/idCipher";
-import { useProducts, useTrendingInteractions } from "../lib/hooks";
+import { useProducts, useTrendingInteractions, useNews } from "../lib/hooks";
+import { getInheritedTags } from "../lib/tags";
 
 interface PredictProps {
   initialProducts: Product[];
@@ -33,6 +34,7 @@ function PredictContent({ initialProducts }: PredictProps) {
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
   const { data: products = [], isLoading } = useProducts(initialProducts);
+  const { data: newsList = [] } = useNews(10);
   const { data: trendingInteractions } = useTrendingInteractions();
   const [categories, setCategories] = useState<string[]>(["All"]);
   const [selectedCategory, setSelectedCategory] = useState("All");

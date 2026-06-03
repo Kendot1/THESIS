@@ -49,6 +49,9 @@ export interface NewsArticle {
   sentimentScore?: number;
   keywords?: string[];
   affectedProducts?: string[];
+  timeValidityDays?: number;
+  probability?: number;
+  effectMagnitude?: string;
 }
 
 // ─── Supabase Edge Function Base URL ───────────────────────
@@ -62,39 +65,63 @@ const memoryCache: Record<string, { data: any; expiry: number }> = {};
 const LOCAL_CACHE_PREFIX = "foodcast_cache_";
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour persistent cache
 
-async function fetchFromNetwork<T>(path: string): Promise<T> {
+async function fetchFromNetwork<T>(path: string, retries = 3): Promise<T> {
   const now = Date.now();
-  const res = await fetch(`${EDGE_FN_BASE}/${path}`, {
-    headers: {
-      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-      "Content-Type": "application/json",
-    },
-    cache: 'no-store',
-  });
+  let lastError: any;
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `Edge function error: ${res.status}`);
-  }
-
-  const data = await res.json();
-  
-  // Update memory cache (1 minute)
-  memoryCache[path] = { data, expiry: now + 60 * 1000 };
-  
-  // Update localStorage (1 hour)
-  if (typeof window !== "undefined") {
+  for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      localStorage.setItem(LOCAL_CACHE_PREFIX + path, JSON.stringify({
-        data,
-        expiry: now + CACHE_TTL
-      }));
+      const res = await fetch(`${EDGE_FN_BASE}/${path}`, {
+        headers: {
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+        },
+        cache: 'no-store',
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        const errorMessage = err.error || `Edge function error: ${res.status}`;
+        
+        if (res.status === 503 && attempt < retries - 1) {
+          // Exponential backoff for 503 Service Unavailable (e.g., during heavy concurrent builds)
+          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+          continue;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const data = await res.json();
+      
+      // Update memory cache (1 minute)
+      memoryCache[path] = { data, expiry: now + 60 * 1000 };
+      
+      // Update localStorage (1 hour)
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(LOCAL_CACHE_PREFIX + path, JSON.stringify({
+            data,
+            expiry: now + CACHE_TTL
+          }));
+        } catch (e) {
+          console.warn("LocalStorage cache write failed (quota exceeded?):", e);
+        }
+      }
+      
+      return data;
     } catch (e) {
-      console.warn("LocalStorage cache write failed (quota exceeded?):", e);
+      lastError = e;
+      // If it's a network error or 503 handled above, loop continues if there's a continue
+      // Wait, if it threw an error that wasn't caught inside the loop block, we just throw it unless we want to retry everything.
+      // Actually we only want to retry 503. So we should rethrow if it's not a 503.
+      if (e instanceof Error && !e.message.includes("503")) {
+        throw e;
+      }
     }
   }
   
-  return data;
+  throw lastError;
 }
 
 async function edgeFetch<T>(path: string): Promise<T> {

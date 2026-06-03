@@ -49,6 +49,7 @@ export const translations = {
   product: { en: "Product", tl: "Produkto" },
   category: { en: "Category", tl: "Kategorya" },
   origin: { en: "Origin", tl: "Pinagmulan" },
+  variant: { en: "Variant", tl: "Uri" },
   unit: { en: "Unit", tl: "Yunit" },
   change: { en: "Change", tl: "Pagbabago" },
   noResults: { en: "No results found", tl: "Walang nahanap" },
@@ -132,6 +133,16 @@ export const translations = {
   // Product Page
   productNotFound: { en: "Product Not Found", tl: "Hindi Nahanap ang Produkto" },
   productNotFoundDesc: { en: "The product you're looking for doesn't exist.", tl: "Hindi mahanap ang produktong ito." },
+  
+  // Description sentence parts
+  highlyRegardedFor: { en: "is highly regarded for being", tl: "ay kilala bilang" },
+  premiumQuality: { en: "is a premium quality", tl: "ay isang mataas na kalidad na" },
+  productWord: { en: "product", tl: "produkto" },
+  frequentlyFeaturedIn: { en: "It is frequently featured in", tl: "Ito ay madalas ginagamit sa" },
+  excellentChoiceFor: { en: "This versatility makes it an excellent choice for", tl: "Dahil sa versatility nito, magandang pagpipilian ito para sa" },
+  consumersWord: { en: "consumers", tl: "mga mamimili" },
+  andWord: { en: "and", tl: "at" },
+  
   backToPredict: { en: "Back to Predict", tl: "Bumalik sa Predict" },
   priceRising: { en: "Price Rising", tl: "Tumaas ang Presyo" },
   priceDropping: { en: "Price Dropping", tl: "Bumaba ang Presyo" },
@@ -316,6 +327,16 @@ export const translations = {
   yourLocation: { en: "Your Location", tl: "Iyong Lokasyon" },
   findingNearestMarkets: { en: "Finding nearest markets...", tl: "Naghahanap ng pinakamalapit na palengke..." },
   viewMarketDataBtn: { en: "View Market Data", tl: "Tingnan ang Datos" },
+
+  // Tags
+  relatedTags: { en: "Related Tags", tl: "Mga Kaugnay na Tag" },
+  tagIndicator: { en: "Tag", tl: "Tag" },
+  tagDesc: { en: "Exploring all market movements, news, and products connected to this tag.", tl: "Sinusuri ang lahat ng galaw sa palengke, balita, at mga produktong kaugnay sa tag na ito." },
+  articlesCount: { en: "articles", tl: "mga artikulo" },
+  articleCount: { en: "article", tl: "artikulo" },
+  noNewsForTag: { en: "No news articles found for this tag.", tl: "Walang nahanap na balita para sa tag na ito." },
+  affectedProducts: { en: "Affected Products", tl: "Mga Apektadong Produkto" },
+  noProductsForTag: { en: "No products directly linked to this tag yet.", tl: "Wala pang direktang produktong nakaugnay sa tag na ito." },
 };
 
 export type Language = "en" | "tl";
