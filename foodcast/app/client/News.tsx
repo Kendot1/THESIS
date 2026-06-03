@@ -23,7 +23,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
   const [loadingMore, setLoadingMore] = useState(false);
   const [isFeaturedOpen, setIsFeaturedOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const { t, isTransitioning } = useLanguage();
+  const { t, language, isTransitioning } = useLanguage();
 
   useEffect(() => {
     setIsMounted(true);
@@ -92,6 +92,80 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
     return () => { document.body.style.overflow = ""; };
   }, [isFeaturedOpen]);
 
+  // --- Full-page skeleton for language transition ---
+  if (isTransitioning) {
+    return (
+      <main className="min-h-screen bg-surface">
+        {/* Hero Skeleton */}
+        <section className="relative bg-primary-900 pt-30 md:pt-40 pb-10 md:pb-20 overflow-hidden">
+          <div className="absolute inset-0 bg-primary-900" />
+          <div className="relative z-10 max-w-7xl mx-auto px-5 lg:px-10">
+            <div className="h-7 w-44 bg-white/10 rounded-full mb-8 skeleton-shimmer-dark" />
+            <div className="h-10 sm:h-14 w-72 sm:w-96 bg-white/15 rounded-xl mb-4 skeleton-shimmer-dark" style={{ animationDelay: "80ms" }} />
+            <div className="space-y-2 mb-12 max-w-2xl">
+              <div className="h-4 w-full bg-white/8 rounded-lg skeleton-shimmer-dark" style={{ animationDelay: "160ms" }} />
+              <div className="h-4 w-3/4 bg-white/8 rounded-lg skeleton-shimmer-dark" style={{ animationDelay: "240ms" }} />
+            </div>
+            {/* Featured Article Skeleton */}
+            <div className="bg-white rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col lg:flex-row">
+              <div className="lg:w-1/2 h-[200px] lg:h-[320px] bg-gray-100 skeleton-shimmer" />
+              <div className="lg:w-1/2 p-4 md:p-8 flex flex-col justify-center">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="h-6 w-20 bg-gray-200 rounded-lg skeleton-shimmer" />
+                  <div className="h-4 w-28 bg-gray-100 rounded-lg skeleton-shimmer" style={{ animationDelay: "80ms" }} />
+                </div>
+                <div className="space-y-3 mb-6">
+                  <div className="h-7 w-full bg-gray-200 rounded-lg skeleton-shimmer" style={{ animationDelay: "160ms" }} />
+                  <div className="h-7 w-4/5 bg-gray-200 rounded-lg skeleton-shimmer" style={{ animationDelay: "240ms" }} />
+                </div>
+                <div className="space-y-2 mb-8">
+                  <div className="h-4 w-full bg-gray-100 rounded-md skeleton-shimmer" style={{ animationDelay: "320ms" }} />
+                  <div className="h-4 w-5/6 bg-gray-100 rounded-md skeleton-shimmer" style={{ animationDelay: "400ms" }} />
+                </div>
+                <div className="h-5 w-36 bg-gray-200 rounded-lg skeleton-shimmer" style={{ animationDelay: "480ms" }} />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Filter Bar Skeleton */}
+        <section className="sticky top-[72px] z-40 bg-surface/90 backdrop-blur-xl border-b border-gray-100 py-6">
+          <div className="max-w-7xl mx-auto px-5 lg:px-10">
+            <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
+              <div className="w-full lg:max-w-xl h-14 bg-white border border-gray-200 rounded-3xl skeleton-shimmer" />
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-32 bg-white border border-gray-200 rounded-2xl skeleton-shimmer" style={{ animationDelay: "80ms" }} />
+                <div className="h-12 w-32 bg-white border border-gray-200 rounded-2xl skeleton-shimmer" style={{ animationDelay: "160ms" }} />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Article Grid Skeleton */}
+        <section className="py-5 max-w-7xl mx-auto px-5 lg:px-10">
+          <div className="flex items-center justify-between mb-6">
+            <div className="h-4 w-32 bg-gray-200 rounded-lg skeleton-shimmer" />
+            <div className="h-[1px] flex-1 bg-gray-100 mx-8 hidden md:block" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            {[0, 1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="bg-white rounded-3xl border border-gray-100 p-4 h-[380px] flex flex-col shadow-sm">
+                <div className="h-48 w-full bg-gray-100 rounded-2xl mb-5 skeleton-shimmer" style={{ animationDelay: `${i * 80}ms` }} />
+                <div className="flex gap-2 mb-4">
+                  <div className="h-5 w-20 bg-gray-200 rounded-lg skeleton-shimmer" style={{ animationDelay: `${i * 80 + 40}ms` }} />
+                  <div className="h-5 w-24 bg-gray-100 rounded-lg skeleton-shimmer" style={{ animationDelay: `${i * 80 + 80}ms` }} />
+                </div>
+                <div className="h-6 w-full bg-gray-200 rounded-lg mb-3 skeleton-shimmer" style={{ animationDelay: `${i * 80 + 120}ms` }} />
+                <div className="h-6 w-3/4 bg-gray-200 rounded-lg mb-auto skeleton-shimmer" style={{ animationDelay: `${i * 80 + 160}ms` }} />
+                <div className="h-4 w-32 bg-gray-100 rounded-md skeleton-shimmer mt-4" style={{ animationDelay: `${i * 80 + 200}ms` }} />
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <>
 
@@ -124,7 +198,12 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
             </ScrollReveal>
 
             {/* Featured Article - Only show if no filters active */}
-            {!searchQuery && selectedCategory === "All" && dateFilter === "All" && featuredArticle && (
+            {!searchQuery && selectedCategory === "All" && dateFilter === "All" && featuredArticle && (() => {
+              const displayTitle = language === "tl" && featuredArticle.title_tl ? featuredArticle.title_tl : featuredArticle.title;
+              const displayContent = language === "tl" && featuredArticle.content_tl ? featuredArticle.content_tl : (featuredArticle.content || featuredArticle.excerpt);
+              const displayExcerpt = language === "tl" && featuredArticle.content_tl ? (featuredArticle.content_tl.substring(0, 150) + "...") : featuredArticle.excerpt;
+              
+              return (
               <ScrollReveal delay={200}>
                 <div 
                   onClick={() => setIsFeaturedOpen(true)}
@@ -133,23 +212,23 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                   <div className="relative lg:w-1/2 h-[200px] lg:h-auto overflow-hidden">
                     <Image 
                       src={featuredArticle.image} 
-                      alt={featuredArticle.title} 
+                      alt={displayTitle} 
                       fill
                       className="object-cover transition-transform duration-1000 group-hover:scale-105" 
                     />
                   </div>
                   <div className="lg:w-1/2 p-4 md:p-8 flex flex-col justify-center">
                     <div className="flex items-center gap-4 mb-6">
-                      <span className="px-3 py-1 bg-primary-900 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider">{featuredArticle.category}</span>
+                      <span className="px-3 py-1 bg-primary-900 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider">{t(featuredArticle.category)}</span>
                       <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
                         <Clock className="w-3 h-3" /> {featuredArticle.date}
                       </span>
                     </div>
                     <h2 className="text-2xl md:text-4xl font-black text-gray-900 mb-6 leading-tight group-hover:text-primary-800 transition-colors">
-                      {featuredArticle.title}
+                      {displayTitle}
                     </h2>
                     <p className="text-gray-500 text-sm md:text-base mb-8 line-clamp-3 leading-relaxed">
-                      {featuredArticle.excerpt}
+                      {displayExcerpt}
                     </p>
                     <a
                       href={featuredArticle.url}
@@ -180,7 +259,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                       <div className="relative h-56 sm:h-64 flex-shrink-0 overflow-hidden">
                         <Image
                           src={featuredArticle.image}
-                          alt={featuredArticle.title}
+                          alt={displayTitle}
                           fill
                           className="object-cover"
                         />
@@ -188,7 +267,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                         <div className="absolute bottom-5 left-6 right-6 flex items-center gap-3">
                           <span className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                             <Tag className="w-3 h-3" />
-                            {featuredArticle.category}
+                            {t(featuredArticle.category)}
                           </span>
                           <span className="text-white/70 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
                             <Clock className="w-3 h-3" />
@@ -199,14 +278,14 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
 
                       <div className="p-6 sm:p-8 overflow-y-auto flex-1">
                         <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-2 leading-tight" style={{ fontFamily: "var(--font-display)" }}>
-                          {featuredArticle.title}
+                          {displayTitle}
                         </h2>
                         <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">
                           {t("source")}: {featuredArticle.source || t("marketNews")}
                         </div>
                         <div className="w-12 h-0.5 bg-gradient-to-r from-primary-700 to-accent rounded-full mb-6" />
                         <div className="text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-line">
-                          {featuredArticle.content || featuredArticle.excerpt}
+                          {displayContent}
                         </div>
                       </div>
 
@@ -233,7 +312,8 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                   </div>
                 , document.body)}
               </ScrollReveal>
-            )}
+              );
+            })()}
           </div>
         </section>
 

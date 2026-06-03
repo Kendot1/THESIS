@@ -298,6 +298,24 @@ export const translations = {
   moderateDownward: { en: "downward", tl: "pagbaba" },
   supplyConstraints: { en: "Prices might bump up a bit soon due to typical supply and demand shifts. Click the button below if you'd like a deeper AI analysis!", tl: "Posibleng tumaas ng kaunti ang presyo nito dahil sa normal na galaw ng supply at demand. I-click ang button sa ibaba para sa mas malalim na pagsusuri ng AI!" },
   inflowHarvests: { en: "We're seeing signs that prices could ease up soon, likely thanks to better supply. Click the button below if you'd like a deeper AI analysis!", tl: "May senyales na bababa ang presyo nito dahil sa pagdami ng supply. I-click ang button sa ibaba para sa mas malalim na pagsusuri ng AI!" },
+  
+  // Map Component
+  ncrMarketLocator: { en: "NCR Market Locator", tl: "Tagahanap ng Palengke sa NCR" },
+  findNearestMarkets: { en: "Find nearest markets and live commodity prices.", tl: "Maghanap ng pinakamalapit na palengke at presyo ng produkto." },
+  locationActive: { en: "Location active — sorted by nearest", tl: "Aktibo ang lokasyon — naka-sort sa pinakamalapit" },
+  searchLocation: { en: "Search Location", tl: "Maghanap ng Lokasyon" },
+  searchLocationPlaceholder: { en: "Starting point, market, or city...", tl: "Pagsisimulan, palengke, o lungsod..." },
+  noLocationsFound: { en: "No locations found", tl: "Walang nahanap na lokasyon" },
+  tryAdjustingSearch: { en: "Try adjusting your search", tl: "Subukang ibahin ang paghahanap" },
+  findMyLocation: { en: "Find My Location", tl: "Hanapin ang Aking Lokasyon" },
+  locationFound: { en: "Location Found", tl: "Nahanap na ang Lokasyon" },
+  locating: { en: "Locating...", tl: "Hinahanap ang lokasyon..." },
+  enableGpsError: { en: "Please enable GPS/Location Services for accurate tracking.", tl: "Paki-enable ang GPS/Location Services para sa tumpak na paghahanap." },
+  loadingMapData: { en: "Loading Map Data...", tl: "Nagloload ng Mapa..." },
+  mapStyle: { en: "Map Style", tl: "Estilo ng Mapa" },
+  yourLocation: { en: "Your Location", tl: "Iyong Lokasyon" },
+  findingNearestMarkets: { en: "Finding nearest markets...", tl: "Naghahanap ng pinakamalapit na palengke..." },
+  viewMarketDataBtn: { en: "View Market Data", tl: "Tingnan ang Datos" },
 };
 
 export type Language = "en" | "tl";

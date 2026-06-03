@@ -113,7 +113,9 @@ If relevant:
   "event_type": "<supply_shock | demand_spike | policy_change | import_export | price_movement | weather | fuel_energy | general>",
   "affected_products": ["<from: Rice, Well Milled Rice, Regular Milled Rice, Chicken, Pork, Beef, Egg, Bangus, Tilapia, Galunggong, Red Onion, White Onion, Garlic, Tomato, Cabbage, Eggplant, Squash, String Beans, Kangkong, Pechay Tagalog, Ampalaya, Siling Labuyo, Ginger, Potato, Carrot, Banana, Calamansi, Sugar, Cooking Oil, Corn>"],
   "keywords": ["<e.g.: typhoon, drought, price hike, import ban, fuel surge, El Nino, tariff, smuggling>"],
-  "summary": "<1-2 sentence summary focused on the PRICE IMPACT>"
+  "summary": "<1-2 sentence summary focused on the PRICE IMPACT in English>",
+  "title_tl": "<Translate the article's title into natural Filipino, ensuring proper grammar and punctuation>",
+  "summary_tl": "<Translate the 1-2 sentence summary into natural, conversational Filipino. PAY SPECIAL ATTENTION TO PUNCTUATION: ensure proper use of commas, periods, and quotation marks where appropriate to make the sentences read clearly.>"
 }"""
 
 
@@ -441,7 +443,9 @@ class NewsScraper:
 
         return {
             "title": title[:500],
+            "title_tl": llm_result.get("title_tl", "")[:500],
             "content": llm_result.get("summary", content[:5000]),
+            "content_tl": llm_result.get("summary_tl", ""),
             "source": source,
             "url": url,
             "content_hash": content_hash,
@@ -620,7 +624,9 @@ class NewsScraper:
         try:
             resp = self._client.table(self._table).insert({
                 "title": article["title"],
+                "title_tl": article.get("title_tl", ""),
                 "content": article["content"],
+                "content_tl": article.get("content_tl", ""),
                 "source": article["source"],
                 "url": article["url"],
                 "content_hash": article["content_hash"],

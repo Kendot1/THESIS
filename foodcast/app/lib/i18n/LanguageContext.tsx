@@ -53,7 +53,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       // End transitioning after another brief moment for re-render
       transitionTimer.current = setTimeout(() => {
         setIsTransitioning(false);
-      }, 150);
+      }, 400);
     }, 50);
   }, []);
 

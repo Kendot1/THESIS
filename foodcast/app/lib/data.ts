@@ -37,8 +37,10 @@ export interface Product {
 export interface NewsArticle {
   id: string;
   title: string;
+  title_tl?: string;
   excerpt: string;
   content: string;
+  content_tl?: string;
   category: string;
   date: string;
   image: string;
@@ -232,7 +234,7 @@ export async function fetchPaginatedNews(
   dateFilter?: string
 ): Promise<{ data: NewsArticle[], total: number }> {
   try {
-    let query = supabase.from("news_articles").select("id, title, content, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products", { count: "exact" });
+    let query = supabase.from("news_articles").select("id, title, title_tl, content, content_tl, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products", { count: "exact" });
 
     if (search) {
       query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%,source.ilike.%${search}%`);
@@ -261,8 +263,10 @@ export async function fetchPaginatedNews(
     const articles = (data || []).map(article => ({
       id: article.id,
       title: article.title,
+      title_tl: article.title_tl,
       excerpt: article.content ? (article.content.substring(0, 150) + "...") : "",
       content: article.content || "",
+      content_tl: article.content_tl || "",
       category: (article.event_type || "News").replace(/_/g, ' '),
       date: new Date(article.published_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
       image: article.image_url || "/news/market.png",

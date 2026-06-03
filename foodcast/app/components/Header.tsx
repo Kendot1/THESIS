@@ -7,12 +7,14 @@ import { Search, Menu, X, ChevronDown, Globe } from "lucide-react";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 
 export default function Header() {
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage, t, isTransitioning } = useLanguage();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const pathname = usePathname();
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
@@ -54,6 +56,28 @@ export default function Header() {
   const toggleDropdown = (label: string) => {
     setOpenDropdown(openDropdown === label ? null : label);
   };
+
+  // --- Skeleton for language transition ---
+  if (isTransitioning) {
+    return (
+      <header role="banner">
+        <nav className="fixed top-0 left-0 right-0 z-[100] py-4 bg-surface/95 shadow-[0_1px_24px_rgba(0,0,0,0.15)]">
+          <div className="max-w-7xl mx-auto px-5 lg:px-10 flex items-center justify-between">
+            <div className="h-8 w-[140px] bg-gray-200 rounded-lg skeleton-shimmer" />
+            <div className="hidden md:flex items-center gap-4">
+              {[80, 60, 90, 50, 60].map((w, i) => (
+                <div key={i} className="h-5 rounded-lg bg-gray-200 skeleton-shimmer" style={{ width: w, animationDelay: `${i * 80}ms` }} />
+              ))}
+              <div className="ml-6 pl-6 border-l border-gray-100">
+                <div className="h-8 w-16 bg-gray-200 rounded-xl skeleton-shimmer" style={{ animationDelay: "400ms" }} />
+              </div>
+            </div>
+            <div className="md:hidden w-10 h-10 bg-gray-200 rounded-xl skeleton-shimmer" />
+          </div>
+        </nav>
+      </header>
+    );
+  }
 
   return (
     <header role="banner">

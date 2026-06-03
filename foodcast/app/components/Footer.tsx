@@ -7,12 +7,70 @@ import { useLanguage } from "../lib/i18n/LanguageContext";
 import { usePathname } from "next/navigation";
 
 const Footer = () => {
-  const { t } = useLanguage();
+  const { t, isTransitioning } = useLanguage();
   const currentYear = new Date().getFullYear();
   const pathname = usePathname();
 
   if (pathname === '/Map') {
     return null;
+  }
+
+  // --- Skeleton for language transition ---
+  if (isTransitioning) {
+    return (
+      <footer className="bg-primary-800 relative" role="contentinfo">
+        <div className="relative max-w-7xl mx-auto px-5 lg:px-10 pt-12 pb-8">
+          <div className="grid md:grid-cols-3 gap-10 lg:gap-16 mb-14">
+            <div className="md:col-span-1">
+              <div className="w-[130px] h-[50px] bg-white/10 rounded-2xl mb-6 skeleton-shimmer-dark" />
+              <div className="space-y-2 mb-6 max-w-xs">
+                <div className="h-3 w-full bg-white/10 rounded skeleton-shimmer-dark" />
+                <div className="h-3 w-5/6 bg-white/10 rounded skeleton-shimmer-dark" style={{ animationDelay: "80ms" }} />
+                <div className="h-3 w-4/6 bg-white/10 rounded skeleton-shimmer-dark" style={{ animationDelay: "160ms" }} />
+              </div>
+              <div className="flex gap-6">
+                {[1, 2].map(i => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-white/10 skeleton-shimmer-dark" />
+                    <div className="space-y-1">
+                      <div className="h-3 w-10 bg-white/10 rounded skeleton-shimmer-dark" />
+                      <div className="h-2 w-14 bg-white/10 rounded skeleton-shimmer-dark" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="h-4 w-24 bg-white/10 rounded mb-6 skeleton-shimmer-dark" />
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-white/5 rounded-lg skeleton-shimmer-dark" style={{ animationDelay: `${i * 60}ms` }} />
+                    <div className="h-3 w-20 bg-white/10 rounded skeleton-shimmer-dark" style={{ animationDelay: `${i * 60}ms` }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="h-4 w-32 bg-white/10 rounded mb-6 skeleton-shimmer-dark" />
+              <div className="space-y-2 mb-5">
+                <div className="h-3 w-full bg-white/10 rounded skeleton-shimmer-dark" />
+                <div className="h-3 w-5/6 bg-white/10 rounded skeleton-shimmer-dark" style={{ animationDelay: "80ms" }} />
+                <div className="h-3 w-3/4 bg-white/10 rounded skeleton-shimmer-dark" style={{ animationDelay: "160ms" }} />
+              </div>
+              <div className="h-3 w-44 bg-white/10 rounded skeleton-shimmer-dark" />
+            </div>
+          </div>
+          <div className="relative pt-6">
+            <div className="absolute inset-x-0 top-0 h-px bg-white/5" />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="h-2.5 w-64 bg-white/10 rounded skeleton-shimmer-dark" />
+              <div className="h-2.5 w-40 bg-white/10 rounded skeleton-shimmer-dark" />
+            </div>
+          </div>
+        </div>
+      </footer>
+    );
   }
 
   const navLinks = [

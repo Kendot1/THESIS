@@ -155,6 +155,36 @@ body::before {
   border-radius: 8px;
 }
 
+/* Skeleton shimmer for light backgrounds */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 37%, #f0f0f0 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Skeleton shimmer for dark backgrounds (footer, hero) */
+.skeleton-shimmer-dark {
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.06) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* Skeleton shimmer for map area */
+.skeleton-shimmer-map {
+  background: linear-gradient(
+    135deg,
+    #e8e8e8 0%, #f0f0f0 20%, #e4e4e4 40%, #ebebeb 60%, #e8e8e8 80%, #f0f0f0 100%
+  );
+  background-size: 400% 400%;
+  animation: mapShimmer 3s ease-in-out infinite;
+}
+
+@keyframes mapShimmer {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+
 /* ─── Fade-In Animations ──────────────────────── */
 @keyframes fadeInUp {
   from {

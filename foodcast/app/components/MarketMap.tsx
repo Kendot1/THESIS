@@ -120,7 +120,7 @@ interface MarketMapProps {
 
 
 export default function MarketMap({ markets, marketStats, userLocation, selectedMarketId, onMarketSelect }: MarketMapProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const [mapStyleId, setMapStyleId] = useState('standard');
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
@@ -173,7 +173,7 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
             {isStyleMenuOpen && (
               <div className="absolute top-0 right-12 lg:right-14 w-44 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden flex flex-col py-2 animate-in fade-in zoom-in-95 duration-200">
                 <div className="px-4 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50 mb-1">
-                  Map Style
+                  {t("mapStyle")}
                 </div>
                 {MAP_STYLES.map(style => (
                   <button
@@ -205,8 +205,8 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
             <Marker position={[userLocation.lat, userLocation.lng]} icon={userMarkerIcon}>
               <Popup>
                 <div className="text-center">
-                  <strong className="text-sm font-bold block mb-1">Your Location</strong>
-                  <span className="text-xs text-gray-500">Finding nearest markets...</span>
+                  <strong className="text-sm font-bold block mb-1">{t("yourLocation")}</strong>
+                  <span className="text-xs text-gray-500">{t("findingNearestMarkets")}</span>
                 </div>
               </Popup>
             </Marker>
@@ -266,13 +266,13 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
 
                   {/* Body Content */}
                   <div className="p-4 bg-white">
-                    <p className="text-[11px] text-gray-500 leading-relaxed mb-3">{market.description}</p>
+                    <p className="text-[11px] text-gray-500 leading-relaxed mb-3">{language === "tl" && market.description_tl ? market.description_tl : market.description}</p>
 
                     <button
                       onClick={() => router.push(`/MarketData?origin=${encodeURIComponent(market.name)}`)}
                       className="w-full flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold py-3 rounded-xl transition-all shadow-md shadow-primary-600/20 hover:shadow-lg hover:shadow-primary-600/30 active:scale-[0.98]"
                     >
-                      View Market Data
+                      {t("viewMarketDataBtn")}
                       <ExternalLink className="w-3.5 h-3.5" />
                     </button>
                   </div>

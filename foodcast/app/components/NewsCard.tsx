@@ -8,6 +8,7 @@ import { useLanguage } from "../lib/i18n/LanguageContext";
 interface NewsCardProps {
   id: string;
   title: string;
+  title_tl?: string;
   excerpt: string;
   category: string;
   date: string;
@@ -15,13 +16,14 @@ interface NewsCardProps {
   url?: string;
   source?: string;
   content?: string;
+  content_tl?: string;
   sentimentScore?: number;
   keywords?: string[];
   affectedProducts?: string[];
 }
 
-const NewsCard = ({ id, title, excerpt, category, date, image, url, source, content, sentimentScore, keywords, affectedProducts }: NewsCardProps) => {
-  const { t } = useLanguage();
+const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, source, content, content_tl, sentimentScore, keywords, affectedProducts }: NewsCardProps) => {
+  const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -51,7 +53,11 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source, cont
     }
   }, [isOpen, handleKeyDown]);
 
-  const fullContent = content || excerpt;
+  const displayTitle = language === "tl" && title_tl ? title_tl : title;
+  const displayContent = language === "tl" && content_tl ? content_tl : content;
+  const displayExcerpt = language === "tl" && content_tl ? (content_tl.substring(0, 150) + "...") : excerpt;
+  
+  const fullContent = displayContent || displayExcerpt;
 
   return (
     <>
@@ -64,7 +70,7 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source, cont
         <div className="relative h-48 overflow-hidden">
           <Image
             src={image}
-            alt={title}
+            alt={displayTitle}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-110"
           />
@@ -84,11 +90,11 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source, cont
           </div>
 
           <h3 className="text-lg font-bold text-gray-900 mb-3 leading-tight group-hover:text-primary-800 transition-colors line-clamp-2">
-            {title}
+            {displayTitle}
           </h3>
 
           <p className="text-gray-500 text-xs sm:text-sm mb-6 line-clamp-3 leading-relaxed">
-            {excerpt}
+            {displayExcerpt}
           </p>
 
           <div className="mt-auto flex items-center justify-between">
@@ -127,7 +133,7 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source, cont
             <div className="relative h-56 sm:h-64 flex-shrink-0 overflow-hidden">
               <Image
                 src={image}
-                alt={title}
+                alt={displayTitle}
                 fill
                 className="object-cover"
               />
@@ -149,7 +155,7 @@ const NewsCard = ({ id, title, excerpt, category, date, image, url, source, cont
             {/* Modal Body */}
             <div className="p-6 sm:p-8 overflow-y-auto flex-1">
               <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-2 leading-tight" style={{ fontFamily: "var(--font-display)" }}>
-                {title}
+                {displayTitle}
               </h2>
 
               <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">

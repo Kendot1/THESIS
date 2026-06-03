@@ -479,7 +479,7 @@ async function handleNews(url: URL) {
 
   const { data, error } = await supabase
     .from("news_articles")
-    .select("id, title, content, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products")
+    .select("id, title, title_tl, content, content_tl, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products")
     .order("published_at", { ascending: false })
     .limit(limit);
 
@@ -488,8 +488,10 @@ async function handleNews(url: URL) {
   return (data || []).map((article: any) => ({
     id: article.id,
     title: article.title,
+    title_tl: article.title_tl,
     excerpt: article.content ? (article.content.substring(0, 150) + "...") : "",
     content: article.content || "",
+    content_tl: article.content_tl || "",
     category: (article.event_type || "News").replace(/_/g, ' '),
     date: new Date(article.published_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
     image: article.image_url || "/news/market.png",

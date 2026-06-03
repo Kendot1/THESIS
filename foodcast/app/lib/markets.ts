@@ -7,6 +7,7 @@ export interface MarketLocation {
   address: string;
   type: string;
   description: string;
+  description_tl?: string;
   image?: string;
 }
 

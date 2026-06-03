@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const percentChange = Math.abs(((predictedPrice - currentPrice) / currentPrice) * 100).toFixed(1);
 
     const languageInstruction = language === "tl" 
-      ? `Write the reasoning entirely in natural, conversational Filipino (Tagalog). Use the same level of detail, structure, and data as you would in English — include percentages, peso amounts, and specific factors. Just write it in Filipino instead of English. 
+      ? `Write the reasoning entirely in natural, conversational Filipino (Tagalog). PAY SPECIAL ATTENTION TO PUNCTUATION: ensure proper use of commas, periods, and quotation marks where appropriate to make the sentences read clearly. Use the same level of detail, structure, and data as you would in English — include percentages, peso amounts, and specific factors. Just write it in Filipino instead of English. 
 Example tone: "Ang inaasahang pagtaas ng presyo ng kamatis ay dulot ng mga malakas na pag-ulan at pagbaha sa Maguindanao na posibleng magdulot ng kakulangan sa supply. Bukod dito, ang pagtaas ng singil sa kuryente ng Meralco ngayong Hunyo ay maaaring magpataas ng gastos sa produksyon at transportasyon, na lalong magtutulak sa presyo pataas."`
       : "Write the reasoning entirely in English.";
 

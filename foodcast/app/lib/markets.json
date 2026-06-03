@@ -8,7 +8,8 @@
     "address": "N. Domingo St., San Juan City",
     "type": "Wet Market",
     "description": "A bustling wet market in San Juan known for fresh vegetables, meat, and seafood at competitive prices.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isang sikat na wet market sa San Juan na kilala sa mga sariwang gulay, karne, at seafood sa abot-kayang presyo."
   },
   {
     "id": "alabang_central",
@@ -19,7 +20,8 @@
     "address": "Montillano St., Alabang, Muntinlupa",
     "type": "Wet Market",
     "description": "One of the largest public markets in Muntinlupa, serving the Alabang area with fresh produce, fish, and poultry.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isa sa pinakamalaking pampublikong palengke sa Muntinlupa, na nagbibigay ng sariwang ani, isda, at karne sa lugar ng Alabang."
   },
   {
     "id": "balintawak",
@@ -30,7 +32,8 @@
     "address": "EDSA cor. A. Bonifacio, Balintawak, Quezon City",
     "type": "Wholesale & Wet Market",
     "description": "One of Metro Manila's largest wholesale markets for fruits, vegetables, and root crops. A major supply hub for retailers across NCR.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isa sa pinakamalaking wholesale na palengke sa Metro Manila para sa prutas, gulay, at halamang-ugat. Pangunahing pinagkukuhanan ng supply sa buong NCR."
   },
   {
     "id": "bicutan",
@@ -41,7 +44,8 @@
     "address": "Gen. Paulino Santos Ave., Bicutan, Taguig",
     "type": "Wet Market",
     "description": "A community wet market in Lower Bicutan offering fresh fish, meat, and everyday grocery items to Taguig residents.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isang komunidad na wet market sa Lower Bicutan na nag-aalok ng sariwang isda, karne, at pang-araw-araw na pangangailangan para sa mga taga-Taguig."
   },
   {
     "id": "cartimar",
@@ -52,7 +56,8 @@
     "address": "Mabolo St., Pasay City",
     "type": "Wet Market",
     "description": "A well-known Pasay market offering fresh seafood, meats, and vegetables alongside pet supplies and other goods.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isang kilalang palengke sa Pasay na may sariwang seafood, karne, at gulay, kasama ng mga pet supplies at iba pang produkto."
   },
   {
     "id": "commonwealth",
@@ -63,7 +68,8 @@
     "address": "Commonwealth Ave., Quezon City",
     "type": "Wet Market",
     "description": "A busy neighborhood market in Commonwealth, QC, providing fresh produce, meat, and fish to nearby communities.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isang abalang palengke sa Commonwealth, QC, na nagbibigay ng sariwang ani, karne, at isda sa mga kalapit na komunidad."
   },
   {
     "id": "farmers",
@@ -74,7 +80,8 @@
     "address": "Gen. MacArthur Ave., Araneta City, Cubao, Quezon City",
     "type": "Wet Market",
     "description": "Located inside Araneta City, Cubao. Popular for affordable fresh fruits, vegetables, seafood, and local delicacies.",
-    "image": ""
+    "image": "",
+    "description_tl": "Matatagpuan sa loob ng Araneta City, Cubao. Kilala sa mga murang sariwang prutas, gulay, seafood, at mga lokal na kakanin."
   },
   {
     "id": "grace",
@@ -85,7 +92,8 @@
     "address": "B. Morcilla St., Poblacion, Pateros",
     "type": "Wet Market",
     "description": "A compact market in Pateros known for local produce, fresh fish, and the town's famous balut (duck eggs).",
-    "image": ""
+    "image": "",
+    "description_tl": "Isang siksik na palengke sa Pateros na kilala sa mga lokal na ani, sariwang isda, at sikat na balut ng bayan."
   },
   {
     "id": "guadalupe",
@@ -96,7 +104,8 @@
     "address": "EDSA, Guadalupe Nuevo, Makati",
     "type": "Wet Market",
     "description": "A large commercial complex in Makati featuring a wet market with fresh seafood, meats, and vegetables alongside cooked food stalls.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isang malaking commercial complex sa Makati na may wet market ng sariwang seafood, karne, at gulay, kasama ng mga lutong pagkain."
   },
   {
     "id": "la_huerta",
@@ -107,18 +116,20 @@
     "address": "La Huerta, Parañaque City",
     "type": "Wet Market",
     "description": "A neighborhood market in Parañaque serving La Huerta residents with fresh produce, fish, and household essentials.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isang palengke sa Parañaque na nagbibigay sa mga taga-La Huerta ng sariwang ani, isda, at mga pang-araw-araw na pangangailangan."
   },
   {
     "id": "malabon",
     "name": "Malabon Central Market",
     "city": "Malabon",
-    "lat": 14.6562380,
+    "lat": 14.656238,
     "lng": 120.9507394,
     "address": "Estrella St., Tañong, Malabon City",
     "type": "Wet Market",
     "description": "The main public market of Malabon City, renowned for fresh fish and seafood given the city's fishing heritage.",
-    "image": ""
+    "image": "",
+    "description_tl": "Pangunahing pampublikong palengke ng Malabon, kilala sa sariwang isda at seafood dahil sa yamang-dagat ng siyudad."
   },
   {
     "id": "mandaluyong",
@@ -129,7 +140,8 @@
     "address": "Gen. Kalentong St., Pag-asa, Mandaluyong City",
     "type": "Wet Market",
     "description": "A well-organized public market in Mandaluyong offering fresh vegetables, meat, fish, and dry goods to the local community.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isang maayos na pampublikong palengke sa Mandaluyong na may alok na sariwang gulay, karne, isda, at iba pang produkto sa komunidad."
   },
   {
     "id": "marikina",
@@ -140,7 +152,8 @@
     "address": "Padre Burgos St., Sta. Elena, Marikina City",
     "type": "Wet Market",
     "description": "The central public market of Marikina City, known for its cleanliness and wide selection of fresh food and local products.",
-    "image": ""
+    "image": "",
+    "description_tl": "Pangunahing pampublikong palengke ng Marikina, kilala sa kalinisan at malawak na pagpipilian ng sariwang pagkain at lokal na produkto."
   },
   {
     "id": "maypajo",
@@ -151,7 +164,8 @@
     "address": "J.P. Rizal St., Maypajo, Caloocan City",
     "type": "Wet Market",
     "description": "A busy market in Caloocan offering affordable fresh produce, meats, and seafood to the densely populated Maypajo area.",
-    "image": ""
+    "image": "",
+    "description_tl": "Abalang palengke sa Caloocan na may murang sariwang ani, karne, at seafood para sa mataong lugar ng Maypajo."
   },
   {
     "id": "mega_q_mart",
@@ -162,7 +176,8 @@
     "address": "Ermin Garcia St., Cubao, Quezon City",
     "type": "Wet Market",
     "description": "A modern wet market in Cubao, QC, providing a wide range of fresh commodities including fruits, vegetables, and seafood.",
-    "image": ""
+    "image": "",
+    "description_tl": "Modernong wet market sa Cubao, QC, na may malawak na uri ng sariwang produkto tulad ng prutas, gulay, at seafood."
   },
   {
     "id": "munoz",
@@ -173,7 +188,8 @@
     "address": "EDSA, Project 7, Quezon City",
     "type": "Wet Market",
     "description": "A neighborhood market near the Muñoz area of QC, popular for fresh vegetables, meat, and affordable daily essentials.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isang palengke malapit sa Muñoz sa QC, sikat para sa sariwang gulay, karne, at murang pang-araw-araw na pangangailangan."
   },
   {
     "id": "murphy",
@@ -184,7 +200,8 @@
     "address": "1st Camarilla St., San Roque, Cubao, Quezon City",
     "type": "Wet Market",
     "description": "A compact community market near Cubao serving the Murphy district with fresh produce, fish, and meat at local prices.",
-    "image": ""
+    "image": "",
+    "description_tl": "Siksik na pampamayanang palengke malapit sa Cubao na naglilingkod sa distrito ng Murphy na may sariwang ani, isda, at karne sa presyong abot-kaya."
   },
   {
     "id": "mutya_pasig",
@@ -195,7 +212,8 @@
     "address": "San Agustin Ave., Palatiw, Pasig City",
     "type": "Wet Market",
     "description": "One of Pasig's largest markets, offering a wide variety of fresh fish, meat, vegetables, and dry goods under one roof.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isa sa pinakamalaking palengke sa Pasig, na may malawak na pagpipilian ng sariwang isda, karne, gulay, at iba pang produkto sa iisang bubong."
   },
   {
     "id": "navotas_agora",
@@ -206,7 +224,8 @@
     "address": "Lapu-Lapu Ave., Navotas Fishport Complex, Navotas City",
     "type": "Fish Port / Wholesale",
     "description": "A major fish and seafood wholesale hub in Navotas, supplying fresh catch from Manila Bay to markets across Metro Manila.",
-    "image": ""
+    "image": "",
+    "description_tl": "Pangunahing bagsakan ng isda at seafood sa Navotas, nagsusuplay ng sariwang huli mula sa Manila Bay papunta sa iba't ibang palengke sa Metro Manila."
   },
   {
     "id": "new_las_pinas",
@@ -217,7 +236,8 @@
     "address": "Aldebaran St., Zapote, Las Piñas City",
     "type": "Wet Market",
     "description": "The primary public market of Las Piñas City, offering fresh produce, meats, seafood, and local goods to south Metro Manila residents.",
-    "image": ""
+    "image": "",
+    "description_tl": "Pangunahing palengke ng Las Piñas City, na may sariwang ani, karne, seafood, at lokal na produkto para sa mga taga-katimugang Metro Manila."
   },
   {
     "id": "new_marulas",
@@ -228,7 +248,8 @@
     "address": "Guansing St., Marulas, Valenzuela City",
     "type": "Wet Market",
     "description": "A renovated public market in Valenzuela serving the Marulas community with fresh fish, vegetables, and daily commodities.",
-    "image": ""
+    "image": "",
+    "description_tl": "Pinaayos na pampublikong palengke sa Valenzuela na nagbibigay sa komunidad ng Marulas ng sariwang isda, gulay, at pang-araw-araw na pangangailangan."
   },
   {
     "id": "obrero",
@@ -239,7 +260,8 @@
     "address": "Oroquieta St., Santa Cruz, Manila",
     "type": "Wet Market",
     "description": "A traditional Manila market in Tondo offering fresh fish, vegetables, and meats at very affordable prices for local residents.",
-    "image": ""
+    "image": "",
+    "description_tl": "Tradisyunal na palengke ng Manila sa Tondo na nag-aalok ng sariwang isda, gulay, at karne sa murang presyo para sa mga lokal na residente."
   },
   {
     "id": "pasay",
@@ -250,18 +272,20 @@
     "address": "Taft Ave., Pasay City",
     "type": "Wet Market",
     "description": "The main public market of Pasay City, centrally located and known for fresh produce, meats, and seafood at competitive prices.",
-    "image": ""
+    "image": "",
+    "description_tl": "Pangunahing palengke ng Pasay City, nasa sentro at kilala sa mga sariwang ani, karne, at seafood sa abot-kayang presyo."
   },
   {
     "id": "pritil",
     "name": "Pritil Market",
     "city": "Manila",
-    "lat": 14.6177570,
+    "lat": 14.617757,
     "lng": 120.9699333,
     "address": "Nicolas Zamora St., Tondo, Manila",
     "type": "Wet Market",
     "description": "A historic market in Tondo, Manila, serving as a key source of fresh fish, vegetables, and meat for nearby communities.",
-    "image": ""
+    "image": "",
+    "description_tl": "Makasaysayang palengke sa Tondo, Manila, na nagsisilbing mahalagang pinagkukuhanan ng sariwang isda, gulay, at karne para sa mga kalapit na lugar."
   },
   {
     "id": "quinta",
@@ -272,7 +296,8 @@
     "address": "Carlos Palanca St., Quiapo, Manila",
     "type": "Wet Market",
     "description": "One of Manila's oldest public markets near Quiapo, offering a wide variety of fresh produce, seafood, and local goods.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isa sa mga pinakalumang palengke ng Manila malapit sa Quiapo, nag-aalok ng malawak na pagpipilian ng sariwang ani, seafood, at lokal na produkto."
   },
   {
     "id": "san_andres",
@@ -283,7 +308,8 @@
     "address": "San Andres St., Malate, Manila",
     "type": "Wet Market",
     "description": "A well-known Manila market famous for fresh fruits, exotic produce, and imported goods at wholesale prices.",
-    "image": ""
+    "image": "",
+    "description_tl": "Kilalang palengke sa Manila na sikat sa mga sariwang prutas, bihirang ani, at imported na produkto sa murang presyo."
   },
   {
     "id": "taguig_peoples",
@@ -294,7 +320,8 @@
     "address": "Gen. Paulino Santos Ave., Lower Bicutan, Taguig City",
     "type": "Wet Market",
     "description": "A community-oriented public market in Tuktukan, Taguig, providing fresh fish, meat, vegetables, and everyday essentials.",
-    "image": ""
+    "image": "",
+    "description_tl": "Isang komunidad na palengke sa Tuktukan, Taguig, naglalaan ng sariwang isda, karne, gulay, at pang-araw-araw na pangangailangan."
   },
   {
     "id": "trabajo",
@@ -305,6 +332,7 @@
     "address": "J. Marzan St., Sampaloc, Manila",
     "type": "Wet Market",
     "description": "A traditional wet market in Tondo, Manila, known for affordable fresh seafood, vegetables, and meats for local households.",
-    "image": ""
+    "image": "",
+    "description_tl": "Tradisyunal na wet market sa Tondo, Manila, kilala sa murang sariwang seafood, gulay, at karne para sa mga lokal na pamilya."
   }
 ]
