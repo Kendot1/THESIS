@@ -36,7 +36,67 @@ import ScrollReveal from "../components/ScrollReveal";
 import { Product as ProductType, fetchNews, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { useProducts } from "../lib/hooks";
-import { decryptId, encryptId } from "../../lib/idCipher";
+import { encryptId, decryptId } from "../../lib/idCipher";
+
+// Helper to find logically related products based on culinary usage
+function getRelatedProducts(current: ProductType, allProducts: ProductType[]): ProductType[] {
+  const name = current.name.toLowerCase();
+
+  // 1. Meats (Cross-substitutable for protein)
+  const meatCategories = ["Meat", "Poultry"];
+  if (meatCategories.includes(current.category)) {
+    return allProducts.filter(p => meatCategories.includes(p.category));
+  }
+
+  // 2. Fish & Seafood
+  if (current.category === "Fish" || current.category === "Seafood") {
+    return allProducts.filter(p => p.category === "Fish" || p.category === "Seafood");
+  }
+
+  // 3. Rice
+  if (current.category === "Rice") {
+    return allProducts.filter(p => p.category === "Rice");
+  }
+
+  // 4. Souring agents / Citrus
+  const souring = ['kalamansi', 'calamansi', 'lemon', 'sampaloc', 'tamarind', 'kamias'];
+  if (souring.some(s => name.includes(s))) {
+    return allProducts.filter(p => souring.some(s => p.name.toLowerCase().includes(s)));
+  }
+
+  // 5. Alliums & Aromatics
+  const aromatics = ['onion', 'garlic', 'sibuyas', 'bawang', 'ginger', 'luya'];
+  if (aromatics.some(s => name.includes(s))) {
+    return allProducts.filter(p => aromatics.some(s => p.name.toLowerCase().includes(s)));
+  }
+
+  // 6. Leafy greens
+  const leafy = ['cabbage', 'pechay', 'kangkong', 'repolyo', 'mustasa', 'spinach'];
+  if (leafy.some(s => name.includes(s))) {
+    return allProducts.filter(p => leafy.some(s => p.name.toLowerCase().includes(s)));
+  }
+
+  // 7. Fruiting / Stew vegetables
+  const fruitingVeggies = ['eggplant', 'talong', 'squash', 'kalabasa', 'tomato', 'kamatis', 'bitter gourd', 'ampalaya', 'string beans', 'sitaw', 'okra', 'sayote', 'chayote'];
+  if (fruitingVeggies.some(s => name.includes(s))) {
+    return allProducts.filter(p => fruitingVeggies.some(s => p.name.toLowerCase().includes(s)));
+  }
+
+  // 8. Root crops
+  const roots = ['potato', 'patatas', 'carrot', 'sweet potato', 'kamote', 'radish', 'labanos'];
+  if (roots.some(s => name.includes(s))) {
+    return allProducts.filter(p => roots.some(s => p.name.toLowerCase().includes(s)));
+  }
+
+  // 9. Dessert Fruits
+  const dessertFruits = ['banana', 'saba', 'lakatan', 'latundan', 'mango', 'mangga', 'papaya', 'watermelon', 'pakwan', 'pineapple', 'pinya', 'melon', 'apple', 'orange'];
+  if (dessertFruits.some(s => name.includes(s))) {
+    return allProducts.filter(p => dessertFruits.some(s => p.name.toLowerCase().includes(s)));
+  }
+
+  // Fallback: Just return same category if it didn't match any specific grouping
+  return allProducts.filter(p => p.category === current.category);
+}
 
 export default function Product({
   params,
@@ -47,7 +107,7 @@ export default function Product({
 }) {
   const { id: encryptedId } = use(params);
   const id = decryptId(encryptedId);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { data: products = [] } = useProducts(initialProducts);
   const product = useMemo(() => products.find((p) => p.id === id) || null, [products, id]);
 
@@ -55,64 +115,50 @@ export default function Product({
   const [aiReasoning, setAiReasoning] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Fetch AI Reasoning from Gemini when product loads
-  // Deferred with setTimeout so it doesn't block initial page render
-  useEffect(() => {
+  // Fetch AI Reasoning manually on button click to save tokens
+  const generateAnalysis = async () => {
     if (!product) return;
+    setIsAnalyzing(true);
+    try {
+      const news = await fetchNews(3); // Get 3 latest news
+      const newsContext = news.map(n => `- ${n.title}: ${n.excerpt}`).join("\n");
 
-    let isMounted = true;
-    const generateAnalysis = async () => {
-      setIsAnalyzing(true);
-      try {
-        const news = await fetchNews(3); // Get 3 latest news
-        const newsContext = news.map(n => `- ${n.title}: ${n.excerpt}`).join("\n");
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productName: product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name,
+          currentPrice: product.currentPrice,
+          predictedPrice: product.predictedPrice,
+          newsContext: newsContext || "No recent news available.",
+          language: language,
+        }),
+      });
 
-        const response = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            productName: product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name,
-            currentPrice: product.currentPrice,
-            predictedPrice: product.predictedPrice,
-            newsContext: newsContext || "No recent news available.",
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (isMounted && data.reasoning) {
-            setAiReasoning(data.reasoning);
-          }
-        } else {
-          console.error("Failed to fetch AI analysis");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.reasoning) {
+          setAiReasoning(data.reasoning);
         }
-      } catch (error) {
-        console.error("Error generating analysis:", error);
-      } finally {
-        if (isMounted) setIsAnalyzing(false);
+      } else {
+        console.error("Failed to fetch AI analysis");
       }
-    };
-
-    // Defer AI analysis so the page can render fully first
-    const timerId = setTimeout(() => {
-      generateAnalysis();
-    }, 100);
-
-    return () => {
-      isMounted = false;
-      clearTimeout(timerId);
-    };
-  }, [product]);
+    } catch (error) {
+      console.error("Error generating analysis:", error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   // Track daily user interaction for trending algorithm
   useEffect(() => {
     if (!product) return;
-    
+
     try {
       // Create a unique key per product per day
       const today = new Date().toISOString().split('T')[0];
       const storageKey = `foodcast_viewed_${product.id}_${today}`;
-      
+
       if (!localStorage.getItem(storageKey)) {
         // Send interaction tracking request
         fetch(`/api/products/${product.id}/interact`, { method: "POST" })
@@ -133,20 +179,24 @@ export default function Product({
     return products.filter((p) => p.name === product.name);
   }, [product, products]);
 
+
   const smartAlternatives = useMemo(() => {
     if (!product) return [];
-    // Suggest alternatives if current product is Bullish
-    if (product.sentiment !== "Bullish") return [];
 
     const variantIds = variants.map(v => v.id);
+    const relatedProducts = getRelatedProducts(product, products);
 
-    return products
-      .filter((p) => p.id !== product.id && p.category === product.category)
-      .filter((p) => p.sentiment !== "Bullish")
+    return relatedProducts
+      .filter((p) => p.id !== product.id)
       .filter((p) => !variantIds.includes(p.id))
+      // Ensure apples-to-apples comparison by matching units
+      .filter((p) => p.unit === product.unit)
+      // Must be strictly cheaper than the current product
+      .filter((p) => p.currentPrice < product.currentPrice)
+      // Sort by price ascending to show the absolute cheapest alternatives first
       .sort((a, b) => a.currentPrice - b.currentPrice)
       .slice(0, 3);
-  }, [product, variants]);
+  }, [product, variants, products]);
 
   const suggestedProducts = useMemo(() => {
     if (!product) return [];
@@ -821,7 +871,7 @@ export default function Product({
                         </h3>
                         <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 h-full relative">
                           {isAnalyzing ? (
-                            <div className="flex flex-col items-center justify-center h-full gap-3 opacity-50">
+                            <div className="flex flex-col items-center justify-center h-full gap-3 opacity-50 min-h-[120px]">
                               <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
                               <span className="text-xs font-medium text-gray-500">{t("aiAnalyzing")}</span>
                             </div>
@@ -830,11 +880,21 @@ export default function Product({
                               {aiReasoning}
                             </p>
                           ) : (
-                            <p className="text-sm text-gray-600 leading-relaxed text-justify">
-                              {t("aiFallbackIntro")} <span className="font-bold">{product.variant && product.variant !== "Standard" ? `${t(product.name)} (${product.variant})` : t(product.name)}</span> {t("showsA")}
-                              <span className="font-bold">{isUp ? t("strongUpward") : t("moderateDownward")}</span> {t("trend")}
-                              {isUp ? t("supplyConstraints") : t("inflowHarvests")}
-                            </p>
+                            <div className="flex flex-col h-full gap-4 relative min-h-[120px]">
+                              <p className="text-sm text-gray-600 leading-relaxed text-justify">
+                                {t("aiFallbackIntro")} <span className="font-bold">{product.variant && product.variant !== "Standard" ? `${t(product.name)} (${product.variant})` : t(product.name)}</span> {t("showsA")}
+                                <span className="font-bold">{isUp ? t("strongUpward") : t("moderateDownward")}</span> {t("trend")}
+                                {isUp ? t("supplyConstraints") : t("inflowHarvests")}
+                              </p>
+
+                              <button
+                                onClick={generateAnalysis}
+                                className="mt-auto w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-primary-50 text-primary-800 font-bold text-xs rounded-xl border border-primary-100 hover:bg-primary-100 transition-colors"
+                              >
+
+                                {t("generateAnalysis")}
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1084,7 +1144,7 @@ export default function Product({
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
-                                       target.srcset = "";
+                                      target.srcset = "";
                                     }
                                     if (target.src !== DEFAULT_PRODUCT_IMAGE) {
                                       target.src = DEFAULT_PRODUCT_IMAGE;

@@ -561,28 +561,37 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
           <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-xl overflow-hidden relative z-10">
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full" role="grid" aria-label="Product prices table">
+              <table className="w-full table-fixed" role="grid" aria-label="Product prices table">
+                <colgroup>
+                  <col className="w-[22%]" />
+                  <col className="w-[11%]" />
+                  <col className="w-[11%]" />
+                  <col className="w-[8%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[12%]" />
+                </colgroup>
                 <thead>
                   <tr className="border-b border-black/5 text-white bg-primary-700">
-                    <th className="text-left px-6 lg:px-8 py-4">
+                    <th className="text-left px-4 lg:px-6 py-4">
                       <SortHeader label={t("product")} sortKeyName="name" />
                     </th>
-                    <th className="text-center px-6 lg:px-8 py-4 ">
+                    <th className="text-center px-2 lg:px-4 py-4">
                       <SortHeader label={t("category")} sortKeyName="category" center />
                     </th>
-                    <th className="text-center px-6 lg:px-8 py-4">
+                    <th className="text-center px-2 lg:px-4 py-4">
                       <SortHeader label={t("origin")} sortKeyName="origin" center />
                     </th>
-                    <th className="text-center px-6 lg:px-8 py-4">
+                    <th className="text-center px-2 lg:px-3 py-4">
                       <SortHeader label={t("unit")} sortKeyName="volume" center />
                     </th>
-                    <th className="text-center px-6 lg:px-8 py-4">
+                    <th className="text-center px-2 lg:px-4 py-4">
                       <SortHeader label={t("currentPrice")} sortKeyName="currentPrice" center />
                     </th>
-                    <th className="text-center px-6 lg:px-8 py-4">
+                    <th className="text-center px-2 lg:px-4 py-4">
                       <SortHeader label={t("predictedPrice")} sortKeyName="predictedPrice" center />
                     </th>
-                    <th className="text-center px-6 lg:px-8 py-4">
+                    <th className="text-center px-2 lg:px-4 py-4">
                       <SortHeader label={t("change")} sortKeyName="change" center />
                     </th>
                   </tr>
@@ -608,22 +617,22 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                           onClick={(e) => hasVariants ? toggleGroup(g.groupKey, e as any) : router.push(`/Product/${encryptId(g.variants[0].id)}`)}
                           className={`group transition-all duration-300 hover:bg-primary-50/40 cursor-pointer ${isExpanded ? 'bg-primary-50/20' : ''}`}
                         >
-                          <td className="px-6 lg:px-8 py-3">
-                            <div className="flex items-center gap-3">
+                          <td className="px-4 lg:px-6 py-3">
+                            <div className="flex items-center gap-2">
                               {hasVariants ? (
-                                <button className="p-1 rounded hover:bg-primary-100 transition-colors">
+                                <button className="p-1 rounded hover:bg-primary-100 transition-colors flex-shrink-0">
                                   <ChevronRight className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                                 </button>
                               ) : (
-                                <div className="w-6" />
+                                <div className="w-6 flex-shrink-0" />
                               )}
-                              <div className="flex flex-col">
+                              <div className="flex flex-col min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-bold text-sm text-gray-900 group-hover:text-primary-800 transition-colors">
+                                  <span className="font-bold text-sm text-gray-900 group-hover:text-primary-800 transition-colors truncate">
                                     {t(g.baseName)}
                                   </span>
                                   {hasVariants && (
-                                    <span className="text-[10px] font-bold text-primary-700 bg-primary-100 px-2 py-0.5 rounded-full">
+                                    <span className="text-[10px] font-bold text-primary-700 bg-primary-100 px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
                                       {g.variants.length} {t("Variants")}
                                     </span>
                                   )}
@@ -631,12 +640,12 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 lg:px-8 py-3 text-center">
+                          <td className="px-2 lg:px-4 py-3 text-center">
                             <span className="inline-block text-[10px] font-bold text-primary-700 bg-primary-50 px-2.5 py-1 rounded-lg">
                               {t(g.category)}
                             </span>
                           </td>
-                          <td className="px-6 lg:px-8 py-3 text-center">
+                          <td className="px-2 lg:px-4 py-3 text-center">
                             {g.origin ? (
                               <span className="inline-block text-[10px] font-bold text-orange-dark bg-orange-light/10 px-2.5 py-1 rounded-lg uppercase tracking-wider">
                                 {t(g.origin)}
@@ -645,17 +654,17 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                               <span className="text-xs text-gray-400 font-bold">-</span>
                             )}
                           </td>
-                          <td className="px-6 lg:px-8 py-3 text-center">
+                          <td className="px-2 lg:px-3 py-3 text-center">
                             <span className="text-sm font-bold text-gray-900 tabular-nums">
                               {g.unit ? g.unit : "-"}
                             </span>
                           </td>
-                          <td className="px-6 lg:px-8 py-3 text-center">
+                          <td className="px-2 lg:px-4 py-3 text-center">
                             <span className="text-sm font-bold text-gray-900 tabular-nums whitespace-nowrap">
                               {currentPriceStr}
                             </span>
                           </td>
-                          <td className="px-6 lg:px-8 py-3 text-center">
+                          <td className="px-2 lg:px-4 py-3 text-center">
                             <span
                               className={`text-sm font-black tabular-nums transition-all whitespace-nowrap ${isUp ? "text-positive group-hover:drop-shadow-[0_0_8px_rgba(46,125,50,0.3)]" : "text-negative group-hover:drop-shadow-[0_0_8px_rgba(198,40,40,0.3)]"
                                 }`}
@@ -663,7 +672,7 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                               {predictedPriceStr}
                             </span>
                           </td>
-                          <td className="px-6 lg:px-8 py-3 text-center">
+                          <td className="px-2 lg:px-4 py-3 text-center">
                             <div
                               className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full transition-all duration-300 ${isUp
                                 ? "text-positive bg-positive/10 group-hover:bg-positive/20"
@@ -686,35 +695,35 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                               onMouseEnter={() => router.prefetch(`/Product/${encryptId(v.id)}`)}
                               className="group transition-all duration-300 hover:bg-gray-50 cursor-pointer bg-gray-50/50"
                             >
-                              <td className="px-6 lg:px-8 py-3 pl-14">
-                                <span className="font-medium text-sm text-gray-600 group-hover:text-primary-700 transition-colors">
+                              <td className="px-4 lg:px-6 py-3 pl-14">
+                                <span className="font-medium text-sm text-gray-600 group-hover:text-primary-700 transition-colors truncate block">
                                   {v.variant && v.variant !== "Standard" ? v.variant : t(v.name)}
                                 </span>
                               </td>
-                              <td className="px-6 lg:px-8 py-3 text-center"></td>
-                              <td className="px-6 lg:px-8 py-3 text-center">
+                              <td className="px-2 lg:px-4 py-3 text-center"></td>
+                              <td className="px-2 lg:px-4 py-3 text-center">
                                 {v.origin !== g.origin && v.origin && (
                                   <span className="inline-block text-[10px] font-bold text-orange-dark bg-orange-light/10 px-2.5 py-1 rounded-lg uppercase tracking-wider">
                                     {t(v.origin)}
                                   </span>
                                 )}
                               </td>
-                              <td className="px-6 lg:px-8 py-3 text-center">
+                              <td className="px-2 lg:px-3 py-3 text-center">
                                 {v.unit !== g.unit && v.unit && (
                                   <span className="text-sm font-medium text-gray-600 tabular-nums">{v.unit}</span>
                                 )}
                               </td>
-                              <td className="px-6 lg:px-8 py-3 text-center">
+                              <td className="px-2 lg:px-4 py-3 text-center">
                                 <span className="text-sm font-medium text-gray-700 tabular-nums">
                                   ₱{v.currentPrice.toFixed(2)}
                                 </span>
                               </td>
-                              <td className="px-6 lg:px-8 py-3 text-center">
+                              <td className="px-2 lg:px-4 py-3 text-center">
                                 <span className={`text-sm font-bold tabular-nums ${vIsUp ? "text-positive" : "text-negative"}`}>
                                   ₱{v.predictedPrice.toFixed(2)}
                                 </span>
                               </td>
-                              <td className="px-6 lg:px-8 py-3 text-center">
+                              <td className="px-2 lg:px-4 py-3 text-center">
                                 <div className={`inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 rounded-full ${vIsUp ? "text-positive" : "text-negative"}`}>
                                   {vIsUp ? "▲" : "▼"} {Math.abs(vChange).toFixed(1)}%
                                 </div>

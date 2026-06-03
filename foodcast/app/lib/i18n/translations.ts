@@ -25,8 +25,8 @@ export const translations = {
   marketPulse: { en: "Market Pulse", tl: "Pulso ng Palengke" },
   latestNews: { en: "Latest News & Updates", tl: "Balita at Updates" },
   viewAllNews: { en: "View All News", tl: "Lahat ng Balita" },
-  currentPrice: { en: "Current Price", tl: "Kasalukuyang Presyo" },
-  predictedPrice: { en: "Predicted Price", tl: "Inaasahang Presyo" },
+  currentPrice: { en: "Current Price", tl: "Presyo Ngayon" },
+  predictedPrice: { en: "Predicted Price", tl: "Presyo Bukas" },
   actualPrice: { en: "Actual Price", tl: "Aktwal na Presyo" },
   current: { en: "Current", tl: "Ngayon" },
   predicted: { en: "Predicted", tl: "Inaasahan" },
@@ -223,7 +223,7 @@ export const translations = {
   marketIntelligence: { en: "Market Intelligence", tl: "Kaalaman sa Palengke" },
   the: { en: "The", tl: "Ang" },
   feed: { en: "Feed", tl: "Balita" },
-  feedDesc: { en: "Stay updated with real-time agricultural intelligence, policy changes, and price alerts across the NCR market ecosystem.", tl: "Maging updated sa balita, polisiya, at alerto sa presyo sa NCR." },
+  feedDesc: { en: "Stay updated with real-time agricultural intelligence, policy changes, and price alerts across the NCR market ecosystem.", tl: "Manatiling updated sa real-time na datos ng agrikultura, mga pagbabago sa polisiya, at mga alerto sa presyo sa buong palengke ng NCR." },
   readFullReport: { en: "Read Full Report", tl: "Buong Ulat" },
 
   // Resources Page
@@ -279,6 +279,7 @@ export const translations = {
   viewForecast: { en: "View Forecast", tl: "Tingnan ang Pagtataya" },
   liveNCRRate: { en: "Live NCR Rate", tl: "Live NCR Rate" },
   aiAnalyzing: { en: "AI is analyzing market news...", tl: "Sinusuri ng AI ang balita..." },
+  generateAnalysis: { en: "Generate AI Analysis", tl: "Bumuo ng Pagsusuri" },
   buyingOpportunity: { en: "Buying Opportunity", tl: "Oras Bumili" },
   pricesRisingBy: { en: "Prices rising by", tl: "Inaasahang tataas ang presyo ng" },
   marketsTighter: { en: "Markets are getting tighter.", tl: "Kumakaunti ang supply." },
@@ -290,13 +291,13 @@ export const translations = {
   normalSeasonal: { en: "Prices are following normal seasonal patterns.", tl: "Normal ang paggalaw ng presyo ngayon." },
   continueNormal: { en: "Continue your normal buying schedule.", tl: "Ipagpatuloy ang regular na pagbili." },
   updatedAgo: { en: "Updated 2h ago", tl: "Na-update 2 oras ang nakalipas" },
-  aiFallbackIntro: { en: "Based on our AI models analyzing historical market data, ", tl: "Base sa pagsusuri ng aming AI model sa mga nakaraang datos, ang " },
-  showsA: { en: " shows a ", tl: " ay nagpapakita ng " },
-  trend: { en: " trend. ", tl: " na trend. " },
-  strongUpward: { en: "strong upward", tl: "malakas na pataas" },
-  moderateDownward: { en: "moderate downward", tl: "katamtamang pababa" },
-  supplyConstraints: { en: "Supply constraints and seasonal demand spikes indicate prices will likely rise significantly in the coming weeks.", tl: "Posibleng tumaas pa ang presyo dahil sa limitadong supply at mataas na demand." },
-  inflowHarvests: { en: "Inflow of new harvests and eased supply chain bottlenecks are projected to ease prices.", tl: "Inaasahang bababa ang presyo dahil sa mga bagong ani." },
+  aiFallbackIntro: { en: "Looking at recent market patterns, it seems like ", tl: "Base sa takbo ng palengke ngayon, mukhang ang presyo ng " },
+  showsA: { en: " is currently on an ", tl: " ay patahak sa " },
+  trend: { en: " trend. ", tl: ". " },
+  strongUpward: { en: "upward", tl: "pagtaas" },
+  moderateDownward: { en: "downward", tl: "pagbaba" },
+  supplyConstraints: { en: "Prices might bump up a bit soon due to typical supply and demand shifts. Click the button below if you'd like a deeper AI analysis!", tl: "Posibleng tumaas ng kaunti ang presyo nito dahil sa normal na galaw ng supply at demand. I-click ang button sa ibaba para sa mas malalim na pagsusuri ng AI!" },
+  inflowHarvests: { en: "We're seeing signs that prices could ease up soon, likely thanks to better supply. Click the button below if you'd like a deeper AI analysis!", tl: "May senyales na bababa ang presyo nito dahil sa pagdami ng supply. I-click ang button sa ibaba para sa mas malalim na pagsusuri ng AI!" },
 };
 
 export type Language = "en" | "tl";
