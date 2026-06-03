@@ -271,7 +271,7 @@ const ForecastChart = ({
       actualSeriesRef.current = null;
       predictedSeriesRef.current = null;
     };
-  }, [showGrid, height]);
+  }, [showGrid, height, t]);
 
   // Helper to fit content but preserve right allowance
   const fitContentWithAllowance = useCallback(() => {

@@ -26,7 +26,7 @@ export const translations = {
   latestNews: { en: "Latest News & Updates", tl: "Balita at Updates" },
   viewAllNews: { en: "View All News", tl: "Lahat ng Balita" },
   currentPrice: { en: "Current Price", tl: "Presyo Ngayon" },
-  predictedPrice: { en: "Predicted Price", tl: "Presyo Bukas" },
+  predictedPrice: { en: "Predicted Price", tl: "Tinatayang Presyo" },
   actualPrice: { en: "Actual Price", tl: "Aktwal na Presyo" },
   current: { en: "Current", tl: "Ngayon" },
   predicted: { en: "Predicted", tl: "Inaasahan" },
