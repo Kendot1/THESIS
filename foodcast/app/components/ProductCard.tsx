@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -8,6 +9,93 @@ import { preload } from "swr";
 import { DEFAULT_PRODUCT_IMAGE, fetchProducts } from "../lib/data";
 import { encryptId } from "../../lib/idCipher";
 import { useLanguage } from "../lib/i18n/LanguageContext";
+
+const VariantOverflowDropdown = ({ overflow, selectedVariantId, isOpen, onToggle, onSelect, onClose, getCleanVariant }: any) => {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + window.scrollX,
+        width: Math.max(140, rect.width)
+      });
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClose = (e: any) => {
+      if (buttonRef.current && buttonRef.current.contains(e.target)) return;
+      onClose();
+    };
+    window.addEventListener('click', handleClose);
+    window.addEventListener('scroll', onClose, { passive: true });
+    return () => {
+      window.removeEventListener('click', handleClose);
+      window.removeEventListener('scroll', onClose);
+    };
+  }, [isOpen, onClose]);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onToggle();
+        }}
+        className={`text-[9px] sm:text-[10px] font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full transition-all duration-300 border flex-shrink-0 ${
+          overflow.some((v: any) => v.id === selectedVariantId)
+            ? "bg-primary-900 text-white border-primary-900 shadow-sm"
+            : "bg-gray-50 text-gray-500 border-gray-200 hover:border-primary-200 hover:text-primary-700"
+        }`}
+      >
+        +{overflow.length} more
+      </button>
+      {isOpen && mounted && createPortal(
+        <div
+          className="absolute z-[9999] bg-white rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+          style={{ top: coords.top, left: coords.left, minWidth: coords.width }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-1 space-y-0.5 max-h-[200px] overflow-y-auto">
+            {overflow.map((v: any) => (
+              <button
+                key={v.id}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onSelect(v.id);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-left ${selectedVariantId === v.id
+                  ? "bg-primary-50 text-primary-900"
+                  : "hover:bg-gray-50 text-gray-600"
+                }`}
+              >
+                <span className="text-[10px] font-bold">{getCleanVariant(v.variant || "Standard")}</span>
+                {selectedVariantId === v.id && (
+                  <svg className="w-3.5 h-3.5 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+};
 
 interface ProductVariant {
   id: string;
@@ -39,10 +127,18 @@ const ProductCard = ({
 }: ProductCardProps) => {
   const router = useRouter();
   const [selectedVariantId, setSelectedVariantId] = useState(initialVariantId || variants[0]?.id);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 640);
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const getCleanVariant = (vStr: string) => {
-    const match = vStr.match(/\((.*?)\)/);
-    return match ? match[1] : vStr;
+    // Return the full variant string so we don't lose distinguishing prefixes like "Brown" vs "White"
+    return vStr;
   };
 
   // Sync state if initialVariantId changes from parent
@@ -54,6 +150,7 @@ const ProductCard = ({
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [isOriginDropdownOpen, setIsOriginDropdownOpen] = useState(false);
+  const [isVariantDropdownOpen, setIsVariantDropdownOpen] = useState(false);
 
   const selectedVariant = variants.find(v => v.id === selectedVariantId) || variants[0];
   const { currentPrice, predictedPrice, variant, origin, id } = selectedVariant;
@@ -196,32 +293,73 @@ const ProductCard = ({
             className={`font-bold text-gray-900 md:group-hover:text-primary-800 transition-colors duration-300 leading-tight ${compact ? 'text-[14px] sm:text-[17px] mb-1.5' : 'text-[16px] sm:text-[20px] mb-2'} line-clamp-2`}
             style={{ fontFamily: "var(--font-display)" }}
           >
-            {t(name)} {variant && variant !== "Standard" ? `(${variant})` : ""}
+            {t(name)}
           </h3>
         </div>
 
-        {/* Row 4: Variant Pills */}
+        {/* Row 4: Variant Pills with +N more */}
         <div className="min-h-[24px] sm:min-h-[28px] mb-2 sm:mb-3 relative z-30 flex items-start">
-          {availableVariantsForOrigin.length > 1 && (
-            <div className="flex overflow-x-auto scrollbar-hide flex-nowrap gap-1.5 sm:gap-2 pb-0.5 w-full">
-              {availableVariantsForOrigin.map((v) => (
-                <button
-                  key={v.id}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setSelectedVariantId(v.id);
-                  }}
-                  className={`text-[9px] sm:text-[10px] font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full transition-all duration-300 border flex-shrink-0 ${selectedVariantId === v.id
-                    ? "bg-primary-900 text-white border-primary-900 shadow-sm"
-                    : "bg-white text-gray-600 border-gray-100 hover:border-primary-200 hover:text-primary-700 active:bg-primary-50"
-                    }`}
-                >
-                  {getCleanVariant(v.variant || "Standard")}
-                </button>
-              ))}
-            </div>
-          )}
+          {availableVariantsForOrigin.length > 1 && (() => {
+            let maxVisible = 0;
+            let charCount = 0;
+            
+            // maxChars defines how many characters of text we can fit on screen. 
+            // We use 22 for desktop, but on mobile (<640px) cards are narrower, so we use 10.
+            const currentMaxChars = isMobile ? 10 : 22;
+
+            for (let i = 0; i < availableVariantsForOrigin.length; i++) {
+              const text = getCleanVariant(availableVariantsForOrigin[i].variant || "Standard");
+              // Give a little extra width allowance if this is the very last item (since no "+N more" button is needed)
+              if (i === availableVariantsForOrigin.length - 1) {
+                if (charCount + text.length <= currentMaxChars + 8) maxVisible++;
+                break;
+              }
+              if (charCount + text.length <= currentMaxChars) {
+                charCount += text.length;
+                maxVisible++;
+              } else {
+                break;
+              }
+            }
+            maxVisible = Math.max(1, maxVisible);
+
+            const visible = availableVariantsForOrigin.slice(0, maxVisible);
+            const overflow = availableVariantsForOrigin.slice(maxVisible);
+            return (
+              <div className="flex overflow-x-auto scrollbar-hide flex-nowrap items-center gap-1.5 sm:gap-2 pb-0.5 w-full">
+                {visible.map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSelectedVariantId(v.id);
+                    }}
+                    className={`text-[9px] sm:text-[10px] font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full transition-all duration-300 border flex-shrink-0 ${selectedVariantId === v.id
+                      ? "bg-primary-900 text-white border-primary-900 shadow-sm"
+                      : "bg-white text-gray-600 border-gray-100 hover:border-primary-200 hover:text-primary-700 active:bg-primary-50"
+                      }`}
+                  >
+                    {getCleanVariant(v.variant || "Standard")}
+                  </button>
+                ))}
+                {overflow.length > 0 && (
+                  <VariantOverflowDropdown
+                    overflow={overflow}
+                    selectedVariantId={selectedVariantId}
+                    isOpen={isVariantDropdownOpen}
+                    onToggle={() => setIsVariantDropdownOpen(!isVariantDropdownOpen)}
+                    onSelect={(id: string) => {
+                      setSelectedVariantId(id);
+                      setIsVariantDropdownOpen(false);
+                    }}
+                    onClose={() => setIsVariantDropdownOpen(false)}
+                    getCleanVariant={getCleanVariant}
+                  />
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Row 5: Prices (Stacked vertically for tight mobile widths) */}

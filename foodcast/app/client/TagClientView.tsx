@@ -5,23 +5,34 @@ import Image from "next/image";
 import { ArrowLeft, Tag, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { useProducts, useNews } from "../lib/hooks";
-import { DEFAULT_PRODUCT_IMAGE } from "../lib/data";
+import { DEFAULT_PRODUCT_IMAGE, Product, NewsArticle } from "../lib/data";
 import { encryptId } from "../../lib/idCipher";
 import { getInheritedTags } from "../lib/tags";
 import ScrollReveal from "../components/ScrollReveal";
 import ProductCard from "../components/ProductCard";
 import NewsCard from "../components/NewsCard";
 
-export default function TagClientView({ tagId }: { tagId: string }) {
+export default function TagClientView({ 
+  tagId, 
+  precomputedNews,
+  precomputedProducts
+}: { 
+  tagId: string;
+  precomputedNews: NewsArticle[];
+  precomputedProducts: any[];
+}) {
   const tag = decodeURIComponent(tagId);
   const { t, isTransitioning } = useLanguage();
-  const { data: products = [], isLoading: isLoadingProducts } = useProducts();
-  const { data: newsList = [], isLoading: isLoadingNews } = useNews(50);
+  
+  const relatedNews = precomputedNews;
+  const groupedProducts = precomputedProducts;
+  
+  const isLoading = isTransitioning;
 
   const productsRef = useRef<HTMLDivElement>(null);
   const scrollProducts = (direction: "left" | "right") => {
     if (productsRef.current) {
-      const cardWidth = window.innerWidth < 640 ? 216 : 260; // 200px width + 16px gap
+      const cardWidth = window.innerWidth < 640 ? 216 : 260;
       productsRef.current.scrollBy({ left: direction === "left" ? -cardWidth : cardWidth, behavior: "smooth" });
     }
   };
@@ -33,79 +44,6 @@ export default function TagClientView({ tagId }: { tagId: string }) {
       newsRef.current.scrollBy({ left: direction === "left" ? -cardWidth : cardWidth, behavior: "smooth" });
     }
   };
-
-  const isLoading = isLoadingProducts || isLoadingNews || isTransitioning;
-
-  // Find all products that have this tag via getInheritedTags (same logic used on product pages)
-  const productsWithThisTag = useMemo(() => {
-    const tagUpper = tag.trim().toUpperCase();
-    const uniqueNames = new Set<string>();
-    products.forEach((p) => {
-      if (uniqueNames.has(p.name)) return;
-      const tags = getInheritedTags(p.name, newsList);
-      if (tags.some((t) => t === tagUpper)) {
-        uniqueNames.add(p.name);
-      }
-    });
-    return uniqueNames;
-  }, [products, newsList, tag]);
-
-  // News related to this tag: ONLY articles that have this exact tag as a keyword
-  const relatedNews = useMemo(() => {
-    const tagUpper = tag.trim().toUpperCase();
-    return newsList.filter((n) => {
-      // Direct keyword match only
-      return n.keywords?.some((k) => k.trim().toUpperCase() === tagUpper);
-    });
-  }, [newsList, tag]);
-
-  // Group products affected by this tag for the ProductCard
-  const groupedProducts = useMemo(() => {
-    // Combine: products that inherit this tag + products from related news
-    const allProductNames = new Set<string>(productsWithThisTag);
-    relatedNews.forEach((n) => {
-      n.affectedProducts?.forEach((name) => allProductNames.add(name));
-    });
-
-    const groupedMap = new Map<string, {
-      name: string;
-      category: string;
-      image: string;
-      unit: string;
-      variants: {
-        id: string;
-        variant: string;
-        origin: string;
-        image: string;
-        currentPrice: number;
-        predictedPrice: number;
-      }[];
-    }>();
-
-    products
-      .filter((p) => allProductNames.has(p.name))
-      .forEach((p) => {
-        if (!groupedMap.has(p.name)) {
-          groupedMap.set(p.name, {
-            name: p.name,
-            category: p.category,
-            image: p.image,
-            unit: p.unit,
-            variants: [],
-          });
-        }
-        groupedMap.get(p.name)!.variants.push({
-          id: p.id,
-          variant: p.variant,
-          origin: p.origin,
-          image: p.image,
-          currentPrice: p.currentPrice,
-          predictedPrice: p.predictedPrice,
-        });
-      });
-
-    return Array.from(groupedMap.values());
-  }, [relatedNews, products, productsWithThisTag]);
 
   if (isLoading) {
     return (

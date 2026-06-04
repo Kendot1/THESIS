@@ -65,40 +65,111 @@ const memoryCache: Record<string, { data: any; expiry: number }> = {};
 const LOCAL_CACHE_PREFIX = "foodcast_cache_";
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour persistent cache
 
+// Server-side raw HTTP request that bypasses Next.js's patched fetch()
+// This avoids the "items over 2MB can not be cached" warning entirely.
+async function nativeServerFetch(url: string, headers: Record<string, string>): Promise<any> {
+  const https = require('https');
+  const http = require('http');
+
+  return new Promise((resolve, reject) => {
+    const mod = url.startsWith('https') ? https : http;
+    const req = mod.request(url, { method: 'GET', headers }, (res: any) => {
+      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        // Follow redirects
+        nativeServerFetch(res.headers.location, headers).then(resolve).catch(reject);
+        return;
+      }
+
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) => chunks.push(chunk));
+      res.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf8');
+        if (res.statusCode && res.statusCode >= 400) {
+          reject(new Error(`HTTP ${res.statusCode}: ${body.substring(0, 200)}`));
+          return;
+        }
+        try {
+          resolve(JSON.parse(body));
+        } catch (e) {
+          reject(new Error(`JSON parse error: ${body.substring(0, 200)}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
 async function fetchFromNetwork<T>(path: string, retries = 3): Promise<T> {
+  const isServer = typeof window === 'undefined';
+  let fs: any, pathModule: any;
+  let cacheFilePath = '';
+  
+  if (isServer) {
+    try {
+      fs = require('fs');
+      pathModule = require('path');
+      const cacheDir = pathModule.join(process.cwd(), '.next', 'custom-cache');
+      if (!fs.existsSync(cacheDir)) {
+        fs.mkdirSync(cacheDir, { recursive: true });
+      }
+      cacheFilePath = pathModule.join(cacheDir, `${path.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
+      
+      // Check if cache file exists and is less than 1 hour old
+      if (fs.existsSync(cacheFilePath)) {
+        const stats = fs.statSync(cacheFilePath);
+        const age = Date.now() - Math.max(stats.mtimeMs, stats.ctimeMs);
+        if (age < 60 * 60 * 1000) {
+          const fileData = fs.readFileSync(cacheFilePath, 'utf8');
+          const data = JSON.parse(fileData);
+          memoryCache[path] = { data, expiry: Date.now() + 60 * 60 * 1000 };
+          return data;
+        }
+      }
+    } catch (e) {
+      console.warn("File cache read error:", e);
+    }
+  }
+
   const now = Date.now();
   let lastError: any;
+  const requestHeaders = {
+    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+  };
+  const url = `${EDGE_FN_BASE}/${path}`;
 
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const res = await fetch(`${EDGE_FN_BASE}/${path}`, {
-        headers: {
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-          "Content-Type": "application/json",
-        },
-        cache: 'no-store',
-      });
+      let data: T;
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        const errorMessage = err.error || `Edge function error: ${res.status}`;
-        
-        if (res.status === 503 && attempt < retries - 1) {
-          // Exponential backoff for 503 Service Unavailable (e.g., during heavy concurrent builds)
-          await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
-          continue;
+      if (isServer) {
+        // Use native Node.js HTTP — bypasses Next.js fetch cache entirely (no 2MB limit)
+        data = await nativeServerFetch(url, requestHeaders);
+      } else {
+        // Client-side: use normal fetch
+        const res = await fetch(url, { headers: requestHeaders, cache: 'no-store' });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: res.statusText }));
+          throw new Error(err.error || `Edge function error: ${res.status}`);
         }
-        
-        throw new Error(errorMessage);
+        data = await res.json();
       }
-
-      const data = await res.json();
       
-      // Update memory cache (1 minute)
-      memoryCache[path] = { data, expiry: now + 60 * 1000 };
+      // Write to file cache (server only)
+      if (isServer && fs && cacheFilePath) {
+        try {
+          fs.writeFileSync(cacheFilePath, JSON.stringify(data));
+        } catch (e) {
+          console.warn("File cache write error:", e);
+        }
+      }
       
-      // Update localStorage (1 hour)
-      if (typeof window !== "undefined") {
+      // Update memory cache (1 hour)
+      memoryCache[path] = { data, expiry: now + 60 * 60 * 1000 };
+      
+      // Update localStorage (client only)
+      if (!isServer) {
         try {
           localStorage.setItem(LOCAL_CACHE_PREFIX + path, JSON.stringify({
             data,
@@ -112,9 +183,10 @@ async function fetchFromNetwork<T>(path: string, retries = 3): Promise<T> {
       return data;
     } catch (e) {
       lastError = e;
-      // If it's a network error or 503 handled above, loop continues if there's a continue
-      // Wait, if it threw an error that wasn't caught inside the loop block, we just throw it unless we want to retry everything.
-      // Actually we only want to retry 503. So we should rethrow if it's not a 503.
+      if (e instanceof Error && e.message.includes("503") && attempt < retries - 1) {
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+        continue;
+      }
       if (e instanceof Error && !e.message.includes("503")) {
         throw e;
       }
