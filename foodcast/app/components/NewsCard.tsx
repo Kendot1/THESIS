@@ -191,15 +191,18 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
                       {t("relatedTags") || "Related Tags"}
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {keywords.map((kw, idx) => (
-                        <Link
-                          key={idx}
-                          href={`/tags/${encodeURIComponent(kw)}`}
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${tagColors[idx % tagColors.length]}`}
-                        >
-                          {kw}
-                        </Link>
-                      ))}
+                      {keywords.map((rawKw, idx) => {
+                        const kw = decodeURIComponent(rawKw);
+                        return (
+                          <Link
+                            key={idx}
+                            href={`/tags/${encodeURIComponent(kw)}`}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors capitalize ${tagColors[idx % tagColors.length]}`}
+                          >
+                            {kw}
+                          </Link>
+                        );
+                      })}
                     </div>
                   </div>
                 );

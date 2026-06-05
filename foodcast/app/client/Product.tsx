@@ -808,15 +808,18 @@ export default function Product({
                             {t("relatedTags") || "Related Tags"}
                           </h4>
                           <div className="flex flex-wrap gap-2">
-                            {tags.map((tag, idx) => (
-                              <Link
-                                key={idx}
-                                href={`/tags/${encodeURIComponent(tag)}`}
-                                className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest rounded-md border transition-colors ${tagColors[idx % tagColors.length]}`}
-                              >
-                                {tag}
-                              </Link>
-                            ))}
+                            {tags.map((rawKw, idx) => {
+                              const kw = decodeURIComponent(rawKw);
+                              return (
+                                <Link
+                                  key={idx}
+                                  href={`/tags/${encodeURIComponent(kw)}`}
+                                  className={`px-2.5 py-1 text-[10px] font-semibold capitalize rounded-md border transition-colors ${tagColors[idx % tagColors.length]}`}
+                                >
+                                  {kw}
+                                </Link>
+                              );
+                            })}
                           </div>
                         </div>
                       );

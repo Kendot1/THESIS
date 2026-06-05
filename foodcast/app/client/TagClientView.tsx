@@ -126,7 +126,7 @@ export default function TagClientView({
           </div>
 
           <h1
-            className="text-3xl md:text-5xl font-black text-white tracking-tight mb-3"
+            className="text-3xl md:text-5xl font-black text-white tracking-tight mb-3 capitalize"
             style={{ fontFamily: "var(--font-display)" }}
           >
             {tag}

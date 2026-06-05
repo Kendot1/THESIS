@@ -10,11 +10,11 @@ export async function generateStaticParams() {
   const tags = new Set<string>();
   
   newsList.forEach((article) => {
-    article.keywords?.forEach((kw) => tags.add(kw));
+    article.keywords?.forEach((kw) => tags.add(decodeURIComponent(kw)));
   });
 
   return Array.from(tags).map((tag) => ({
-    id: encodeURIComponent(tag),
+    id: tag,
   }));
 }
 
@@ -30,7 +30,7 @@ export default async function TagPage({ params }: { params: Promise<{ id: string
 
   // Compute related news
   const relatedNews = newsList.filter((n) => 
-    n.keywords?.some((k) => k.trim().toUpperCase() === tagUpper)
+    n.keywords?.some((k) => decodeURIComponent(k).trim().toUpperCase() === tagUpper)
   );
 
   // Compute grouped products
@@ -38,7 +38,7 @@ export default async function TagPage({ params }: { params: Promise<{ id: string
   products.forEach((p) => {
     if (productsWithThisTag.has(p.name)) return;
     const tags = getInheritedTags(p.name, newsList);
-    if (tags.some((t) => t === tagUpper)) {
+    if (tags.some((t) => decodeURIComponent(t).toUpperCase() === tagUpper)) {
       productsWithThisTag.add(p.name);
     }
   });
