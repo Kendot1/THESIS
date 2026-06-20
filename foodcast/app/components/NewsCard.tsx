@@ -57,7 +57,7 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
   const displayTitle = language === "tl" && title_tl ? title_tl : title;
   const displayContent = language === "tl" && content_tl ? content_tl : content;
   const displayExcerpt = language === "tl" && content_tl ? (content_tl.substring(0, 150) + "...") : excerpt;
-  
+
   const fullContent = displayContent || displayExcerpt;
 
   return (
@@ -65,7 +65,8 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
       {/* Card */}
       <div
         onClick={() => setIsOpen(true)}
-        className="group bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500 flex flex-col h-full cursor-pointer"
+        className="group bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm 
+        hover:shadow-xl transition-all duration-500 flex flex-col h-full cursor-pointer"
       >
         {/* Image Container */}
         <div className="relative h-48 overflow-hidden">
@@ -231,7 +232,7 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
             </div>
           </div>
         </div>
-      , document.body)}
+        , document.body)}
 
       {/* Modal CSS animations */}
       <style jsx>{`

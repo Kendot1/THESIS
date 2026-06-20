@@ -340,7 +340,8 @@ const ForecastChart = ({
       <div className="relative">
         <div
           ref={tooltipRef}
-          className="absolute z-50 pointer-events-none bg-white/95 backdrop-blur-sm rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 p-3 transition-all duration-75 ease-out"
+          className="absolute z-50 pointer-events-none bg-white backdrop-blur-sm rounded-xl 
+          shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-gray-100 p-3 transition-all duration-75 ease-out"
           style={{ display: "none" }}
         />
         <div

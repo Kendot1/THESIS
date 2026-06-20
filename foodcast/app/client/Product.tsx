@@ -789,7 +789,7 @@ export default function Product({
                     {(() => {
                       const tags = getInheritedTags(product.name, newsList);
                       if (tags.length === 0) return null;
-                      
+
                       const tagColors = [
                         "bg-blue-500/20 text-blue-100 border-blue-400/30 hover:bg-blue-500/40",
                         "bg-amber-500/20 text-amber-100 border-amber-400/30 hover:bg-amber-500/40",

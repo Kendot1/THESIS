@@ -349,7 +349,7 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                 {t("data")}
               </span>
             </h1>
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/70 max-w-2xl font-light animate-fade-in-up" style={{ animationDelay: "100ms" }}>
+            <p className="text-white/50 max-w-xl mb-8 text-sm sm:text-base">
               {t("marketDataSubtitle")}
             </p>
           </div>
@@ -369,8 +369,8 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                       placeholder={t("searchMarketsPlaceholder")}
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm text-gray-800 placeholder-gray-400
-                        focus:outline-none focus:border-primary-500 focus:shadow-[0_0_0_4px_rgba(46,125,50,0.1)] transition-all shadow-sm"
+                      className="w-full pl-11 pr-4 py-3 bg-white border border-gray-100 rounded-2xl text-sm text-gray-800 placeholder-gray-400
+                        focus:outline-none focus:border-primary-400/80 transition-all shadow-sm"
                       id="table-search"
                       aria-label="Search products"
                     />
@@ -390,7 +390,7 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
 
                 {/* Category pills with More button */}
                 <div className="relative flex items-center gap-2" ref={dropdownRef}>
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                  <div className=" relative flex items-center gap-2 pb-1 scrollbar-hide">
                     {categories.slice(0, visibleCount).map((cat) => {
                       const isActive = selectedCategory === cat;
                       const count = categoryCounts[cat] || 0;
@@ -400,7 +400,7 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                           key={cat}
                           onClick={() => setSelectedCategory(cat)}
                           className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 border ${isActive
-                            ? "bg-primary-900 border-primary-900 text-white shadow-md scale-105"
+                            ? "bg-primary-800 border-primary-800 text-white shadow-md scale-105"
                             : "bg-white border-gray-100 text-gray-500 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-800"
                             }`}
                           aria-pressed={isActive}
@@ -861,7 +861,7 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
             )}
 
             {/* Pagination + Summary row */}
-            <div className="px-4 sm:px-6 py-4 bg-surface-warm/50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="px-4 sm:px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   {t("showing")} <span className="text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> {t("to")} <span className="text-gray-900">{Math.min(currentPage * itemsPerPage, sortedProducts.length)}</span> {t("of")} <span className="text-gray-900">{sortedProducts.length}</span> {t("products")}

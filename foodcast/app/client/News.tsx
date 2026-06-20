@@ -171,17 +171,8 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
 
       <main className="min-h-screen bg-surface">
         {/* Premium Hero Section */}
-        <section className="relative bg-primary-900 pt-30 md:pt-40 pb-10 md:pb-20 overflow-hidden">
-          <div className="absolute inset-0 z-0">
-            <Image 
-              src="/Bg-4.jpg" 
-              alt="" 
-              fill
-              priority
-              className="object-cover opacity-40 blur-[2px]" 
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-primary-900/80 via-primary-900/90 to-surface" />
-          </div>
+        <section className="relative  pt-30 md:pt-40 pb-10 md:pb-20 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-primary-900 via-primary-900/90 to-surface" />
 
           <div className="relative z-10 max-w-7xl mx-auto px-5 lg:px-10">
             <ScrollReveal>
@@ -202,152 +193,152 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
               const displayTitle = language === "tl" && featuredArticle.title_tl ? featuredArticle.title_tl : featuredArticle.title;
               const displayContent = language === "tl" && featuredArticle.content_tl ? featuredArticle.content_tl : (featuredArticle.content || featuredArticle.excerpt);
               const displayExcerpt = language === "tl" && featuredArticle.content_tl ? (featuredArticle.content_tl.substring(0, 150) + "...") : featuredArticle.excerpt;
-              
+
               return (
-              <ScrollReveal delay={200}>
-                <div 
-                  onClick={() => setIsFeaturedOpen(true)}
-                  className="group relative bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 flex flex-col lg:flex-row transition-all duration-500 hover:shadow-accent/10 cursor-pointer"
-                >
-                  <div className="relative lg:w-1/2 h-[200px] lg:h-auto overflow-hidden">
-                    <Image 
-                      src={featuredArticle.image} 
-                      alt={displayTitle} 
-                      fill
-                      className="object-cover transition-transform duration-1000 group-hover:scale-105" 
-                    />
-                  </div>
-                  <div className="lg:w-1/2 p-4 md:p-8 flex flex-col justify-center">
-                    <div className="flex items-center gap-4 mb-6">
-                      <span className="px-3 py-1 bg-primary-900 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider">{t(featuredArticle.category)}</span>
-                      <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
-                        <Clock className="w-3 h-3" /> {featuredArticle.date}
-                      </span>
-                    </div>
-                    <h2 className="text-2xl md:text-4xl font-black text-gray-900 mb-6 leading-tight group-hover:text-primary-800 transition-colors">
-                      {displayTitle}
-                    </h2>
-                    <p className="text-gray-500 text-sm md:text-base mb-8 line-clamp-3 leading-relaxed">
-                      {displayExcerpt}
-                    </p>
-                    <a
-                      href={featuredArticle.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-3 text-primary-800 font-black uppercase tracking-widest text-xs hover:text-accent-dark transition-colors group/btn z-10"
-                    >
-                      {t("readFullReport")}
-                      <span className="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center transition-all group-hover/btn:translate-x-2 group-hover/btn:bg-accent group-hover/btn:text-white">
-                        <ArrowLeft className="w-4 h-4 rotate-180" />
-                      </span>
-                    </a>
-                  </div>
-                </div>
-
-                {/* Featured Modal Overlay via Portal */}
-                {isMounted && isFeaturedOpen && createPortal(
+                <ScrollReveal delay={200}>
                   <div
-                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
-                    onClick={(e) => { e.stopPropagation(); setIsFeaturedOpen(false); }}
+                    onClick={() => setIsFeaturedOpen(true)}
+                    className="group relative bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 flex flex-col lg:flex-row transition-all duration-500 hover:shadow-accent/10 cursor-pointer"
                   >
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      className="relative z-10 bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-modal-in flex flex-col"
-                    >
-                      <div className="relative h-56 sm:h-64 flex-shrink-0 overflow-hidden">
-                        <Image
-                          src={featuredArticle.image}
-                          alt={displayTitle}
-                          fill
-                          className="object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                        <div className="absolute bottom-5 left-6 right-6 flex items-center gap-3">
-                          <span className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                            <Tag className="w-3 h-3" />
-                            {t(featuredArticle.category)}
-                          </span>
-                          <span className="text-white/70 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
-                            <Clock className="w-3 h-3" />
-                            {featuredArticle.date}
-                          </span>
-                        </div>
+                    <div className="relative lg:w-1/2 h-[200px] lg:h-auto overflow-hidden">
+                      <Image
+                        src={featuredArticle.image}
+                        alt={displayTitle}
+                        fill
+                        className="object-cover transition-transform duration-1000 group-hover:scale-105"
+                      />
+                    </div>
+                    <div className="lg:w-1/2 p-4 md:p-8 flex flex-col justify-center">
+                      <div className="flex items-center gap-4 mb-6">
+                        <span className="px-3 py-1 bg-primary-900 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider">{t(featuredArticle.category)}</span>
+                        <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+                          <Clock className="w-3 h-3" /> {featuredArticle.date}
+                        </span>
                       </div>
-
-                      <div className="p-6 sm:p-8 overflow-y-auto flex-1">
-                        <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-2 leading-tight" style={{ fontFamily: "var(--font-display)" }}>
-                          {displayTitle}
-                        </h2>
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">
-                          {t("source")}: {featuredArticle.source || t("marketNews")}
-                        </div>
-                        <div className="w-12 h-0.5 bg-gradient-to-r from-primary-700 to-accent rounded-full mb-6" />
-                        <div className="text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-line mb-8">
-                          {displayContent}
-                        </div>
-                        
-                        {/* Tags Section */}
-                        {featuredArticle.keywords && featuredArticle.keywords.length > 0 && (() => {
-                          const tagColors = [
-                            "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
-                            "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
-                            "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
-                            "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100",
-                            "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100",
-                            "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100",
-                            "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100",
-                            "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100",
-                          ];
-                          return (
-                            <div className="pt-6 border-t border-gray-100">
-                              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                <Tag className="w-3.5 h-3.5" />
-                                {t("relatedTags") || "Related Tags"}
-                              </h4>
-                              <div className="flex flex-wrap gap-2">
-                                {featuredArticle.keywords.map((rawKw, idx) => {
-                                  const kw = decodeURIComponent(rawKw);
-                                  return (
-                                    <Link
-                                      key={idx}
-                                      href={`/tags/${encodeURIComponent(kw)}`}
-                                      className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors capitalize ${tagColors[idx % tagColors.length]}`}
-                                    >
-                                      {kw}
-                                    </Link>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-
-                      <div className="flex-shrink-0 px-6 sm:px-8 py-5 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-                        <button
-                          onClick={() => setIsFeaturedOpen(false)}
-                          className="px-6 py-2.5 bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold uppercase tracking-widest rounded-xl transition-all active:scale-95"
-                        >
-                          {t("close")}
-                        </button>
-                        {featuredArticle.url && (
-                          <a
-                            href={featuredArticle.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-900 text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-primary-800 transition-all shadow-lg hover:shadow-primary-900/30 active:scale-95"
-                          >
-                            {t("visitSource")}
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                      </div>
+                      <h2 className="text-2xl md:text-4xl font-black text-gray-900 mb-6 leading-tight group-hover:text-primary-800 transition-colors">
+                        {displayTitle}
+                      </h2>
+                      <p className="text-gray-500 text-sm md:text-base mb-8 line-clamp-3 leading-relaxed">
+                        {displayExcerpt}
+                      </p>
+                      <a
+                        href={featuredArticle.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-3 text-primary-800 font-black uppercase tracking-widest text-xs hover:text-accent-dark transition-colors group/btn z-10"
+                      >
+                        {t("readFullReport")}
+                        <span className="w-8 h-8 rounded-full bg-primary-50 flex items-center justify-center transition-all group-hover/btn:translate-x-2 group-hover/btn:bg-accent group-hover/btn:text-white">
+                          <ArrowLeft className="w-4 h-4 rotate-180" />
+                        </span>
+                      </a>
                     </div>
                   </div>
-                , document.body)}
-              </ScrollReveal>
+
+                  {/* Featured Modal Overlay via Portal */}
+                  {isMounted && isFeaturedOpen && createPortal(
+                    <div
+                      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+                      onClick={(e) => { e.stopPropagation(); setIsFeaturedOpen(false); }}
+                    >
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="relative z-10 bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-modal-in flex flex-col"
+                      >
+                        <div className="relative h-56 sm:h-64 flex-shrink-0 overflow-hidden">
+                          <Image
+                            src={featuredArticle.image}
+                            alt={displayTitle}
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                          <div className="absolute bottom-5 left-6 right-6 flex items-center gap-3">
+                            <span className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                              <Tag className="w-3 h-3" />
+                              {t(featuredArticle.category)}
+                            </span>
+                            <span className="text-white/70 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+                              <Clock className="w-3 h-3" />
+                              {featuredArticle.date}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="p-6 sm:p-8 overflow-y-auto flex-1">
+                          <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-2 leading-tight" style={{ fontFamily: "var(--font-display)" }}>
+                            {displayTitle}
+                          </h2>
+                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">
+                            {t("source")}: {featuredArticle.source || t("marketNews")}
+                          </div>
+                          <div className="w-12 h-0.5 bg-gradient-to-r from-primary-700 to-accent rounded-full mb-6" />
+                          <div className="text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-line mb-8">
+                            {displayContent}
+                          </div>
+
+                          {/* Tags Section */}
+                          {featuredArticle.keywords && featuredArticle.keywords.length > 0 && (() => {
+                            const tagColors = [
+                              "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
+                              "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
+                              "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
+                              "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100",
+                              "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100",
+                              "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100",
+                              "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100",
+                              "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100",
+                            ];
+                            return (
+                              <div className="pt-6 border-t border-gray-100">
+                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                  <Tag className="w-3.5 h-3.5" />
+                                  {t("relatedTags") || "Related Tags"}
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {featuredArticle.keywords.map((rawKw, idx) => {
+                                    const kw = decodeURIComponent(rawKw);
+                                    return (
+                                      <Link
+                                        key={idx}
+                                        href={`/tags/${encodeURIComponent(kw)}`}
+                                        className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors capitalize ${tagColors[idx % tagColors.length]}`}
+                                      >
+                                        {kw}
+                                      </Link>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        <div className="flex-shrink-0 px-6 sm:px-8 py-5 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+                          <button
+                            onClick={() => setIsFeaturedOpen(false)}
+                            className="px-6 py-2.5 bg-gray-200 text-gray-700 hover:bg-gray-300 text-xs font-bold uppercase tracking-widest rounded-xl transition-all active:scale-95"
+                          >
+                            {t("close")}
+                          </button>
+                          {featuredArticle.url && (
+                            <a
+                              href={featuredArticle.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary-900 text-white text-xs font-bold uppercase tracking-widest rounded-xl hover:bg-primary-800 transition-all shadow-lg hover:shadow-primary-900/30 active:scale-95"
+                            >
+                              {t("visitSource")}
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    , document.body)}
+                </ScrollReveal>
               );
             })()}
           </div>
@@ -361,7 +352,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-primary-700 transition-colors" />
                 <input
                   type="text"
-                placeholder={t("searchNewsPlaceholder")}
+                  placeholder={t("searchNewsPlaceholder")}
                   className="w-full pl-14 pr-6 py-4 bg-white border border-gray-200 rounded-3xl text-sm font-medium transition-all focus:outline-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 shadow-sm"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -370,7 +361,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
 
               <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
                 <div className="flex flex-wrap items-center bg-white border border-gray-200 rounded-2xl shadow-sm">
-                  
+
                   {/* Category Dropdown */}
                   <div className="relative border-r border-gray-100" ref={categoryRef}>
                     <button
@@ -391,9 +382,8 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                                 setSelectedCategory(cat);
                                 setIsCategoryOpen(false);
                               }}
-                              className={`px-4 py-2 text-left text-xs font-bold transition-colors ${
-                                selectedCategory === cat ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
-                              }`}
+                              className={`px-4 py-2 text-left text-xs font-bold transition-colors ${selectedCategory === cat ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
+                                }`}
                             >
                               {cat}
                             </button>
@@ -429,9 +419,8 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                                 setDateFilter(option.value);
                                 setIsDateOpen(false);
                               }}
-                              className={`px-4 py-2 text-left text-xs font-bold transition-colors ${
-                                dateFilter === option.value ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
-                              }`}
+                              className={`px-4 py-2 text-left text-xs font-bold transition-colors ${dateFilter === option.value ? "bg-primary-50 text-primary-800" : "text-gray-600 hover:bg-gray-50 hover:text-primary-700"
+                                }`}
                             >
                               {option.label}
                             </button>
@@ -455,7 +444,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                 <div key={i} className="bg-white rounded-3xl border border-gray-100 p-4 h-[380px] flex flex-col shadow-sm">
                   <div className="h-48 w-full bg-gray-100 rounded-2xl mb-5 animate-pulse" />
                   <div className="flex gap-2 mb-4">
-                     <div className="h-5 w-20 bg-gray-200 rounded-lg animate-pulse" />
+                    <div className="h-5 w-20 bg-gray-200 rounded-lg animate-pulse" />
                     <div className="h-5 w-24 bg-gray-100 rounded-lg animate-pulse" />
                   </div>
                   <div className="h-6 w-full bg-gray-200 rounded-lg mb-3 animate-pulse" />

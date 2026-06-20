@@ -278,75 +278,75 @@ function PredictContent({ initialProducts }: PredictProps) {
   if (products.length === 0 || isTransitioning) {
     return (
       <main className="min-h-screen bg-surface">
-          <section className="relative py-12 sm:py-15 pt-28 sm:pt-30 bg-primary-900 overflow-hidden">
-            <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
-              <div className="h-10 sm:h-12 w-48 sm:w-64 bg-white/10 rounded-xl mb-4 animate-pulse" />
-              <div className="h-4 w-64 sm:w-96 bg-white/5 rounded-lg mb-8 animate-pulse" />
-              <div className="h-12 sm:h-14 max-w-lg bg-white/10 rounded-2xl animate-pulse" />
+        <section className="relative py-12 sm:py-15 pt-28 sm:pt-30 bg-primary-900 overflow-hidden">
+          <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
+            <div className="h-10 sm:h-12 w-48 sm:w-64 bg-white/10 rounded-xl mb-4 animate-pulse" />
+            <div className="h-4 w-64 sm:w-96 bg-white/5 rounded-lg mb-8 animate-pulse" />
+            <div className="h-12 sm:h-14 max-w-lg bg-white/10 rounded-2xl animate-pulse" />
+          </div>
+        </section>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
+            <div className="lg:col-span-8 bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 flex flex-col min-h-[400px]">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-2xl animate-pulse shrink-0" />
+                <div className="flex-1 space-y-3">
+                  <div className="h-3 w-24 bg-gray-100 rounded-md animate-pulse" />
+                  <div className="h-6 sm:h-8 w-32 sm:w-48 bg-gray-200 rounded-lg animate-pulse" />
+                </div>
+                <div className="w-20 sm:w-24 h-8 sm:h-10 bg-gray-100 rounded-xl animate-pulse hidden sm:block" />
+              </div>
+              <div className="space-y-2 mb-8">
+                <div className="h-3 w-full bg-gray-100 rounded-md animate-pulse" />
+                <div className="h-3 w-3/4 bg-gray-100 rounded-md animate-pulse" />
+              </div>
+              <div className="flex-1 bg-gray-50 rounded-2xl animate-pulse min-h-[200px]" />
+            </div>
+
+            <div className="lg:col-span-4 flex flex-col gap-6">
+              <div className="bg-white rounded-3xl border border-gray-100 p-6 h-fit">
+                <div className="h-4 w-32 bg-gray-200 rounded-lg mb-6 animate-pulse" />
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-gray-100 animate-pulse shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-3 w-24 bg-gray-200 rounded-md animate-pulse" />
+                        <div className="h-2 w-16 bg-gray-100 rounded-md animate-pulse" />
+                      </div>
+                      <div className="h-3 w-10 bg-gray-100 rounded-md animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="h-12 w-full bg-gray-100 rounded-2xl animate-pulse" />
             </div>
           </section>
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
-              <div className="lg:col-span-8 bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 flex flex-col min-h-[400px]">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-2xl animate-pulse shrink-0" />
-                  <div className="flex-1 space-y-3">
-                    <div className="h-3 w-24 bg-gray-100 rounded-md animate-pulse" />
-                    <div className="h-6 sm:h-8 w-32 sm:w-48 bg-gray-200 rounded-lg animate-pulse" />
-                  </div>
-                  <div className="w-20 sm:w-24 h-8 sm:h-10 bg-gray-100 rounded-xl animate-pulse hidden sm:block" />
-                </div>
-                <div className="space-y-2 mb-8">
-                  <div className="h-3 w-full bg-gray-100 rounded-md animate-pulse" />
-                  <div className="h-3 w-3/4 bg-gray-100 rounded-md animate-pulse" />
-                </div>
-                <div className="flex-1 bg-gray-50 rounded-2xl animate-pulse min-h-[200px]" />
-              </div>
-
-              <div className="lg:col-span-4 flex flex-col gap-6">
-                <div className="bg-white rounded-3xl border border-gray-100 p-6 h-fit">
-                  <div className="h-4 w-32 bg-gray-200 rounded-lg mb-6 animate-pulse" />
-                  <div className="space-y-4">
-                    {[1, 2, 3, 4, 5].map(i => (
-                      <div key={i} className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gray-100 animate-pulse shrink-0" />
-                        <div className="flex-1 space-y-2">
-                          <div className="h-3 w-24 bg-gray-200 rounded-md animate-pulse" />
-                          <div className="h-2 w-16 bg-gray-100 rounded-md animate-pulse" />
-                        </div>
-                        <div className="h-3 w-10 bg-gray-100 rounded-md animate-pulse" />
-                      </div>
-                    ))}
+          <section className="mt-12">
+            <div className="h-6 w-32 sm:w-48 bg-gray-200 rounded-xl mb-2 animate-pulse" />
+            <div className="h-3 w-40 sm:w-64 bg-gray-100 rounded-lg mb-6 animate-pulse" />
+            <div className="flex gap-2 mb-8 overflow-hidden">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="h-10 w-20 sm:w-24 bg-gray-100 rounded-2xl animate-pulse shrink-0" />
+              ))}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                <div key={i} className="bg-white rounded-[1.5rem] sm:rounded-[2rem] border border-gray-100 p-3 sm:p-4 h-[220px] sm:h-[260px] flex flex-col">
+                  <div className="h-24 sm:h-32 w-full bg-gray-100 rounded-xl sm:rounded-2xl mb-4 animate-pulse" />
+                  <div className="h-4 sm:h-5 w-3/4 bg-gray-200 rounded-lg mb-2 animate-pulse" />
+                  <div className="h-3 w-1/2 bg-gray-100 rounded-md mb-auto animate-pulse" />
+                  <div className="flex justify-between items-end mt-4">
+                    <div className="h-4 sm:h-5 w-12 sm:w-16 bg-gray-100 rounded-lg animate-pulse" />
+                    <div className="h-6 sm:h-8 w-16 sm:w-20 bg-gray-100 rounded-xl animate-pulse" />
                   </div>
                 </div>
-                <div className="h-12 w-full bg-gray-100 rounded-2xl animate-pulse" />
-              </div>
-            </section>
-
-            <section className="mt-12">
-              <div className="h-6 w-32 sm:w-48 bg-gray-200 rounded-xl mb-2 animate-pulse" />
-              <div className="h-3 w-40 sm:w-64 bg-gray-100 rounded-lg mb-6 animate-pulse" />
-              <div className="flex gap-2 mb-8 overflow-hidden">
-                {[1, 2, 3, 4, 5, 6].map(i => (
-                  <div key={i} className="h-10 w-20 sm:w-24 bg-gray-100 rounded-2xl animate-pulse shrink-0" />
-                ))}
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                  <div key={i} className="bg-white rounded-[1.5rem] sm:rounded-[2rem] border border-gray-100 p-3 sm:p-4 h-[220px] sm:h-[260px] flex flex-col">
-                    <div className="h-24 sm:h-32 w-full bg-gray-100 rounded-xl sm:rounded-2xl mb-4 animate-pulse" />
-                    <div className="h-4 sm:h-5 w-3/4 bg-gray-200 rounded-lg mb-2 animate-pulse" />
-                    <div className="h-3 w-1/2 bg-gray-100 rounded-md mb-auto animate-pulse" />
-                    <div className="flex justify-between items-end mt-4">
-                      <div className="h-4 sm:h-5 w-12 sm:w-16 bg-gray-100 rounded-lg animate-pulse" />
-                      <div className="h-6 sm:h-8 w-16 sm:w-20 bg-gray-100 rounded-xl animate-pulse" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
+              ))}
+            </div>
+          </section>
+        </div>
       </main>
     );
   }
@@ -363,7 +363,7 @@ function PredictContent({ initialProducts }: PredictProps) {
               alt="background"
               fill
               priority
-              className="object-cover blur-[1px]"
+              className="object-cover blur-[0.7px]"
             />
             <div className="absolute inset-0 bg-primary-900/80" />
           </div>
@@ -415,7 +415,7 @@ function PredictContent({ initialProducts }: PredictProps) {
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
-                                 target.srcset = "";
+                                target.srcset = "";
                               }
                               if (target.src !== DEFAULT_PRODUCT_IMAGE) {
                                 target.src = DEFAULT_PRODUCT_IMAGE;
@@ -464,8 +464,11 @@ function PredictContent({ initialProducts }: PredictProps) {
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="lg:col-span-8 bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-xl 
-                        flex flex-col group hover:shadow-2xl transition-all duration-500 md:cursor-grab md:active:cursor-grabbing select-none"
+              className="lg:col-span-8 bg-white rounded-3xl overflow-hidden 
+                        border border-gray-100 shadow-sm
+                        flex flex-col group hover:shadow-2xl
+                         transition-all duration-500 md:cursor-grab 
+                         md:active:cursor-grabbing select-none"
             >
               <div className="p-6 sm:p-8 flex-1 flex flex-col">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -479,7 +482,7 @@ function PredictContent({ initialProducts }: PredictProps) {
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
-                             target.srcset = "";
+                            target.srcset = "";
                           }
                           if (target.src !== DEFAULT_PRODUCT_IMAGE) {
                             target.src = DEFAULT_PRODUCT_IMAGE;
@@ -528,7 +531,7 @@ function PredictContent({ initialProducts }: PredictProps) {
               {/* Carousel Pagination & Navigation */}
               {featuredItems.length > 1 && (
                 <div className="px-8 py-4 bg-gray-50/50 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
-                  
+
                   {/* Left: Pagination */}
                   <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1 px-1 -mx-1 w-full md:w-auto justify-center md:justify-start">
                     {featuredItems.map((_, i) => (
@@ -579,39 +582,6 @@ function PredictContent({ initialProducts }: PredictProps) {
 
             {/* Sidebars */}
             <div className="lg:col-span-4 flex flex-col gap-6 self-start">
-
-              {/* Major Changes in Price
-              <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                    Major changes in price
-                  </h3>
-                </div>
-                <div className="space-y-6">
-                  {majorChanges.map((p, i) => (
-                    <Link prefetch={false} key={p.id} href={`/Product/${encryptId(p.id)}`} className="flex items-start gap-4 group">
-                      <span className="text-lg font-black text-gray-100 group-hover:text-primary-100 transition-colors leading-none">{i + 1}</span>
-                      <div className="flex-1">
-                        <h4 className="text-sm font-bold text-gray-800 group-hover:text-primary-800 transition-colors leading-tight mb-1 line-clamp-2">
-                          {p.variant && p.variant !== "Standard" ? `${p.name} (${p.variant})` : p.name} price swing of {Math.abs(p.change).toFixed(0)}%?
-                        </h4>
-                        <div className={`text-[10px] font-bold ${p.change >= 0 ? 'text-positive' : 'text-negative'} flex items-center gap-2`}>
-                          <span className="px-2 py-0.5 bg-gray-50 rounded-md text-gray-500">Predicted</span>
-                          <span className="flex items-center gap-1">
-                            {p.change >= 0 ? '▲' : '▼'} {Math.abs(p.change).toFixed(1)}%
-                          </span>
-                        </div>
-                        {p.origin && (
-                          <div className="mt-1 text-[9px] font-bold text-primary-400/60 uppercase tracking-widest">
-                            {p.origin}
-                          </div>
-                        )}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div> */}
-
               {/* Trending Products */}
               <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow h-fit">
                 <div className="mb-6">
@@ -632,7 +602,7 @@ function PredictContent({ initialProducts }: PredictProps) {
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
-                                 target.srcset = "";
+                                target.srcset = "";
                               }
                               if (target.src !== DEFAULT_PRODUCT_IMAGE) {
                                 target.src = DEFAULT_PRODUCT_IMAGE;
@@ -771,7 +741,7 @@ function PredictContent({ initialProducts }: PredictProps) {
                 <div className="mt-10 text-center">
                   <button
                     onClick={() => setShowAllRows(true)}
-                    className="group relative px-10 py-4 bg-white border border-gray-200 rounded-[2rem] text-primary-900 font-black uppercase tracking-[0.2em] text-[10px] hover:text-white transition-all duration-500 overflow-hidden shadow-lg hover:shadow-primary-900/20 active:scale-95"
+                    className="group relative px-10 py-4 bg-white border border-gray-200 rounded-[2rem] text-primary-900 font-black text-xs hover:text-white transition-all duration-500 overflow-hidden shadow-lg hover:shadow-primary-900/20 active:scale-95"
                   >
                     <span className="relative z-10 flex items-center gap-2">
                       {t("loadMore")} <MoreHorizontal className="w-5 h-5" />

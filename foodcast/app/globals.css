@@ -21,8 +21,8 @@
   --color-orange-dark: #FF6900;
   --color-yellow: #FFB300;
 
-  --color-surface: #FFF7ED;
-  --color-surface-warm: #F5F0E8;
+  --color-surface: #FFFEFC;
+  --color-surface-warm: #F7F7F7;
   --color-surface-card: #FFFFFF;
 
   --color-positive: #2E7D32;
@@ -164,25 +164,31 @@ body::before {
 
 /* Skeleton shimmer for dark backgrounds (footer, hero) */
 .skeleton-shimmer-dark {
-  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.06) 63%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 25%, rgba(255, 255, 255, 0.12) 37%, rgba(255, 255, 255, 0.06) 63%);
   background-size: 400% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
 /* Skeleton shimmer for map area */
 .skeleton-shimmer-map {
-  background: linear-gradient(
-    135deg,
-    #e8e8e8 0%, #f0f0f0 20%, #e4e4e4 40%, #ebebeb 60%, #e8e8e8 80%, #f0f0f0 100%
-  );
+  background: linear-gradient(135deg,
+      #e8e8e8 0%, #f0f0f0 20%, #e4e4e4 40%, #ebebeb 60%, #e8e8e8 80%, #f0f0f0 100%);
   background-size: 400% 400%;
   animation: mapShimmer 3s ease-in-out infinite;
 }
 
 @keyframes mapShimmer {
-  0% { background-position: 0% 0%; }
-  50% { background-position: 100% 100%; }
-  100% { background-position: 0% 0%; }
+  0% {
+    background-position: 0% 0%;
+  }
+
+  50% {
+    background-position: 100% 100%;
+  }
+
+  100% {
+    background-position: 0% 0%;
+  }
 }
 
 /* ─── Fade-In Animations ──────────────────────── */
@@ -544,7 +550,7 @@ body::before {
 /* ─── Leaflet Map Overrides ────────────────────────────── */
 .leaflet-popup-content-wrapper {
   border-radius: 1.5rem !important;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.25) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25) !important;
   padding: 0 !important;
   overflow: hidden !important;
 }
@@ -555,7 +561,7 @@ body::before {
 }
 
 .leaflet-popup-tip {
-  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
 }
 
 .leaflet-container a.leaflet-popup-close-button {
@@ -568,19 +574,19 @@ body::before {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  background: rgba(0,0,0,0.4) !important;
+  background: rgba(0, 0, 0, 0.4) !important;
   backdrop-filter: blur(4px) !important;
   transition: all 0.2s !important;
 }
 
 .leaflet-container a.leaflet-popup-close-button:hover {
-  background: rgba(0,0,0,0.6) !important;
+  background: rgba(0, 0, 0, 0.6) !important;
   color: white !important;
 }
 
 .leaflet-bar {
   border: none !important;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
   border-radius: 12px !important;
   overflow: hidden !important;
 }

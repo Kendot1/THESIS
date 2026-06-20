@@ -53,11 +53,10 @@ const VariantOverflowDropdown = ({ overflow, selectedVariantId, isOpen, onToggle
           e.stopPropagation();
           onToggle();
         }}
-        className={`text-[9px] sm:text-[10px] font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full transition-all duration-300 border flex-shrink-0 ${
-          overflow.some((v: any) => v.id === selectedVariantId)
-            ? "bg-primary-900 text-white border-primary-900 shadow-sm"
-            : "bg-gray-50 text-gray-500 border-gray-200 hover:border-primary-200 hover:text-primary-700"
-        }`}
+        className={`text-[9px] sm:text-[10px] font-bold px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full transition-all duration-300 border flex-shrink-0 ${overflow.some((v: any) => v.id === selectedVariantId)
+          ? "bg-primary-900 text-white border-primary-900 shadow-sm"
+          : "bg-gray-50 text-gray-500 border-gray-200 hover:border-primary-200 hover:text-primary-700"
+          }`}
       >
         +{overflow.length} more
       </button>
@@ -79,7 +78,7 @@ const VariantOverflowDropdown = ({ overflow, selectedVariantId, isOpen, onToggle
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-left ${selectedVariantId === v.id
                   ? "bg-primary-50 text-primary-900"
                   : "hover:bg-gray-50 text-gray-600"
-                }`}
+                  }`}
               >
                 <span className="text-[10px] font-bold">{getCleanVariant(v.variant || "Standard")}</span>
                 {selectedVariantId === v.id && (
@@ -175,7 +174,8 @@ const ProductCard = ({
 
   return (
     <div
-      className="product-card group relative flex flex-col h-full min-w-[150px] bg-white rounded-[1.5rem] sm:rounded-[2rem] border-2 border-gray-100/80 
+      className="product-card group relative flex flex-col h-full min-w-[150px] 
+      bg-white rounded-[1.5rem] sm:rounded-[2rem] border border-gray-100 shadow-sm
         overflow-hidden transition-all duration-500 ease-out
         md:hover:shadow-[0_25px_60px_rgba(0,0,0,0.08)] md:hover:border-primary-100/50
         active:scale-[0.98] active:bg-gray-50/30"
@@ -199,7 +199,7 @@ const ProductCard = ({
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
-               target.srcset = "";
+              target.srcset = "";
             }
             if (target.src !== DEFAULT_PRODUCT_IMAGE) {
               target.src = DEFAULT_PRODUCT_IMAGE;
@@ -263,8 +263,8 @@ const ProductCard = ({
                             setIsOriginDropdownOpen(false);
                           }}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-left ${currentOrigin === o
-                              ? "bg-primary-50 text-primary-900"
-                              : "hover:bg-gray-50 text-gray-600"
+                            ? "bg-primary-50 text-primary-900"
+                            : "hover:bg-gray-50 text-gray-600"
                             }`}
                         >
                           <span className="text-[10px] font-bold uppercase tracking-widest">{t(o)}</span>
@@ -302,7 +302,7 @@ const ProductCard = ({
           {availableVariantsForOrigin.length > 1 && (() => {
             let maxVisible = 0;
             let charCount = 0;
-            
+
             // maxChars defines how many characters of text we can fit on screen. 
             // We use 22 for desktop, but on mobile (<640px) cards are narrower, so we use 10.
             const currentMaxChars = isMobile ? 10 : 22;

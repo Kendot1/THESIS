@@ -61,7 +61,7 @@ export default function Header() {
   if (isTransitioning) {
     return (
       <header role="banner">
-        <nav className="fixed top-0 left-0 right-0 z-[100] py-4 bg-surface/95 shadow-[0_1px_24px_rgba(0,0,0,0.15)]">
+        <nav className="fixed top-0 left-0 right-0 z-[100] py-4 bg-surface shadow-[0_1px_24px_rgba(0,0,0,0.15)]">
           <div className="max-w-7xl mx-auto px-5 lg:px-10 flex items-center justify-between">
             <div className="h-8 w-[140px] bg-gray-200 rounded-lg skeleton-shimmer" />
             <div className="hidden md:flex items-center gap-4">
@@ -83,8 +83,9 @@ export default function Header() {
     <header role="banner">
       <nav
         aria-label="Main navigation"
-        className={`fixed top-0 left-0 right-0 z-[100] shadow-[0_1px_24px_rgba(0,0,0,0.15)] transition-all duration-500 ease-out ${scrolled
-          ? "py-4 bg-surface/95 shadow-sm" : "py-4 bg-surface/90"}`}
+        className={`fixed top-0 left-0 right-0 z-[100] shadow-[0_1.5px_24px_rgba(0,0,0,0.15)] 
+          transition-all duration-500 ease-out ${scrolled
+            ? "py-4 bg-surface" : "py-4 bg-surface"}`}
       >
         <div className="max-w-7xl mx-auto px-5 lg:px-10 flex items-center justify-between">
           {/* Logo */}
@@ -126,8 +127,9 @@ export default function Header() {
                       <button
                         onClick={() => toggleDropdown(link.label)}
                         className={`
-                          relative px-4 py-2 rounded-2xl text-sm font-medium flex items-center gap-1.5 transition-all duration-300
-                          ${isActive || isDropdownOpen ? "text-primary-800" : "text-gray-500 hover:text-primary-800"}
+                          relative px-4 py-2 rounded-2xl text-sm font-medium flex items-center gap-1.5 
+                          transition-all duration-300
+                          ${isActive || isDropdownOpen ? "text-primary-800" : "text-gray-700 hover:text-primary-800"}
                         `}
                         aria-haspopup="true"
                         aria-expanded={isDropdownOpen}
@@ -174,7 +176,7 @@ export default function Header() {
                           after:absolute after:left-0 after:bottom-0 after:h-[3px]
                           after:bg-orange-dark after:w-full after:scale-x-0
                           hover:after:scale-x-100 after:transition after:duration-300 after:origin-center
-                          text-gray-500 hover:text-primary-800
+                          text-gray-700 hover:text-primary-800
                         ` : `
                           text-primary-800
                         `}
@@ -195,11 +197,13 @@ export default function Header() {
               })}
             </ul>
 
-            <div className="hidden md:flex items-center gap-3 ml-6 pl-6 border-l border-gray-100">
+            <div className="hidden md:flex items-center gap-3 ml-6 pl-6 border-l border-gray-200">
               {/* Language Toggle */}
               <button
                 onClick={() => setLanguage(language === "en" ? "tl" : "en")}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gray-50 border border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-100 hover:text-primary-800 transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl 
+                bg-gray-50 border border-gray-300 text-sm font-bold text-gray-700 
+                hover:bg-gray-100 hover:text-primary-800 transition-colors"
                 aria-label="Toggle Language"
               >
                 <Globe className="w-4 h-4 text-gray-400" />

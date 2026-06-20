@@ -58,10 +58,9 @@ const DailyMoverCard = ({
   return (
     <Link
       href={`/Product/${encryptId(id)}`}
-      className="daily-mover-card group relative flex flex-col rounded-2xl border border-gray-100/80
-        bg-white overflow-hidden
-        transition-all duration-400 ease-out
-        hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1
+      className="daily-mover-card group relative flex flex-col rounded-2xl border border-gray-100
+        bg-white overflow-hidden transition-all duration-500 
+        shadow-sm hover:shadow-xl hover:-translate-y-1
         focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 h-full"
     >
       {/* Product Image Banner */}
@@ -74,7 +73,7 @@ const DailyMoverCard = ({
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             if (target.src !== DEFAULT_PRODUCT_IMAGE && target.srcset) {
-               target.srcset = "";
+              target.srcset = "";
             }
             if (target.src !== DEFAULT_PRODUCT_IMAGE) {
               target.src = DEFAULT_PRODUCT_IMAGE;
@@ -83,7 +82,7 @@ const DailyMoverCard = ({
         />
         {/* Dark gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
-        
+
         {/* Category & Origin badge on image */}
         <div className="absolute top-3 left-3 flex items-center gap-1.5">
           <span className="text-[10px] sm:text-[11px] font-bold text-white/95 bg-black/60 px-2.5 py-1 rounded-full uppercase tracking-wider">
@@ -128,7 +127,7 @@ const DailyMoverCard = ({
               ₱{currentPrice.toFixed(2)}
               {unit && <span className="text-sm sm:text-base text-gray-500 ml-1 font-medium">/ {unit}</span>}
             </span>
-            
+
           </div>
           <div className="text-right">
             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">{t("tomorrow")}</span>
