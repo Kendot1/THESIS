@@ -124,12 +124,12 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
           onClick={() => setIsOpen(false)}
         >
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in" />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-news-fade-in" />
 
           {/* Modal Content */}
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative z-10 bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-modal-in flex flex-col"
+            className="relative z-10 bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-news-modal-in flex flex-col"
           >
             {/* Modal Header Image */}
             <div className="relative h-56 sm:h-64 flex-shrink-0 overflow-hidden">
@@ -234,23 +234,6 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
         </div>
         , document.body)}
 
-      {/* Modal CSS animations */}
-      <style jsx>{`
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes modal-in {
-          from { opacity: 0; transform: scale(0.95) translateY(20px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.2s ease-out forwards;
-        }
-        .animate-modal-in {
-          animation: modal-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-      `}</style>
     </>
   );
 };
