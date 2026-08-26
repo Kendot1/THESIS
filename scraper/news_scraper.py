@@ -152,7 +152,7 @@ class NewsScraper:
             log.error("No LLM API key set. Add GROQ_API_KEY_NEWS_SCRAPER or OPENAI_API_KEY to .env")
             return stats
 
-        llm_name = "Groq (llama-3.3-70b)" if self._groq_key else "OpenAI (gpt-4o-mini)"
+        llm_name = "Groq (gpt-oss-120b)" if self._groq_key else "OpenAI (gpt-4o-mini)"
         log.info(f"=== NEWS SCRAPING PIPELINE (ABS-CBN) === LLM: {llm_name}")
 
         # Step 1: Discover article URLs
@@ -563,7 +563,7 @@ class NewsScraper:
         if self._groq_key:
             api_url = "https://api.groq.com/openai/v1/chat/completions"
             api_key = self._groq_key
-            model = "llama-3.3-70b-versatile"
+            model = "openai/gpt-oss-120b"
         else:
             api_url = "https://api.openai.com/v1/chat/completions"
             api_key = self._openai_key

@@ -50,31 +50,35 @@ Example tone: "Ang inaasahang pagtaas ng presyo ng kamatis ay dulot ng mga malak
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
+            model: "openai/gpt-oss-120b",
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }
             ],
             temperature: 0.7,
-            max_tokens: 250
+            max_tokens: 350
           })
         });
 
         if (groqResponse.ok) {
           const data = await groqResponse.json();
-          const reasoning = data.choices[0]?.message?.content || "";
-          return NextResponse.json({ reasoning });
+          const reasoning = data.choices[0]?.message?.content?.trim() || "";
+          if (reasoning) {
+            return NextResponse.json({ reasoning });
+          }
+        } else {
+          const errBody = await groqResponse.text();
+          console.warn(`Groq request failed (${groqResponse.status}):`, errBody);
         }
-        console.warn("Groq failed, falling back to Gemini...");
       } catch (err) {
-        console.warn("Groq error, falling back to Gemini:", err);
+        console.warn("Groq network/parse error, falling back to Gemini:", err);
       }
     }
 
     // Attempt 2: Gemini (Fallback)
     if (geminiKey) {
       const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
       const prompt = `${systemPrompt}\n\n${userPrompt}`;
       
       const result = await model.generateContent(prompt);
