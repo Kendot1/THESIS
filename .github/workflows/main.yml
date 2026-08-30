@@ -2,8 +2,9 @@ name: Automated Data Scrapers
 
 on:
   schedule:
-    # Run the full data pipeline every 12 hours (1 AM & 1 PM UTC)
-    - cron: "0 1,13 * * *"
+    # Run the full data pipeline once daily at 1:00 PM UTC (9:00 PM Philippine Time)
+    # This ensures the Department of Agriculture has published today's report
+    - cron: "0 13 * * *"
   workflow_dispatch:
 
 jobs:
