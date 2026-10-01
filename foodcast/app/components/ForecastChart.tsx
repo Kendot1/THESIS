@@ -17,6 +17,8 @@ interface DataPoint {
   name: string;
   actual: number | null;
   predicted: number | null;
+  lower?: number | null;
+  upper?: number | null;
 }
 
 interface ForecastChartProps {
@@ -28,12 +30,17 @@ interface ForecastChartProps {
   period?: string;
 }
 
+function getSeriesValue(value: unknown): number | undefined {
+  if (!value || typeof value !== "object" || !("value" in value)) return undefined;
+  const candidate = (value as { value?: unknown }).value;
+  return typeof candidate === "number" ? candidate : undefined;
+}
+
 const ForecastChart = ({
   data,
   height,
   showGrid = true,
   showLegend = true,
-  productName,
   period = "Daily",
 }: ForecastChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,7 +51,9 @@ const ForecastChart = ({
   const { t } = useLanguage();
   // Keep a ref to t so the chart creation effect doesn't need t as a dependency
   const tRef = useRef(t);
-  tRef.current = t;
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
 
   // Build series data
   const { actualData, predictedData } = useMemo(() => {
@@ -79,9 +88,13 @@ const ForecastChart = ({
         if (!groupedPredictions.has(key)) groupedPredictions.set(key, []);
         groupedPredictions.get(key)!.push(point.predicted);
       }
+
     }
 
     const actuals = Array.from(groupedActuals.entries())
+      // A boundary week/month may contain both observed and future days. Keep
+      // it on the forecast side so two aggregate series never claim one bucket.
+      .filter(([time]) => period === "Daily" || !groupedPredictions.has(time))
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([time, values]) => ({
         time: time as Time,
@@ -97,11 +110,6 @@ const ForecastChart = ({
 
     return { actualData: actuals, predictedData: predictions };
   }, [data, period]);
-
-  // We just let the chart fit the content to the aggregated data automatically
-  const getVisibleRange = useCallback(() => {
-    return null;
-  }, []);
 
   // Create chart
   useEffect(() => {
@@ -157,30 +165,32 @@ const ForecastChart = ({
       height: height || 380,
     });
 
-    // Actual price series (solid dark green area)
+    // Actual prices use a neutral near-black line so they cannot be confused
+    // with the green forecast.
     const actualSeries = chart.addSeries(AreaSeries, {
-      lineColor: "#0B3B24",
-      topColor: "rgba(11, 59, 36, 0.25)",
-      bottomColor: "rgba(11, 59, 36, 0.02)",
+      lineColor: "#111827",
+      topColor: "rgba(17, 24, 39, 0.18)",
+      bottomColor: "rgba(17, 24, 39, 0.02)",
       lineWidth: 2,
       priceFormat: { type: "custom", formatter: (p: number) => `₱${p.toFixed(2)}` },
       crosshairMarkerRadius: 5,
-      crosshairMarkerBorderColor: "#0B3B24",
+      crosshairMarkerBorderColor: "#111827",
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
       title: tRef.current("actualPrice"),
     });
 
-    // Predicted price series (dashed green area)
+    // One dashed green trace represents the forecast. Drawing the confidence
+    // limits as two more green lines made them look like extra predictions.
     const predictedSeries = chart.addSeries(AreaSeries, {
-      lineColor: "#7ED957",
-      topColor: "rgba(126, 217, 87, 0.15)",
-      bottomColor: "rgba(126, 217, 87, 0.01)",
-      lineWidth: 2,
+      lineColor: "#22C55E",
+      topColor: "rgba(34, 197, 94, 0.12)",
+      bottomColor: "rgba(34, 197, 94, 0.01)",
+      lineWidth: 3,
       lineStyle: LineStyle.Dashed,
       priceFormat: { type: "custom", formatter: (p: number) => `₱${p.toFixed(2)}` },
       crosshairMarkerRadius: 5,
-      crosshairMarkerBorderColor: "#7ED957",
+      crosshairMarkerBorderColor: "#22C55E",
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
       title: tRef.current("predictedPrice"),
@@ -209,22 +219,10 @@ const ForecastChart = ({
 
       const actualData = param.seriesData.get(actualSeries);
       const predictedData = param.seriesData.get(predictedSeries);
+      const actualValue = getSeriesValue(actualData);
+      const predictedValue = getSeriesValue(predictedData);
 
-      let priceData: any = null;
-      let title = "";
-      let color = "";
-
-      if (actualData && (actualData as any).value !== undefined) {
-        priceData = actualData;
-        title = tRef.current("actualPrice");
-        color = "#0B3B24";
-      } else if (predictedData && (predictedData as any).value !== undefined) {
-        priceData = predictedData;
-        title = tRef.current("predictedPrice");
-        color = "#7ED957";
-      }
-
-      if (priceData) {
+      if (actualValue !== undefined || predictedValue !== undefined) {
         tooltip.style.display = "block";
         const dateStr = param.time as string;
         const formattedDate = new Date(dateStr).toLocaleDateString("en-US", {
@@ -233,18 +231,14 @@ const ForecastChart = ({
           year: "numeric"
         });
 
-        tooltip.innerHTML = `
-          <div style="font-size: 10px; font-weight: 700; color: #9CA3AF; margin-bottom: 4px;">${formattedDate}</div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${color};"></div>
-            <span style="font-size: 12px; font-weight: 700; color: #111827;">${title}:</span>
-            <span style="font-size: 14px; font-weight: 900; color: #111827;">₱${priceData.value.toFixed(2)}</span>
-          </div>
-        `;
+        const priceRow = actualValue !== undefined
+          ? `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#111827"></span><b>${tRef.current("actualPrice")}:</b><strong>₱${actualValue.toFixed(2)}</strong></div>`
+          : `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#22C55E"></span><b>${tRef.current("predictedPrice")}:</b><strong>₱${predictedValue!.toFixed(2)}</strong></div>`;
+        tooltip.innerHTML = `<div style="font-size:10px;font-weight:700;color:#9CA3AF;margin-bottom:4px">${formattedDate}</div>${priceRow}`;
 
         // Position tooltip
         let left = param.point.x + 15;
-        let top = param.point.y + 15;
+        const top = param.point.y + 15;
 
         // Prevent tooltip from overflowing the right edge
         if (left > containerRef.current.clientWidth - 150) {
@@ -286,18 +280,22 @@ const ForecastChart = ({
     }
   }, [t]);
 
-  // Helper to fit content but preserve right allowance
-  const fitContentWithAllowance = useCallback(() => {
+  // Keep enough history for context without compressing 30 forecast days into
+  // a one-year view. Weekly/monthly modes receive proportionate windows.
+  const applyRelevantRange = useCallback(() => {
     if (!chartRef.current) return;
-    chartRef.current.timeScale().fitContent();
-    const logicalRange = chartRef.current.timeScale().getVisibleLogicalRange();
-    if (logicalRange) {
-      chartRef.current.timeScale().setVisibleLogicalRange({
-        from: logicalRange.from,
-        to: logicalRange.to + 12, // add empty space bars to the right
-      });
+    const historyBars = period === "Daily" ? 90 : period === "Weekly" ? 26 : 12;
+    const first = actualData[Math.max(0, actualData.length - historyBars)]?.time
+      ?? predictedData[0]?.time;
+    const last = predictedData[predictedData.length - 1]?.time
+      ?? actualData[actualData.length - 1]?.time;
+    if (!first || !last) return;
+    try {
+      chartRef.current.timeScale().setVisibleRange({ from: first, to: last });
+    } catch {
+      chartRef.current.timeScale().fitContent();
     }
-  }, []);
+  }, [actualData, predictedData, period]);
 
   // Update data when it changes
   useEffect(() => {
@@ -305,34 +303,8 @@ const ForecastChart = ({
 
     actualSeriesRef.current.setData(actualData);
     predictedSeriesRef.current.setData(predictedData);
-
-    // Set visible range or auto-fit
-    const range = getVisibleRange();
-    if (range && chartRef.current) {
-      try {
-        chartRef.current.timeScale().setVisibleRange(range);
-      } catch {
-        fitContentWithAllowance();
-      }
-    } else if (chartRef.current) {
-      fitContentWithAllowance();
-    }
-  }, [actualData, predictedData, getVisibleRange, fitContentWithAllowance]);
-
-  // Auto-fit when period changes
-  useEffect(() => {
-    if (!chartRef.current) return;
-    const range = getVisibleRange();
-    if (range) {
-      try {
-        chartRef.current.timeScale().setVisibleRange(range);
-      } catch {
-        fitContentWithAllowance();
-      }
-    } else {
-      fitContentWithAllowance();
-    }
-  }, [period, getVisibleRange, fitContentWithAllowance]);
+    applyRelevantRange();
+  }, [actualData, predictedData, applyRelevantRange]);
 
   return (
     <div>
@@ -353,11 +325,11 @@ const ForecastChart = ({
       {showLegend && (
         <div className="flex items-center gap-6 mt-3 -mb-1 ml-2">
           <div className="flex items-center gap-2">
-            <div className="forecast-legend-dot" style={{ background: "#0B3B24" }} />
+            <div className="h-0 w-4 border-t-2 border-[#111827]" />
             <span className="text-[10px] font-medium text-gray-900">{t("actualPrice")}</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="forecast-legend-dot" style={{ background: "#7ED957" }} />
+            <div className="h-0 w-4 border-t-[3px] border-dashed border-[#22C55E]" />
             <span className="text-[10px] font-medium text-gray-900">{t("predictedPrice")}</span>
           </div>
         </div>

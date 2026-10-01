@@ -3,11 +3,12 @@
 // External
 import React, { useState, useMemo, useEffect, useRef, useDeferredValue } from "react";
 import Link from "next/link";
-import { Search, ArrowUpDown, Filter, Eye, ArrowLeft, ChevronLeft, ChevronRight, X, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Search, ArrowUpDown, Filter, Eye, ArrowLeft, ArrowLeftRight, ChevronLeft, ChevronRight, X, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // Local
 import SparklineChart from "../components/SparklineChart";
+import ProductComparison from "../components/ProductComparison";
 import ScrollReveal from "../components/ScrollReveal";
 import { Product, fetchCategories } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
@@ -40,6 +41,7 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
   const [visibleCount, setVisibleCount] = useState(6);
   const [isPriceRangeOpen, setIsPriceRangeOpen] = useState(false);
   const [isOriginOpen, setIsOriginOpen] = useState(false);
+  const [isComparisonOpen, setIsComparisonOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const priceRangeRef = useRef<HTMLDivElement>(null);
@@ -385,6 +387,14 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                     aria-expanded={isFilterOpen}
                   >
                     <SlidersHorizontal className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => setIsComparisonOpen(true)}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary-200 bg-primary-50 px-4 py-3 text-xs font-black text-primary-800 transition-all hover:border-primary-400 hover:bg-primary-100"
+                    aria-label="Compare two products"
+                  >
+                    <ArrowLeftRight className="h-4 w-4" />
+                    <span className="hidden sm:inline">Compare</span>
                   </button>
                 </div>
 
@@ -927,6 +937,11 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
           </div>
         </div>
       </main>
+      <ProductComparison
+        products={products}
+        open={isComparisonOpen}
+        onClose={() => setIsComparisonOpen(false)}
+      />
     </>
   );
 }

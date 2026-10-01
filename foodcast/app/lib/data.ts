@@ -1,5 +1,3 @@
-import { supabase } from "../../lib/supabase";
-
 export const DEFAULT_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&q=80&w=800";
 
 // ─── Types ─────────────────────────────────────────────────
@@ -9,6 +7,8 @@ export interface ForecastDataPoint {
   name: string;
   actual: number | null;
   predicted: number | null;
+  lower: number | null;
+  upper: number | null;
 }
 
 export interface Product {
@@ -30,8 +30,12 @@ export interface Product {
   dailyForecast: {
     date: string;
     predicted_price: number;
+    lower_bound?: number | null;
+    upper_bound?: number | null;
     reasoning: string;
   }[];
+  forecastSource?: "model" | "trend_fallback";
+  lastActualDate?: string;
 }
 
 export interface NewsArticle {
@@ -54,6 +58,17 @@ export interface NewsArticle {
   effectMagnitude?: string;
 }
 
+// Dashboard cards and search need prices, not the full chart/history payload.
+export type DashboardProduct = Pick<Product,
+  "id" | "name" | "category" | "image" | "variant" | "origin" |
+  "currentPrice" | "predictedPrice" | "unit" | "forecastSource"
+>;
+
+export function toDashboardProduct(product: Product): DashboardProduct {
+  const { id, name, category, image, variant, origin, currentPrice, predictedPrice, unit, forecastSource } = product;
+  return { id, name, category, image, variant, origin, currentPrice, predictedPrice, unit, forecastSource };
+}
+
 // ─── Supabase Edge Function Base URL ───────────────────────
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -62,7 +77,8 @@ const EDGE_FN_BASE = `${SUPABASE_URL}/functions/v1/foodcast`;
 
 const memoryCache: Record<string, { data: any; expiry: number }> = {};
 
-const LOCAL_CACHE_PREFIX = "foodcast_cache_";
+const CACHE_VERSION = "v4_canonical_units_bounded_fallback";
+const LOCAL_CACHE_PREFIX = `foodcast_cache_${CACHE_VERSION}_`;
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour persistent cache
 
 // Server-side raw HTTP request that bypasses Next.js's patched fetch()
@@ -100,12 +116,12 @@ async function nativeServerFetch(url: string, headers: Record<string, string>): 
   });
 }
 
-async function fetchFromNetwork<T>(path: string, retries = 3): Promise<T> {
+async function fetchFromNetwork<T>(path: string, retries = 3, bypassCache = false): Promise<T> {
   const isServer = typeof window === 'undefined';
   let fs: any, pathModule: any;
   let cacheFilePath = '';
   
-  if (isServer) {
+  if (isServer && !bypassCache) {
     try {
       fs = require('fs');
       pathModule = require('path');
@@ -113,7 +129,8 @@ async function fetchFromNetwork<T>(path: string, retries = 3): Promise<T> {
       if (!fs.existsSync(cacheDir)) {
         fs.mkdirSync(cacheDir, { recursive: true });
       }
-      cacheFilePath = pathModule.join(cacheDir, `${path.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
+      cacheFilePath = pathModule.join(
+        cacheDir, `${CACHE_VERSION}_${path.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
       
       // Check if cache file exists and is less than 1 hour old
       if (fs.existsSync(cacheFilePath)) {
@@ -157,7 +174,7 @@ async function fetchFromNetwork<T>(path: string, retries = 3): Promise<T> {
       }
       
       // Write to file cache (server only)
-      if (isServer && fs && cacheFilePath) {
+      if (!bypassCache && isServer && fs && cacheFilePath) {
         try {
           fs.writeFileSync(cacheFilePath, JSON.stringify(data));
         } catch (e) {
@@ -166,10 +183,12 @@ async function fetchFromNetwork<T>(path: string, retries = 3): Promise<T> {
       }
       
       // Update memory cache (1 hour)
-      memoryCache[path] = { data, expiry: now + 60 * 60 * 1000 };
+      if (!bypassCache) {
+        memoryCache[path] = { data, expiry: now + 60 * 60 * 1000 };
+      }
       
       // Update localStorage (client only)
-      if (!isServer) {
+      if (!bypassCache && !isServer) {
         try {
           localStorage.setItem(LOCAL_CACHE_PREFIX + path, JSON.stringify({
             data,
@@ -242,9 +261,33 @@ export async function fetchProducts(): Promise<Product[]> {
   }
 }
 
+// Comparison prices should reflect the current database/forecast state, not
+// the page's ISR payload or the one-hour browser cache.
+export async function fetchLiveProducts(): Promise<Product[]> {
+  return fetchFromNetwork<Product[]>("products", 3, true);
+}
+
+export async function fetchDashboardProducts(): Promise<DashboardProduct[]> {
+  try {
+    // Dashboard prices are live operational data; do not reuse build, disk, or
+    // browser caches after a new forecast vintage is published.
+    const data = await fetchFromNetwork<unknown>("dashboard-products", 3, true);
+    // Older Edge deployments answer unknown paths with their status object.
+    // Never pass that object into Home, which expects an iterable product list.
+    if (Array.isArray(data)) return data as DashboardProduct[];
+    console.warn("Dashboard summary endpoint returned a non-array; using legacy products");
+    return (await fetchProducts()).map(toDashboardProduct);
+  } catch (e) {
+    console.error("Error fetching dashboard products:", e);
+    // Keep the dashboard usable while the summary endpoint is unavailable.
+    return (await fetchProducts()).map(toDashboardProduct);
+  }
+}
+
 // Fetch trending views from Supabase
 export async function fetchTrendingInteractions(): Promise<Record<string, number>> {
   try {
+    const { supabase } = await import("../../lib/supabase");
     const today = new Date().toISOString().split('T')[0];
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
@@ -333,6 +376,7 @@ export async function fetchPaginatedNews(
   dateFilter?: string
 ): Promise<{ data: NewsArticle[], total: number }> {
   try {
+    const { supabase } = await import("../../lib/supabase");
     let query = supabase.from("news_articles").select("id, title, title_tl, content, content_tl, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products", { count: "exact" });
 
     if (search) {

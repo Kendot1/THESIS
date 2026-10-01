@@ -1,11 +1,10 @@
 "use client";
-import React, { useId } from "react";
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { TrendingUp, TrendingDown, ChevronRight, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import SparklineChart from "./SparklineChart";
+import { TrendingUp, TrendingDown, ChevronRight } from "lucide-react";
 import { encryptId } from "../../lib/idCipher";
-import { DEFAULT_PRODUCT_IMAGE, ForecastDataPoint } from "../lib/data";
+import { DEFAULT_PRODUCT_IMAGE } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 
 interface DailyMoverCardProps {
@@ -15,7 +14,6 @@ interface DailyMoverCardProps {
   image?: string;
   currentPrice: number;
   predictedPrice: number;
-  forecastData: ForecastDataPoint[];
   variant?: string;
   origin?: string;
   unit: string;
@@ -28,7 +26,6 @@ const DailyMoverCard = ({
   image,
   currentPrice,
   predictedPrice,
-  forecastData,
   variant,
   origin,
   unit,
@@ -37,7 +34,6 @@ const DailyMoverCard = ({
   const change = ((predictedPrice - currentPrice) / currentPrice) * 100;
   const priceChange = predictedPrice - currentPrice;
   const isUp = change >= 0;
-  const baseId = useId();
 
   const displayName = t(name) + (variant && variant !== "Standard" ? ` (${variant})` : "");
 
@@ -69,6 +65,7 @@ const DailyMoverCard = ({
           src={image || DEFAULT_PRODUCT_IMAGE}
           alt={displayName}
           fill
+          sizes="(max-width: 639px) 280px, (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 390px"
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           onError={(e) => {
             const target = e.target as HTMLImageElement;

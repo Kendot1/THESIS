@@ -406,6 +406,7 @@ export default function Product({
   const priceChangePercent =
     ((priceChange) / product.currentPrice) * 100;
   const isUp = priceChange >= 0;
+  const hasModelForecast = product.forecastSource === "model";
 
   const sentimentIcon =
     product.sentiment === "Bullish" ? (
@@ -1044,9 +1045,9 @@ export default function Product({
                       },
                       {
                         label: t("volatility"),
-                        value: `${isUp ? "+" : ""}${priceChangePercent.toFixed(1)}%`,
+                        value: hasModelForecast ? `${isUp ? "+" : ""}${priceChangePercent.toFixed(1)}%` : "N/A",
                         icon: isUp ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />,
-                        sub: t("weeklyChange"),
+                        sub: hasModelForecast ? t("weeklyChange") : "MODEL FORECAST UNAVAILABLE",
                         color: isUp ? "text-positive" : "text-negative",
                         bg: isUp ? "bg-positive/5" : "bg-negative/5",
                         border: isUp ? "border-positive/20" : "border-negative/20",
@@ -1074,7 +1075,18 @@ export default function Product({
                   {(() => {
                     const isBullish = product.sentiment === "Bullish";
                     const isBearish = product.sentiment === "Bearish";
-                    const insight = isBullish
+                    const insight = !hasModelForecast
+                      ? {
+                        title: "Forecast unavailable",
+                        message: "No published model forecast is available for this series.",
+                        action: "noAction",
+                        recommendation: "Do not use the fallback estimate as a buy signal.",
+                        status: "Data check",
+                        statusBg: "bg-gray-100 text-gray-600",
+                        pulseColor: "bg-gray-400",
+                        glowColor: "from-gray-100 to-transparent",
+                      }
+                      : isBullish
                       ? {
                         title: t("buyingOpportunity"),
                         message: `${t("pricesRisingBy")} ${priceChangePercent.toFixed(1)}%. ${t("marketsTighter")}`,
@@ -1141,7 +1153,7 @@ export default function Product({
                               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("confidenceLevel")}</span>
                               <div className="flex gap-1">
                                 {[1, 2, 3, 4, 5].map((s) => (
-                                  <div key={s} className={`w-2 h-2 rounded-full ${s <= 4 ? "bg-accent" : "bg-gray-200"}`} />
+                                  <div key={s} className={`w-2 h-2 rounded-full ${s <= (hasModelForecast ? 4 : 1) ? "bg-accent" : "bg-gray-200"}`} />
                                 ))}
                               </div>
                             </div>

@@ -1,6 +1,6 @@
 "use client";
 import useSWR from "swr";
-import { fetchProducts, fetchNews, Product, NewsArticle } from "./data";
+import { fetchProducts, fetchNews, Product, NewsArticle, DashboardProduct } from "./data";
 
 const LOCAL_CACHE_PREFIX = "foodcast_cache_";
 
@@ -27,6 +27,24 @@ export function useProducts(fallbackData?: Product[]) {
     revalidateIfStale: false,
     dedupingInterval: 5 * 60 * 1000, // 5 min dedup
     fallbackData: fallbackData || getSyncCache<Product[]>("products"),
+  });
+}
+
+async function fetchDashboardProducts(): Promise<DashboardProduct[]> {
+  const response = await fetch("/api/dashboard/products", { cache: "no-store" });
+  if (!response.ok) throw new Error("Failed to fetch dashboard products");
+  return response.json();
+}
+
+export function useDashboardProducts(fallbackData: DashboardProduct[]) {
+  return useSWR<DashboardProduct[]>("dashboard_products_v2_live", fetchDashboardProducts, {
+    // Never seed the full-product cache with summaries: detail pages need history.
+    fallbackData,
+    revalidateOnMount: true,
+    revalidateOnFocus: true,
+    revalidateIfStale: true,
+    refreshInterval: 60 * 1000,
+    dedupingInterval: 10 * 1000,
   });
 }
 

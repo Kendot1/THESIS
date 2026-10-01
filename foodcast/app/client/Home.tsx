@@ -10,28 +10,24 @@ import {
   Brain,
   ChevronLeft,
   ChevronRight,
-  ArrowRight,
 } from "lucide-react";
 import WaveDivider from "../components/WaveDivider";
-import ProductCard from "../components/ProductCard";
 import DailyMoverCard from "../components/DailyMoverCard";
 import NewsCard from "../components/NewsCard";
 import ScrollReveal from "../components/ScrollReveal";
-import { DEFAULT_PRODUCT_IMAGE, Product, NewsArticle } from "../lib/data";
-import { useProducts, useNews, useTrendingInteractions } from "../lib/hooks";
+import { DEFAULT_PRODUCT_IMAGE, DashboardProduct, NewsArticle } from "../lib/data";
+import { useDashboardProducts, useNews } from "../lib/hooks";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { encryptId } from "../../lib/idCipher";
-import { getInheritedTags } from "../lib/tags";
 
 interface HomeProps {
-  initialProducts: Product[];
+  initialProducts: DashboardProduct[];
   initialNews: NewsArticle[];
 }
 
 export default function Home({ initialProducts, initialNews }: HomeProps) {
-  const { data: products = [], isLoading } = useProducts(initialProducts);
+  const { data: products = [] } = useDashboardProducts(initialProducts);
   const { data: newsList = [] } = useNews(10, initialNews);
-  const { data: trendingInteractions } = useTrendingInteractions();
   const router = useRouter();
   const { t, isTransitioning } = useLanguage();
 
@@ -53,9 +49,6 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
   const [isPaused, setIsPaused] = useState(false);
   const autoSlideTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  /* ─── Trending slider state ─────────────────────── */
-  const trendingRef = useRef<HTMLDivElement>(null);
-
   /* ─── Derived Data (Memoized) ─────────────────────── */
   const dailyMovers = useMemo(() => {
     return [...products]
@@ -67,40 +60,6 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
       .slice(0, 15);
   }, [products]);
 
-  const trendingGrouped = useMemo(() => {
-    const groupedMap = new Map<string, any>();
-    
-    // Sort products by user interactions
-    const sortedProducts = [...products].sort((a, b) => {
-        const viewsA = trendingInteractions?.[a.id] || 0;
-        const viewsB = trendingInteractions?.[b.id] || 0;
-        return viewsB - viewsA;
-    });
-
-    // Take top interacted products
-    const trending = sortedProducts.slice(0, 4);
-    
-    trending.forEach(p => {
-      if (!groupedMap.has(p.name)) {
-        groupedMap.set(p.name, {
-          name: p.name,
-          category: p.category,
-          image: p.image,
-          unit: p.unit,
-          variants: []
-        });
-      }
-      groupedMap.get(p.name).variants.push({
-        id: p.id,
-        variant: p.variant,
-        origin: p.origin,
-        currentPrice: p.currentPrice,
-        predictedPrice: p.predictedPrice
-      });
-    });
-    return Array.from(groupedMap.values());
-  }, [products, trendingInteractions]);
-
   /* ─── News slider state ─────────────────────────── */
   const newsRef = useRef<HTMLDivElement>(null);
   const [isNewsPaused, setIsNewsPaused] = useState(false);
@@ -111,20 +70,6 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
     const el = sliderRef.current;
     if (!el) return;
     const cardWidth = window.innerWidth < 640 ? 315 : window.innerWidth < 1024 ? 435 : 495;
-
-    if (dir === "left") {
-      if (el.scrollLeft <= 10) el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
-      else el.scrollBy({ left: -cardWidth, behavior: "smooth" });
-    } else {
-      if (el.scrollLeft >= el.scrollWidth - el.clientWidth - 10) el.scrollTo({ left: 0, behavior: "smooth" });
-      else el.scrollBy({ left: cardWidth, behavior: "smooth" });
-    }
-  };
-
-  const scrollTrending = (dir: "left" | "right") => {
-    const el = trendingRef.current;
-    if (!el) return;
-    const cardWidth = window.innerWidth < 640 ? 200 : 260;
 
     if (dir === "left") {
       if (el.scrollLeft <= 10) el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
@@ -282,6 +227,7 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
               alt="background"
               fill
               priority
+              sizes="100vw"
               className="object-cover blur-xs scale-105"
             />
             <div className="absolute inset-0 bg-primary-900/70" />
@@ -380,6 +326,7 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
                                   src={p.image || DEFAULT_PRODUCT_IMAGE}
                                   alt={p.name}
                                   fill
+                                  sizes="48px"
                                   className="object-cover"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
@@ -664,7 +611,6 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
                     image={p.image}
                     currentPrice={p.currentPrice}
                     predictedPrice={p.predictedPrice}
-                    forecastData={p.forecastData}
                     variant={p.variant}
                     origin={p.origin}
                     unit={p.unit}
@@ -731,100 +677,6 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
             </div>
           </div>
         </section>
-
-        {/* ─── Trending Products ───────────────────────── */}
-        {/* <section className="py-5 sm:py-10 bg-surface " aria-labelledby="trending-heading">
-          <div className="max-w-7xl mx-auto px-5 lg:px-7">
-            <ScrollReveal>
-              <div className="flex items-end justify-between mb-5 sm:mb-8">
-                <div>
-                  <h2
-                    id="trending-heading"
-                    className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900"
-                    style={{ fontFamily: "var(--font-display)" }}
-                  >
-                    Trending Products
-                  </h2>
-                  <p className="text-gray-500 mt-1 sm:mt-2 text-xs sm:text-sm">
-                    Most searched & active items this week
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex lg:hidden items-center gap-2">
-                    <button
-                      onClick={() => scrollTrending("left")}
-                      className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
-                        hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
-                      aria-label="Scroll trending left"
-                    >
-                      <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </button>
-                    <button
-                      onClick={() => scrollTrending("right")}
-                      className="p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600
-                        hover:bg-primary-50 hover:border-primary-200 hover:text-primary-800 transition-all"
-                      aria-label="Scroll trending right"
-                    >
-                      <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </button>
-                  </div>
-                  <Link
-                    href="/MarketData"
-                    className="hidden sm:flex items-center gap-1.5 text-xs sm:text-sm font-medium text-primary-800 hover:text-accent transition-colors"
-                  >
-                    View all <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  </Link>
-                </div>
-              </div>
-            </ScrollReveal>
-
-            <div
-              ref={trendingRef}
-              className="flex lg:hidden gap-3 sm:gap-4 overflow-x-auto pt-6 pb-12 px-10 -mt-6 -mx-10 scroll-px-10 snap-x snap-mandatory scrollbar-hide"
-              aria-label="Trending products slider"
-              role="region"
-            >
-              {trendingGrouped.map((product, i) => (
-                  <div
-                    key={product.name}
-                    className="snap-start shrink-0 w-[180px] sm:w-[240px]"
-                  >
-                    <ProductCard
-                      name={product.name}
-                      category={product.category}
-                      image={product.image}
-                      variants={product.variants}
-                      unit={product.unit}
-                      compact
-                    />
-                  </div>
-                ))}
-            </div>
-
-            <div className="hidden lg:grid grid-cols-4 gap-6">
-              {trendingGrouped.map((product, i) => (
-                  <ScrollReveal key={product.name} delay={i * 100} animation="scale-in" className="h-full">
-                    <ProductCard
-                      name={product.name}
-                      image={product.image}
-                      category={product.category}
-                      variants={product.variants}
-                      unit={product.unit}
-                    />
-                  </ScrollReveal>
-                ))}
-            </div>
-
-            <div className="flex sm:hidden justify-center mt-4">
-              <Link
-                href="/MarketData"
-                className="flex items-center gap-1.5 text-xs font-medium text-primary-800 hover:text-accent transition-colors"
-              >
-                View all products <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-        </section> */}
 
         {/* ─── Wave + What is FOODCAST ──────────────────── */}
         <div className="bg-surface ">
