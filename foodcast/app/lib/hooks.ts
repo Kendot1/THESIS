@@ -40,9 +40,11 @@ export function useDashboardProducts(fallbackData: DashboardProduct[]) {
   return useSWR<DashboardProduct[]>("dashboard_products_v2_live", fetchDashboardProducts, {
     // Never seed the full-product cache with summaries: detail pages need history.
     fallbackData,
-    revalidateOnMount: true,
+    // The homepage server snapshot is revalidated every minute. Use it on
+    // reload instead of making first paint wait for a second Edge round-trip.
+    revalidateOnMount: fallbackData.length === 0,
     revalidateOnFocus: true,
-    revalidateIfStale: true,
+    revalidateIfStale: fallbackData.length === 0,
     refreshInterval: 60 * 1000,
     dedupingInterval: 10 * 1000,
   });
