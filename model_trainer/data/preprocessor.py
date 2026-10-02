@@ -1,211 +1,102 @@
-"""
-Data validation, cleaning, and preprocessing.
-Handles missing values, outliers, type coercion, and sort ordering.
-"""
-
-import pandas as pd
+"""Causal daily panel construction. Imputed inputs are never scored as truth."""
+import re
+from datetime import datetime
 import numpy as np
-from typing import Tuple
+import pandas as pd
+from config.settings import get_settings
 
-from utils.logger import get_logger
-
-log = get_logger(__name__)
-
-# The "series key" columns that uniquely identify a time series.
-# Every product_category + product_name + variant + origin combination
-# is its own independent series (e.g. "Tomato | Cherry | Local" ≠ "Tomato | Cherry | Imported").
-SERIES_KEY = ["product_category", "product_name", "product_variant", "origin"]
+SERIES_KEY = ['product_category', 'product_name', 'product_variant', 'origin', 'unit']
 
 
-def _series_group(df: pd.DataFrame) -> list:
-    """Return the groupby columns that exist in the DataFrame."""
-    return [c for c in SERIES_KEY if c in df.columns]
+def normalize_unit(value):
+    value = str(value).strip().lower() if pd.notna(value) else 'unknown'
+    return {'per kg': 'kg', 'kilogram': 'kg', 'pc': 'piece', 'per piece': 'piece',
+            'l': 'liter', '1 liter': 'liter', '1l': 'liter', '350 ml': '350ml',
+            'milliliter': 'ml', 'btl': 'bottle'}.get(value, value)
+
+
+def source_date(source):
+    match = re.search(r'([A-Za-z]+)-(\d{1,2})-(\d{4})', str(source))
+    try:
+        return pd.Timestamp(datetime.strptime(' '.join(match.groups()), '%B %d %Y')) if match else pd.NaT
+    except ValueError:
+        return pd.NaT
 
 
 class DataPreprocessor:
-    """Clean and validate raw food_prices DataFrame."""
+    REQUIRED_COLUMNS = SERIES_KEY + ['report_date', 'price_index']
 
-    REQUIRED_COLUMNS = [
-        "product_name",
-        "product_category",
-        "price_index",
-        "report_date",
-    ]
-
-    def validate(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Run all validation / cleaning steps in sequence.
-        Returns a clean DataFrame ready for feature engineering.
-        """
-        raw_count = len(df)
-        log.info(f"Preprocessing {raw_count:,} rows ...")
-
-        df = self._check_required_columns(df)
-        df = self._coerce_types(df)
-        df = self._drop_invalid_rows(df)
-        log.info(f"  After drop_invalid: {len(df):,} rows ({raw_count - len(df):,} removed)")
-
-        before_dedup = len(df)
-        df = self._handle_duplicates(df)
-        log.info(f"  After dedup:        {len(df):,} rows ({before_dedup - len(df):,} merged)")
-
-        df = self._sort_and_index(df)
-
-        before_fill = len(df)
-        df = self._fill_missing(df)
-        log.info(f"  After fill_missing: {len(df):,} rows ({len(df) - before_fill:+,} interpolated)")
-
-        before_outlier = len(df)
-        df = self._remove_outliers(df)
-        log.info(f"  After outliers:     {len(df):,} rows ({before_outlier - len(df):,} removed)")
-
-        log.info(f"Preprocessing complete -- {len(df):,} clean rows (from {raw_count:,} raw).")
-        return df
-
-    # ──────────────────────────────────────────────
-    def _check_required_columns(self, df: pd.DataFrame) -> pd.DataFrame:
-        missing = [c for c in self.REQUIRED_COLUMNS if c not in df.columns]
+    def validate(self, df):
+        missing = set(self.REQUIRED_COLUMNS) - set(df.columns)
         if missing:
-            raise ValueError(f"Missing required columns: {missing}")
-        return df
-
-    def _coerce_types(self, df: pd.DataFrame) -> pd.DataFrame:
+            raise ValueError(f'Missing required columns: {sorted(missing)}')
         df = df.copy()
-        df["report_date"] = pd.to_datetime(df["report_date"], errors="coerce")
-        df["price_index"] = pd.to_numeric(df["price_index"], errors="coerce")
+        df['report_date'] = pd.to_datetime(df.report_date, errors='coerce').dt.normalize()
+        df['price_index'] = pd.to_numeric(df.price_index, errors='coerce')
+        for col in SERIES_KEY:
+            df[col] = df[col].fillna('Unknown').astype(str).str.strip()
+        df['product_variant'] = df.product_variant.replace({'': 'Standard', 'Unknown': 'Standard', 'null': 'Standard'})
+        df['unit'] = df.unit.map(normalize_unit)
+        oil_size = df.product_category.eq('Oils') & df.product_variant.str.lower().isin(['1l', '350ml'])
+        df.loc[oil_size & df.product_variant.str.lower().eq('1l'), 'unit'] = 'liter'
+        df.loc[oil_size & df.product_variant.str.lower().eq('350ml'), 'unit'] = '350ml'
+        df.loc[df.product_name.eq('Chicken Egg'), 'unit'] = 'piece'
+        identity = SERIES_KEY[:-1]
+        known = df[df.unit.ne('unknown')].groupby(identity).unit.agg(lambda s: sorted(set(s)))
+        inferred = {key: values[0] for key, values in known.items() if len(values) == 1}
+        unknown = df.unit.eq('unknown')
+        df.loc[unknown, 'unit'] = [inferred.get(tuple(row), 'unknown')
+                                   for row in df.loc[unknown, identity].itertuples(index=False, name=None)]
+        df = df[df.report_date.notna() & np.isfinite(df.price_index) & (df.price_index > 0)].copy()
+        df = df[~df.product_name.isin(['', 'Unknown']) & ~df.product_category.isin(['', 'Unknown'])]
+        if df.empty:
+            raise ValueError('No valid price rows')
+        if 'is_observed' in df:
+            if not df.is_observed.dropna().isin([True, False]).all():
+                raise ValueError('is_observed must be boolean')
+            df['is_observed'] = df.is_observed.fillna(False).astype(bool)
+        elif 'source_pdf' in df:
+            dates = df.source_pdf.map(source_date)
+            df['is_observed'] = dates.eq(df.report_date)
+        else:
+            raise ValueError('Provide is_observed provenance or dated source_pdf URLs')
+        # Copied/unknown rows are not new observations. Reconstruct filling causally.
+        df['price_index'] = df.price_index.where(df.is_observed)
+        duplicates = df.duplicated(SERIES_KEY + ['report_date'], keep=False)
+        if duplicates.any():
+            conflicting = df.loc[duplicates].groupby(SERIES_KEY + ['report_date']).price_index.nunique()
+            if (conflicting > 1).any():
+                raise ValueError('Conflicting observed prices for the same series/date')
+        df = df.sort_values('is_observed', ascending=False).drop_duplicates(SERIES_KEY + ['report_date'])
+        groups = []
+        for key, group in df.groupby(SERIES_KEY, sort=True):
+            group = group.set_index('report_date').sort_index()
+            group = group.reindex(pd.date_range(group.index.min(), group.index.max(), freq='D'))
+            for col, value in zip(SERIES_KEY, key):
+                group[col] = value
+            group['is_observed'] = group.is_observed.fillna(False).astype(bool)
+            group['observed_price'] = group.price_index.where(group.is_observed)
+            group['price_index'] = group.observed_price.ffill(limit=get_settings().max_fill_days)
+            group.index.name = 'report_date'
+            groups.append(group.reset_index())
+        return pd.concat(groups, ignore_index=True).sort_values(SERIES_KEY + ['report_date']).reset_index(drop=True)
 
-        # Fill nullable text columns
-        for col in ["product_variant", "origin", "unit"]:
-            if col in df.columns:
-                df[col] = df[col].fillna("Unknown")
-
-        return df
-
-    def _drop_invalid_rows(self, df: pd.DataFrame) -> pd.DataFrame:
-        before = len(df)
-        df = df.dropna(subset=["report_date", "price_index", "product_name"])
-        df = df[df["price_index"] > 0]
-        dropped = before - len(df)
-        if dropped:
-            log.warning(f"Dropped {dropped} invalid rows (null/negative price).")
-        return df
-
-    def _handle_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Ensure strict time series by aggregating to 1 row per
-        product + variant + date.
-
-        Each product_name + product_variant combination is treated as a
-        separate time series.  This preserves variant-level granularity
-        (e.g. "Tomato (Cherry)" vs "Tomato (Roma)") rather than averaging
-        them into a single "Tomato" row.
-        """
-        before = len(df)
-
-        group_cols = _series_group(df) + ["report_date"]
-
-        # Define aggregation functions
-        agg_funcs = {
-            col: 'first'
-            for col in df.columns
-            if col not in group_cols + ["price_index"]
-        }
-        agg_funcs["price_index"] = "mean"
-
-        df = df.groupby(group_cols, as_index=False).agg(agg_funcs)
-
-        dupes = before - len(df)
-        if dupes > 0:
-            log.info(f"Aggregated {dupes} rows with duplicate product+variant+date combinations.")
-        return df
-
-    def _sort_and_index(self, df: pd.DataFrame) -> pd.DataFrame:
-        sort_cols = _series_group(df) + ["report_date"]
-        df = df.sort_values(sort_cols).reset_index(drop=True)
-        return df
-
-    def _fill_missing(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Ensure consistent time intervals (no gaps).
-        Reindex each product+variant series to a continuous daily frequency,
-        interpolate missing values, and forward-fill.
-        """
-        group_cols = _series_group(df)
-        df = df.set_index("report_date")
-
-        resampled_groups = []
-        for key, group in df.groupby(group_cols):
-            idx = pd.date_range(
-                start=group.index.min(), end=group.index.max(), freq='D'
-            )
-            group = group.reindex(idx)
-
-            # Restore the group key columns
-            if isinstance(key, str):
-                key = (key,)
-            for i, col in enumerate(group_cols):
-                group[col] = key[i]
-
-            # Fill categorical/text columns with forward fill
-            for col in group.columns:
-                if col != "price_index" and group[col].dtype == 'object':
-                    group[col] = group[col].ffill().bfill()
-
-            # Interpolate price, then ffill/bfill edges
-            group["price_index"] = (
-                group["price_index"]
-                .interpolate(method='time')
-                .ffill()
-                .bfill()
-            )
-            resampled_groups.append(group)
-
-        df = pd.concat(resampled_groups)
-        df = df.reset_index().rename(columns={"index": "report_date"})
-        return df
-
-    def _remove_outliers(self, df: pd.DataFrame, z_threshold: float = 4.0) -> pd.DataFrame:
-        """
-        Remove rows where the price_index is more than *z_threshold*
-        standard deviations away from the product+variant's mean.
-        Uses a generous threshold (4 sigma) to keep genuine spikes.
-        """
-        before = len(df)
-        group_cols = _series_group(df)
-
-        # Compute per-series mean and std
-        stats = df.groupby(group_cols)["price_index"].agg(["mean", "std"])
-        df = df.merge(stats, on=group_cols, how="left", suffixes=("", "_stat"))
-
-        # Compute z-scores
-        df["_z"] = np.where(
-            (df["std"] > 0) & df["std"].notna(),
-            (df["price_index"] - df["mean"]).abs() / df["std"],
-            0.0,
-        )
-
-        # Filter
-        df = df[df["_z"] <= z_threshold].drop(columns=["mean", "std", "_z"])
-        removed = before - len(df)
-        if removed:
-            log.info(f"Removed {removed} outlier rows (>{z_threshold}σ).")
-        return df.reset_index(drop=True)
-
-    # ──────────────────────────────────────────────
-    # Utility: train/test split by date
-    # ──────────────────────────────────────────────
     @staticmethod
-    def time_split(
-        df: pd.DataFrame, test_size: float = 0.15
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """
-        Split data chronologically: last `test_size` fraction of unique dates → test,
-        everything before → train.
-        """
-        unique_dates = np.sort(df["report_date"].unique())
-        split_idx = int(len(unique_dates) * (1.0 - test_size))
-        cutoff = unique_dates[split_idx]
-        
-        train = df[df["report_date"] < cutoff].copy()
-        test = df[df["report_date"] >= cutoff].copy()
-        return train, test
+    def time_split(df, test_size=0.15):
+        dates = np.sort(df.report_date.unique())
+        if not 0 < test_size < 1 or len(dates) < 2:
+            raise ValueError('Need at least two dates and a split fraction between zero and one')
+        cutoff = dates[max(1, min(len(dates)-1, int(len(dates)*(1-test_size))))]
+        return df[df.report_date < cutoff].copy(), df[df.report_date >= cutoff].copy()
+
+    @staticmethod
+    def split_three(df, validation_size=0.15, test_size=0.15):
+        if min(validation_size, test_size) <= 0 or validation_size + test_size >= 1:
+            raise ValueError('Invalid chronological split fractions')
+        dates = np.sort(df.report_date.unique())
+        a, b = int(len(dates)*(1-validation_size-test_size)), int(len(dates)*(1-test_size))
+        if not 0 < a < b < len(dates):
+            raise ValueError('Not enough distinct dates for three partitions')
+        return (df[df.report_date < dates[a]].copy(),
+                df[(df.report_date >= dates[a]) & (df.report_date < dates[b])].copy(),
+                df[df.report_date >= dates[b]].copy())

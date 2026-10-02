@@ -48,6 +48,7 @@ test('prediction identity includes normalized unit', () => {
 test('dashboard SWR cache is isolated and retries empty server fallback only', async () => {
   const calls = [];
   const hooks = loadModule('app/lib/hooks.ts', {
+    react: {},
     swr: (key, fetcher, options) => { calls.push({ key, fetcher, options }); return {}; },
     './data': {},
   });
@@ -56,7 +57,7 @@ test('dashboard SWR cache is isolated and retries empty server fallback only', a
   hooks.useDashboardProducts([]);
   hooks.useProducts([]);
   assert.equal(calls[0].options.fallbackData, products);
-  assert.equal(calls[0].options.revalidateOnMount, true);
+  assert.equal(calls[0].options.revalidateOnMount, false);
   assert.equal(calls[0].options.refreshInterval, 60 * 1000);
   assert.equal(calls[1].options.revalidateOnMount, true);
   assert.notEqual(calls[0].key, calls[2].key);

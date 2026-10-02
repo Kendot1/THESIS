@@ -64,7 +64,8 @@ DESCRIPTIONS = {
 
 def main():
     print("Fetching unique product series from food_prices...")
-    r = sb.table("food_prices").select("product_name, product_variant, origin, product_category").execute()
+    r = sb.table("food_prices").select(
+        "product_name, product_variant, origin, product_category, unit").execute()
 
     combos = {}
     for row in r.data:
@@ -74,14 +75,17 @@ def main():
             variant = "Standard"
         origin = row.get("origin") or ""
         category = row["product_category"]
-        key = (name, variant, origin)
+        unit = (row.get("unit") or "").strip().lower()
+        if not unit or unit == "unknown":
+            continue
+        key = (name, variant, origin, unit)
         if key not in combos:
             combos[key] = category
 
     print(f"Found {len(combos)} unique product series. Seeding products table...")
 
     inserted = 0
-    for (name, variant, origin), category in sorted(combos.items()):
+    for (name, variant, origin, unit), category in sorted(combos.items()):
         desc = DESCRIPTIONS.get(name, f"{name} is a tracked commodity in the NCR agri-fishery market.")
         try:
             sb.table("products").upsert({
@@ -89,9 +93,10 @@ def main():
                 "variant": variant,
                 "origin": origin,
                 "category": category,
+                "unit": unit,
                 "description": desc,
                 "image_url": "",
-            }, on_conflict="name,variant,origin").execute()
+            }, on_conflict="name,variant,origin,unit").execute()
             inserted += 1
         except Exception as e:
             print(f"  FAIL {name} | {variant} | {origin}: {e}")

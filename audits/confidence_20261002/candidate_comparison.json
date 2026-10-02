@@ -1,0 +1,482 @@
+[
+  {
+    "run_id": "20261001T025925Z_0661960a",
+    "point": {
+      "mae": 9.109274103212362,
+      "rmse": 26.174824536751913,
+      "mape": 5.161809814389094,
+      "r2": 0.9502603948806809,
+      "n": 25889,
+      "prediction_success": 0.7393873846034995,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 48.201939047471896
+    },
+    "intervals": {
+      "0.8": {
+        "nominal_coverage": 0.8,
+        "observed_coverage": 0.8228591293599599,
+        "average_width": 23.117811176351093,
+        "interval_score": 66.91979394220128,
+        "sample_count": 25889,
+        "by_category": {
+          "Corn": {
+            "observed_coverage": 0.8429890848026869,
+            "sample_count": 1191
+          },
+          "Fish": {
+            "observed_coverage": 0.8578767123287672,
+            "sample_count": 1752
+          },
+          "Fruits": {
+            "observed_coverage": 0.9156010230179028,
+            "sample_count": 3128
+          },
+          "Livestock": {
+            "observed_coverage": 0.9976662777129521,
+            "sample_count": 1714
+          },
+          "Oils": {
+            "observed_coverage": 0.9792993630573248,
+            "sample_count": 1256
+          },
+          "Poultry": {
+            "observed_coverage": 0.9781507283090564,
+            "sample_count": 3158
+          },
+          "Rice": {
+            "observed_coverage": 0.9780188409934342,
+            "sample_count": 3503
+          },
+          "Sugar": {
+            "observed_coverage": 1.0,
+            "sample_count": 940
+          },
+          "Vegetables": {
+            "observed_coverage": 0.5987887963663892,
+            "sample_count": 9247
+          }
+        },
+        "weighted_category_calibration_error": 0.16659585151995052
+      },
+      "0.9": {
+        "nominal_coverage": 0.9,
+        "observed_coverage": 0.9078759318629533,
+        "average_width": 41.9663522855895,
+        "interval_score": 99.93839506006123,
+        "sample_count": 25889,
+        "by_category": {
+          "Corn": {
+            "observed_coverage": 0.945424013434089,
+            "sample_count": 1191
+          },
+          "Fish": {
+            "observed_coverage": 0.946917808219178,
+            "sample_count": 1752
+          },
+          "Fruits": {
+            "observed_coverage": 0.9641943734015346,
+            "sample_count": 3128
+          },
+          "Livestock": {
+            "observed_coverage": 0.9988331388564761,
+            "sample_count": 1714
+          },
+          "Oils": {
+            "observed_coverage": 0.9888535031847133,
+            "sample_count": 1256
+          },
+          "Poultry": {
+            "observed_coverage": 0.9965167827739075,
+            "sample_count": 3158
+          },
+          "Rice": {
+            "observed_coverage": 0.9960034256351699,
+            "sample_count": 3503
+          },
+          "Sugar": {
+            "observed_coverage": 1.0,
+            "sample_count": 940
+          },
+          "Vegetables": {
+            "observed_coverage": 0.7757110414188385,
+            "sample_count": 9247
+          }
+        },
+        "weighted_category_calibration_error": 0.09666267526748812
+      },
+      "0.95": {
+        "nominal_coverage": 0.95,
+        "observed_coverage": 0.9570087682027115,
+        "average_width": 72.06911489132588,
+        "interval_score": 143.05288387089584,
+        "sample_count": 25889,
+        "by_category": {
+          "Corn": {
+            "observed_coverage": 0.9941225860621327,
+            "sample_count": 1191
+          },
+          "Fish": {
+            "observed_coverage": 0.985730593607306,
+            "sample_count": 1752
+          },
+          "Fruits": {
+            "observed_coverage": 0.9862531969309463,
+            "sample_count": 3128
+          },
+          "Livestock": {
+            "observed_coverage": 1.0,
+            "sample_count": 1714
+          },
+          "Oils": {
+            "observed_coverage": 0.9936305732484076,
+            "sample_count": 1256
+          },
+          "Poultry": {
+            "observed_coverage": 0.999366687777074,
+            "sample_count": 3158
+          },
+          "Rice": {
+            "observed_coverage": 0.9985726520125606,
+            "sample_count": 3503
+          },
+          "Sugar": {
+            "observed_coverage": 1.0,
+            "sample_count": 940
+          },
+          "Vegetables": {
+            "observed_coverage": 0.8893695252514329,
+            "sample_count": 9247
+          }
+        },
+        "weighted_category_calibration_error": 0.050320599482405665
+      }
+    },
+    "calibration": {
+      "scope": "legacy_in_sample"
+    }
+  },
+  {
+    "run_id": "20261001T174014Z_31f934e1",
+    "point": {
+      "mae": 9.08829032218952,
+      "rmse": 26.11492418219813,
+      "mape": 5.139577323172,
+      "r2": 0.9504877897820792,
+      "n": 25889,
+      "prediction_success": 0.7420139827726061,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 45.63714318822666
+    },
+    "intervals": {
+      "0.8": {
+        "nominal_coverage": 0.8,
+        "observed_coverage": 0.8357217350998494,
+        "average_width": 27.03876335856625,
+        "interval_score": 57.832415353147695,
+        "sample_count": 25889,
+        "by_category": {
+          "Corn": {
+            "observed_coverage": 0.8136020151133502,
+            "sample_count": 1191
+          },
+          "Fish": {
+            "observed_coverage": 0.8047945205479452,
+            "sample_count": 1752
+          },
+          "Fruits": {
+            "observed_coverage": 0.8021099744245525,
+            "sample_count": 3128
+          },
+          "Livestock": {
+            "observed_coverage": 0.9340723453908985,
+            "sample_count": 1714
+          },
+          "Oils": {
+            "observed_coverage": 0.9554140127388535,
+            "sample_count": 1256
+          },
+          "Poultry": {
+            "observed_coverage": 0.9103863204559848,
+            "sample_count": 3158
+          },
+          "Rice": {
+            "observed_coverage": 0.7676277476448758,
+            "sample_count": 3503
+          },
+          "Sugar": {
+            "observed_coverage": 1.0,
+            "sample_count": 940
+          },
+          "Vegetables": {
+            "observed_coverage": 0.804909700443387,
+            "sample_count": 9247
+          }
+        },
+        "weighted_category_calibration_error": 0.04448221252269301
+      },
+      "0.9": {
+        "nominal_coverage": 0.9,
+        "observed_coverage": 0.9208930433774962,
+        "average_width": 61.196898969000074,
+        "interval_score": 90.08906127210625,
+        "sample_count": 25889,
+        "by_category": {
+          "Corn": {
+            "observed_coverage": 0.9193954659949622,
+            "sample_count": 1191
+          },
+          "Fish": {
+            "observed_coverage": 0.8789954337899544,
+            "sample_count": 1752
+          },
+          "Fruits": {
+            "observed_coverage": 0.887468030690537,
+            "sample_count": 3128
+          },
+          "Livestock": {
+            "observed_coverage": 0.9754959159859977,
+            "sample_count": 1714
+          },
+          "Oils": {
+            "observed_coverage": 0.9912420382165605,
+            "sample_count": 1256
+          },
+          "Poultry": {
+            "observed_coverage": 0.9651678277390754,
+            "sample_count": 3158
+          },
+          "Rice": {
+            "observed_coverage": 0.8438481301741364,
+            "sample_count": 3503
+          },
+          "Sugar": {
+            "observed_coverage": 1.0,
+            "sample_count": 940
+          },
+          "Vegetables": {
+            "observed_coverage": 0.9266789228939115,
+            "sample_count": 9247
+          }
+        },
+        "weighted_category_calibration_error": 0.04195990575147747
+      },
+      "0.95": {
+        "nominal_coverage": 0.95,
+        "observed_coverage": 0.9521804627447951,
+        "average_width": 87.57406977237062,
+        "interval_score": 125.23063317198074,
+        "sample_count": 25889,
+        "by_category": {
+          "Corn": {
+            "observed_coverage": 0.9815281276238456,
+            "sample_count": 1191
+          },
+          "Fish": {
+            "observed_coverage": 0.920662100456621,
+            "sample_count": 1752
+          },
+          "Fruits": {
+            "observed_coverage": 0.9235933503836317,
+            "sample_count": 3128
+          },
+          "Livestock": {
+            "observed_coverage": 0.9836639439906651,
+            "sample_count": 1714
+          },
+          "Oils": {
+            "observed_coverage": 0.9928343949044586,
+            "sample_count": 1256
+          },
+          "Poultry": {
+            "observed_coverage": 0.9863837872070931,
+            "sample_count": 3158
+          },
+          "Rice": {
+            "observed_coverage": 0.90094204967171,
+            "sample_count": 3503
+          },
+          "Sugar": {
+            "observed_coverage": 1.0,
+            "sample_count": 940
+          },
+          "Vegetables": {
+            "observed_coverage": 0.9555531523737428,
+            "sample_count": 9247
+          }
+        },
+        "weighted_category_calibration_error": 0.025808258333655236
+      }
+    },
+    "calibration": {
+      "scope": "held_out_from_ensemble_fit",
+      "sample_count": 8406,
+      "minimum_category_bin_samples": 100,
+      "start": "2025-04-24",
+      "end": "2025-08-21",
+      "coverage_guarantee": false,
+      "base_model_scope": "parent_validation_used_for_early_stopping"
+    }
+  },
+  {
+    "run_id": "20261001T174353Z_72ad8e72",
+    "point": {
+      "mae": 9.047649240087045,
+      "rmse": 25.885712862729,
+      "mape": 5.112228251956492,
+      "r2": 0.9513531152786542,
+      "n": 25889,
+      "prediction_success": 0.7396191432654795,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 45.606242033296
+    },
+    "intervals": {
+      "0.8": {
+        "nominal_coverage": 0.8,
+        "observed_coverage": 0.8332110162617328,
+        "average_width": 25.981085135273826,
+        "interval_score": 57.589604625979646,
+        "sample_count": 25889,
+        "by_category": {
+          "Corn": {
+            "observed_coverage": 0.8110831234256927,
+            "sample_count": 1191
+          },
+          "Fish": {
+            "observed_coverage": 0.7985159817351598,
+            "sample_count": 1752
+          },
+          "Fruits": {
+            "observed_coverage": 0.7944373401534527,
+            "sample_count": 3128
+          },
+          "Livestock": {
+            "observed_coverage": 0.9299883313885647,
+            "sample_count": 1714
+          },
+          "Oils": {
+            "observed_coverage": 0.9562101910828026,
+            "sample_count": 1256
+          },
+          "Poultry": {
+            "observed_coverage": 0.9195693476884104,
+            "sample_count": 3158
+          },
+          "Rice": {
+            "observed_coverage": 0.7679132172423637,
+            "sample_count": 3503
+          },
+          "Sugar": {
+            "observed_coverage": 1.0,
+            "sample_count": 940
+          },
+          "Vegetables": {
+            "observed_coverage": 0.7993943981831946,
+            "sample_count": 9247
+          }
+        },
+        "weighted_category_calibration_error": 0.04387191471281239
+      },
+      "0.9": {
+        "nominal_coverage": 0.9,
+        "observed_coverage": 0.9201977673915562,
+        "average_width": 61.76370928296679,
+        "interval_score": 90.38334678500956,
+        "sample_count": 25889,
+        "by_category": {
+          "Corn": {
+            "observed_coverage": 0.9168765743073047,
+            "sample_count": 1191
+          },
+          "Fish": {
+            "observed_coverage": 0.867579908675799,
+            "sample_count": 1752
+          },
+          "Fruits": {
+            "observed_coverage": 0.8884271099744245,
+            "sample_count": 3128
+          },
+          "Livestock": {
+            "observed_coverage": 0.9766627771295215,
+            "sample_count": 1714
+          },
+          "Oils": {
+            "observed_coverage": 0.9912420382165605,
+            "sample_count": 1256
+          },
+          "Poultry": {
+            "observed_coverage": 0.9629512349588347,
+            "sample_count": 3158
+          },
+          "Rice": {
+            "observed_coverage": 0.8441335997716243,
+            "sample_count": 3503
+          },
+          "Sugar": {
+            "observed_coverage": 1.0,
+            "sample_count": 940
+          },
+          "Vegetables": {
+            "observed_coverage": 0.927327781983346,
+            "sample_count": 9247
+          }
+        },
+        "weighted_category_calibration_error": 0.04250067596276413
+      },
+      "0.95": {
+        "nominal_coverage": 0.95,
+        "observed_coverage": 0.9515624396461818,
+        "average_width": 87.6051453390658,
+        "interval_score": 125.12413248162309,
+        "sample_count": 25889,
+        "by_category": {
+          "Corn": {
+            "observed_coverage": 0.9815281276238456,
+            "sample_count": 1191
+          },
+          "Fish": {
+            "observed_coverage": 0.9138127853881278,
+            "sample_count": 1752
+          },
+          "Fruits": {
+            "observed_coverage": 0.9248721227621484,
+            "sample_count": 3128
+          },
+          "Livestock": {
+            "observed_coverage": 0.9865810968494749,
+            "sample_count": 1714
+          },
+          "Oils": {
+            "observed_coverage": 0.9928343949044586,
+            "sample_count": 1256
+          },
+          "Poultry": {
+            "observed_coverage": 0.9819506016466117,
+            "sample_count": 3158
+          },
+          "Rice": {
+            "observed_coverage": 0.90094204967171,
+            "sample_count": 3503
+          },
+          "Sugar": {
+            "observed_coverage": 1.0,
+            "sample_count": 940
+          },
+          "Vegetables": {
+            "observed_coverage": 0.9556612955553152,
+            "sample_count": 9247
+          }
+        },
+        "weighted_category_calibration_error": 0.02580825833365522
+      }
+    },
+    "calibration": {
+      "scope": "held_out_from_ensemble_fit",
+      "sample_count": 8406,
+      "minimum_category_bin_samples": 100,
+      "start": "2025-04-24 00:00:00",
+      "end": "2025-08-21 00:00:00",
+      "coverage_guarantee": false,
+      "base_model_scope": "calibration_excluded_from_early_stopping"
+    }
+  }
+]

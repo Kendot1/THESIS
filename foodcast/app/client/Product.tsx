@@ -34,11 +34,15 @@ const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
 });
 import ProductCard from "../components/ProductCard";
 import ScrollReveal from "../components/ScrollReveal";
-import { Product as ProductType, fetchNews, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
+import { Product as ProductType, fetchNews, DEFAULT_PRODUCT_IMAGE, formatRelativeAge, formatScheduledDaRefreshAge } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
-import { useProducts, useNews } from "../lib/hooks";
+import { useClock, useForecastStatus, useProducts, useNews } from "../lib/hooks";
 import { encryptId, decryptId } from "../../lib/idCipher";
 import { getInheritedTags } from "../lib/tags";
+
+// Disclosure gate only: even above this count, the hit rate is not a
+// calibrated probability that the next price prediction will be correct.
+const MIN_VERIFIED_DATES_FOR_RATE = 20;
 
 // Helper to find logically related products based on culinary usage
 function getRelatedProducts(current: ProductType, allProducts: ProductType[]): ProductType[] {
@@ -112,6 +116,8 @@ export default function Product({
   const { t, language, isTransitioning } = useLanguage();
   const { data: products = [] } = useProducts(initialProducts);
   const { data: newsList = [] } = useNews(10);
+  const { data: forecastStatus } = useForecastStatus();
+  const now = useClock();
   const product = useMemo(() => products.find((p) => p.id === id) || null, [products, id]);
 
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
@@ -217,8 +223,6 @@ export default function Product({
   const [chartPeriod, setChartPeriod] = useState("Daily");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isOriginDropdownOpen, setIsOriginDropdownOpen] = useState(false);
-  const aiConfidence = useMemo(() => Math.floor(Math.random() * (98 - 85 + 1) + 85), [id]);
-
   const [forecastRange, setForecastRange] = useState<"3" | "7" | "month" | "all">("all");
   const [mobileForecastExpanded, setMobileForecastExpanded] = useState(false);
 
@@ -407,6 +411,23 @@ export default function Product({
     ((priceChange) / product.currentPrice) * 100;
   const isUp = priceChange >= 0;
   const hasModelForecast = product.forecastSource === "model";
+  const productRangeResult = forecastStatus?.metrics?.product_metrics?.[product.id];
+  const verifiedDates = productRangeResult?.sample_basis === "unique_actual_dates"
+    ? productRangeResult.sample_count : 0;
+  const hasReliableRangeRate = !!productRangeResult
+    && verifiedDates >= MIN_VERIFIED_DATES_FOR_RATE
+    && Number.isFinite(productRangeResult.interval_coverage)
+    && productRangeResult.interval_coverage >= 0 && productRangeResult.interval_coverage <= 1;
+  const rangeRateDescription = [
+    t("rangeHitRateExplanation"),
+    verifiedDates > 0
+      ? `${verifiedDates} ${t("verifiedDays")}`
+      : t("rangeHistoryUnavailable"),
+    ...(!hasReliableRangeRate && verifiedDates > 0 ? [t("insufficientVerifiedHistory")] : []),
+  ].join(" · ");
+  const dataUpdateAge = formatRelativeAge(forecastStatus?.generatedAt, language, now)
+    ?? formatScheduledDaRefreshAge(language, now);
+  const daProcessingStatus = `${forecastStatus?.generatedAt ? t("updatedPrefix") : t("scheduledRefresh")} ${dataUpdateAge}`;
 
   const sentimentIcon =
     product.sentiment === "Bullish" ? (
@@ -419,9 +440,9 @@ export default function Product({
 
   const sentimentColor =
     product.sentiment === "Bullish"
-      ? "text-positive bg-positive/10"
+      ? "text-price-up bg-price-up/10"
       : product.sentiment === "Bearish"
-        ? "text-negative bg-negative/10"
+        ? "text-price-down bg-price-down/10"
         : "text-gray-600 bg-gray-100";
 
   const trendLabel = product.sentiment === "Bullish" ? t("priceRising") : product.sentiment === "Bearish" ? t("priceDropping") : t("stable");
@@ -896,14 +917,20 @@ export default function Product({
                           </p>
                         </div>
                       </div>
-                      <div className="hidden sm:flex flex-col items-end">
-                        <div className="flex items-center gap-1.5 px-3 py-1 bg-accent/10 border border-accent/20 rounded-full">
-                          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                          <span className="text-[10px] font-bold text-accent uppercase tracking-wider">
-                            {aiConfidence}% Confidence
+                      <div className="hidden sm:flex shrink-0 flex-col items-end">
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-accent/10 border border-accent/20 rounded-full" title={hasModelForecast ? rangeRateDescription : undefined}>
+                          <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-accent animate-pulse" />
+                          <span className="text-[10px] font-bold text-accent uppercase tracking-wider whitespace-nowrap">
+                            {product.forecastSource !== "model"
+                              ? t("fallbackEstimate")
+                            : hasReliableRangeRate
+                              ? `${(productRangeResult.interval_coverage * 100).toFixed(1)}% ${t("rangeHitRate")}`
+                              : `— ${t("rangeHitRate")}`}
                           </span>
                         </div>
-                        <span className="text-[8px] text-gray-400 font-bold mt-1 uppercase">{t("updatedAgo")}</span>
+                        <span className="text-[8px] text-gray-400 font-bold mt-1 uppercase">
+                          {daProcessingStatus}
+                        </span>
                       </div>
                     </div>
 
@@ -1048,9 +1075,9 @@ export default function Product({
                         value: hasModelForecast ? `${isUp ? "+" : ""}${priceChangePercent.toFixed(1)}%` : "N/A",
                         icon: isUp ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />,
                         sub: hasModelForecast ? t("weeklyChange") : "MODEL FORECAST UNAVAILABLE",
-                        color: isUp ? "text-positive" : "text-negative",
-                        bg: isUp ? "bg-positive/5" : "bg-negative/5",
-                        border: isUp ? "border-positive/20" : "border-negative/20",
+                        color: isUp ? "text-price-up" : "text-price-down",
+                        bg: isUp ? "bg-price-up/5" : "bg-price-down/5",
+                        border: isUp ? "border-price-up/20" : "border-price-down/20",
                       },
                     ].map((stat) => (
                       <div
@@ -1093,9 +1120,9 @@ export default function Product({
                         action: "buyNow",
                         recommendation: t("increaseStock"),
                         status: t("suggestedBuy"),
-                        statusBg: "bg-positive/10 text-positive",
-                        pulseColor: "bg-positive",
-                        glowColor: "from-positive/10 to-accent/5",
+                        statusBg: "bg-price-up/10 text-price-up",
+                        pulseColor: "bg-price-up",
+                        glowColor: "from-price-up/10 to-accent/5",
                       }
                       : isBearish
                         ? {
@@ -1104,9 +1131,9 @@ export default function Product({
                           action: "waitAction",
                           recommendation: t("waitForDrop"),
                           status: t("holdOff"),
-                          statusBg: "bg-negative/10 text-negative",
-                          pulseColor: "bg-negative",
-                          glowColor: "from-negative/10 to-accent/5",
+                          statusBg: "bg-price-down/10 text-price-down",
+                          pulseColor: "bg-price-down",
+                          glowColor: "from-price-down/10 to-accent/5",
                         }
                         : {
                           title: t("stableMarket"),
@@ -1150,12 +1177,16 @@ export default function Product({
                               <span className="text-xs font-black text-primary-800 uppercase tracking-tight">{t(insight.action)}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("confidenceLevel")}</span>
-                              <div className="flex gap-1">
-                                {[1, 2, 3, 4, 5].map((s) => (
-                                  <div key={s} className={`w-2 h-2 rounded-full ${s <= (hasModelForecast ? 4 : 1) ? "bg-accent" : "bg-gray-200"}`} />
-                                ))}
-                              </div>
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest" title={t("rangeHitRateExplanation")}>{t("historicalRangeHitRate")}</span>
+                              <span className="text-xs font-bold text-gray-600">
+                                {hasModelForecast
+                                  ? hasReliableRangeRate
+                                    ? `${(productRangeResult.interval_coverage * 100).toFixed(1)}% · ${verifiedDates} ${t("verifiedDays")}`
+                                    : verifiedDates > 0
+                                      ? `${t("insufficientVerifiedHistory")} · ${verifiedDates} ${t("verifiedDays")}`
+                                      : t("rangeHistoryUnavailable")
+                                  : t("notAvailable")}
+                              </span>
                             </div>
                           </div>
                         </div>

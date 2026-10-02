@@ -1,0 +1,61 @@
+product_category,product_name,product_variant,origin,units,unit_count
+Corn,Yellow Sweet Corn,Cob,Local,"kg,piece",2
+Fish,Indian Mackerel,Standard,Local,"kg,per kg",2
+Fish,Milkfish,Standard,Local,"kg,per kg",2
+Fish,Round Scad,Standard,Imported,"kg,per kg",2
+Fish,Round Scad,Standard,Local,"Unknown,kg,per kg",3
+Fish,Tilapia,Standard,Local,"kg,per kg",2
+Fruits,Banana,Lakatan,Local,"kg,per kg",2
+Fruits,Banana,Latundan,Local,"kg,per kg",2
+Fruits,Calamansi,Standard,Local,"kg,per kg",2
+Fruits,Mango,Carabao,Local,"kg,per kg",2
+Fruits,Papaya,Standard,Local,"kg,per kg,piece",3
+Livestock,Beef,Brisket,Local,"kg,per kg",2
+Livestock,Beef,Rump,Local,"kg,per kg",2
+Livestock,Pork,Belly,Local,"kg,per kg",2
+Livestock,Pork,Ham,Local,"kg,per kg",2
+Oils,Coconut Oil,1L,Local,"1L,L,Liter,Unknown,bottle,kg,liter,pack,piece,unit",10
+Oils,Coconut Oil,350ml,Local,"350ml,L,Liter,Unknown,bottle,kg,liter,mL,milliliter,ml,pack,piece,unit",13
+Oils,Palm Oil,1L,Local,"1 Liter,1L,L,Liter,Unknown,bottle,btl,kg,liter,pack,piece,unit",12
+Oils,Palm Oil,350ml,Local,"350 ml,350ml,L,Liter,Unknown,bottle,kg,liter,mL,milliliter,ml,pack,pc,pc/btl,piece,unit",16
+Poultry,Chicken,Whole,Local,"kg,pc,per kg,piece",4
+Poultry,Chicken Egg,Brown (Extra Large),Local,"kg,piece",2
+Poultry,Chicken Egg,Brown (Large),Local,"kg,piece",2
+Poultry,Chicken Egg,Brown (Medium),Local,"kg,piece",2
+Poultry,Chicken Egg,White (Extra Large),Local,"kg,piece",2
+Poultry,Chicken Egg,White (Extra Small),Local,"kg,piece",2
+Poultry,Chicken Egg,White (Jumbo),Local,"kg,piece",2
+Poultry,Chicken Egg,White (Large),Local,"kg,piece",2
+Poultry,Chicken Egg,White (Medium),Local,"kg,pc,per piece,piece",4
+Poultry,Chicken Egg,White (Pewee),Local,"kg,piece",2
+Poultry,Chicken Egg,White (Small),Local,"kg,piece",2
+Rice,Rice,Premium,Imported,"kg,per kg",2
+Rice,Rice,Premium,Local,"kg,per kg",2
+Rice,Rice,Regular Milled,Local,"kg,per kg",2
+Rice,Rice,Special,Imported,"kg,per kg",2
+Rice,Rice,Special,Local,"kg,per kg",2
+Rice,Rice,Well Milled,Imported,"kg,per kg",2
+Rice,Rice,Well Milled,Local,"kg,per kg",2
+Sugar,Sugar,Brown,Local,"kg,per kg",2
+Sugar,Sugar,Refined,Local,"kg,per kg",2
+Sugar,Sugar,Washed,Local,"kg,per kg",2
+Vegetables,Baguio Beans,Standard,Local,"kg,per kg",2
+Vegetables,Bittergourd,Standard,Local,"kg,per kg",2
+Vegetables,Cabbage,Scorpio,Local,"kg,per kg",2
+Vegetables,Carrot,Standard,Local,"kg,per kg",2
+Vegetables,Chayote,Standard,Local,"kg,per kg",2
+Vegetables,Chili,Labuyo,Local,"Unknown,kg,per kg",3
+Vegetables,Eggplant,Standard,Local,"kg,per kg",2
+Vegetables,Garlic,Standard,Imported,"Unknown,kg,per kg",3
+Vegetables,Garlic,Standard,Local,"Unknown,kg,per kg",3
+Vegetables,Ginger,Standard,Local,"Unknown,kg,per kg",3
+Vegetables,Pechay Baguio,Standard,Local,"kg,per kg",2
+Vegetables,Pechay Tagalog,Standard,Local,"kg,per kg",2
+Vegetables,Potato,White,Local,"kg,per kg",2
+Vegetables,Red Onion,Medium,Imported,"Unknown,kg",2
+Vegetables,Red Onion,Standard,Local,"Unknown,kg,per kg",3
+Vegetables,Squash,Standard,Local,"kg,per kg",2
+Vegetables,String Beans,Standard,Local,"kg,per kg",2
+Vegetables,Tomato,Standard,Local,"kg,per kg",2
+Vegetables,White Onion,Medium,Imported,"Unknown,kg,per kg",3
+Vegetables,White Onion,Standard,Local,"Unknown,kg,per kg",3

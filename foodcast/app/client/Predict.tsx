@@ -439,7 +439,7 @@ function PredictContent({ initialProducts }: PredictProps) {
                         </div>
                         <div className="text-right shrink-0">
                           <div className="text-xs font-bold text-gray-900 tabular-nums">₱{p.currentPrice.toFixed(2)}</div>
-                          <div className={`text-[10px] font-bold tabular-nums ${isUp ? "text-positive" : "text-negative"}`}>
+                          <div className={`text-[10px] font-bold tabular-nums ${isUp ? "text-price-up" : "text-price-down"}`}>
                             {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
                           </div>
                         </div>
@@ -508,7 +508,7 @@ function PredictContent({ initialProducts }: PredictProps) {
                   </div>
 
                   <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 sm:gap-2">
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold ${featuredProduct.sentiment === 'Bullish' ? 'text-positive bg-positive/8' : 'text-negative bg-negative/8'}`}>
+                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold ${featuredProduct.sentiment === 'Bullish' ? 'text-price-up bg-price-up/10' : 'text-price-down bg-price-down/10'}`}>
                       {featuredProduct.sentiment === 'Bullish' ? '▲' : '▼'} {Math.abs(((featuredProduct.predictedPrice - featuredProduct.currentPrice) / featuredProduct.currentPrice) * 100).toFixed(1)}% {featuredProduct.sentiment}
                     </div>
                     <span className="text-3xl sm:text-4xl font-black text-primary-900 leading-none">

@@ -1,0 +1,94 @@
+[
+  {
+    "endpoint": "dashboard-products",
+    "count": 102,
+    "rows": [
+      {
+        "name": "Bittergourd",
+        "variant": "Standard",
+        "currentPrice": 132.94,
+        "predictedPrice": 131.73,
+        "forecastSource": null,
+        "lastActualDate": null
+      },
+      {
+        "name": "Broccoli",
+        "variant": "Standard",
+        "currentPrice": 213.33,
+        "predictedPrice": 216.62,
+        "forecastSource": null,
+        "lastActualDate": null
+      },
+      {
+        "name": "Cabbage",
+        "variant": "Scorpio",
+        "currentPrice": 225.24,
+        "predictedPrice": 217.42,
+        "forecastSource": null,
+        "lastActualDate": null
+      },
+      {
+        "name": "Cabbage",
+        "variant": "Wonder Ball",
+        "currentPrice": 199.83,
+        "predictedPrice": 193.96,
+        "forecastSource": null,
+        "lastActualDate": null
+      },
+      {
+        "name": "Cabbage",
+        "variant": "Rare Ball",
+        "currentPrice": 216.67,
+        "predictedPrice": 208.5,
+        "forecastSource": null,
+        "lastActualDate": null
+      }
+    ]
+  },
+  {
+    "endpoint": "products",
+    "count": 102,
+    "rows": [
+      {
+        "name": "Bittergourd",
+        "variant": "Standard",
+        "currentPrice": 132.94,
+        "predictedPrice": 131.73,
+        "forecastSource": "model",
+        "lastActualDate": "2026-10-01"
+      },
+      {
+        "name": "Broccoli",
+        "variant": "Standard",
+        "currentPrice": 213.33,
+        "predictedPrice": 216.62,
+        "forecastSource": "model",
+        "lastActualDate": "2026-10-01"
+      },
+      {
+        "name": "Cabbage",
+        "variant": "Wonder Ball",
+        "currentPrice": 199.83,
+        "predictedPrice": 193.96,
+        "forecastSource": "model",
+        "lastActualDate": "2026-10-01"
+      },
+      {
+        "name": "Cabbage",
+        "variant": "Scorpio",
+        "currentPrice": 225.24,
+        "predictedPrice": 217.42,
+        "forecastSource": "model",
+        "lastActualDate": "2026-10-01"
+      },
+      {
+        "name": "Cabbage",
+        "variant": "Rare Ball",
+        "currentPrice": 216.67,
+        "predictedPrice": 208.5,
+        "forecastSource": "model",
+        "lastActualDate": "2026-10-01"
+      }
+    ]
+  }
+]

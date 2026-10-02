@@ -1,6 +1,7 @@
 "use client";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { fetchProducts, fetchNews, Product, NewsArticle, DashboardProduct } from "./data";
+import { fetchProducts, fetchNews, Product, NewsArticle, DashboardProduct, ForecastStatus } from "./data";
 
 const LOCAL_CACHE_PREFIX = "foodcast_cache_";
 
@@ -48,6 +49,31 @@ export function useDashboardProducts(fallbackData: DashboardProduct[]) {
     refreshInterval: 60 * 1000,
     dedupingInterval: 10 * 1000,
   });
+}
+
+async function fetchForecastStatus(): Promise<ForecastStatus | null> {
+  const response = await fetch("/api/forecast/status", { cache: "no-store" });
+  if (!response.ok) throw new Error("Failed to fetch forecast status");
+  return response.json();
+}
+
+export function useForecastStatus() {
+  return useSWR<ForecastStatus | null>("forecast_status_v1", fetchForecastStatus, {
+    revalidateOnFocus: true,
+    refreshInterval: 60_000,
+    dedupingInterval: 30_000,
+    shouldRetryOnError: true,
+    errorRetryInterval: 30_000,
+  });
+}
+
+export function useClock(interval = 60_000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), interval);
+    return () => window.clearInterval(timer);
+  }, [interval]);
+  return now;
 }
 
 export function useNews(limit = 10, fallbackData?: NewsArticle[]) {

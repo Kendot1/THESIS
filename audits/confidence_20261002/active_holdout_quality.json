@@ -1,0 +1,783 @@
+{
+  "mae": 9.109274103212362,
+  "rmse": 26.174824536751913,
+  "mape": 5.161809814389095,
+  "directional_accuracy": null,
+  "interval_level": 0.8,
+  "interval_coverage": 0.8228591293599599,
+  "prediction_success": 0.7393873846034995,
+  "success_tolerance": 0.05,
+  "success_definition": "absolute_percentage_error_at_most_tolerance",
+  "evaluation_source": "historical_holdout",
+  "coverage_sample_count": 25889,
+  "sample_count": 25889,
+  "product_metrics": {
+    "91d4e52d-a5d8-410f-8fe5-4d3203f1ec57": {
+      "interval_coverage": 0.5764331210191083,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.4872611464968153,
+      "evaluation_source": "historical_holdout",
+      "mape": 7.558600681392586
+    },
+    "ce2f0e22-9731-4f55-ad63-879d49e4ff0b": {
+      "interval_coverage": 0.9885931558935361,
+      "sample_count": 263,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9163498098859315,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.1992168046883558
+    },
+    "49a558bd-2947-48cc-b939-a85736f6b5e9": {
+      "interval_coverage": 0.9903846153846154,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9743589743589743,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.0873597301007896
+    },
+    "6acaaa1d-151e-4666-b10d-a8c9dc7435b0": {
+      "interval_coverage": 0.8410596026490066,
+      "sample_count": 302,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.6986754966887417,
+      "evaluation_source": "historical_holdout",
+      "mape": 4.140887191385901
+    },
+    "eaffac96-05c3-422b-a2b5-51c33c419b10": {
+      "interval_coverage": 0.8833333333333333,
+      "sample_count": 60,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.6666666666666666,
+      "evaluation_source": "historical_holdout",
+      "mape": 3.930780754332825
+    },
+    "b0bf9244-d883-4ca7-896e-5cb51a4b7a7a": {
+      "interval_coverage": 0.9523809523809523,
+      "sample_count": 63,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.42857142857142855,
+      "evaluation_source": "historical_holdout",
+      "mape": 5.958278353188107
+    },
+    "d07403b2-6f92-4583-9274-b414061e0c4f": {
+      "interval_coverage": 0.9967948717948718,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9967948717948718,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.0421999382552043
+    },
+    "121c9e5d-ac75-425f-b377-30dda64ae9cf": {
+      "interval_coverage": 1.0,
+      "sample_count": 66,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9393939393939394,
+      "evaluation_source": "historical_holdout",
+      "mape": 2.652358222498627
+    },
+    "bb6a27c7-169f-46c9-bd24-c7b4def4098c": {
+      "interval_coverage": 0.6870967741935484,
+      "sample_count": 310,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.4774193548387097,
+      "evaluation_source": "historical_holdout",
+      "mape": 6.5946285092928605
+    },
+    "dc61c9d8-e8b6-49d3-b3d5-4747b9362fb0": {
+      "interval_coverage": 0.75,
+      "sample_count": 8,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.75,
+      "evaluation_source": "historical_holdout",
+      "mape": 18.46466322274734
+    },
+    "6746c3fb-d237-41cd-9f1c-53045a07c745": {
+      "interval_coverage": 0.5641025641025641,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.375,
+      "evaluation_source": "historical_holdout",
+      "mape": 9.72250658199923
+    },
+    "82a00345-fea4-41fe-8f36-3a0ab96dd0e0": {
+      "interval_coverage": 0.9902912621359223,
+      "sample_count": 309,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9514563106796117,
+      "evaluation_source": "historical_holdout",
+      "mape": 2.2662118932115884
+    },
+    "4909f311-3a7c-4fd6-806c-55eb77eeb331": {
+      "interval_coverage": 1.0,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.7251613771227075
+    },
+    "703eb577-2291-4f9f-8c6a-f6cce9727280": {
+      "interval_coverage": 0.7115384615384616,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.4391025641025641,
+      "evaluation_source": "historical_holdout",
+      "mape": 8.161293857863797
+    },
+    "cb9d4a57-985f-46a9-a2c6-5e07b72abf12": {
+      "interval_coverage": 0.9968152866242038,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9968152866242038,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.8657359275478762
+    },
+    "faa7d21a-f33a-471d-aec8-053da8c924b5": {
+      "interval_coverage": 0.9936305732484076,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9936305732484076,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.1100582447376859
+    },
+    "8c2c2fc3-ab40-4168-a37e-297253f4705f": {
+      "interval_coverage": 0.9777070063694268,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9331210191082803,
+      "evaluation_source": "historical_holdout",
+      "mape": 2.0964556226601174
+    },
+    "02925b3d-abbf-4777-afa9-107da1448fe0": {
+      "interval_coverage": 0.6858974358974359,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.483974358974359,
+      "evaluation_source": "historical_holdout",
+      "mape": 9.47368202445447
+    },
+    "628f41c3-3bdb-4726-b338-a7e37e5b78ac": {
+      "interval_coverage": 0.856687898089172,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.7643312101910829,
+      "evaluation_source": "historical_holdout",
+      "mape": 4.873777608020421
+    },
+    "93353a8f-122d-47c1-8d40-00f2ff22fffe": {
+      "interval_coverage": 0.9967948717948718,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9967948717948718,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.3986781270576107
+    },
+    "fe026fb6-23cf-4816-bad4-75687091689a": {
+      "interval_coverage": 0.9903846153846154,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9711538461538461,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.535295165713044
+    },
+    "d0815e84-aa6d-4553-b829-b48d96fde3f2": {
+      "interval_coverage": 0.9775641025641025,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.8910256410256411,
+      "evaluation_source": "historical_holdout",
+      "mape": 2.514597435076415
+    },
+    "eb7918e6-9582-495a-a04b-c2688486a0ea": {
+      "interval_coverage": 0.967948717948718,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.8910256410256411,
+      "evaluation_source": "historical_holdout",
+      "mape": 2.1357417117072894
+    },
+    "31c5de9a-1ce4-4f79-a352-2d4063c21ce7": {
+      "interval_coverage": 0.9968152866242038,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9968152866242038,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.7447745687072994
+    },
+    "3a20f987-ce3b-47b6-bd4c-ed266d200e24": {
+      "interval_coverage": 0.9968152866242038,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9968152866242038,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.666056313258195
+    },
+    "9e40980b-c59f-45c1-a9cf-43de5e58b6ea": {
+      "interval_coverage": 0.9968152866242038,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9872611464968153,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.9867450709014901
+    },
+    "1306843c-2a34-4ef5-b875-873abb24826f": {
+      "interval_coverage": 1.0,
+      "sample_count": 229,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9956331877729258,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.7101893637151757
+    },
+    "75684652-de34-4810-864f-59f4c600c310": {
+      "interval_coverage": 1.0,
+      "sample_count": 229,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.5079157383442869
+    },
+    "04530b17-464c-41c7-a62c-2aa88743be96": {
+      "interval_coverage": 0.9968152866242038,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9840764331210191,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.071728949633912
+    },
+    "b0d56935-9a8b-4700-99c7-2c95cb538040": {
+      "interval_coverage": 0.9840764331210191,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9840764331210191,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.6802738723058737
+    },
+    "48aaf750-eb1a-4fe4-a099-89b69e339e57": {
+      "interval_coverage": 0.9808917197452229,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9840764331210191,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.66766791027424
+    },
+    "e0c918ba-25a8-4272-abaa-4b4d1cd3bd34": {
+      "interval_coverage": 0.9745222929936306,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9044585987261147,
+      "evaluation_source": "historical_holdout",
+      "mape": 2.260060192321647
+    },
+    "df63a4ec-c331-4ec0-90f3-1a9d4c42f2bc": {
+      "interval_coverage": 0.9777070063694268,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9012738853503185,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.6300932804263697
+    },
+    "e9a541f8-0d80-43a7-a7dd-f8ead30ecbfd": {
+      "interval_coverage": 1.0,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9872611464968153,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.8973932199403418
+    },
+    "f6eccd79-7240-4cfb-a710-03b7b6efea2d": {
+      "interval_coverage": 0.8279569892473119,
+      "sample_count": 93,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.3978494623655914,
+      "evaluation_source": "historical_holdout",
+      "mape": 5.291287232736398
+    },
+    "dcb355c1-e2dc-41e4-9dca-c6f3eb1a6d50": {
+      "interval_coverage": 0.8075313807531381,
+      "sample_count": 239,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.6485355648535565,
+      "evaluation_source": "historical_holdout",
+      "mape": 4.7758028011557885
+    },
+    "1c36271f-484c-46bf-b19c-5a1409726b8e": {
+      "interval_coverage": 0.9936305732484076,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9267515923566879,
+      "evaluation_source": "historical_holdout",
+      "mape": 2.061711018777029
+    },
+    "5eaa3d59-8fac-496d-b773-4c3a9a289c1e": {
+      "interval_coverage": 1.0,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.39486918738345145
+    },
+    "a8a04ce6-155d-414e-86a2-bf803c1ba5d5": {
+      "interval_coverage": 0.9936305732484076,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9554140127388535,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.574064013452289
+    },
+    "530a29e5-f0f8-48c5-8e58-8a280a86e611": {
+      "interval_coverage": 1.0,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.40725303034177945
+    },
+    "b01f5bc0-a64e-4678-943b-61e95d988c82": {
+      "interval_coverage": 1.0,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.5031357160143809
+    },
+    "d8bc912e-26ee-4158-8684-7bc1a3b8d585": {
+      "interval_coverage": 1.0,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.5671358000824765
+    },
+    "b97eb12b-f46e-446d-aeb5-b2af5e8e8a9a": {
+      "interval_coverage": 0.9936305732484076,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.8949044585987261,
+      "evaluation_source": "historical_holdout",
+      "mape": 2.4408316981428677
+    },
+    "28223685-38bf-4e8f-9548-9b0bdadd382f": {
+      "interval_coverage": 0.9968152866242038,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9968152866242038,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.026894034210045
+    },
+    "f5e47fab-9148-4382-9b6c-a166eb435c2b": {
+      "interval_coverage": 0.8723404255319149,
+      "sample_count": 188,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.6808510638297872,
+      "evaluation_source": "historical_holdout",
+      "mape": 3.6628241560620842
+    },
+    "f66e03fd-694b-465c-90de-e2d3a76fb8dd": {
+      "interval_coverage": 1.0,
+      "sample_count": 188,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.4855909354434078
+    },
+    "24e8a6a1-a483-48b6-8a5c-90cb28aad3d1": {
+      "interval_coverage": 0.925531914893617,
+      "sample_count": 188,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.8138297872340425,
+      "evaluation_source": "historical_holdout",
+      "mape": 2.6749847974973564
+    },
+    "11cd4bf1-e8f8-44cd-90d6-3436575f7cf8": {
+      "interval_coverage": 1.0,
+      "sample_count": 188,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.8173216209260167
+    },
+    "78d3cd2c-1530-4ed4-a853-e4c415bc38f2": {
+      "interval_coverage": 1.0,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.09296531272918414
+    },
+    "b66c15be-898d-45c4-9250-a52c9cdac0c9": {
+      "interval_coverage": 1.0,
+      "sample_count": 53,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.012429347997620402
+    },
+    "b8134f2c-7b20-42c1-ae0d-0a18e5cedb09": {
+      "interval_coverage": 1.0,
+      "sample_count": 53,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.03185779886752399
+    },
+    "85a7c714-9d2e-48aa-aebf-930e8c0e0068": {
+      "interval_coverage": 1.0,
+      "sample_count": 53,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.0629677997136185
+    },
+    "9fcd2251-a004-4ae0-a503-945dc526fde1": {
+      "interval_coverage": 0.9394904458598726,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.8949044585987261,
+      "evaluation_source": "historical_holdout",
+      "mape": 2.402155413162564
+    },
+    "f329c7b2-0841-439d-ab4c-fec64aabdc40": {
+      "interval_coverage": 1.0,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.1074830441018808
+    },
+    "00b0956f-48c1-4854-9a21-44bae2a8256d": {
+      "interval_coverage": 0.9830508474576272,
+      "sample_count": 236,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9788135593220338,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.3886479122250412
+    },
+    "d4dbe6bb-a33f-4bce-9783-7e53d72ea126": {
+      "interval_coverage": 1.0,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9554140127388535,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.238916483614134
+    },
+    "c559c776-3feb-4537-9eff-65123bfcc5e6": {
+      "interval_coverage": 1.0,
+      "sample_count": 236,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.7997746564463549
+    },
+    "63bd8c19-fc84-4871-8ae3-0ca1f7acef94": {
+      "interval_coverage": 1.0,
+      "sample_count": 236,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.505720069450233
+    },
+    "975c01f9-e09b-4a6a-8ae8-371fbcfc1067": {
+      "interval_coverage": 0.9490445859872612,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.856687898089172,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.6411584684150549
+    },
+    "4df4108c-2105-4c67-905c-aa443ad1e289": {
+      "interval_coverage": 1.0,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9554140127388535,
+      "evaluation_source": "historical_holdout",
+      "mape": 1.4383708975636487
+    },
+    "d1e8ebc2-d649-4d95-aa96-1d1690bfd784": {
+      "interval_coverage": 1.0,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.5544889546626139
+    },
+    "d5bcbb58-4bb7-4e56-8450-2b83ead0b36b": {
+      "interval_coverage": 1.0,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 1.0,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.38645249600379
+    },
+    "71086b7d-b18f-4cad-81ba-148e2e167e3f": {
+      "interval_coverage": 1.0,
+      "sample_count": 314,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9936305732484076,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.5572179724371225
+    },
+    "f575a935-e6e2-49a3-8d09-ec60beb4687b": {
+      "interval_coverage": 0.34615384615384615,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.25,
+      "evaluation_source": "historical_holdout",
+      "mape": 18.655219425132657
+    },
+    "4a48fc24-29dd-4e89-8244-893b7372bf1e": {
+      "interval_coverage": 0.5623003194888179,
+      "sample_count": 313,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.3546325878594249,
+      "evaluation_source": "historical_holdout",
+      "mape": 10.713809312605312
+    },
+    "80ea2d87-e8d1-41df-82de-0efabe9b113f": {
+      "interval_coverage": 0.5143769968051118,
+      "sample_count": 313,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.3738019169329074,
+      "evaluation_source": "historical_holdout",
+      "mape": 11.697503114338382
+    },
+    "9b16efd3-89ea-4330-9210-fd7233b90372": {
+      "interval_coverage": 0.41025641025641024,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.27564102564102566,
+      "evaluation_source": "historical_holdout",
+      "mape": 15.735206704208467
+    },
+    "35458a10-49df-4bb4-b083-de62ec72b7c2": {
+      "interval_coverage": 0.3592233009708738,
+      "sample_count": 309,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.23624595469255663,
+      "evaluation_source": "historical_holdout",
+      "mape": 14.516950345200845
+    },
+    "c9d53ced-ff30-4231-939c-9b9ee587c169": {
+      "interval_coverage": 0.43450479233226835,
+      "sample_count": 313,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.31309904153354634,
+      "evaluation_source": "historical_holdout",
+      "mape": 12.397906961290913
+    },
+    "371ebd27-df26-4f6c-86c1-c46158397d9f": {
+      "interval_coverage": 0.5686900958466453,
+      "sample_count": 313,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.3546325878594249,
+      "evaluation_source": "historical_holdout",
+      "mape": 10.746336226086175
+    },
+    "b2c89bed-337b-4c69-a09d-813fd87b1754": {
+      "interval_coverage": 0.4536741214057508,
+      "sample_count": 313,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.2779552715654952,
+      "evaluation_source": "historical_holdout",
+      "mape": 12.892328065091753
+    },
+    "258251bb-528c-4645-a577-88be138265f9": {
+      "interval_coverage": 0.5961538461538461,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.42948717948717946,
+      "evaluation_source": "historical_holdout",
+      "mape": 8.7609996444215
+    },
+    "03d0a176-658b-4737-844d-4af7dc33f1f9": {
+      "interval_coverage": 0.5096153846153846,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.358974358974359,
+      "evaluation_source": "historical_holdout",
+      "mape": 12.470830157074557
+    },
+    "df08c681-3a15-4997-a233-2251905d4d45": {
+      "interval_coverage": 0.7692307692307693,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.6474358974358975,
+      "evaluation_source": "historical_holdout",
+      "mape": 6.533476833759639
+    },
+    "8c8d029f-c113-4b46-8bad-27353d378c5a": {
+      "interval_coverage": 0.4935897435897436,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.3557692307692308,
+      "evaluation_source": "historical_holdout",
+      "mape": 14.139760647416702
+    },
+    "278988de-a4f0-42ad-bcf0-d36c9a3c75a3": {
+      "interval_coverage": 0.6397058823529411,
+      "sample_count": 136,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.45588235294117646,
+      "evaluation_source": "historical_holdout",
+      "mape": 8.74726202106955
+    },
+    "0effa21d-6f03-426d-97df-10324d9115b0": {
+      "interval_coverage": 0.391025641025641,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.30128205128205127,
+      "evaluation_source": "historical_holdout",
+      "mape": 15.603999923238563
+    },
+    "a142aaa0-f09e-41d4-af39-49364835ffd4": {
+      "interval_coverage": 0.3782051282051282,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.28846153846153844,
+      "evaluation_source": "historical_holdout",
+      "mape": 17.193733392249413
+    },
+    "54dad285-d5d5-4af9-807a-9f42389a2871": {
+      "interval_coverage": 0.9967845659163987,
+      "sample_count": 311,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.9967845659163987,
+      "evaluation_source": "historical_holdout",
+      "mape": 0.9139988956769848
+    },
+    "b5a4dea7-af55-488c-a212-a566db78409d": {
+      "interval_coverage": 0.9035369774919614,
+      "sample_count": 311,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.6881028938906752,
+      "evaluation_source": "historical_holdout",
+      "mape": 4.427536899508415
+    },
+    "2fdc12f5-e09d-4da4-b113-8239474d92c9": {
+      "interval_coverage": 0.9647435897435898,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.8525641025641025,
+      "evaluation_source": "historical_holdout",
+      "mape": 2.8780549506417907
+    },
+    "0a7d0099-5eb0-41e6-b8a3-aa8e8719d5fa": {
+      "interval_coverage": 0.3993610223642173,
+      "sample_count": 313,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.30990415335463256,
+      "evaluation_source": "historical_holdout",
+      "mape": 15.510631365472216
+    },
+    "e5546908-dbf9-4502-afc1-3a69671f1290": {
+      "interval_coverage": 0.43769968051118213,
+      "sample_count": 313,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.30670926517571884,
+      "evaluation_source": "historical_holdout",
+      "mape": 13.921978322062872
+    },
+    "605b23d2-a518-43e9-90e4-7c6d14626bcc": {
+      "interval_coverage": 0.4217252396166134,
+      "sample_count": 313,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.26517571884984026,
+      "evaluation_source": "historical_holdout",
+      "mape": 17.624818550767753
+    },
+    "8bf5c7a7-7ec9-4962-ae74-d2cb06bcb93d": {
+      "interval_coverage": 0.956989247311828,
+      "sample_count": 186,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.7903225806451613,
+      "evaluation_source": "historical_holdout",
+      "mape": 2.4547930223471814
+    },
+    "82ac3d9e-205b-461e-bcf6-683396423f2a": {
+      "interval_coverage": 0.7692307692307693,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.6025641025641025,
+      "evaluation_source": "historical_holdout",
+      "mape": 7.423549028758468
+    },
+    "3c267500-32d9-42c1-a533-c3b2ac18dba1": {
+      "interval_coverage": 0.5576923076923077,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.4551282051282051,
+      "evaluation_source": "historical_holdout",
+      "mape": 11.541681987939532
+    },
+    "e0bd07ef-7497-45a7-ae34-8f6edac594a2": {
+      "interval_coverage": 0.7378640776699029,
+      "sample_count": 309,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.5663430420711975,
+      "evaluation_source": "historical_holdout",
+      "mape": 5.948806146050392
+    },
+    "812b69bb-807d-4c7f-85b8-cffea48270f2": {
+      "interval_coverage": 0.704225352112676,
+      "sample_count": 142,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.38028169014084506,
+      "evaluation_source": "historical_holdout",
+      "mape": 7.740463453517792
+    },
+    "0559ecbf-814c-4e0c-b05c-04ed61926d05": {
+      "interval_coverage": 0.7202572347266881,
+      "sample_count": 311,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.6237942122186495,
+      "evaluation_source": "historical_holdout",
+      "mape": 7.311619513150357
+    },
+    "5a3d3647-6618-4f0e-9940-136a88d63c97": {
+      "interval_coverage": 0.8493589743589743,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.7275641025641025,
+      "evaluation_source": "historical_holdout",
+      "mape": 4.454329275030598
+    },
+    "7c849906-6055-4f43-bb67-cefa51cf86cc": {
+      "interval_coverage": 0.6057692307692307,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.44551282051282054,
+      "evaluation_source": "historical_holdout",
+      "mape": 10.67346577219747
+    },
+    "3103d2d3-b3ba-452e-b799-a4d919d478da": {
+      "interval_coverage": 0.6378205128205128,
+      "sample_count": 312,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.4519230769230769,
+      "evaluation_source": "historical_holdout",
+      "mape": 11.88443633336976
+    },
+    "c37a2e27-00f5-43b0-9bab-f915aab5841e": {
+      "interval_coverage": 0.6227272727272727,
+      "sample_count": 220,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.4772727272727273,
+      "evaluation_source": "historical_holdout",
+      "mape": 7.605830233716403
+    },
+    "4724ba1a-13b2-4b06-b20c-7bb5f2db8329": {
+      "interval_coverage": 0.7928571428571428,
+      "sample_count": 140,
+      "sample_basis": "unique_actual_dates",
+      "prediction_success": 0.65,
+      "evaluation_source": "historical_holdout",
+      "mape": 5.072334726965271
+    }
+  },
+  "processed_from": "2019-10-10",
+  "processed_through": "2026-09-30",
+  "processed_observed_rows": null,
+  "processed_series_count": null,
+  "test_start": "2025-09-13T00:00:00",
+  "test_end": "2026-09-30T00:00:00",
+  "evaluation_scope": "retrospective source-dated backtest; the database has no immutable historical ingestion vintages for point-in-time reconstruction"
+}

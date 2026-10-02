@@ -13,7 +13,7 @@ from utils.logger import get_logger
 log = get_logger(__name__)
 
 # Must match the series key used in the preprocessor
-SERIES_KEY = ["product_category", "product_name", "product_variant", "origin"]
+from data.preprocessor import SERIES_KEY
 
 
 def _group_col(df: pd.DataFrame) -> list:
@@ -92,6 +92,15 @@ class LagFeatures:
             (df["price_lag_1d"] - df["price_lag_2d"]) / df["price_lag_2d"],
             0.0,
         )
+        lag_3 = grouped.shift(3)
+        previous_change = np.where(
+            lag_3.notna() & (lag_3 != 0),
+            (df["price_lag_2d"] - lag_3) / lag_3, 0.0)
+        df["price_acceleration_1d"] = df["price_pct_change_1d"] - previous_change
+        df["price_bollinger_position_14d"] = np.where(
+            (std_14 > 0) & np.isfinite(std_14) & np.isfinite(mean_14)
+            & np.isfinite(df["price_lag_1d"]),
+            (df["price_lag_1d"] - mean_14) / (2 * std_14), 0.0)
 
         # price_pct_change_7d: past week's return = (lag_1d - lag_8d) / lag_8d
         df["price_lag_8d"] = grouped.shift(8)
@@ -109,7 +118,7 @@ class LagFeatures:
         # ── Price deviation from expanding mean ──
         df["price_deviation_from_mean"] = np.where(
             df["price_expanding_mean"] != 0,
-            (df["price_index"] - df["price_expanding_mean"]) / df["price_expanding_mean"],
+            (df["price_lag_1d"] - df["price_expanding_mean"]) / df["price_expanding_mean"],
             0.0,
         )
 
@@ -142,7 +151,7 @@ class LagFeatures:
         n_features = (
             len(self.lag_days)
             + len(self.rolling_windows) * 4
-            + 8  # volatility, 2x pct_change, expanding_mean, deviation, rsi, macd, macd_signal
+            + 10  # indicators, including acceleration and Bollinger position
         )
         log.info(f"Added {n_features} lag / rolling features.")
         return df

@@ -1,0 +1,224 @@
+{
+  "versions": {
+    "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+    "numpy": "2.4.2",
+    "pandas": "3.0.1",
+    "torch": "2.11.0+cpu",
+    "lightgbm": "4.6.0"
+  },
+  "current_target_mutation_changes": [
+    "price_index",
+    "price_deviation_from_mean"
+  ],
+  "target_reconstruction_max_error": 2.842170943040401e-14,
+  "future_mutation_changes_missing_past_price": [
+    200.0,
+    300.0
+  ],
+  "mixed_unit_duplicate_result": [
+    {
+      "price_index": 55.0,
+      "unit": "kg"
+    }
+  ],
+  "sequence_shapes": {
+    "X": [
+      32,
+      30,
+      16
+    ],
+    "y": [
+      32,
+      30
+    ]
+  },
+  "last_inference_window": {
+    "latest_observation": "2025-04-30 00:00:00",
+    "first_target": "2025-04-01 00:00:00",
+    "true_anchor": 189.0,
+    "writer_anchor": 219.0,
+    "writer_first_label": "2025-05-01 00:00:00"
+  },
+  "recursive_predict_future_error": "ValueError: setting an array element with a sequence.",
+  "ensemble_exact_lstm_case": {
+    "lgbm_weight": 0.5,
+    "lstm_weight": 0.5,
+    "lstm_rmse": 0.0,
+    "lstm_mae": 0.0,
+    "lstm_mape": 0.0,
+    "hybrid_rmse": 1.5545631755148024,
+    "hybrid_mae": 1.5,
+    "hybrid_mape": 8.055555555555555,
+    "hybrid_dir_acc": 100.0,
+    "improvement_pct": 0.0
+  },
+  "metric_known_case": {
+    "rmse": 15.811388300841896,
+    "mae": 15.0,
+    "mape": 10.0,
+    "r2": 0.9,
+    "directional_accuracy": 100.0
+  },
+  "network_parameters": 235199,
+  "saved_lgbm": {
+    "trees": 1472,
+    "feature_count": 54,
+    "features": [
+      "day_of_week",
+      "day_of_month",
+      "day_of_year",
+      "week_of_year",
+      "month",
+      "quarter",
+      "year",
+      "is_weekend",
+      "is_month_start",
+      "is_month_end",
+      "month_sin",
+      "month_cos",
+      "dow_sin",
+      "dow_cos",
+      "doy_sin",
+      "doy_cos",
+      "is_wet_season",
+      "is_christmas_season",
+      "days_since_start",
+      "price_lag_1d",
+      "price_lag_2d",
+      "price_lag_3d",
+      "price_lag_7d",
+      "price_lag_14d",
+      "price_lag_30d",
+      "price_rolling_mean_3d",
+      "price_rolling_std_3d",
+      "price_rolling_min_3d",
+      "price_rolling_max_3d",
+      "price_rolling_mean_7d",
+      "price_rolling_std_7d",
+      "price_rolling_min_7d",
+      "price_rolling_max_7d",
+      "price_rolling_mean_14d",
+      "price_rolling_std_14d",
+      "price_rolling_min_14d",
+      "price_rolling_max_14d",
+      "price_rolling_mean_30d",
+      "price_rolling_std_30d",
+      "price_rolling_min_30d",
+      "price_rolling_max_30d",
+      "price_volatility_14d",
+      "price_pct_change_1d",
+      "price_lag_8d",
+      "price_pct_change_7d",
+      "price_expanding_mean",
+      "price_deviation_from_mean",
+      "price_rsi_14d",
+      "price_macd",
+      "price_macd_signal",
+      "product_category_encoded",
+      "product_name_encoded",
+      "product_variant_encoded",
+      "origin_encoded"
+    ],
+    "gain_fraction": {
+      "price_rolling_mean_3d": 0.17824115403827476,
+      "price_rolling_min_7d": 0.08078677619186096,
+      "price_rolling_max_7d": 0.07200295526791294,
+      "price_lag_2d": 0.06844957249944084,
+      "price_rolling_min_3d": 0.06734615580351572,
+      "price_lag_3d": 0.06689857745871304,
+      "price_rolling_max_3d": 0.06309149379238177,
+      "price_lag_1d": 0.061556995288339744,
+      "price_rolling_max_14d": 0.05995078883372854,
+      "price_lag_8d": 0.058871184147822,
+      "price_rolling_mean_14d": 0.04093534601049606,
+      "price_rolling_mean_7d": 0.03654468530031073,
+      "price_rolling_mean_30d": 0.02471519718392689,
+      "price_lag_7d": 0.021602936470948235,
+      "price_rolling_min_14d": 0.018425202739235338,
+      "price_lag_14d": 0.014743923966904776,
+      "price_rolling_max_30d": 0.014612253655795002,
+      "product_name_encoded": 0.011504265302188552,
+      "price_rolling_min_30d": 0.008852679560206586,
+      "product_variant_encoded": 0.004745207006625605,
+      "price_lag_30d": 0.004660435817929777,
+      "price_deviation_from_mean": 0.0032235647290984513,
+      "price_pct_change_7d": 0.002126853686684155,
+      "price_macd": 0.002053348558964067,
+      "price_macd_signal": 0.002044128948606788,
+      "product_category_encoded": 0.0018970695140127923,
+      "price_rsi_14d": 0.001758604063182272,
+      "price_expanding_mean": 0.001603896763814013,
+      "price_volatility_14d": 0.0010848796543272473,
+      "month_cos": 0.0005146682822509908,
+      "price_pct_change_1d": 0.0004704567954961997,
+      "price_rolling_std_7d": 0.0004700836725311658,
+      "price_rolling_std_30d": 0.0004605267766908815,
+      "price_rolling_std_14d": 0.0004565587422348268,
+      "origin_encoded": 0.00042211321319993357,
+      "doy_cos": 0.0004198389760684549,
+      "day_of_year": 0.0003747007215808131,
+      "price_rolling_std_3d": 0.0002963318743128986,
+      "is_christmas_season": 0.0002962010953159738,
+      "month_sin": 0.00027306110296867027,
+      "days_since_start": 0.0002480970410842444,
+      "is_wet_season": 0.00022124975437702926,
+      "week_of_year": 0.00018263560777591692,
+      "doy_sin": 0.00016787808651264958,
+      "month": 8.583343860580236e-05,
+      "day_of_month": 8.498810537367679e-05,
+      "day_of_week": 8.275254530028406e-05,
+      "dow_cos": 4.70456308954205e-05,
+      "dow_sin": 4.486377413626811e-05,
+      "is_weekend": 2.8117849249297735e-05,
+      "quarter": 1.8232013780643162e-05,
+      "is_month_start": 2.2601721821141572e-06,
+      "is_month_end": 1.3724728279888212e-06,
+      "year": 0.0
+    },
+    "leak_feature_split_count": 5726,
+    "crlf_count": 31087,
+    "declared_first_tree_bytes": 5425,
+    "actual_first_tree_bytes": 5446,
+    "lf_first_tree_bytes": 5425
+  },
+  "artifacts": {
+    "lightgbm_model.txt": {
+      "bytes": 8374573,
+      "modified_utc": "2026-06-01T14:13:53.355829+00:00",
+      "sha256": "7ab9cb43c7977dd5a16f4d9679623c871fdd35275e72f3410966dd9ce689c8c5"
+    },
+    "lightgbm_residual_model.txt": {
+      "bytes": 11611,
+      "modified_utc": "2026-05-02T15:31:46.442561+00:00",
+      "sha256": "d84f9d7c7b2335bcb5eb924a64da2e285b0cb209ec1b14c83fba3e00d78de779"
+    },
+    "lstm_model.pt": {
+      "bytes": 947765,
+      "modified_utc": "2026-06-01T14:13:53.365355+00:00",
+      "sha256": "fc001e3eb5f05276eb3056631e466a4a754523694257dd91688d1a77c76ac170"
+    },
+    "lstm_meta.npz": {
+      "bytes": 966,
+      "modified_utc": "2026-05-28T11:11:50.139637+00:00",
+      "sha256": "211ea6351c81ec23902ba9ff59c419fb41d33a3db3d9a4882ebd5f2a82db3007"
+    },
+    "lstm_product_means.pkl": {
+      "bytes": 4692,
+      "modified_utc": "2026-06-01T14:13:53.365355+00:00",
+      "sha256": "74edc9b08ed073142dfd66075b57ed2e6d13ec137a7567812a4c227a2159556c"
+    },
+    "ensemble_residual_stats.pkl": {
+      "bytes": 245,
+      "modified_utc": "2026-06-01T14:13:53.321826+00:00",
+      "sha256": "16b9369c5bd0cab40051d8be4225f813d9ffcd59c527b4a134dfbd7e025f8c90"
+    }
+  },
+  "history": {
+    "epochs": 42,
+    "best_epoch": 7,
+    "best_train_loss": 0.04974373799929168,
+    "best_val_loss": 0.034507282968893056,
+    "last_train_loss": 0.024784090862677008,
+    "last_val_loss": 0.043273721184040784
+  }
+}

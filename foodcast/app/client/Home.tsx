@@ -15,8 +15,8 @@ import WaveDivider from "../components/WaveDivider";
 import DailyMoverCard from "../components/DailyMoverCard";
 import NewsCard from "../components/NewsCard";
 import ScrollReveal from "../components/ScrollReveal";
-import { DEFAULT_PRODUCT_IMAGE, DashboardProduct, NewsArticle } from "../lib/data";
-import { useDashboardProducts, useNews } from "../lib/hooks";
+import { DEFAULT_PRODUCT_IMAGE, DashboardProduct, NewsArticle, formatRelativeAge, verifiedPredictionSuccess } from "../lib/data";
+import { useClock, useDashboardProducts, useForecastStatus, useNews } from "../lib/hooks";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { encryptId } from "../../lib/idCipher";
 
@@ -28,8 +28,11 @@ interface HomeProps {
 export default function Home({ initialProducts, initialNews }: HomeProps) {
   const { data: products = [] } = useDashboardProducts(initialProducts);
   const { data: newsList = [] } = useNews(10, initialNews);
+  const { data: forecastStatus } = useForecastStatus();
+  const predictionSuccess = verifiedPredictionSuccess(forecastStatus?.modelMetrics);
+  const now = useClock();
   const router = useRouter();
-  const { t, isTransitioning } = useLanguage();
+  const { t, language, isTransitioning } = useLanguage();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -355,7 +358,7 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
                               </div>
                               <div className="text-right shrink-0">
                                 <div className="text-xs font-bold text-gray-900 tabular-nums">₱{p.currentPrice.toFixed(2)}</div>
-                                <div className={`text-[10px] font-bold tabular-nums ${isUp ? "text-positive" : "text-negative"}`}>
+                                <div className={`text-[10px] font-bold tabular-nums ${isUp ? "text-price-up" : "text-price-down"}`}>
                                   {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
                                 </div>
                               </div>
@@ -368,14 +371,26 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
                 </div>
 
                 {/* Stats row */}
-                <div className="animate-fade-in-up delay-500 flex flex-wrap gap-8 mt-10">
+                <div className="animate-fade-in-up delay-500 grid grid-cols-3 gap-4 sm:gap-8 mt-10 max-w-lg">
                   {[
                     { value: `${products.length}`, label: t("productsTracked") },
-                    { value: "98.5%", label: t("predictionSuccess") },
-                    { value: "Real-time", label: t("dataUpdates") },
+                    {
+                      value: predictionSuccess != null
+                        ? `${(predictionSuccess * 100).toFixed(1)}%`
+                        : "—",
+                      label: t("predictionSuccess"),
+                      title: t("predictionSuccessExplanation"),
+                    },
+                    {
+                      value: formatRelativeAge(forecastStatus?.generatedAt, language, now)
+                        ?? forecastStatus?.metrics?.processed_through
+                        ?? "—",
+                      label: t("dataUpdates"),
+                    },
                   ].map((stat) => (
                     <div
                       key={stat.label}
+                      title={stat.title}
                       className="transition-transform duration-300 transform hover:scale-105"
                     >
                       <div className="text-sm sm:text-xl text-accent-dark">{stat.value}</div>
@@ -495,7 +510,7 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
                           </div>
                           <div className="text-right shrink-0">
                             <div className="text-xs font-bold text-white tabular-nums">₱{p.currentPrice.toFixed(0)}</div>
-                            <div className={`text-[10px] font-bold tabular-nums ${isUp ? "text-accent" : "text-red-400"}`}>
+                          <div className={`text-[10px] font-bold tabular-nums ${isUp ? "text-price-up" : "text-price-down"}`}>
                               {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
                             </div>
                           </div>

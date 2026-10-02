@@ -1,148 +1,106 @@
-"""
-Model versioning and persistence management.
-Keeps a rolling history of model checkpoints with metadata.
-"""
-
+"""Immutable, hash-verified v2 model bundles with an atomic active pointer."""
+import hashlib
 import json
-import shutil
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from uuid import uuid4
 
 from config.settings import get_settings
-from utils.logger import get_logger
 
-log = get_logger(__name__)
+
+REQUIRED_FILES = {
+    "categorical_mappings.json", "lightgbm_model.txt", "lightgbm_meta.json",
+    "lstm_model.pt", "lstm_meta.json", "lstm_history.json", "ensemble.json",
+    "validation_forecasts.csv", "test_forecasts.csv", "metadata.json",
+}
 
 
 class ModelStore:
-    """
-    Manages versioned model checkpoints.
+    def __init__(self, root=None):
+        self.root = Path(root or get_settings().artifacts_dir)
+        self.runs = self.root / "runs"
+        self.manifest = self.root / "manifest.json"
+        self.runs.mkdir(parents=True, exist_ok=True)
 
-    Structure:
-      artifacts/
-        versions/
-          v001_2026-04-26T12-00-00/
-            lightgbm_model.txt
-            lstm_model.pt
-            lstm_scaler.npz
-            ensemble_meta_model.pkl
-            categorical_mappings.json
-            metadata.json
-          v002_.../
-        lightgbm_model.txt  ← latest (symlink / copy)
-        lstm_model.pt       ← latest
-        ...
-    """
+    def begin_run(self):
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        path = self.runs / f"{stamp}_{uuid4().hex[:8]}"
+        path.mkdir(parents=False)
+        return path
 
-    def __init__(self):
-        cfg = get_settings()
-        self._artifacts = cfg.artifacts_dir
-        self._versions_dir = self._artifacts / "versions"
-        self._versions_dir.mkdir(parents=True, exist_ok=True)
-        self._max_versions = cfg.max_model_versions
-        self._manifest_path = self._artifacts / "model_manifest.json"
+    @staticmethod
+    def _digest(path):
+        digest = hashlib.sha256()
+        with path.open("rb") as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(block)
+        return digest.hexdigest()
 
-    # ──────────────────────────────────────────────
-    def create_version(self, metrics: Dict[str, float], notes: str = "") -> str:
-        """
-        Snapshot current artifacts into a new versioned directory.
-        Returns the version tag (e.g. "v003_2026-04-26T12-00-00").
-        """
-        version_num = len(list(self._versions_dir.iterdir())) + 1
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%S")
-        version_tag = f"v{version_num:03d}_{timestamp}"
-        version_dir = self._versions_dir / version_tag
-        version_dir.mkdir(parents=True, exist_ok=True)
-
-        # Copy model files
-        model_files = [
-            "lightgbm_model.txt",
-            "lstm_model.pt",
-            "lstm_scaler.npz",
-            "ensemble_meta_model.pkl",
-            "categorical_mappings.json",
-        ]
-        copied = []
-        for fname in model_files:
-            src = self._artifacts / fname
-            if src.exists():
-                shutil.copy2(str(src), str(version_dir / fname))
-                copied.append(fname)
-
-        # Write metadata
+    def finalize(self, run_dir, metrics, split, data_fingerprint, activate=True):
+        run_dir = Path(run_dir)
         metadata = {
-            "version": version_tag,
+            "schema_version": 2,
+            "run_id": run_dir.name,
             "created_at": datetime.now(timezone.utc).isoformat(),
+            "split": split,
+            "data_fingerprint": data_fingerprint,
             "metrics": metrics,
-            "notes": notes,
-            "files": copied,
         }
-        with open(version_dir / "metadata.json", "w") as f:
-            json.dump(metadata, f, indent=2)
+        (run_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+        missing = REQUIRED_FILES - {p.name for p in run_dir.iterdir() if p.is_file()}
+        if missing:
+            raise ValueError(f"Incomplete model bundle: {sorted(missing)}")
+        metadata["sha256"] = {
+            name: self._digest(run_dir / name)
+            for name in sorted(REQUIRED_FILES - {"metadata.json"})
+        }
+        (run_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+        if activate:
+            self.activate(run_dir.name)
+        return run_dir.name
 
-        # Update manifest
-        self._update_manifest(version_tag, metrics)
+    def activate(self, run_id):
+        path = self.runs / run_id
+        if not path.is_dir():
+            raise FileNotFoundError(run_id)
+        metadata = json.loads((path / "metadata.json").read_text(encoding="utf-8"))
+        for name, expected in metadata.get("sha256", {}).items():
+            if self._digest(path / name) != expected:
+                raise ValueError(f"Hash mismatch in {name}")
+        payload = {"schema_version": 2, "active_run": run_id,
+                   "updated_at": datetime.now(timezone.utc).isoformat()}
+        self.root.mkdir(parents=True, exist_ok=True)
+        temporary = self.root / "manifest.json.tmp"
+        temporary.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        temporary.replace(self.manifest)
 
-        # Prune old versions
-        self._prune_old_versions()
+    def active_path(self):
+        if not self.manifest.exists():
+            raise FileNotFoundError("No active v2 model bundle")
+        data = json.loads(self.manifest.read_text(encoding="utf-8"))
+        path = self.runs / data["active_run"]
+        if not path.is_dir():
+            raise FileNotFoundError(f"Active bundle is missing: {path}")
+        metadata = json.loads((path / "metadata.json").read_text(encoding="utf-8"))
+        for name, expected in metadata.get("sha256", {}).items():
+            if self._digest(path / name) != expected:
+                raise ValueError(f"Active bundle hash mismatch in {name}")
+        return path
 
-        log.info(f"Created model version {version_tag} ({len(copied)} files)")
-        return version_tag
+    def rollback(self, run_id):
+        self.activate(run_id)
 
-    def rollback(self, version_tag: str):
-        """Restore artifacts from a specific version."""
-        version_dir = self._versions_dir / version_tag
-        if not version_dir.exists():
-            raise FileNotFoundError(f"Version {version_tag} not found.")
+    def list_versions(self):
+        results = []
+        for path in self.runs.iterdir():
+            meta = path / "metadata.json"
+            if meta.exists():
+                results.append(json.loads(meta.read_text(encoding="utf-8")))
+        return sorted(results, key=lambda row: row["created_at"])
 
-        for fpath in version_dir.iterdir():
-            if fpath.name == "metadata.json":
-                continue
-            dest = self._artifacts / fpath.name
-            shutil.copy2(str(fpath), str(dest))
-
-        log.info(f"Rolled back to version {version_tag}")
-
-    def list_versions(self) -> List[Dict]:
-        """List all saved versions with their metadata."""
-        versions = []
-        for vdir in sorted(self._versions_dir.iterdir()):
-            meta_path = vdir / "metadata.json"
-            if meta_path.exists():
-                with open(meta_path) as f:
-                    versions.append(json.load(f))
-        return versions
-
-    def get_latest_metrics(self) -> Optional[Dict[str, float]]:
-        """Return metrics from the most recent version."""
-        versions = self.list_versions()
-        if versions:
-            return versions[-1].get("metrics", {})
-        return None
-
-    # ──────────────────────────────────────────────
-    def _update_manifest(self, version_tag: str, metrics: Dict):
-        manifest = {}
-        if self._manifest_path.exists():
-            with open(self._manifest_path) as f:
-                manifest = json.load(f)
-
-        manifest["latest_version"] = version_tag
-        manifest["latest_metrics"] = metrics
-        manifest["updated_at"] = datetime.now(timezone.utc).isoformat()
-
-        history = manifest.get("history", [])
-        history.append({"version": version_tag, "metrics": metrics})
-        manifest["history"] = history[-self._max_versions:]
-
-        with open(self._manifest_path, "w") as f:
-            json.dump(manifest, f, indent=2)
-
-    def _prune_old_versions(self):
-        """Delete the oldest versions if we exceed max_versions."""
-        versions = sorted(self._versions_dir.iterdir())
-        while len(versions) > self._max_versions:
-            oldest = versions.pop(0)
-            shutil.rmtree(str(oldest))
-            log.info(f"Pruned old version: {oldest.name}")
+    def get_latest_metrics(self):
+        try:
+            meta = json.loads((self.active_path() / "metadata.json").read_text(encoding="utf-8"))
+            return meta.get("metrics")
+        except FileNotFoundError:
+            return None

@@ -38,6 +38,90 @@ export interface Product {
   lastActualDate?: string;
 }
 
+export interface ForecastQualityMetrics {
+  mae: number | null;
+  rmse: number | null;
+  mape: number | null;
+  directional_accuracy: number | null;
+  interval_level: number | null;
+  interval_coverage: number | null;
+  prediction_success: number | null;
+  success_tolerance?: number | null;
+  success_definition?: string;
+  sample_count: number | null;
+  coverage_sample_count?: number | null;
+  processed_from?: string | null;
+  processed_through?: string | null;
+  processed_observed_rows?: number | null;
+  processed_series_count?: number | null;
+  product_metrics?: Record<string, {
+    interval_coverage: number;
+    sample_count: number;
+    sample_basis?: string;
+    mape?: number | null;
+    prediction_success?: number;
+    evaluation_source?: string;
+  }>;
+  evaluation_scope?: string | null;
+  evaluation_source?: string | null;
+}
+
+export function verifiedPredictionSuccess(metrics: ForecastQualityMetrics | null | undefined) {
+  const value = metrics?.prediction_success;
+  return metrics?.success_definition === "absolute_percentage_error_at_most_tolerance"
+    && metrics.success_tolerance === 0.05 && (metrics.sample_count ?? 0) >= 30
+    && value != null && Number.isFinite(value) && value >= 0 && value <= 1
+    ? value : null;
+}
+
+export interface ForecastStatus {
+  modelRunId: string;
+  generatedAt: string;
+  horizon: number;
+  rowCount: number;
+  metrics: ForecastQualityMetrics | null;
+  modelMetrics?: ForecastQualityMetrics | null;
+}
+
+export function formatRelativeAge(timestamp: string | null | undefined, locale = "en", now = Date.now()) {
+  if (!timestamp) return null;
+  const date = new Date(timestamp);
+  if (!Number.isFinite(date.getTime())) return null;
+  let value = Math.max(0, (now - date.getTime()) / 1000);
+  let unit: Intl.RelativeTimeFormatUnit = "second";
+  if (value >= 60) { value /= 60; unit = "minute"; }
+  if (unit === "minute" && value >= 60) { value /= 60; unit = "hour"; }
+  if (unit === "hour" && value >= 24) { value /= 24; unit = "day"; }
+  if (unit === "day" && value >= 30) { value /= 30; unit = "month"; }
+  if (unit === "month" && value >= 12) { value /= 12; unit = "year"; }
+  const language = locale === "tl" ? "fil" : "en";
+  return new Intl.RelativeTimeFormat(language, { numeric: "auto" })
+    .format(-Math.floor(value), unit);
+}
+
+export function formatScheduledDaRefreshAge(locale = "en", now = Date.now()) {
+  const localParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(now));
+  const part = (type: string) => localParts.find((item) => item.type === type)?.value ?? "0";
+  const year = Number(part("year"));
+  const month = Number(part("month"));
+  const day = Number(part("day"));
+  const hour = Number(part("hour"));
+  const minute = Number(part("minute"));
+  let latestRefreshUtc = Date.UTC(year, month - 1, day, 1 - 8, 0);
+  if (hour < 1 || (hour === 1 && minute === 0 && now < latestRefreshUtc)) {
+    latestRefreshUtc -= 24 * 60 * 60 * 1000;
+  }
+  return formatRelativeAge(new Date(latestRefreshUtc).toISOString(), locale, now);
+}
+
 export interface NewsArticle {
   id: string;
   title: string;
@@ -282,6 +366,12 @@ export async function fetchDashboardProducts(): Promise<DashboardProduct[]> {
     // Keep the dashboard usable while the summary endpoint is unavailable.
     return (await fetchProducts()).map(toDashboardProduct);
   }
+}
+
+export async function fetchForecastStatus(): Promise<ForecastStatus | null> {
+  const response = await fetchFromNetwork<ForecastStatus | null>("forecast-status", 1, true);
+  if (!response || typeof response.generatedAt !== "string") return null;
+  return response;
 }
 
 // Fetch trending views from Supabase

@@ -1,0 +1,7 @@
+{
+  "fetched_at_utc": "2026-09-18T02:29:33.291673+00:00",
+  "rows": 151344,
+  "order": "report_date.asc,id.asc",
+  "atomic_snapshot": false,
+  "sha256": "372085d33dafd165f1e554eacc0a4e9c60e18576bce3da6ecb28148e9479cd5a"
+}

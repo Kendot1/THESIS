@@ -1,13 +1,18 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { Home, Search, Table2, Info, Mail, MapPin, TrendingUp } from "lucide-react";
+import { Home, Search, Table2, Info, Mail, MapPin, TrendingUp, BarChart3 } from "lucide-react";
 import GrassField from "./GrassField";
+import { formatRelativeAge, verifiedPredictionSuccess } from "../lib/data";
+import { useClock, useForecastStatus } from "../lib/hooks";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { usePathname } from "next/navigation";
 
 const Footer = () => {
-  const { t, isTransitioning } = useLanguage();
+  const { t, language, isTransitioning } = useLanguage();
+  const { data: forecastStatus } = useForecastStatus();
+  const predictionSuccess = verifiedPredictionSuccess(forecastStatus?.modelMetrics);
+  const now = useClock();
   const currentYear = new Date().getFullYear();
   const pathname = usePathname();
 
@@ -106,11 +111,30 @@ const Footer = () => {
               <div className="flex gap-6">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4 text-accent" />
+                    <BarChart3 className="w-4 h-4 text-accent" />
                   </div>
                   <div>
-                    <div className="text-white/80 text-xs font-semibold">98.5%</div>
-                    <div className="text-white/60 text-[10px]">{t("accuracy")}</div>
+                    <div className="text-white/80 text-xs font-semibold">
+                      {predictionSuccess != null
+                        ? `${(predictionSuccess * 100).toFixed(1)}%`
+                        : "—"}
+                    </div>
+                    <div className="text-white/60 text-[10px]" title={t("predictionSuccessExplanation")}>{t("predictionSuccess")}</div>
+                    <div className="text-white/40 text-[9px]">
+                      {forecastStatus?.modelMetrics
+                        ? t("modelEvaluation")
+                        : t("rangeHistoryUnavailable")}
+                    </div>
+                    {forecastStatus?.generatedAt && (
+                      <div className="text-white/40 text-[9px]">
+                        {formatRelativeAge(forecastStatus.generatedAt, language, now)}
+                      </div>
+                    )}
+                    <div className="text-white/40 text-[9px]">
+                      {forecastStatus?.metrics?.processed_through
+                        ? `${t("processedThroughShort")} ${forecastStatus.metrics.processed_through}`
+                        : t("dailyDaRefreshShort")}
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

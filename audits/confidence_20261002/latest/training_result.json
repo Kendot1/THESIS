@@ -1,0 +1,320 @@
+{
+  "lightgbm_one_step_validation": {
+    "mae": 4.204837085872656,
+    "rmse": 11.038260779863519,
+    "mape": 3.0266803178051758,
+    "r2": 0.9912801775324465,
+    "n": 15186,
+    "prediction_success": 0.8441986039773476,
+    "success_tolerance": 0.05
+  },
+  "lstm_relative_validation": {
+    "relative_mae": 0.027984587044133914,
+    "relative_rmse": 0.09131551345980184,
+    "n": 14739
+  },
+  "validation": {
+    "ensemble": {
+      "mae": 9.228056427090394,
+      "rmse": 24.91970731239289,
+      "mape": 5.788049144977095,
+      "r2": 0.9546584750117874,
+      "n": 22978,
+      "prediction_success": 0.6948820611019236,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 51.109757159021676
+    },
+    "lstm": {
+      "mae": 9.500609441662085,
+      "rmse": 25.716305960214058,
+      "mape": 5.929883686951898,
+      "r2": 0.9517133121293306,
+      "n": 22978,
+      "prediction_success": 0.6925755070067021,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 50.24371137609888
+    },
+    "lgbm": {
+      "mae": 10.323987025616782,
+      "rmse": 26.316785191762506,
+      "mape": 6.500132219409963,
+      "r2": 0.949431983415019,
+      "n": 22978,
+      "prediction_success": 0.6524936896161546,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 51.68421968839759
+    },
+    "persistence": {
+      "mae": 10.38907585516581,
+      "rmse": 30.30539909580673,
+      "mape": 6.4350985718269,
+      "r2": 0.9329420513543988,
+      "n": 22978,
+      "prediction_success": 0.6947515014361563,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 11.437026721211593
+    },
+    "seasonal7": {
+      "mae": 11.100824919488206,
+      "rmse": 30.495458881501953,
+      "mape": 6.979010030169787,
+      "r2": 0.9320983083373602,
+      "n": 22978,
+      "prediction_success": 0.6661154147445383,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 42.73653059448168
+    },
+    "moving_average7": {
+      "mae": 10.644777178170424,
+      "rmse": 28.86521984410689,
+      "mape": 6.661694863960571,
+      "r2": 0.9391640929560952,
+      "n": 22978,
+      "prediction_success": 0.6813038558621289,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 50.80946992775699
+    }
+  },
+  "test": {
+    "ensemble": {
+      "mae": 8.882049875763848,
+      "rmse": 25.768085720106825,
+      "mape": 5.041291186822186,
+      "r2": 0.951744170652728,
+      "n": 25934,
+      "prediction_success": 0.7366391609470193,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 48.57715739955271
+    },
+    "lstm": {
+      "mae": 9.010154048501228,
+      "rmse": 25.711668139660567,
+      "mape": 5.1191030466992204,
+      "r2": 0.9519552454542249,
+      "n": 25934,
+      "prediction_success": 0.7336315261818462,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 51.73902984499114
+    },
+    "lgbm": {
+      "mae": 10.270028548637484,
+      "rmse": 27.48872294479242,
+      "mape": 5.915783858299102,
+      "r2": 0.9450845433724953,
+      "n": 25934,
+      "prediction_success": 0.6843525873370865,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 50.56296753296831
+    },
+    "persistence": {
+      "mae": 9.333633839747051,
+      "rmse": 26.996397189425544,
+      "mape": 5.380537222601994,
+      "r2": 0.9470340106044379,
+      "n": 25934,
+      "prediction_success": 0.7342870363229737,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 6.346880542916635
+    },
+    "seasonal7": {
+      "mae": 11.308104033315338,
+      "rmse": 31.797085517888938,
+      "mape": 6.429062367404484,
+      "r2": 0.9265215306628437,
+      "n": 25934,
+      "prediction_success": 0.7061386596745585,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 40.44883164957199
+    },
+    "moving_average7": {
+      "mae": 11.027569765007877,
+      "rmse": 30.7978680607653,
+      "mape": 6.241079305102363,
+      "r2": 0.9310670635632964,
+      "n": 25934,
+      "prediction_success": 0.7031310249093854,
+      "success_tolerance": 0.05,
+      "directional_accuracy": 46.69545770031619
+    }
+  },
+  "test_interval_coverage": 0.8204287807511375,
+  "test_interval_metrics": {
+    "0.8": {
+      "nominal_coverage": 0.8,
+      "observed_coverage": 0.8204287807511375,
+      "average_width": 26.16161948971556,
+      "interval_score": 57.00631579512673,
+      "sample_count": 25934,
+      "by_category": {
+        "Corn": {
+          "observed_coverage": 0.7858942065491183,
+          "sample_count": 1191
+        },
+        "Fish": {
+          "observed_coverage": 0.768703597944032,
+          "sample_count": 1751
+        },
+        "Fruits": {
+          "observed_coverage": 0.7816496163682864,
+          "sample_count": 3128
+        },
+        "Livestock": {
+          "observed_coverage": 0.9428904428904429,
+          "sample_count": 1716
+        },
+        "Oils": {
+          "observed_coverage": 0.945859872611465,
+          "sample_count": 1256
+        },
+        "Poultry": {
+          "observed_coverage": 0.8986700443318556,
+          "sample_count": 3158
+        },
+        "Rice": {
+          "observed_coverage": 0.71146697169002,
+          "sample_count": 3497
+        },
+        "Sugar": {
+          "observed_coverage": 0.9968085106382979,
+          "sample_count": 940
+        },
+        "Vegetables": {
+          "observed_coverage": 0.8046681725287728,
+          "sample_count": 9297
+        }
+      }
+    },
+    "0.9": {
+      "nominal_coverage": 0.9,
+      "observed_coverage": 0.914668003393229,
+      "average_width": 63.53642013341039,
+      "interval_score": 91.88295627480579,
+      "sample_count": 25934,
+      "by_category": {
+        "Corn": {
+          "observed_coverage": 0.9168765743073047,
+          "sample_count": 1191
+        },
+        "Fish": {
+          "observed_coverage": 0.8675042832667047,
+          "sample_count": 1751
+        },
+        "Fruits": {
+          "observed_coverage": 0.8650895140664961,
+          "sample_count": 3128
+        },
+        "Livestock": {
+          "observed_coverage": 0.9761072261072261,
+          "sample_count": 1716
+        },
+        "Oils": {
+          "observed_coverage": 0.9888535031847133,
+          "sample_count": 1256
+        },
+        "Poultry": {
+          "observed_coverage": 0.9534515516149462,
+          "sample_count": 3158
+        },
+        "Rice": {
+          "observed_coverage": 0.8201315413211324,
+          "sample_count": 3497
+        },
+        "Sugar": {
+          "observed_coverage": 1.0,
+          "sample_count": 940
+        },
+        "Vegetables": {
+          "observed_coverage": 0.9323437668064967,
+          "sample_count": 9297
+        }
+      }
+    },
+    "0.95": {
+      "nominal_coverage": 0.95,
+      "observed_coverage": 0.9475591887098018,
+      "average_width": 88.24347479852696,
+      "interval_score": 126.35393004919047,
+      "sample_count": 25934,
+      "by_category": {
+        "Corn": {
+          "observed_coverage": 0.9857262804366079,
+          "sample_count": 1191
+        },
+        "Fish": {
+          "observed_coverage": 0.9011993146773273,
+          "sample_count": 1751
+        },
+        "Fruits": {
+          "observed_coverage": 0.9120843989769821,
+          "sample_count": 3128
+        },
+        "Livestock": {
+          "observed_coverage": 0.9889277389277389,
+          "sample_count": 1716
+        },
+        "Oils": {
+          "observed_coverage": 0.9920382165605095,
+          "sample_count": 1256
+        },
+        "Poultry": {
+          "observed_coverage": 0.9895503483217226,
+          "sample_count": 3158
+        },
+        "Rice": {
+          "observed_coverage": 0.8761795824992851,
+          "sample_count": 3497
+        },
+        "Sugar": {
+          "observed_coverage": 1.0,
+          "sample_count": 940
+        },
+        "Vegetables": {
+          "observed_coverage": 0.9569753683984081,
+          "sample_count": 9297
+        }
+      }
+    }
+  },
+  "interval_calibration": {
+    "scope": "held_out_from_ensemble_fit",
+    "sample_count": 8403,
+    "minimum_category_bin_samples": 100,
+    "start": "2025-04-25 00:00:00",
+    "end": "2025-08-22 00:00:00",
+    "coverage_guarantee": false,
+    "base_model_scope": "calibration_excluded_from_early_stopping"
+  },
+  "source_data": {
+    "processed_from": "2019-10-10",
+    "processed_through": "2026-09-30",
+    "observed_rows": 114980,
+    "series_count": 119
+  },
+  "validation_samples": 22978,
+  "test_samples": 25934,
+  "evaluation_stride_days": 30,
+  "evaluation_scope": "retrospective source-dated backtest; the database has no immutable historical ingestion vintages for point-in-time reconstruction",
+  "trained_at": "2026-10-02T02:46:52.851427+00:00",
+  "promotion_gate": {
+    "passed": false,
+    "beats_persistence": true,
+    "beats_active_champion": false,
+    "active_champion": {
+      "run_id": "20261001T025925Z_0661960a",
+      "ensemble": {
+        "mae": 8.927484707934877,
+        "rmse": 25.645146477367657,
+        "mape": 5.1082224671680745,
+        "r2": 0.9522035282591359,
+        "n": 25934,
+        "prediction_success": 0.7392226420914629,
+        "success_tolerance": 0.05,
+        "directional_accuracy": 48.8393614560037
+      },
+      "evaluation": "backtested_on_candidate_frozen_test"
+    },
+    "rule": "frozen test ensemble beats persistence in all three metrics and improves MAE, RMSE, and MAPE by at least 5% over the active champion on the same test window"
+  },
+  "run_id": "20261002T023852Z_6b175258",
+  "activated": false
+}

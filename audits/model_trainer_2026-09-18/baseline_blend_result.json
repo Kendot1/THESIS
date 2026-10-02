@@ -1,0 +1,618 @@
+{
+  "validation_origins": 12,
+  "cutoff": "2025-02-13T00:00:00.000000",
+  "selected": [
+    0.9993354472619097,
+    [
+      "product",
+      "horizon_bin"
+    ],
+    0.25,
+    0.0025,
+    0.05,
+    118
+  ],
+  "final_groups": 145,
+  "validation_baseline": [
+    8.883941258118822,
+    24.444621733612596,
+    5.811888516711975
+  ],
+  "validation_blend": [
+    8.779597337399448,
+    24.331842861068548,
+    5.7286531304315655
+  ],
+  "test_baseline": [
+    8.960833762022526,
+    24.503018370866247,
+    5.128069611042068
+  ],
+  "test_blend": [
+    8.985464251070647,
+    24.558673494814013,
+    5.137787947209109
+  ],
+  "state": {
+    "Corn||Corn||0": [
+      "seasonal7",
+      0.25
+    ],
+    "Corn||Corn||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Corn||Corn||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Corn||Corn||3": [
+      "seasonal7",
+      0.25
+    ],
+    "Corn||Corn||4": [
+      "seasonal7",
+      0.25
+    ],
+    "Corn||Corn Cracked||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Corn||Corn Cracked||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Corn||Corn Cracked||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Corn||Corn Grits||0": [
+      "seasonal7",
+      0.25
+    ],
+    "Corn||Corn Grits||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Corn||Corn Grits||2": [
+      "seasonal7",
+      0.25
+    ],
+    "Corn||Corn Grits||3": [
+      "moving_average7",
+      0.2
+    ],
+    "Fish||Indian Mackerel||0": [
+      "seasonal7",
+      0.25
+    ],
+    "Fish||Indian Mackerel||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Indian Mackerel||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Indian Mackerel||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Indian Mackerel||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Milkfish||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Milkfish||3": [
+      "seasonal7",
+      0.25
+    ],
+    "Fish||Milkfish||4": [
+      "persistence",
+      0.25
+    ],
+    "Fish||Round Scad||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Fish||Salmon Head||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Fish||Salmon Head||2": [
+      "persistence",
+      0.25
+    ],
+    "Fish||Salmon Head||3": [
+      "persistence",
+      0.25
+    ],
+    "Fish||Salmon Head||4": [
+      "persistence",
+      0.25
+    ],
+    "Fish||Sardines||0": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Sardines||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Sardines||2": [
+      "seasonal7",
+      0.25
+    ],
+    "Fish||Sardines||3": [
+      "seasonal7",
+      0.25
+    ],
+    "Fish||Sardines||4": [
+      "seasonal7",
+      0.25
+    ],
+    "Fish||Squid||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Fish||Squid||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Squid||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Tilapia||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Tilapia||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Tilapia||4": [
+      "seasonal7",
+      0.25
+    ],
+    "Fish||Yellow-Fin Tuna||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Yellow-Fin Tuna||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Fish||Yellow-Fin Tuna||3": [
+      "seasonal7",
+      0.25
+    ],
+    "Fish||Yellow-Fin Tuna||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Banana||0": [
+      "seasonal7",
+      0.25
+    ],
+    "Fruits||Banana||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Banana||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Banana||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Banana||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Calamansi||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Fruits||Calamansi||4": [
+      "persistence",
+      0.25
+    ],
+    "Fruits||Melon||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Melon||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Melon||4": [
+      "seasonal7",
+      0.25
+    ],
+    "Fruits||Papaya||0": [
+      "moving_average7",
+      0.15000000000000002
+    ],
+    "Fruits||Papaya||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Fruits||Papaya||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Papaya||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Papaya||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Pomelo||2": [
+      "seasonal7",
+      0.25
+    ],
+    "Fruits||Pomelo||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Pomelo||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Watermelon||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Watermelon||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Fruits||Watermelon||4": [
+      "persistence",
+      0.25
+    ],
+    "Livestock||Beef||0": [
+      "seasonal7",
+      0.25
+    ],
+    "Livestock||Beef||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Livestock||Beef||2": [
+      "seasonal7",
+      0.25
+    ],
+    "Livestock||Beef||3": [
+      "moving_average7",
+      0.2
+    ],
+    "Livestock||Beef||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Livestock||Pork||0": [
+      "seasonal7",
+      0.25
+    ],
+    "Livestock||Pork||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Oils||Coconut Oil||0": [
+      "moving_average7",
+      0.25
+    ],
+    "Oils||Coconut Oil||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Oils||Coconut Oil||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Oils||Coconut Oil||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Oils||Coconut Oil||4": [
+      "moving_average7",
+      0.2
+    ],
+    "Oils||Palm Oil||0": [
+      "seasonal7",
+      0.25
+    ],
+    "Oils||Palm Oil||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Oils||Palm Oil||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Oils||Palm Oil||3": [
+      "seasonal7",
+      0.25
+    ],
+    "Oils||Palm Oil||4": [
+      "seasonal7",
+      0.25
+    ],
+    "Poultry||Chicken||0": [
+      "seasonal7",
+      0.2
+    ],
+    "Poultry||Chicken||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Poultry||Chicken||3": [
+      "seasonal7",
+      0.25
+    ],
+    "Poultry||Chicken||4": [
+      "seasonal7",
+      0.2
+    ],
+    "Poultry||Chicken Egg||0": [
+      "moving_average7",
+      0.15000000000000002
+    ],
+    "Poultry||Chicken Egg||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Poultry||Chicken Egg||2": [
+      "seasonal7",
+      0.25
+    ],
+    "Poultry||Chicken Egg||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Poultry||Chicken Egg||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Rice||Rice||0": [
+      "moving_average7",
+      0.25
+    ],
+    "Rice||Rice||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Rice||Rice||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Rice||Rice||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Rice||Rice||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Sugar||Sugar||0": [
+      "moving_average7",
+      0.25
+    ],
+    "Sugar||Sugar||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Sugar||Sugar||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Sugar||Sugar||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Baguio Beans||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Vegetables||Bittergourd||3": [
+      "seasonal7",
+      0.15000000000000002
+    ],
+    "Vegetables||Broccoli||3": [
+      "moving_average7",
+      0.2
+    ],
+    "Vegetables||Broccoli||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Cabbage||1": [
+      "seasonal7",
+      0.15000000000000002
+    ],
+    "Vegetables||Cabbage||3": [
+      "moving_average7",
+      0.2
+    ],
+    "Vegetables||Cabbage||4": [
+      "persistence",
+      0.25
+    ],
+    "Vegetables||Carrot||0": [
+      "seasonal7",
+      0.15000000000000002
+    ],
+    "Vegetables||Carrot||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Carrot||2": [
+      "seasonal7",
+      0.25
+    ],
+    "Vegetables||Cauliflower||3": [
+      "persistence",
+      0.25
+    ],
+    "Vegetables||Cauliflower||4": [
+      "persistence",
+      0.25
+    ],
+    "Vegetables||Celery||2": [
+      "persistence",
+      0.25
+    ],
+    "Vegetables||Celery||3": [
+      "persistence",
+      0.25
+    ],
+    "Vegetables||Celery||4": [
+      "persistence",
+      0.25
+    ],
+    "Vegetables||Chayote||1": [
+      "seasonal7",
+      0.15000000000000002
+    ],
+    "Vegetables||Eggplant||4": [
+      "seasonal7",
+      0.2
+    ],
+    "Vegetables||Garlic||0": [
+      "seasonal7",
+      0.1
+    ],
+    "Vegetables||Garlic||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Garlic||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Garlic||3": [
+      "seasonal7",
+      0.15000000000000002
+    ],
+    "Vegetables||Garlic||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Ginger||0": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Ginger||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Ginger||2": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Ginger||3": [
+      "moving_average7",
+      0.15000000000000002
+    ],
+    "Vegetables||Ginger||4": [
+      "moving_average7",
+      0.2
+    ],
+    "Vegetables||Lettuce||0": [
+      "moving_average7",
+      0.15000000000000002
+    ],
+    "Vegetables||Lettuce||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Vegetables||Lettuce||4": [
+      "persistence",
+      0.25
+    ],
+    "Vegetables||Pechay Baguio||0": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Pechay Baguio||1": [
+      "seasonal7",
+      0.2
+    ],
+    "Vegetables||Pechay Baguio||2": [
+      "persistence",
+      0.25
+    ],
+    "Vegetables||Pechay Baguio||3": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Pechay Tagalog||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Vegetables||Potato||0": [
+      "persistence",
+      0.25
+    ],
+    "Vegetables||Potato||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Potato||3": [
+      "persistence",
+      0.15000000000000002
+    ],
+    "Vegetables||Potato||4": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Red Onion||1": [
+      "seasonal7",
+      0.15000000000000002
+    ],
+    "Vegetables||Squash||0": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||Squash||1": [
+      "moving_average7",
+      0.1
+    ],
+    "Vegetables||Squash||2": [
+      "seasonal7",
+      0.15000000000000002
+    ],
+    "Vegetables||String Beans||1": [
+      "seasonal7",
+      0.25
+    ],
+    "Vegetables||Tomato||2": [
+      "persistence",
+      0.2
+    ],
+    "Vegetables||Tomato||3": [
+      "persistence",
+      0.25
+    ],
+    "Vegetables||Tomato||4": [
+      "persistence",
+      0.25
+    ],
+    "Vegetables||White Onion||1": [
+      "moving_average7",
+      0.25
+    ],
+    "Vegetables||White Onion||4": [
+      "moving_average7",
+      0.25
+    ]
+  }
+}

@@ -5,7 +5,6 @@ Logs to both console and rotating file.
 
 import logging
 import sys
-import io
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -52,15 +51,14 @@ def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
 
     logger.setLevel(level)
 
-    # Console handler with UTF-8 stream wrapper
-    stream = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace") if hasattr(sys.stdout, "buffer") else sys.stdout
-    console = logging.StreamHandler(stream)
+    console = logging.StreamHandler(sys.stdout)
     console.setFormatter(_Formatter())
     logger.addHandler(console)
 
     # File handler (one log file per day)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     log_file = LOGS_DIR / f"trainer_{today}.log"
+    log_file.parent.mkdir(parents=True, exist_ok=True)
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setFormatter(
         logging.Formatter(

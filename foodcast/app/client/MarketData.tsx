@@ -676,7 +676,7 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                           </td>
                           <td className="px-2 lg:px-4 py-3 text-center">
                             <span
-                              className={`text-sm font-black tabular-nums transition-all whitespace-nowrap ${isUp ? "text-positive group-hover:drop-shadow-[0_0_8px_rgba(46,125,50,0.3)]" : "text-negative group-hover:drop-shadow-[0_0_8px_rgba(198,40,40,0.3)]"
+                              className={`text-sm font-black tabular-nums transition-all whitespace-nowrap ${isUp ? "text-price-up group-hover:drop-shadow-[0_0_8px_rgba(198,40,40,0.3)]" : "text-price-down group-hover:drop-shadow-[0_0_8px_rgba(46,125,50,0.3)]"
                                 }`}
                             >
                               {predictedPriceStr}
@@ -685,8 +685,8 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                           <td className="px-2 lg:px-4 py-3 text-center">
                             <div
                               className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full transition-all duration-300 ${isUp
-                                ? "text-positive bg-positive/10 group-hover:bg-positive/20"
-                                : "text-negative bg-negative/10 group-hover:bg-negative/20"
+                                ? "text-price-up bg-price-up/10 group-hover:bg-price-up/20"
+                                : "text-price-down bg-price-down/10 group-hover:bg-price-down/20"
                                 }`}
                             >
                               {isUp ? "▲" : "▼"}{" "}
@@ -729,12 +729,12 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                                 </span>
                               </td>
                               <td className="px-2 lg:px-4 py-3 text-center">
-                                <span className={`text-sm font-bold tabular-nums ${vIsUp ? "text-positive" : "text-negative"}`}>
+                                <span className={`text-sm font-bold tabular-nums ${vIsUp ? "text-price-up" : "text-price-down"}`}>
                                   ₱{v.predictedPrice.toFixed(2)}
                                 </span>
                               </td>
                               <td className="px-2 lg:px-4 py-3 text-center">
-                                <div className={`inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 rounded-full ${vIsUp ? "text-positive" : "text-negative"}`}>
+                                <div className={`inline-flex items-center gap-1 text-[11px] font-bold px-3 py-1 rounded-full ${vIsUp ? "text-price-up" : "text-price-down"}`}>
                                   {vIsUp ? "▲" : "▼"} {Math.abs(vChange).toFixed(1)}%
                                 </div>
                               </td>
@@ -798,8 +798,8 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                         </div>
                         <div
                           className={`inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-full ${isUp
-                            ? "text-positive bg-positive/10"
-                            : "text-negative bg-negative/10"
+                            ? "text-price-up bg-price-up/10"
+                            : "text-price-down bg-price-down/10"
                             }`}
                         >
                           {isUp ? "▲" : "▼"} {Math.abs(g.avgChange).toFixed(1)}%
@@ -818,7 +818,7 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                           <div className="text-[9px] text-gray-400 uppercase tracking-widest font-black mb-1">
                             {t("predicted")}
                           </div>
-                          <div className={`text-sm font-black tabular-nums ${isUp ? "text-positive" : "text-negative"}`}>
+                          <div className={`text-sm font-black tabular-nums ${isUp ? "text-price-up" : "text-price-down"}`}>
                             {predictedPriceStr}
                           </div>
                         </div>
@@ -839,7 +839,7 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                             <span className="font-medium text-sm text-gray-700">
                               {v.variant && v.variant !== "Standard" ? v.variant : t(v.name)}
                             </span>
-                            <div className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${vIsUp ? "text-positive bg-positive/10" : "text-negative bg-negative/10"}`}>
+                            <div className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${vIsUp ? "text-price-up bg-price-up/10" : "text-price-down bg-price-down/10"}`}>
                               {vIsUp ? "▲" : "▼"} {Math.abs(vChange).toFixed(1)}%
                             </div>
                           </div>
@@ -848,7 +848,7 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
                               <div className="text-sm font-medium text-gray-600 tabular-nums">₱{v.currentPrice.toFixed(2)}</div>
                             </div>
                             <div>
-                              <div className={`text-sm font-bold tabular-nums ${vIsUp ? "text-positive" : "text-negative"}`}>₱{v.predictedPrice.toFixed(2)}</div>
+                              <div className={`text-sm font-bold tabular-nums ${vIsUp ? "text-price-up" : "text-price-down"}`}>₱{v.predictedPrice.toFixed(2)}</div>
                             </div>
                           </div>
                         </div>

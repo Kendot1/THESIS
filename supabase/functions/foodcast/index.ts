@@ -1,5 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.42.0"
+import {
+  mapDashboardSummary,
+  normalizeSeriesUnit,
+  productSeriesKey,
+} from "./dashboard.ts"
+import {
+  buildForecastData,
+  makeTrendFallback,
+  meanFirstWeek,
+  selectFuturePredictions,
+} from "./forecast.ts"
+import { realizedForecastQuality } from "./quality.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -236,20 +248,6 @@ function slugify(text: string) {
   return text.toString().toLowerCase().trim().replace(/\s+/g, "-").replace(/[^\w\-]+/g, "").replace(/\-\-+/g, "-");
 }
 
-function linearSlope(values: number[]): number {
-  if (values.length < 2) return 0;
-  const n = values.length;
-  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-  for (let i = 0; i < n; i++) {
-    sumX += i;
-    sumY += values[i];
-    sumXY += i * values[i];
-    sumX2 += i * i;
-  }
-  return (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-}
-
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DEFAULT_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&q=80&w=800";
 
 async function fetchAllPaginated(queryFactory: (start: number, end: number) => any, pageSize = 1000): Promise<any[]> {
@@ -266,68 +264,6 @@ async function fetchAllPaginated(queryFactory: (start: number, end: number) => a
   return allData;
 }
 
-function buildForecastData(
-  historyRows: any[],
-  fallbackPredictedPrice: number,
-  mlPredictions: { date: string; predicted_price: number }[] | null
-) {
-  const dayMap = new Map<string, { actual: number | null; predicted: number | null }>();
-
-  const dailyActuals = new Map<string, number[]>();
-  for (const r of historyRows) {
-    const key = r.report_date.split("T")[0];
-    if (!dailyActuals.has(key)) dailyActuals.set(key, []);
-    dailyActuals.get(key)!.push(r.price_index);
-  }
-  for (const [key, prices] of dailyActuals) {
-    const avg = Math.round((prices.reduce((a: number, b: number) => a + b, 0) / prices.length) * 100) / 100;
-    dayMap.set(key, { actual: avg, predicted: null });
-  }
-
-  const sortedActualDates = Array.from(dailyActuals.keys()).sort();
-  const lastActualDate = sortedActualDates[sortedActualDates.length - 1];
-  const lastPrice = historyRows[historyRows.length - 1].price_index;
-
-  if (mlPredictions && mlPredictions.length > 0) {
-    for (const p of mlPredictions) {
-      const key = p.date.split("T")[0];
-      if (dayMap.has(key)) {
-        dayMap.get(key)!.predicted = Math.round(p.predicted_price * 100) / 100;
-      } else {
-        dayMap.set(key, { actual: null, predicted: Math.round(p.predicted_price * 100) / 100 });
-      }
-    }
-  } else {
-    const recentPrices = historyRows.slice(-7).map((r: any) => r.price_index);
-    const slope = linearSlope(recentPrices);
-    const lastDate = new Date(lastActualDate);
-    for (let i = 1; i <= 30; i++) {
-      const futureDay = new Date(lastDate);
-      futureDay.setDate(futureDay.getDate() + i);
-      const key = futureDay.toISOString().split("T")[0];
-      const projectedPrice = Math.round((lastPrice + slope * i) * 100) / 100;
-      dayMap.set(key, { actual: null, predicted: projectedPrice });
-    }
-  }
-
-  if (lastActualDate && dayMap.has(lastActualDate)) {
-    const entry = dayMap.get(lastActualDate)!;
-    if (entry.predicted === null) {
-      entry.predicted = entry.actual;
-    }
-  }
-
-  const allDates = Array.from(dayMap.keys()).sort();
-  const result: any[] = [];
-  for (const dateStr of allDates) {
-    const entry = dayMap.get(dateStr)!;
-    const d = new Date(dateStr + "T00:00:00");
-    const label = `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
-    result.push({ date: dateStr, name: label, actual: entry.actual, predicted: entry.predicted });
-  }
-  return result;
-}
-
 // ── /products ────────────────────────────────────────────
 async function handleProducts() {
   const supabase = getSupabase()
@@ -337,7 +273,7 @@ async function handleProducts() {
   const sinceDate = oneYearAgo.toISOString().split("T")[0];
 
   const [productRows, priceRows, predRows] = await Promise.all([
-    fetchAllPaginated((s, e) => supabase.from("products").select("id, name, variant, origin, category, image_url, description").range(s, e)),
+    fetchAllPaginated((s, e) => supabase.from("products").select("id, name, variant, origin, category, unit, image_url, description").range(s, e)),
     fetchAllPaginated((s, e) => supabase.from("food_prices").select("product_name, product_category, product_variant, origin, price_index, report_date, unit").gte("report_date", sinceDate).order("report_date", { ascending: true }).range(s, e)),
     fetchAllPaginated((s, e) => supabase.from("predictions").select("product_id, prediction_date, predicted_price, lower_bound, upper_bound").order("prediction_date", { ascending: true }).range(s, e)),
   ]);
@@ -346,7 +282,7 @@ async function handleProducts() {
 
   const productMetaByKey = new Map<string, any>();
   for (const p of productRows) {
-    productMetaByKey.set(`${p.name}|${p.variant || ''}|${p.origin || ''}`, p);
+    productMetaByKey.set(productSeriesKey(p), p);
   }
 
   const predsByProductId = new Map<string, any[]>();
@@ -357,99 +293,86 @@ async function handleProducts() {
 
   const pricesByKey = new Map<string, any[]>();
   for (const row of priceRows) {
-    const key = `${row.product_name}|${row.product_variant || ''}|${row.origin || ''}`;
+    const key = productSeriesKey(row);
     if (!pricesByKey.has(key)) pricesByKey.set(key, []);
     pricesByKey.get(key)!.push(row);
   }
 
   const products: any[] = [];
 
-  for (const [_key, rows] of pricesByKey) {
+  for (const rows of pricesByKey.values()) {
     if (rows.length < 2) continue;
 
     const baseName = rows[0].product_name;
     const baseVariant = rows[0].product_variant || "";
     const baseOrigin = rows[0].origin || "";
 
-    const metaRow = productMetaByKey.get(`${baseName}|${baseVariant}|${baseOrigin}`);
+    const normalizedUnit = normalizeSeriesUnit(rows[rows.length - 1]);
+    const metaRow = productMetaByKey.get(
+      [baseName, baseVariant, baseOrigin, normalizedUnit].join("|"));
 
     const category = metaRow?.category || rows[0].product_category || "Other";
     const description = metaRow?.description || `${baseName} is a tracked commodity in the NCR agri-fishery market.`;
     const image = metaRow?.image_url || DEFAULT_PRODUCT_IMAGE;
 
     const currentPrice = rows[rows.length - 1].price_index;
-    const unit = rows[rows.length - 1].unit || "kg";
+    const unit = normalizedUnit;
     const prevIdx = Math.max(0, rows.length - 8);
     const previousPrice = rows[prevIdx].price_index;
 
     let allPredictions: any[] = [];
     if (metaRow) {
       allPredictions = predsByProductId.get(metaRow.id) || [];
-    } else {
-      for (const p of productRows) {
-        if (p.name === baseName) {
-          const preds = predsByProductId.get(p.id);
-          if (preds && preds.length > allPredictions.length) {
-            allPredictions = preds;
-          }
-        }
-      }
     }
 
-    let predictedPrice: number;
-    if (allPredictions.length > 0) {
-      const slice = allPredictions.slice(0, 7);
-      predictedPrice = Math.round((slice.reduce((sum: number, p: any) => sum + p.predicted_price, 0) / slice.length) * 100) / 100;
-    } else {
-      const recentPrices = rows.slice(-7).map((r: any) => r.price_index);
-      const slope = linearSlope(recentPrices);
-      predictedPrice = Math.round((currentPrice + slope * 7) * 100) / 100;
-    }
+    const lastActualDate = String(rows[rows.length - 1].report_date).split("T")[0];
+    const freshModelPredictions = selectFuturePredictions(allPredictions, lastActualDate);
+    const forecastSource = freshModelPredictions.length > 0 ? "model" : "trend_fallback";
+    const forecastDays = freshModelPredictions.length > 0
+      ? freshModelPredictions
+      : makeTrendFallback(
+          lastActualDate,
+          currentPrice,
+          rows.slice(-7).map((row: any) => row.price_index),
+        );
+    const predictedPrice = meanFirstWeek(forecastDays, currentPrice);
 
     const changePct = currentPrice === 0 ? 0 : ((predictedPrice - currentPrice) / currentPrice) * 100;
-    const sentiment = changePct > 1 ? "Bullish" : changePct < -1 ? "Bearish" : "Neutral";
+    const sentiment = forecastSource !== "model"
+      ? "Neutral"
+      : changePct > 1 ? "Bullish" : changePct < -1 ? "Bearish" : "Neutral";
     const sparklineData = rows.slice(-7).map((r: any) => ({ value: r.price_index }));
 
-    const mlPredForChart = allPredictions.length > 0 ? allPredictions.map((p: any) => ({ date: p.prediction_date, predicted_price: p.predicted_price })) : null;
-    const forecastData = buildForecastData(rows, predictedPrice, mlPredForChart);
-    const volume = `${(rows.length * 150).toLocaleString()} kg`;
+    const forecastData = buildForecastData(rows, forecastDays);
+    const volume = `${(rows.length * 150).toLocaleString()} ${unit}`;
 
     const dailyForecast: any[] = [];
-    const forecastDays = allPredictions.length > 0 ? allPredictions.slice(0, 30) : [];
-    
-    if (forecastDays.length > 0) {
-      for (let i = 0; i < forecastDays.length; i++) {
-        const p = forecastDays[i];
-        const prevPrice = i === 0 ? currentPrice : forecastDays[i - 1].predicted_price;
-        const diff = p.predicted_price - prevPrice;
-        const pct = (diff / prevPrice) * 100;
-        
-        let reasoning = "Market forces expected to stabilize with consistent inventory levels.";
+    for (let i = 0; i < forecastDays.length; i++) {
+      const p = forecastDays[i];
+      const prevPrice = i === 0 ? currentPrice : forecastDays[i - 1].predicted_price;
+      const diff = p.predicted_price - prevPrice;
+      const pct = prevPrice === 0 ? 0 : (diff / prevPrice) * 100;
+
+      let reasoning = "Model forecast is unavailable; this is a bounded statistical fallback and not a market recommendation.";
+      if (forecastSource === "model") {
+        reasoning = "Market forces expected to stabilize with consistent inventory levels.";
         if (pct > 0.5) reasoning = "Expected supply tightness combined with elevated local demand indicates upward pressure.";
         else if (pct < -0.5) reasoning = "Inflow of new harvests and eased supply chain bottlenecks are projected to ease prices.";
         else if (pct > 0.1) reasoning = "Slight uptick due to minor seasonal fluctuations and transport costs.";
         else if (pct < -0.1) reasoning = "Minor downward correction following market saturation in key trading posts.";
-        
-        dailyForecast.push({ date: p.prediction_date, predicted_price: p.predicted_price, reasoning });
       }
-    } else {
-      const recentPrices = rows.slice(-7).map((r: any) => r.price_index);
-      const slope = linearSlope(recentPrices);
-      for (let i = 1; i <= 30; i++) {
-        const d = new Date(rows[rows.length - 1].report_date);
-        d.setDate(d.getDate() + i);
-        const pPrice = Math.round((currentPrice + slope * i) * 100) / 100;
-        
-        let reasoning = "Market forces expected to stabilize with consistent inventory levels.";
-        if (slope > 0.5) reasoning = "Expected supply tightness combined with elevated local demand indicates upward pressure.";
-        else if (slope < -0.5) reasoning = "Inflow of new harvests and eased supply chain bottlenecks are projected to ease prices.";
-        
-        dailyForecast.push({ date: d.toISOString().split("T")[0], predicted_price: pPrice, reasoning });
-      }
+
+      dailyForecast.push({
+        date: p.date,
+        predicted_price: p.predicted_price,
+        lower_bound: p.lower_bound,
+        upper_bound: p.upper_bound,
+        reasoning,
+      });
     }
 
     products.push({
-      id: metaRow ? metaRow.id : slugify(`${baseName} ${baseVariant} ${baseOrigin}`),
+      id: metaRow ? metaRow.id : slugify(`${baseName} ${baseVariant} ${baseOrigin} ${unit}`),
       name: baseName,
       description,
       category,
@@ -465,11 +388,137 @@ async function handleProducts() {
       sparklineData,
       forecastData,
       dailyForecast,
+      forecastSource,
+      lastActualDate,
     });
   }
 
-  products.sort((a: any, b: any) => a.name.localeCompare(b.name));
-  return products;
+  return products.sort((a: any, b: any) => a.name.localeCompare(b.name));
+}
+
+async function handleDashboardProducts() {
+  const oneYearAgo = new Date();
+  oneYearAgo.setDate(oneYearAgo.getDate() - 365);
+  const { data, error } = await getSupabase().rpc("dashboard_product_summary", {
+    p_since_date: oneYearAgo.toISOString().split("T")[0],
+  });
+
+  // Keep the endpoint usable while the additive migration is being rolled out
+  // (or if the RPC is temporarily unavailable). The legacy response is more
+  // expensive, but preserves the dashboard contract instead of returning 500.
+  if (error || !data || !Array.isArray(data.rows) || data.requires_legacy) {
+    // Existing queries do not define ordering for ties. Preserve that path
+    // instead of silently picking a different metadata row/price/order.
+    return (await handleProducts()).map(({ id, name, category, image, variant, origin, currentPrice, predictedPrice, unit }) =>
+      ({ id, name, category, image, variant, origin, currentPrice, predictedPrice, unit }));
+  }
+  return mapDashboardSummary(data.rows, {
+    slugify,
+    defaultImage: DEFAULT_PRODUCT_IMAGE,
+  });
+}
+
+let qualityCache: { key: string; expiresAt: number; metrics: ReturnType<typeof realizedForecastQuality> } | null = null
+let qualityRequest: { modelRunId: string; promise: Promise<ReturnType<typeof realizedForecastQuality>> } | null = null
+
+async function loadRealizedQuality(supabase: ReturnType<typeof getSupabase>, modelRunId: string) {
+  if (qualityCache?.key.startsWith(`${modelRunId}|`) && qualityCache.expiresAt > Date.now()) return qualityCache.metrics
+  const actualResponse = await supabase.from("food_prices").select("report_date")
+    .order("report_date", { ascending: false }).limit(1).maybeSingle()
+  if (actualResponse.error) throw actualResponse.error
+  const latestActual = actualResponse.data?.report_date
+  if (!latestActual) return null
+  const since = new Date(`${latestActual}T00:00:00Z`)
+  since.setUTCDate(since.getUTCDate() - 45)
+  const sinceDate = since.toISOString().slice(0, 10)
+  since.setUTCDate(since.getUTCDate() - 30)
+  // All relevant vintages from this model; repeated publications must not
+  // displace older evidence as they did under the eight-run limit.
+  const runs = await fetchAllPaginated((s, e) => supabase.from("forecast_runs")
+    .select("id, generated_at").eq("model_run_id", modelRunId)
+    .gte("generated_at", since.toISOString()).order("generated_at", { ascending: false })
+    .order("id").range(s, e))
+  if (!runs.length) return null
+  const cacheKey = `${modelRunId}|${latestActual}|${runs[0].id}`
+  const firstRunDate = runs[runs.length - 1].generated_at.slice(0, 10)
+  const evaluationStart = firstRunDate > sinceDate ? firstRunDate : sinceDate
+  const runIds = runs.map((run) => run.id)
+  const [forecasts, products, prices] = await Promise.all([
+    fetchAllPaginated((s, e) => supabase.from("forecast_values")
+      .select("run_id, product_id, prediction_date, predicted_price, lower_bound, upper_bound")
+      .in("run_id", runIds).gte("prediction_date", evaluationStart).lte("prediction_date", latestActual)
+      .order("prediction_date").order("run_id").order("product_id").range(s, e)),
+    fetchAllPaginated((s, e) => supabase.from("products")
+      .select("id, name, variant, origin, category, unit").order("id").range(s, e)),
+    fetchAllPaginated((s, e) => supabase.from("food_prices")
+      .select("product_name, product_category, product_variant, origin, unit, report_date, price_index, source_pdf")
+      .gte("report_date", evaluationStart).lte("report_date", latestActual)
+      .order("report_date").order("product_name").order("product_variant")
+      .order("origin").order("unit").order("source_pdf")
+      .order("price_index").range(s, e)),
+  ])
+  const metrics = realizedForecastQuality(runs, forecasts, products, prices)
+  qualityCache = { key: cacheKey, expiresAt: Date.now() + 60_000, metrics }
+  return metrics
+}
+
+async function handleForecastStatus() {
+  const supabase = getSupabase()
+  let response = await supabase
+    .from("forecast_runs")
+    .select("model_run_id, generated_at, horizon, row_count, metrics")
+    .order("generated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  // Keep the timestamp endpoint usable during rollout before the additive
+  // metrics migration has been applied.
+  if (response.error && String(response.error.message).includes("metrics")) {
+    response = await supabase
+      .from("forecast_runs")
+      .select("model_run_id, generated_at, horizon, row_count")
+      .order("generated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  }
+  if (response.error) throw response.error
+  if (!response.data) return null
+
+  let metrics = response.data.metrics && typeof response.data.metrics === "object"
+    ? response.data.metrics
+    : null
+  const modelMetrics = metrics
+  try {
+    const modelRunId = response.data.model_run_id
+    if (!qualityRequest || qualityRequest.modelRunId !== modelRunId) {
+      const promise = loadRealizedQuality(supabase, modelRunId).finally(() => {
+        if (qualityRequest?.promise === promise) qualityRequest = null
+      })
+      qualityRequest = { modelRunId, promise }
+    }
+    const realizedMetrics = await qualityRequest.promise
+    if (realizedMetrics) {
+      // Score each observed product/date once. Prefer realized vintages to
+      // older holdout metrics for products with published forecasts.
+      metrics = {
+        processed_from: metrics?.processed_from,
+        processed_through: metrics?.processed_through,
+        processed_observed_rows: metrics?.processed_observed_rows,
+        processed_series_count: metrics?.processed_series_count,
+        ...realizedMetrics,
+      }
+    }
+  } catch (error) {
+    console.error("Unable to calculate realized forecast quality", error)
+  }
+  return {
+    modelRunId: response.data.model_run_id,
+    generatedAt: response.data.generated_at,
+    horizon: response.data.horizon,
+    rowCount: response.data.row_count,
+    metrics,
+    modelMetrics,
+  }
 }
 
 // ── /news ────────────────────────────────────────────────
@@ -538,6 +587,12 @@ serve(async (req) => {
     let result: any
 
     switch (path) {
+      case "dashboard-products":
+        result = await handleDashboardProducts()
+        break
+      case "forecast-status":
+        result = await handleForecastStatus()
+        break
       case "products":
         result = await handleProducts()
         break
@@ -562,6 +617,8 @@ serve(async (req) => {
           JSON.stringify({
             endpoints: [
               "/foodcast/products",
+              "/foodcast/dashboard-products",
+              "/foodcast/forecast-status",
               "/foodcast/news",
               "/foodcast/comparisons",
               "/foodcast/recommendations",

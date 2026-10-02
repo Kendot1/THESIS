@@ -10,6 +10,19 @@ from utils.logger import get_logger
 
 log = get_logger(__name__)
 
+# Fixed seasonal markers used by both batch and recursive feature generation.
+_PH_HOLIDAY_DOYS = [pd.Timestamp(2001, m, d).dayofyear
+                    for m, d in [(1, 1), (2, 25), (4, 9), (5, 1), (6, 12),
+                                 (8, 21), (11, 1), (11, 30), (12, 25), (12, 30)]]
+
+
+def holiday_proximity(day_of_year, month, day):
+    proximity = False
+    for holiday in _PH_HOLIDAY_DOYS:
+        distance = abs(day_of_year - holiday)
+        proximity = proximity | (np.minimum(distance, 365 - distance) <= 3)
+    return proximity | ((month == 3) & (day >= 25)) | ((month == 4) & (day <= 5))
+
 
 class TemporalFeatures:
     """Extract temporal features from the report_date column."""
@@ -51,10 +64,14 @@ class TemporalFeatures:
 
         # Holiday proximity (Christmas season affects food prices in PH)
         df["is_christmas_season"] = df["month"].isin([11, 12]).astype(int)
+        day = df["day_of_month"]
+        df["is_payday_window"] = (day.between(13, 17) | (day >= 28) | (day <= 2)).astype(int)
+        df["is_holiday_proximity"] = holiday_proximity(
+            df["day_of_year"], df["month"], day).astype(int)
 
         # Days since start of dataset (trend feature)
-        min_date = dt.min()
+        min_date = pd.Timestamp('2000-01-01')
         df["days_since_start"] = (dt - min_date).dt.days
 
-        log.info(f"Added {15} temporal features.")
+        log.info("Added 21 temporal features.")
         return df

@@ -1,0 +1,82 @@
+{
+  "same_row_calendar_baseline_comparison": {
+    "n": 30044,
+    "first": "2025-09-02 00:00:00",
+    "last": "2026-08-19 00:00:00",
+    "metrics": {
+      "lgbm": {
+        "rmse": 6.204166816453256,
+        "mae": 3.4200570867108233,
+        "mape": 2.444348875869109,
+        "r2": 0.9971891800659027,
+        "directional_accuracy": 60.62157549627234
+      },
+      "lstm": {
+        "rmse": 6.261829057229355,
+        "mae": 1.8335383835445629,
+        "mape": 1.14749913422183,
+        "r2": 0.9971366890974135,
+        "directional_accuracy": 46.75738794574688
+      },
+      "ensemble": {
+        "rmse": 5.447021284781991,
+        "mae": 2.361477447444907,
+        "mape": 1.6124972491703318,
+        "r2": 0.9978333725732785,
+        "directional_accuracy": 55.05703763585736
+      },
+      "naive_calendar": {
+        "rmse": 6.977310258565383,
+        "mae": 1.8201734123285849,
+        "mape": 1.1564727375543253,
+        "r2": 0.9964449790698193,
+        "directional_accuracy": 36.7915207042127
+      },
+      "seasonal_calendar": {
+        "rmse": 16.354808781118223,
+        "mae": 5.570700639062708,
+        "mape": 3.3391293549116052,
+        "r2": 0.9804675359646926,
+        "directional_accuracy": 47.06278631096739
+      },
+      "ma7_calendar": {
+        "rmse": 10.429392973999766,
+        "mae": 3.5276776442170528,
+        "mape": 2.131489911799545,
+        "r2": 0.9920570074481986,
+        "directional_accuracy": 47.35471121889877
+      }
+    }
+  },
+  "created_by_original_training_time": 42639,
+  "created_at_range": [
+    "2026-04-23 13:43:55.255273+00:00",
+    "2026-09-17 17:42:00.762103+00:00"
+  ],
+  "created_at_limitations": "Upstream copying preserves created_at, so this cannot recover the original immutable training snapshot.",
+  "source_pdf_date_diagnostics": {
+    "parsable": 151089,
+    "source_older_than_report": 37079,
+    "source_newer_than_report": 31,
+    "note": "URL-derived evidence of carried-forward/misdated rows; not a verified observed/imputed label."
+  },
+  "saved_model_integrity": {
+    "lightgbm_model.txt": {
+      "trees": 1472,
+      "original_offsets_match": false,
+      "lf_offsets_match": true,
+      "sha256_unchanged_from_probe": true
+    },
+    "lightgbm_residual_model.txt": {
+      "trees": 1,
+      "original_offsets_match": true,
+      "lf_offsets_match": true,
+      "sha256_unchanged_from_probe": true
+    }
+  },
+  "outlier_future_dependence": {
+    "past_spike_date": "2025-01-20 00:00:00",
+    "retained_with_future_100": false,
+    "retained_with_future_200": true
+  }
+}

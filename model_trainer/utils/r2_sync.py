@@ -1,105 +1,109 @@
-"""
-Sync artifacts directory with Cloudflare R2 for state persistence.
-"""
-
+"""Publish and restore immutable v2 bundles; upload the active pointer last."""
+import json
 import os
+import shutil
 import sys
-import boto3
+import tempfile
 from pathlib import Path
+
+import truststore
+
+# Use the operating-system trust store so R2 works on managed Windows hosts
+# whose organization CA is not bundled with Python/certifi.
+truststore.inject_into_ssl()
+
+import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
-load_dotenv()
+from config.settings import get_settings
+from models.model_store import ModelStore
 
-def get_s3_client():
-    account_id = os.getenv("CLOUDFLARE_R2_ACCOUNT_ID")
-    access_key = os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID")
-    secret_key = os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY")
-    
-    if not all([account_id, access_key, secret_key]):
-        print("Missing R2 credentials in environment variables.")
-        sys.exit(1)
-        
+load_dotenv(override=False)
+PREFIX = "model_artifacts_v2"
+
+
+def client():
+    required = {
+        "account": os.getenv("CLOUDFLARE_R2_ACCOUNT_ID"),
+        "access": os.getenv("CLOUDFLARE_R2_ACCESS_KEY_ID"),
+        "secret": os.getenv("CLOUDFLARE_R2_SECRET_ACCESS_KEY"),
+    }
+    if not all(required.values()):
+        raise RuntimeError("Missing Cloudflare R2 credentials")
     return boto3.client(
-        "s3",
-        endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_key,
-        region_name="auto"
-    )
+        "s3", endpoint_url=f"https://{required['account']}.r2.cloudflarestorage.com",
+        aws_access_key_id=required["access"], aws_secret_access_key=required["secret"],
+        region_name="auto")
 
-def upload_artifacts(bucket_name: str, local_dir: Path):
-    s3 = get_s3_client()
-    prefix = "model_artifacts/"
-    
-    print(f"Uploading {local_dir} to R2 bucket '{bucket_name}' under prefix '{prefix}'...")
-    
-    for root, dirs, files in os.walk(local_dir):
-        for file in files:
-            local_path = os.path.join(root, file)
-            rel_path = os.path.relpath(local_path, local_dir)
-            # R2 uses forward slashes
-            r2_key = prefix + rel_path.replace("\\", "/")
-            
-            print(f"  Uploading: {rel_path} -> {r2_key}")
-            s3.upload_file(local_path, bucket_name, r2_key)
-            
-    print("Upload complete.")
 
-def download_artifacts(bucket_name: str, local_dir: Path):
-    s3 = get_s3_client()
-    prefix = "model_artifacts/"
-    
-    print(f"Downloading from R2 bucket '{bucket_name}' prefix '{prefix}' to {local_dir}...")
-    
-    local_dir.mkdir(parents=True, exist_ok=True)
-    
-    try:
-        paginator = s3.get_paginator('list_objects_v2')
-        for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
-            if 'Contents' not in page:
-                continue
-                
-            for obj in page['Contents']:
-                r2_key = obj['Key']
-                # Skip exact prefix match if it's a "directory"
-                if r2_key == prefix or r2_key.endswith('/'):
-                    continue
-                    
-                rel_path = r2_key[len(prefix):]
-                local_path = local_dir / rel_path
-                
-                local_path.parent.mkdir(parents=True, exist_ok=True)
-                
-                print(f"  Downloading: {r2_key} -> {local_path}")
-                s3.download_file(bucket_name, r2_key, str(local_path))
-                
-        print("Download complete.")
-    except Exception as e:
-        print(f"Error during download: {e}")
-        print("This may be the first run, or the prefix doesn't exist yet. Proceeding with empty artifacts directory.")
+def upload(bucket, root):
+    store = ModelStore(root)
+    run = store.active_path()
+    metadata = json.loads((run / "metadata.json").read_text(encoding="utf-8"))
+    for name, expected in metadata["sha256"].items():
+        if store._digest(run / name) != expected:
+            raise ValueError(f"Refusing to upload corrupt artifact: {name}")
+    s3 = client()
+    for path in sorted(run.iterdir()):
+        if path.is_file():
+            s3.upload_file(str(path), bucket, f"{PREFIX}/runs/{run.name}/{path.name}")
+    s3.upload_file(str(store.manifest), bucket, f"{PREFIX}/manifest.json")
+    print(f"Uploaded and activated immutable bundle {run.name}")
+
+
+def download(bucket, root):
+    root = Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    s3 = client()
+    with tempfile.TemporaryDirectory(dir=root) as temporary:
+        staging = Path(temporary)
+        remote_manifest = staging / "manifest.json"
+        try:
+            s3.download_file(bucket, f"{PREFIX}/manifest.json", str(remote_manifest))
+        except ClientError as exc:
+            code = str(exc.response.get("Error", {}).get("Code", ""))
+            if code in {"404", "NoSuchKey", "NotFound"}:
+                print("No remote v2 bundle exists yet; a successful training run must create one.")
+                return
+            raise
+        manifest = json.loads(remote_manifest.read_text(encoding="utf-8"))
+        run_id = manifest["active_run"]
+        run_stage = staging / run_id
+        run_stage.mkdir()
+        response = s3.list_objects_v2(Bucket=bucket, Prefix=f"{PREFIX}/runs/{run_id}/")
+        for item in response.get("Contents", []):
+            name = Path(item["Key"]).name
+            if name:
+                s3.download_file(bucket, item["Key"], str(run_stage / name))
+        metadata = json.loads((run_stage / "metadata.json").read_text(encoding="utf-8"))
+        for name, expected in metadata["sha256"].items():
+            if ModelStore._digest(run_stage / name) != expected:
+                raise ValueError(f"Downloaded artifact failed hash verification: {name}")
+        destination = root / "runs" / run_id
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if destination.exists():
+            existing = json.loads((destination / "metadata.json").read_text(encoding="utf-8"))
+            if existing.get("sha256") != metadata.get("sha256"):
+                raise ValueError(f"Local bundle ID collision: {run_id}")
+            for name, expected in metadata["sha256"].items():
+                if ModelStore._digest(destination / name) != expected:
+                    raise ValueError(f"Existing local bundle is corrupt: {name}")
+        else:
+            shutil.move(str(run_stage), str(destination))
+        remote_manifest.replace(root / "manifest.json")
+    print(f"Restored and activated immutable bundle {run_id}")
+
 
 def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in ["upload", "download"]:
-        print("Usage: python r2_sync.py [upload|download]")
-        sys.exit(1)
-        
-    action = sys.argv[1]
-    
-    bucket_name = os.getenv("CLOUDFLARE_R2_BUCKET_NAME")
-    if not bucket_name:
-        print("CLOUDFLARE_R2_BUCKET_NAME is not set.")
-        sys.exit(1)
-        
-    project_root = Path(__file__).resolve().parent.parent
-    artifacts_dir = project_root / "artifacts"
-    
-    if action == "upload":
-        if not artifacts_dir.exists():
-            print(f"Artifacts directory {artifacts_dir} does not exist. Nothing to upload.")
-            sys.exit(1)
-        upload_artifacts(bucket_name, artifacts_dir)
-    elif action == "download":
-        download_artifacts(bucket_name, artifacts_dir)
+    if len(sys.argv) != 2 or sys.argv[1] not in {"upload", "download"}:
+        raise SystemExit("Usage: python -m utils.r2_sync [upload|download]")
+    bucket = os.getenv("CLOUDFLARE_R2_BUCKET_NAME")
+    if not bucket:
+        raise RuntimeError("CLOUDFLARE_R2_BUCKET_NAME is not set")
+    root = get_settings().artifacts_dir
+    upload(bucket, root) if sys.argv[1] == "upload" else download(bucket, root)
+
 
 if __name__ == "__main__":
     main()

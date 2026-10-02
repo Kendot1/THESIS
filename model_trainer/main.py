@@ -1,225 +1,200 @@
-"""
-FOODCAST Model Trainer -- CLI Entry Point.
-
-Runs as a pure ML pipeline (no web server needed).
-Continuous training is automated via GitHub Actions.
-
-Usage:
-  python main.py train --mode full
-  python main.py train --mode incremental
-  python main.py train --mode daily
-  python main.py predict --horizon monthly
-  python main.py schedule
-  python main.py evaluate
-"""
-
-import sys
+"""FOODCAST model training and forecast CLI."""
 import argparse
+import json
+import sys
+from pathlib import Path
 
-# Add project root to path
-sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent))
+import numpy as np
+import pandas as pd
 
-from utils.logger import get_logger
+sys.path.insert(0, str(Path(__file__).parent))
 
-log = get_logger("main")
+
+def _read_data(path):
+    path = Path(path)
+    if path.suffix.lower() == ".csv":
+        return pd.read_csv(path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(data, dict):
+        data = data.get("rows", data.get("data", data))
+    return pd.DataFrame(data)
 
 
 def cmd_train(args):
-    """Run training pipeline."""
     from pipeline.trainer import TrainingPipeline
-
+    raw = _read_data(args.data) if args.data else None
     pipeline = TrainingPipeline()
-
-    if args.mode == "full":
-        metrics = pipeline.run_full_training()
+    if args.recalibrate:
+        metrics = pipeline.recalibrate_candidate(
+            args.recalibrate, activate=not args.no_activate)
+    elif args.resume:
+        if raw is None:
+            raise ValueError("--resume requires --data for reproducible recovery")
+        metrics = pipeline.resume_candidate(args.resume, raw, activate=not args.no_activate)
+    elif args.mode == "full":
+        metrics = pipeline.run_full_training(raw, activate=not args.no_activate)
     elif args.mode == "incremental":
-        metrics = pipeline.run_incremental_training()
-    elif args.mode == "daily":
-        metrics = pipeline.run_daily()
+        metrics = pipeline.run_incremental_training(raw_df=raw, activate=not args.no_activate)
     else:
-        log.error(f"Unknown mode: {args.mode}")
-        sys.exit(1)
-
-    log.info(f"Training complete. Metrics: {metrics}")
-
-
-
+        if raw is not None:
+            metrics = pipeline.run_full_training(raw, activate=not args.no_activate)
+        else:
+            metrics = pipeline.run_daily()
+    print(json.dumps(metrics, indent=2))
 
 
-def cmd_schedule(args):
-    """Start the daily training scheduler."""
-    from pipeline.scheduler import PipelineScheduler
-
-    scheduler = PipelineScheduler(run_time=args.time)
-    log.info(f"Starting scheduler -- daily training at {args.time} UTC")
-    scheduler.start()
-
-
-def cmd_evaluate(args):
-    """Evaluate current model on test data."""
-    from data.fetcher import DataFetcher
-    from data.preprocessor import DataPreprocessor
-    from features.temporal import TemporalFeatures
-    from features.lag_features import LagFeatures
-    from features.categorical import CategoricalEncoder
-    from models.lightgbm_model import LightGBMModel
-    from pipeline.evaluator import ModelEvaluator
-
-    log.info("Running model evaluation ...")
-
-    fetcher = DataFetcher()
-    preprocessor = DataPreprocessor()
-
-    df = fetcher.fetch_all()
-    df = preprocessor.validate(df)
-
-    temporal = TemporalFeatures()
-    lags = LagFeatures()
-    encoder = CategoricalEncoder()
-
-    df = temporal.transform(df)
-    df = lags.transform(df)
-    df = encoder.transform(df)
-    df = df.dropna()
-
-    from models.lstm_model import LSTMModel
+def cmd_evaluate(_args):
+    from models.model_store import ModelStore
     from models.ensemble import EnsembleModel
-    import pandas as pd
-
-    train_df, test_df = preprocessor.time_split(df, test_size=0.15)
-
-    if test_df.empty:
-        log.error("No test data available.")
-        return
-
-    feature_cols = [
-        c for c in test_df.columns
-        if c not in [
-            "id", "report_date", "source_pdf", "created_at",
-            "product_name", "product_category", "product_variant",
-            "origin", "unit", "price_index",
-        ]
-        and test_df[c].dtype in ["int64", "float64", "int32", "float32"]
-    ]
-
-    lgbm = LightGBMModel()
-    lgbm.load()
-    
-    lstm = LSTMModel()
-    lstm.load()
-    
-    ensemble = EnsembleModel()
+    from pipeline.trainer import TrainingPipeline
+    from utils.metrics import compute_all_metrics
+    store = ModelStore()
+    path = store.active_path()
+    metadata = json.loads((path / "metadata.json").read_text(encoding="utf-8"))
+    forecasts = pd.read_csv(path / "test_forecasts.csv")
+    test_metrics = {
+        name: compute_all_metrics(forecasts.actual.to_numpy(), forecasts[name].to_numpy(),
+                                  forecasts.anchor.to_numpy())
+        for name in ['ensemble', 'lstm', 'lgbm', 'persistence', 'seasonal7', 'moving_average7']}
+    improvements = {
+        name: 100 * (test_metrics["persistence"][name]-test_metrics["ensemble"][name])
+        / test_metrics["persistence"][name]
+        for name in ["mae", "rmse", "mape"]
+    }
+    by_horizon = {}
+    for horizon in [1, 7, 14, 21, 30]:
+        rows = forecasts[forecasts.horizon == horizon]
+        if rows.empty:
+            continue
+        by_horizon[str(horizon)] = {
+            model: compute_all_metrics(rows.actual.to_numpy(), rows[model].to_numpy())
+            for model in ["ensemble", "persistence"]
+        }
+    ensemble = EnsembleModel(path)
     ensemble.load()
-
-    # Build sequences for LSTM inference
-    seq_len = lstm._seq_len
-    train_tail = train_df.groupby(["product_category", "product_name", "product_variant", "origin"]).tail(seq_len - 1)
-    test_full_df = pd.concat([train_tail, test_df]).sort_values(["product_category", "product_name", "product_variant", "origin", "report_date"]).reset_index(drop=True)
-
-    X_test_seq, _, test_indices, test_products, test_anchors = lstm.build_sequences_inference(test_full_df)
-
-    if len(X_test_seq) == 0:
-        log.error("Failed to build sequences for evaluation.")
-        return
-
-    # Get predictions
-    lstm_preds = lstm.predict(X_test_seq, products=test_products, current_prices=test_anchors)
-    X_test_lgbm = test_full_df.iloc[test_indices][feature_cols].copy()
-    lgbm_preds = lgbm.predict(X_test_lgbm)
-
-    # Blend
-    stats = ensemble.get_residual_stats()
-    lstm_w = stats.get("lstm_weight", 0.5) if stats else 0.5
-    lgbm_w = stats.get("lgbm_weight", 0.5) if stats else 0.5
-    hybrid_preds = (lstm_preds * lstm_w) + (lgbm_preds * lgbm_w)
-
-    eval_df = test_full_df.iloc[test_indices].copy()
-    eval_df["predicted_price"] = hybrid_preds
-
-    evaluator = ModelEvaluator()
-    report = evaluator.generate_report(eval_df)
-
-    log.info("=== EVALUATION REPORT (HYBRID ENSEMBLE) ===")
-    log.info(f"Overall: {report['overall']}")
-    log.info(f"Products evaluated: {report['n_products']}")
-    log.info(f"Total samples: {report['n_total_samples']}")
-
-    # Generate and save plots locally
-    try:
-        from utils.plotter import generate_evaluation_plots
-        import os
-        
-        plot_dir = os.path.join(os.path.dirname(__file__), "plots")
-        generate_evaluation_plots(eval_df, report, output_dir=plot_dir)
-    except ImportError as e:
-        log.warning(f"Could not generate plots. Ensure matplotlib is installed: {e}")
-
-
-
+    interval_metrics = TrainingPipeline._interval_metrics(ensemble, forecasts)
+    print(json.dumps({"run_id": path.name, "split": metadata["split"],
+                      "test_metrics": test_metrics,
+                      "improvement_over_persistence_percent": improvements,
+                      "key_horizons": by_horizon,
+                      "interval_coverage": interval_metrics,
+                      "evaluation_scope": metadata["metrics"]["evaluation_scope"]},
+                     indent=2))
 
 
 def cmd_predict(args):
-    """Batch-generate predictions for all products and write to Supabase."""
     from pipeline.prediction_writer import PredictionWriter
+    print(json.dumps(PredictionWriter().run(args.horizon), indent=2))
 
+
+def cmd_export_quality(args):
+    """Export measured capability for the exact active model, without database access."""
+    from models.model_store import ModelStore
+    from pipeline.prediction_writer import PredictionWriter
+    path = ModelStore().active_path()
+    forecasts = pd.read_csv(path/'test_forecasts.csv', usecols=['series'])
+    identities = {tuple(series.split('||')): series for series in forecasts.series.unique()}
+    metrics = PredictionWriter._quality_metrics(path.name, identities)
+    metrics.pop('product_metrics', None)
+    output = Path(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps({'modelRunId': path.name, 'metrics': metrics}, indent=2), encoding='utf-8')
+    print(f'Exported measured model capability to {output}')
+
+
+def cmd_check(_args):
+    from pipeline.prediction_writer import PredictionWriter
     writer = PredictionWriter()
-    stats = writer.run(horizon=args.horizon)
-    log.info(f"Prediction batch complete. Stats: {stats}")
+    writer.check_schema()
+    print('Forecast publication schema and product identity are ready.')
+
+
+def cmd_preview(args):
+    """Generate local forecasts without resolving product IDs or publishing."""
+    from data.fetcher import DataFetcher
+    from data.preprocessor import DataPreprocessor, SERIES_KEY
+    from models.registry import ModelRegistry
+    from pipeline.prediction_writer import HORIZON_MAP
+
+    raw = _read_data(args.data) if args.data else DataFetcher().fetch_all()
+    clean = DataPreprocessor().validate(raw)
+    registry = ModelRegistry.get().load_all()
+    query = (args.product or "").casefold()
+    results, failures = [], []
+    for key, series in clean.groupby(SERIES_KEY, sort=True):
+        identity = "||".join(map(str, key))
+        if query and query not in identity.casefold():
+            continue
+        try:
+            forecast = registry.engine.forecast(series, HORIZON_MAP[args.horizon])
+            lower, upper = registry.engine.ensemble.intervals(
+                forecast.point, forecast.anchor, confidence=args.confidence, category=key[0])
+            results.append({
+                "series": dict(zip(SERIES_KEY, key)),
+                "latest_observation": str(pd.Timestamp(series.report_date.max()).date()),
+                "anchor": round(float(forecast.anchor), 2),
+                "confidence": args.confidence,
+                "forecast": [{
+                    "date": str(np.datetime_as_string(date, unit="D")),
+                    "predicted_price": round(float(forecast.point[index]), 2),
+                    "lower_bound": round(float(lower[index]), 2),
+                    "upper_bound": round(float(upper[index]), 2),
+                } for index, date in enumerate(forecast.dates)],
+            })
+        except (ValueError, FileNotFoundError) as exc:
+            failures.append({"series": identity, "error": str(exc)})
+        if len(results) >= args.limit:
+            break
+    if not results:
+        detail = f" matching {args.product!r}" if args.product else ""
+        raise ValueError(f"No forecastable product series found{detail}; failures={failures[:1]}")
+    print(json.dumps({"model_run_id": registry.run_id,
+                      "published": False, "series": results,
+                      "failures": failures}, indent=2))
+
+
+def cmd_schedule(args):
+    from pipeline.scheduler import PipelineScheduler
+    PipelineScheduler(run_time=args.time).start()
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        prog="foodcast-trainer",
-        description="FOODCAST -- AI Food Price Forecasting Model Trainer",
-    )
-    subparsers = parser.add_subparsers(dest="command", help="Available commands")
-
-    # train
-    train_parser = subparsers.add_parser("train", help="Train the forecasting models")
-    train_parser.add_argument(
-        "--mode",
-        choices=["full", "incremental", "daily"],
-        default="incremental",
-        help="Training mode (default: incremental)",
-    )
-    train_parser.set_defaults(func=cmd_train)
-
-
-
-    # schedule
-    sched_parser = subparsers.add_parser("schedule", help="Start the daily scheduler")
-    sched_parser.add_argument(
-        "--time", default="02:00", help="Daily training time in HH:MM UTC (default: 02:00)"
-    )
-    sched_parser.set_defaults(func=cmd_schedule)
-
-    # evaluate
-    eval_parser = subparsers.add_parser("evaluate", help="Evaluate current model")
-    eval_parser.set_defaults(func=cmd_evaluate)
-
-
-
-    # predict (batch → Supabase)
-    predict_parser = subparsers.add_parser(
-        "predict", help="Batch-generate predictions for all products and write to Supabase"
-    )
-    predict_parser.add_argument(
-        "--horizon",
-        choices=["daily", "weekly", "monthly"],
-        default="monthly",
-        help="Forecast horizon (default: monthly)",
-    )
-    predict_parser.set_defaults(func=cmd_predict)
-
+    parser = argparse.ArgumentParser(prog="foodcast-trainer")
+    commands = parser.add_subparsers(dest="command", required=True)
+    train = commands.add_parser("train")
+    train.add_argument("--mode", choices=["full", "incremental", "daily"], default="full")
+    train.add_argument("--data", help="Offline JSON or CSV snapshot")
+    train.add_argument("--no-activate", action="store_true",
+                       help="Keep the completed bundle as a candidate")
+    train.add_argument("--resume", help="Resume calibration for a fitted candidate run ID")
+    train.add_argument("--recalibrate", help="Recalibrate a completed run from saved forecasts")
+    train.set_defaults(func=cmd_train)
+    evaluate = commands.add_parser("evaluate")
+    evaluate.set_defaults(func=cmd_evaluate)
+    export_quality = commands.add_parser('export-quality')
+    export_quality.add_argument('--output', required=True)
+    export_quality.set_defaults(func=cmd_export_quality)
+    check = commands.add_parser('check')
+    check.set_defaults(func=cmd_check)
+    predict = commands.add_parser("predict")
+    predict.add_argument("--horizon", choices=["daily", "weekly", "monthly"],
+                         default="monthly")
+    predict.set_defaults(func=cmd_predict)
+    preview = commands.add_parser("preview")
+    preview.add_argument("--horizon", choices=["daily", "weekly", "monthly"],
+                         default="weekly")
+    preview.add_argument("--confidence", type=float, choices=[.8, .9, .95], default=.95)
+    preview.add_argument("--product", help="Case-insensitive product or series filter")
+    preview.add_argument("--limit", type=int, default=5,
+                         help="Maximum matching product series to display")
+    preview.add_argument("--data", help="Optional offline JSON or CSV snapshot")
+    preview.set_defaults(func=cmd_preview)
+    schedule = commands.add_parser("schedule")
+    schedule.add_argument("--time", default="02:00")
+    schedule.set_defaults(func=cmd_schedule)
     args = parser.parse_args()
-
-    if args.command is None:
-        parser.print_help()
-        sys.exit(0)
-
     args.func(args)
 
 
 if __name__ == "__main__":
     main()
-

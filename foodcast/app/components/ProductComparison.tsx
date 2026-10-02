@@ -224,7 +224,7 @@ export default function ProductComparison({ products, open, onClose }: ProductCo
                           <p className="mt-1 text-xl font-black" style={{ color: COLORS[index] }}>{formatCurrency(product.predictedPrice)} <span className="text-xs font-semibold text-gray-400">/ {product.unit}</span></p>
                         </div>
                       </div>
-                      <div className={`mt-4 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${rising ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                      <div className={`mt-4 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${rising ? "bg-price-up/10 text-price-up" : "bg-price-down/10 text-price-down"}`}>
                         {rising ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
                         {rising ? "+" : ""}{change.toFixed(1)}% forecast change
                       </div>

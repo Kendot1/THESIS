@@ -111,6 +111,18 @@ const ForecastChart = ({
     return { actualData: actuals, predictedData: predictions };
   }, [data, period]);
 
+  const forecastRising = useMemo(() => {
+    const latestActual = actualData[actualData.length - 1]?.value;
+    const finalForecast = predictedData[predictedData.length - 1]?.value;
+    return latestActual !== undefined && finalForecast !== undefined
+      ? finalForecast >= latestActual
+      : true;
+  }, [actualData, predictedData]);
+  const forecastColor = forecastRising ? "#C62828" : "#2E7D32";
+  const forecastFill = forecastRising
+    ? "rgba(198, 40, 40, 0.12)"
+    : "rgba(46, 125, 50, 0.12)";
+
   // Create chart
   useEffect(() => {
     if (!containerRef.current) return;
@@ -180,17 +192,18 @@ const ForecastChart = ({
       title: tRef.current("actualPrice"),
     });
 
-    // One dashed green trace represents the forecast. Drawing the confidence
-    // limits as two more green lines made them look like extra predictions.
+    // Keep actuals neutral; forecast color communicates direction.
     const predictedSeries = chart.addSeries(AreaSeries, {
-      lineColor: "#22C55E",
-      topColor: "rgba(34, 197, 94, 0.12)",
-      bottomColor: "rgba(34, 197, 94, 0.01)",
+      lineColor: forecastColor,
+      topColor: forecastFill,
+      bottomColor: forecastRising
+        ? "rgba(198, 40, 40, 0.01)"
+        : "rgba(46, 125, 50, 0.01)",
       lineWidth: 3,
       lineStyle: LineStyle.Dashed,
       priceFormat: { type: "custom", formatter: (p: number) => `₱${p.toFixed(2)}` },
       crosshairMarkerRadius: 5,
-      crosshairMarkerBorderColor: "#22C55E",
+      crosshairMarkerBorderColor: forecastColor,
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
       title: tRef.current("predictedPrice"),
@@ -233,7 +246,7 @@ const ForecastChart = ({
 
         const priceRow = actualValue !== undefined
           ? `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#111827"></span><b>${tRef.current("actualPrice")}:</b><strong>₱${actualValue.toFixed(2)}</strong></div>`
-          : `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#22C55E"></span><b>${tRef.current("predictedPrice")}:</b><strong>₱${predictedValue!.toFixed(2)}</strong></div>`;
+          : `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${forecastColor}"></span><b>${tRef.current("predictedPrice")}:</b><strong>₱${predictedValue!.toFixed(2)}</strong></div>`;
         tooltip.innerHTML = `<div style="font-size:10px;font-weight:700;color:#9CA3AF;margin-bottom:4px">${formattedDate}</div>${priceRow}`;
 
         // Position tooltip
@@ -268,7 +281,7 @@ const ForecastChart = ({
       actualSeriesRef.current = null;
       predictedSeriesRef.current = null;
     };
-  }, [showGrid, height]);
+  }, [showGrid, height, forecastColor, forecastFill, forecastRising]);
 
   // Update series titles when language changes (without recreating the chart)
   useEffect(() => {
@@ -329,7 +342,7 @@ const ForecastChart = ({
             <span className="text-[10px] font-medium text-gray-900">{t("actualPrice")}</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-0 w-4 border-t-[3px] border-dashed border-[#22C55E]" />
+            <div className="h-0 w-4 border-t-[3px] border-dashed" style={{ borderColor: forecastColor }} />
             <span className="text-[10px] font-medium text-gray-900">{t("predictedPrice")}</span>
           </div>
         </div>

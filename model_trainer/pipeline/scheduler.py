@@ -62,20 +62,9 @@ class PipelineScheduler:
         schedule.every().day.at(self._run_time).do(self._daily_job)
 
     def _daily_job(self):
-        """Execute the full daily pipeline: scrape news -> train models."""
+        """Execute a fresh training run using UTC scheduling."""
         log.info(f"Daily job triggered at {datetime.now(timezone.utc).isoformat()}")
         try:
-            # Step 1: Scrape news
-            try:
-                import asyncio
-                from data.news_scraper import NewsScraper
-                scraper = NewsScraper()
-                stats = asyncio.run(scraper.run_daily_scrape())
-                log.info(f"News scraping complete -- {stats}")
-            except Exception as e:
-                log.warning(f"News scraping failed (continuing with training): {e}")
-
-            # Step 2: Train models (includes news features)
             from pipeline.trainer import TrainingPipeline
             pipeline = TrainingPipeline()
             metrics = pipeline.run_daily()

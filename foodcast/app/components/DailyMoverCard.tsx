@@ -95,8 +95,8 @@ const DailyMoverCard = ({
         {/* Trend badge on image */}
         <div className={`absolute top-3 right-3 flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full
           ${isUp
-            ? "bg-positive/25 text-green-100 border border-positive/10"
-            : "bg-negative/25 text-red-100 border border-negative/10"
+            ? "bg-price-up/80 text-white border border-price-up/30"
+            : "bg-price-down/80 text-white border border-price-down/30"
           }`}
         >
           {isUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
@@ -128,7 +128,7 @@ const DailyMoverCard = ({
           </div>
           <div className="text-right">
             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">{t("tomorrow")}</span>
-            <span className={`text-lg sm:text-xl font-bold tabular-nums leading-none ${isUp ? 'text-positive' : 'text-negative'}`}>
+            <span className={`text-lg sm:text-xl font-bold tabular-nums leading-none ${isUp ? 'text-price-up' : 'text-price-down'}`}>
               ₱{predictedPrice.toFixed(2)}
               {unit && <span className="text-xs sm:text-sm opacity-70 ml-1 font-medium">/ {unit}</span>}
             </span>
@@ -147,8 +147,8 @@ const DailyMoverCard = ({
         <div className="flex items-center justify-between mt-auto pt-2">
           <div className={`inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-bold px-2.5 py-1.5 rounded-lg
             ${isUp
-              ? 'text-positive bg-positive/8'
-              : 'text-negative bg-negative/8'
+              ? 'text-price-up bg-price-up/10'
+              : 'text-price-down bg-price-down/10'
             }`}
           >
             {isUp ? "+" : ""}₱{priceChange.toFixed(2)} {t("expectedChange")}

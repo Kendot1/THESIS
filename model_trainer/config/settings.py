@@ -8,17 +8,18 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List
 from dotenv import load_dotenv
+import truststore
 
-load_dotenv(override=True)
+truststore.inject_into_ssl()
+
+load_dotenv(override=False)
 
 # ──────────────────────────────────────────────
 # Base paths
 # ──────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-ARTIFACTS_DIR = PROJECT_ROOT / "artifacts"
-LOGS_DIR = PROJECT_ROOT / "logs"
-ARTIFACTS_DIR.mkdir(exist_ok=True)
-LOGS_DIR.mkdir(exist_ok=True)
+ARTIFACTS_DIR = Path(os.getenv('FOODCAST_ARTIFACTS_DIR', str(PROJECT_ROOT / 'artifacts_v2')))
+LOGS_DIR = Path(os.getenv('FOODCAST_LOGS_DIR', str(PROJECT_ROOT / 'logs')))
 
 
 @dataclass
@@ -53,6 +54,16 @@ class Settings:
     lag_days: List[int] = field(default_factory=lambda: [1, 2, 3, 7, 14, 30])
     rolling_windows: List[int] = field(default_factory=lambda: [3, 7, 14, 30])
     sequence_length: int = 30  # LSTM look-back window (days)
+    max_fill_days: int = 7
+    random_seed: int = field(
+        default_factory=lambda: int(os.getenv("FOODCAST_RANDOM_SEED", "42")))
+    evaluation_stride: int = 30
+    training_sequence_stride: int = field(
+        default_factory=lambda: int(os.getenv("FOODCAST_TRAINING_SEQUENCE_STRIDE", "1")))
+    lgbm_target_mode: str = field(
+        default_factory=lambda: os.getenv("FOODCAST_LGBM_TARGET_MODE", "relative").lower())
+    validation_size: float = 0.15
+    test_size: float = 0.15
 
     # ── Categories from the scraper schema ──
     product_categories: List[str] = field(default_factory=lambda: [
@@ -63,35 +74,37 @@ class Settings:
     # ── LightGBM Hyperparameters ──
     lgbm_params: dict = field(default_factory=lambda: {
         "objective": "regression",
+        "seed": 42,
+        "deterministic": True,
+        "force_col_wise": True,
+        "num_threads": 4,
         "metric": ["rmse", "mae"],
         "boosting_type": "gbdt",
-        "num_leaves": 63,                # Reduced from 127 to prevent overfitting on subsets
-        "learning_rate": 0.01,           # Increased from 0.005 for faster convergence
-        "feature_fraction": 0.8,         # Slightly increased
+        "num_leaves": 127,               # Increased for richer feature space
+        "learning_rate": 0.005,          # Slower for more precise convergence
+        "feature_fraction": 0.8,
         "bagging_fraction": 0.8,
         "bagging_freq": 5,
         "extra_trees": True,
-        "min_child_samples": 20,         # Increased from 10 to force more general leaves
-        "lambda_l1": 0.05,               # Tuned regularization
-        "lambda_l2": 0.2,                # Tuned regularization
+        "min_child_samples": 20,
+        "min_data_in_bin": 5,            # Better handling of sparse categorical features
+        "lambda_l1": 0.05,
+        "lambda_l2": 0.2,
         "verbose": -1,
-        "n_estimators": 1500,            # Adjusted for the new learning rate
-        "early_stopping_rounds": 100,    # Adjusted for the new learning rate
+        "n_estimators": 3000,            # More rounds for the lower learning rate
+        "early_stopping_rounds": 150,    # More patience for the lower learning rate
     })
 
     # ── LSTM Hyperparameters ──
-    lstm_hidden_size: int = 128          # Restored to 128 — orthogonal init + low dropout prevents overfitting
+    lstm_hidden_size: int = 128
     lstm_num_layers: int = 2
     lstm_dropout: float = 0.2            # Increased slightly to prevent overfitting with custom loss
     lstm_learning_rate: float = 0.001
-    lstm_epochs: int = 200               # Increased epochs to give it time to learn directional signals
-    lstm_batch_size: int = 64
-    lstm_patience: int = 35              # Increased patience
-
-    # ── Ensemble ──
-    ensemble_method: str = "stacking"  # "weighted_average" | "stacking"
-    lgbm_weight: float = 0.6
-    lstm_weight: float = 0.4
+    lstm_epochs: int = field(
+        default_factory=lambda: int(os.getenv("FOODCAST_LSTM_EPOCHS", "80")))
+    lstm_batch_size: int = 256
+    lstm_patience: int = field(
+        default_factory=lambda: int(os.getenv("FOODCAST_LSTM_PATIENCE", "12")))
 
     # ── Drift Detection ──
     psi_threshold: float = 0.2  # Population Stability Index threshold

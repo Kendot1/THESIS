@@ -1,0 +1,177 @@
+[
+  {
+    "path": "model_trainer\\config\\__init__.py",
+    "bytes": 46,
+    "sha256": "4fc08f36f7c863bc06a2ceb4b42ce9bb1cf886186e8b4d23d831ae09c799a54a"
+  },
+  {
+    "path": "model_trainer\\config\\settings.py",
+    "bytes": 4721,
+    "sha256": "483e5f77ef96969ac9b1d28a5893177d85d0d0bc66decbfee33c5c4a9519651e"
+  },
+  {
+    "path": "model_trainer\\data\\__init__.py",
+    "bytes": 117,
+    "sha256": "221ed6bac8d22341edd1a88e7eb4eb9bc34e36afb7b7d9c370b1454ac1a7f945"
+  },
+  {
+    "path": "model_trainer\\data\\fetcher.py",
+    "bytes": 4870,
+    "sha256": "b6b64349e0930a8454f0a9aa634560b5faf60b47d042f5ed3093c49cab01b4e0"
+  },
+  {
+    "path": "model_trainer\\data\\news_fetcher.py",
+    "bytes": 7428,
+    "sha256": "186b0f948d530f6ab7ec9755bafa330b4d849887af29c1eb4504fc37452ac6c3"
+  },
+  {
+    "path": "model_trainer\\data\\preprocessor.py",
+    "bytes": 8146,
+    "sha256": "9c15a8ac181b78773a7903aa741543c1703472cf6fe08d2c0e417d3dda96fac9"
+  },
+  {
+    "path": "model_trainer\\features\\__init__.py",
+    "bytes": 175,
+    "sha256": "133898e957a451a3ccbb45500949612f61e3da305ad20a35ae9292f3eb3bc19e"
+  },
+  {
+    "path": "model_trainer\\features\\categorical.py",
+    "bytes": 4062,
+    "sha256": "9f5fc495c78717d93d4c75bbf5700a5df3e9be053b0f67c55270731892719a5d"
+  },
+  {
+    "path": "model_trainer\\features\\lag_features.py",
+    "bytes": 5778,
+    "sha256": "b309c6fbbb5c6af84181815e827ee10db313c74c8ad023ad0bedc9a20192c5bc"
+  },
+  {
+    "path": "model_trainer\\features\\news_sentiment.py",
+    "bytes": 9945,
+    "sha256": "ed129693a88fb61e28a6c94aeac2d0dcc26086f0d0a6115785af0ec8753857a7"
+  },
+  {
+    "path": "model_trainer\\features\\temporal.py",
+    "bytes": 2302,
+    "sha256": "09f7637d0085a4d832ebcb25849feb714cb699152210d7b50eb38ffbbaece7c2"
+  },
+  {
+    "path": "model_trainer\\main.py",
+    "bytes": 6889,
+    "sha256": "296f05ee69d0040fa939fe86e8087822cfe29fb13cec30a994f6a3fbbd26ef95"
+  },
+  {
+    "path": "model_trainer\\migrations\\003_metadata_and_lean_predictions.sql",
+    "bytes": 2191,
+    "sha256": "4f9d18d75ed40d5fa54bd840224f5bc14a4c6ddbcbc51a2e85014c06786b4804"
+  },
+  {
+    "path": "model_trainer\\models\\__init__.py",
+    "bytes": 152,
+    "sha256": "4da70d1f65b0d3670fa349991c8d58c2238937cc545a30001d34e1c665fb1f2d"
+  },
+  {
+    "path": "model_trainer\\models\\ensemble.py",
+    "bytes": 8036,
+    "sha256": "ad4f79f7f9f90eefcb020c0cc11a11ae19521b84a28449665919efc14f564184"
+  },
+  {
+    "path": "model_trainer\\models\\lightgbm_model.py",
+    "bytes": 15683,
+    "sha256": "e08e3ca1d6f74cd8535167cd98e7cdeb502ad29471339594cac22c35724e875b"
+  },
+  {
+    "path": "model_trainer\\models\\lstm_model.py",
+    "bytes": 28151,
+    "sha256": "4bf0e5ce36552426bb7c2fc66f30b64162b0e61845d5efb639a7c74f2250962b"
+  },
+  {
+    "path": "model_trainer\\models\\model_store.py",
+    "bytes": 5397,
+    "sha256": "28b6167f176c7c81dedfece7cfeee33e0ecafb89099ee98e6b6e45359c1e8a72"
+  },
+  {
+    "path": "model_trainer\\models\\registry.py",
+    "bytes": 2501,
+    "sha256": "12457568d5aa9354f812235de1bb54a76c1bcf69c233b2536c70eb52c86534d8"
+  },
+  {
+    "path": "model_trainer\\pipeline\\__init__.py",
+    "bytes": 163,
+    "sha256": "6e2315762dda33fd2c2ed82d3388959430a33693c8f20d91bfacab171e307966"
+  },
+  {
+    "path": "model_trainer\\pipeline\\drift_detector.py",
+    "bytes": 6380,
+    "sha256": "9222b0b4972adc6745f92155f9a7e1ddb46581ef52e35f1fec475043a3f1f4e7"
+  },
+  {
+    "path": "model_trainer\\pipeline\\evaluator.py",
+    "bytes": 4107,
+    "sha256": "5f6329c996a4142638b9c78cf9865eddb405c341eac567cd78b93e4547bd38b9"
+  },
+  {
+    "path": "model_trainer\\pipeline\\prediction_writer.py",
+    "bytes": 13638,
+    "sha256": "1a18f02000a5bba5413a25d9ed0293bff822d67b6a082cebca98e1583ac79f37"
+  },
+  {
+    "path": "model_trainer\\pipeline\\reasoning.py",
+    "bytes": 12173,
+    "sha256": "2d3dc6d944a953ca5f0c19dfcb45fc50e12ad74b1d8a1a76f01984c01c170e75"
+  },
+  {
+    "path": "model_trainer\\pipeline\\scheduler.py",
+    "bytes": 2906,
+    "sha256": "ef3e6f6da2f4fa602a4ed3447751d84d0c03bf8c058e20ee00b28b06a9348054"
+  },
+  {
+    "path": "model_trainer\\pipeline\\trainer.py",
+    "bytes": 28359,
+    "sha256": "308cd5372b73f9757ca116240315677a2e5c595dec4b6a2ea9c5ffa97f7fc55d"
+  },
+  {
+    "path": "model_trainer\\README.md",
+    "bytes": 4905,
+    "sha256": "56af1a42e49b8e1c31318575f67ba0fc39ccb17f7335eaa83ca30da776a9df24"
+  },
+  {
+    "path": "model_trainer\\requirements.txt",
+    "bytes": 401,
+    "sha256": "6caae48f1d95eabff2795923bd05d7474bfc29cc0a95c6f838ce65de314c77e0"
+  },
+  {
+    "path": "model_trainer\\seed_metadata.py",
+    "bytes": 6639,
+    "sha256": "0f3147efbdb454493972da9aff16fc540258c980928de8528dd468b18578c4ca"
+  },
+  {
+    "path": "model_trainer\\utils\\__init__.py",
+    "bytes": 130,
+    "sha256": "2317c2307ba7985f2ccc8d4e65e0c9f5e224923a7536496ce1d7391cfd21796e"
+  },
+  {
+    "path": "model_trainer\\utils\\logger.py",
+    "bytes": 2431,
+    "sha256": "03f424f0fe563a9c20460885cb796fd093198201b1e7169c173c9c16c2f0e1ed"
+  },
+  {
+    "path": "model_trainer\\utils\\metrics.py",
+    "bytes": 2492,
+    "sha256": "9ab830b72308e2d091309911cc51ad3e70165626d8abc6a14eefc31198402f7d"
+  },
+  {
+    "path": "model_trainer\\utils\\plotter.py",
+    "bytes": 6315,
+    "sha256": "7cf4e07c541ee5ef11f366f34abeb1cadb0603d0d66212b13f1f372527961c64"
+  },
+  {
+    "path": "model_trainer\\utils\\plotting.py",
+    "bytes": 21776,
+    "sha256": "495576ae5fdbce83508c39858777898f14389fae69ce68d82abee5207cee7a32"
+  },
+  {
+    "path": "model_trainer\\utils\\r2_sync.py",
+    "bytes": 3705,
+    "sha256": "7e1eb0bf5960061f3fabc45d2d01f63c7a21425576f0c9566b6f8b5e8397a358"
+  }
+]

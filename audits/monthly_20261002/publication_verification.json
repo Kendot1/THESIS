@@ -1,0 +1,249 @@
+{
+  "forecast_run_id": "33b3eb2e-8b6b-4b37-bfe4-6e8b46bbbf20",
+  "model_run_id": "20261001T025925Z_0661960a",
+  "series": 119,
+  "model_series": 96,
+  "fallback_series": 23,
+  "fallback_details": [
+    {
+      "series": [
+        "Corn",
+        "Corn Cracked",
+        "Yellow (Food Grade)",
+        "Local",
+        "kg"
+      ],
+      "reason": "Insufficient causal feature history"
+    },
+    {
+      "series": [
+        "Corn",
+        "Corn Grits",
+        "White",
+        "Local",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Corn",
+        "Corn Grits",
+        "Yellow",
+        "Local",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Corn",
+        "Yellow Sweet Corn",
+        "Cob",
+        "Local",
+        "piece"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Fish",
+        "Bonito",
+        "Standard",
+        "Local",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Fish",
+        "Indian Mackerel",
+        "Standard",
+        "Imported",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Fish",
+        "Round Scad",
+        "Standard",
+        "Imported",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Fish",
+        "Salmon Head",
+        "Standard",
+        "Local",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Fruits",
+        "Papaya",
+        "Standard",
+        "Local",
+        "piece"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Livestock",
+        "Pork",
+        "Frozen Belly",
+        "Imported",
+        "kg"
+      ],
+      "reason": "Insufficient causal feature history"
+    },
+    {
+      "series": [
+        "Livestock",
+        "Pork",
+        "Frozen Belly",
+        "Local",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Livestock",
+        "Pork",
+        "Frozen Ham",
+        "Local",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Livestock",
+        "Pork",
+        "Frozen Kasim",
+        "Imported",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Livestock",
+        "Pork",
+        "Frozen Liempo",
+        "Imported",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Poultry",
+        "Chicken",
+        "Whole",
+        "Local",
+        "piece"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Rice",
+        "Rice",
+        "Regular Milled",
+        "Imported",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Vegetables",
+        "Cabbage",
+        "Standard",
+        "Local",
+        "kg"
+      ],
+      "reason": "Insufficient causal feature history"
+    },
+    {
+      "series": [
+        "Vegetables",
+        "Ginger",
+        "Standard",
+        "Imported",
+        "kg"
+      ],
+      "reason": "Insufficient causal feature history"
+    },
+    {
+      "series": [
+        "Vegetables",
+        "Red Onion",
+        "Big",
+        "Imported",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Vegetables",
+        "Red Onion",
+        "Medium",
+        "Imported",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Vegetables",
+        "Red Onion",
+        "Standard",
+        "Imported",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Vegetables",
+        "White Onion",
+        "Big",
+        "Imported",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    },
+    {
+      "series": [
+        "Vegetables",
+        "White Onion",
+        "Medium",
+        "Imported",
+        "kg"
+      ],
+      "reason": "Incomplete causal features for live LSTM forecast"
+    }
+  ],
+  "rows_written": 3570,
+  "quality_metrics_published": false,
+  "database_result": 3570,
+  "verified_at": "2026-10-02T04:45:48.310462+00:00",
+  "verified_rows": 3570,
+  "compatibility_table_matches": true,
+  "current_month_series": 87,
+  "current_month_rows": 2610,
+  "current_month_fallback_series": 1,
+  "older_history_series": 32
+}

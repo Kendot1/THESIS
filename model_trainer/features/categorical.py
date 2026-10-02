@@ -22,7 +22,7 @@ class CategoricalEncoder:
     Saves / loads mapping files so inference uses the same encoding.
     """
 
-    CATEGORICAL_COLUMNS = ["product_category", "product_name", "product_variant", "origin"]
+    CATEGORICAL_COLUMNS = ["product_category", "product_name", "product_variant", "origin", "unit"]
 
     def __init__(self):
         cfg = get_settings()
@@ -83,6 +83,7 @@ class CategoricalEncoder:
     # Persistence
     # ──────────────────────────────────────────────
     def _save_mappings(self):
+        self._save_path.parent.mkdir(parents=True, exist_ok=True)
         with open(self._save_path, "w", encoding="utf-8") as f:
             json.dump(self._mappings, f, indent=2)
         log.info(f"Saved categorical mappings → {self._save_path}")
@@ -93,4 +94,4 @@ class CategoricalEncoder:
                 self._mappings = json.load(f)
             log.info(f"Loaded categorical mappings from {self._save_path}")
         else:
-            log.warning("No saved mappings found -- call fit_transform() first.")
+            raise FileNotFoundError('No categorical mappings; train a complete v2 bundle first')

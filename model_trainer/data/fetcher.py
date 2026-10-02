@@ -106,10 +106,12 @@ class DataFetcher:
     ) -> list:
         """
         Supabase caps responses at 1 000 rows by default.
-        This paginates through the full table using offset-based pagination.
+        This paginates with a stable (report_date, id) cursor so concurrent
+        inserts cannot shift later pages and silently duplicate or skip rows.
         """
         all_rows: list = []
-        offset = 0
+        last_date = None
+        last_id = None
 
         while True:
             query = self._client.table(self._table).select("*")
@@ -117,10 +119,17 @@ class DataFetcher:
             if since_date:
                 query = query.gte("report_date", since_date)
 
+            if last_date is not None:
+                query = query.or_(
+                    f"report_date.gt.{last_date},"
+                    f"and(report_date.eq.{last_date},id.gt.{last_id})"
+                )
+
             query = (
                 query
                 .order("report_date", desc=False)
-                .range(offset, offset + page_size - 1)
+                .order("id", desc=False)
+                .limit(page_size)
             )
 
             resp = query.execute()
@@ -129,6 +138,7 @@ class DataFetcher:
 
             if len(batch) < page_size:
                 break
-            offset += page_size
+            last_date = batch[-1]["report_date"]
+            last_id = batch[-1]["id"]
 
         return all_rows

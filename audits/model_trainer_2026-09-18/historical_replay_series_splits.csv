@@ -1,0 +1,197 @@
+product_category,product_name,product_variant,origin,split,rows,start,end,unique_dates,series
+Corn,Corn,White,Local,train,508,2023-12-23,2025-05-29,508,1
+Corn,Corn,Yellow,Local,train,369,2023-12-25,2025-01-15,369,1
+Corn,Corn Cracked,Feed Grade,Local,train,211,2024-06-01,2025-01-15,211,1
+Corn,Corn Cracked,Yellow (Feed Grade),Local,train,76,2025-02-18,2025-05-16,76,1
+Corn,Corn Grits,Feed Grade,Local,train,321,2024-06-01,2025-05-29,321,1
+Corn,Corn Grits,White,Local,train,76,2024-06-01,2024-12-09,76,1
+Corn,Corn Grits,Yellow,Local,train,31,2024-06-05,2025-01-14,31,1
+Corn,Yellow Sweet Corn,Cob,Local,train,104,2025-02-15,2025-05-29,104,1
+Fish,Bonito,Standard,Local,train,13,2024-05-18,2024-05-31,13,1
+Fish,Indian Mackerel,Standard,Imported,train,3,2024-08-08,2024-10-11,3,1
+Fish,Indian Mackerel,Standard,Local,train,1832,2019-11-09,2025-05-29,1832,1
+Fish,Milkfish,Standard,Local,train,2021,2019-11-09,2025-05-29,2021,1
+Fish,Round Scad,Standard,Imported,train,1195,2019-11-09,2025-05-01,1195,1
+Fish,Round Scad,Standard,Local,train,2018,2019-11-09,2025-05-29,2018,1
+Fish,Salmon Head,Standard,Local,train,370,2024-05-16,2025-05-29,370,1
+Fish,Sardines,Standard,Local,train,373,2024-05-16,2025-05-29,373,1
+Fish,Squid,Standard,Local,train,373,2024-05-16,2025-05-29,373,1
+Fish,Tilapia,Standard,Local,train,2016,2019-11-09,2025-05-29,2016,1
+Fish,Yellow-Fin Tuna,Standard,Local,train,374,2024-05-16,2025-05-29,374,1
+Fruits,Avocado,Standard,Local,train,162,2024-12-19,2025-05-29,162,1
+Fruits,Banana,Lakatan,Local,train,2020,2019-11-09,2025-05-29,2020,1
+Fruits,Banana,Latundan,Local,train,2017,2019-11-09,2025-05-29,2017,1
+Fruits,Banana,Saba,Local,train,162,2024-12-19,2025-05-29,162,1
+Fruits,Calamansi,Standard,Local,train,2017,2019-11-09,2025-05-29,2017,1
+Fruits,Mango,Carabao,Local,train,1998,2019-11-09,2025-05-29,1998,1
+Fruits,Melon,Standard,Local,train,162,2024-12-19,2025-05-29,162,1
+Fruits,Papaya,Standard,Local,train,2018,2019-11-09,2025-05-29,2018,1
+Fruits,Pomelo,Standard,Local,train,191,2024-11-19,2025-05-29,191,1
+Fruits,Watermelon,Standard,Local,train,174,2024-12-07,2025-05-29,174,1
+Livestock,Beef,Brisket,Local,train,2019,2019-11-09,2025-05-29,2019,1
+Livestock,Beef,Rump,Local,train,2018,2019-11-09,2025-05-29,2018,1
+Livestock,Pork,Belly,Local,train,2021,2019-11-09,2025-05-29,2021,1
+Livestock,Pork,Frozen Kasim,Imported,train,24,2025-02-17,2025-05-20,24,1
+Livestock,Pork,Frozen Kasim,Local,train,144,2024-04-08,2025-05-29,144,1
+Livestock,Pork,Frozen Liempo,Imported,train,24,2025-02-17,2025-05-20,24,1
+Livestock,Pork,Frozen Liempo,Local,train,144,2024-04-08,2025-05-29,144,1
+Livestock,Pork,Ham,Local,train,2021,2019-11-09,2025-05-29,2021,1
+Oils,Coconut Oil,1L,Local,train,1349,2021-09-08,2025-05-29,1349,1
+Oils,Coconut Oil,350ml,Local,train,1348,2021-09-08,2025-05-29,1348,1
+Oils,Palm Oil,1L,Local,train,2019,2019-11-09,2025-05-29,2019,1
+Oils,Palm Oil,350ml,Local,train,2014,2019-11-09,2025-05-29,2014,1
+Poultry,Chicken,Whole,Local,train,2021,2019-11-09,2025-05-29,2021,1
+Poultry,Chicken Egg,Brown (Extra Large),Local,train,336,2024-06-01,2025-05-29,336,1
+Poultry,Chicken Egg,Brown (Large),Local,train,358,2024-06-01,2025-05-29,358,1
+Poultry,Chicken Egg,Brown (Medium),Local,train,358,2024-06-01,2025-05-29,358,1
+Poultry,Chicken Egg,White (Extra Large),Local,train,356,2024-06-01,2025-05-29,356,1
+Poultry,Chicken Egg,White (Extra Small),Local,train,350,2024-06-04,2025-05-29,350,1
+Poultry,Chicken Egg,White (Jumbo),Local,train,356,2024-06-01,2025-05-29,356,1
+Poultry,Chicken Egg,White (Large),Local,train,358,2024-06-01,2025-05-29,358,1
+Poultry,Chicken Egg,White (Medium),Local,train,2021,2019-11-09,2025-05-29,2021,1
+Poultry,Chicken Egg,White (Pewee),Local,train,353,2024-06-01,2025-05-29,353,1
+Poultry,Chicken Egg,White (Small),Local,train,355,2024-06-01,2025-05-29,355,1
+Rice,Rice,Kadiwa Well Milled (RFA25),Local,train,137,2025-01-13,2025-05-29,137,1
+Rice,Rice,Premium,Imported,train,1987,2019-11-09,2025-05-29,1987,1
+Rice,Rice,Premium,Local,train,2018,2019-11-09,2025-05-29,2018,1
+Rice,Rice,Regular Milled,Imported,train,1147,2019-11-10,2025-05-29,1147,1
+Rice,Rice,Regular Milled,Local,train,1952,2019-11-09,2025-05-29,1952,1
+Rice,Rice,Special,Imported,train,2001,2019-11-09,2025-05-29,2001,1
+Rice,Rice,Special,Local,train,2018,2019-11-09,2025-05-29,2018,1
+Rice,Rice,Well Milled,Imported,train,1819,2019-11-09,2025-05-29,1819,1
+Rice,Rice,Well Milled,Local,train,2001,2019-11-09,2025-05-29,2001,1
+Sugar,Sugar,Brown,Local,train,2019,2019-11-09,2025-05-29,2019,1
+Sugar,Sugar,Refined,Local,train,2018,2019-11-09,2025-05-29,2018,1
+Sugar,Sugar,Washed,Local,train,2018,2019-11-09,2025-05-29,2018,1
+Vegetables,Baguio Beans,Standard,Local,train,2012,2019-11-09,2025-05-29,2012,1
+Vegetables,Bell Pepper,Green,Local,train,416,2024-03-17,2025-05-29,416,1
+Vegetables,Bell Pepper,Red,Local,train,414,2024-03-17,2025-05-29,414,1
+Vegetables,Bittergourd,Standard,Local,train,2013,2019-11-09,2025-05-29,2013,1
+Vegetables,Broccoli,Standard,Local,train,373,2024-05-16,2025-05-29,373,1
+Vegetables,Cabbage,Rare Ball,Local,train,479,2024-02-01,2025-05-29,479,1
+Vegetables,Cabbage,Scorpio,Local,train,2011,2019-11-09,2025-05-29,2011,1
+Vegetables,Cabbage,Wonder Ball,Local,train,479,2024-02-01,2025-05-29,479,1
+Vegetables,Carrot,Standard,Local,train,2021,2019-11-09,2025-05-29,2021,1
+Vegetables,Cauliflower,Standard,Local,train,162,2024-12-19,2025-05-29,162,1
+Vegetables,Celery,Standard,Local,train,162,2024-12-19,2025-05-29,162,1
+Vegetables,Chayote,Standard,Local,train,2013,2019-11-09,2025-05-29,2013,1
+Vegetables,Chili,Labuyo,Local,train,2005,2019-11-09,2025-05-29,2005,1
+Vegetables,Eggplant,Standard,Local,train,2021,2019-11-09,2025-05-29,2021,1
+Vegetables,Garlic,Standard,Imported,train,1989,2019-11-09,2025-05-29,1989,1
+Vegetables,Garlic,Standard,Local,train,1233,2019-11-12,2025-05-29,1233,1
+Vegetables,Ginger,Standard,Local,train,2008,2019-11-09,2025-05-29,2008,1
+Vegetables,Lettuce,Green Ice,Local,train,191,2024-11-19,2025-05-29,191,1
+Vegetables,Lettuce,Iceberg,Local,train,162,2024-12-19,2025-05-29,162,1
+Vegetables,Lettuce,Romaine,Local,train,191,2024-11-19,2025-05-29,191,1
+Vegetables,Pechay Baguio,Standard,Local,train,1998,2019-11-09,2025-05-29,1998,1
+Vegetables,Pechay Tagalog,Standard,Local,train,2019,2019-11-09,2025-05-29,2019,1
+Vegetables,Potato,White,Local,train,2016,2019-11-09,2025-05-29,2016,1
+Vegetables,Red Onion,Big,Imported,train,4,2023-03-14,2023-03-28,4,1
+Vegetables,Red Onion,Medium,Imported,train,121,2023-03-30,2025-03-03,121,1
+Vegetables,Red Onion,Standard,Imported,train,651,2019-11-19,2023-06-22,651,1
+Vegetables,Red Onion,Standard,Local,train,1987,2019-11-09,2025-05-29,1987,1
+Vegetables,Squash,Standard,Local,train,2020,2019-11-09,2025-05-29,2020,1
+Vegetables,String Beans,Standard,Local,train,2021,2019-11-09,2025-05-29,2021,1
+Vegetables,Tomato,Standard,Local,train,2012,2019-11-09,2025-05-29,2012,1
+Vegetables,White Onion,Big,Imported,train,4,2023-03-14,2023-03-28,4,1
+Vegetables,White Onion,Medium,Imported,train,558,2023-03-30,2025-05-29,558,1
+Vegetables,White Onion,Standard,Imported,train,1078,2019-11-09,2023-04-03,1078,1
+Vegetables,White Onion,Standard,Local,train,1464,2019-11-13,2025-05-29,1464,1
+Corn,Corn,White,Local,validation,364,2025-05-30,2026-05-28,364,1
+Corn,Corn Cracked,Yellow (Feed Grade),Local,validation,295,2025-05-31,2026-05-28,295,1
+Corn,Corn Grits,Feed Grade,Local,validation,364,2025-05-30,2026-05-28,364,1
+Corn,Yellow Sweet Corn,Cob,Local,validation,364,2025-05-30,2026-05-28,364,1
+Fish,Alumahan,Standard,Local,validation,4,2026-05-25,2026-05-28,4,1
+Fish,Indian Mackerel,Standard,Local,validation,166,2025-05-30,2026-04-24,166,1
+Fish,Milkfish,Standard,Local,validation,364,2025-05-30,2026-05-28,364,1
+Fish,Round Scad,Standard,Imported,validation,161,2025-07-01,2026-03-30,161,1
+Fish,Round Scad,Standard,Local,validation,363,2025-05-30,2026-05-28,363,1
+Fish,Salmon Head,Standard,Local,validation,105,2025-05-30,2025-10-06,105,1
+Fish,Sardines,Standard,Local,validation,358,2025-05-30,2026-05-28,358,1
+Fish,Squid,Standard,Local,validation,357,2025-05-30,2026-05-28,357,1
+Fish,Tilapia,Standard,Local,validation,364,2025-05-30,2026-05-28,364,1
+Fish,Yellow-Fin Tuna,Standard,Local,validation,5,2025-05-30,2025-06-03,5,1
+Fruits,Avocado,Standard,Local,validation,363,2025-05-30,2026-05-28,363,1
+Fruits,Banana,Lakatan,Local,validation,364,2025-05-30,2026-05-28,364,1
+Fruits,Banana,Latundan,Local,validation,363,2025-05-30,2026-05-28,363,1
+Fruits,Banana,Saba,Local,validation,363,2025-05-30,2026-05-28,363,1
+Fruits,Calamansi,Standard,Local,validation,363,2025-05-30,2026-05-28,363,1
+Fruits,Mango,Carabao,Local,validation,364,2025-05-30,2026-05-28,364,1
+Fruits,Melon,Standard,Local,validation,362,2025-05-30,2026-05-28,362,1
+Fruits,Papaya,Standard,Local,validation,363,2025-05-30,2026-05-28,363,1
+Fruits,Pomelo,Standard,Local,validation,363,2025-05-30,2026-05-28,363,1
+Fruits,Watermelon,Standard,Local,validation,362,2025-05-30,2026-05-28,362,1
+Livestock,Beef,Brisket,Local,validation,364,2025-05-30,2026-05-28,364,1
+Livestock,Beef,Rump,Local,validation,364,2025-05-30,2026-05-28,364,1
+Livestock,Pork,Belly,Local,validation,364,2025-05-30,2026-05-28,364,1
+Livestock,Pork,Frozen Kasim,Imported,validation,90,2025-05-30,2026-05-28,90,1
+Livestock,Pork,Frozen Kasim,Local,validation,276,2025-05-31,2026-05-27,276,1
+Livestock,Pork,Frozen Liempo,Imported,validation,89,2025-05-30,2026-05-28,89,1
+Livestock,Pork,Frozen Liempo,Local,validation,275,2025-05-31,2026-05-27,275,1
+Livestock,Pork,Ham,Local,validation,364,2025-05-30,2026-05-28,364,1
+Oils,Coconut Oil,1L,Local,validation,364,2025-05-30,2026-05-28,364,1
+Oils,Coconut Oil,350ml,Local,validation,363,2025-05-30,2026-05-28,363,1
+Oils,Palm Oil,1L,Local,validation,364,2025-05-30,2026-05-28,364,1
+Oils,Palm Oil,350ml,Local,validation,363,2025-05-30,2026-05-28,363,1
+Poultry,Chicken,Whole,Local,validation,364,2025-05-30,2026-05-28,364,1
+Poultry,Chicken Egg,Brown (Extra Large),Local,validation,204,2025-05-30,2026-05-28,204,1
+Poultry,Chicken Egg,Brown (Large),Local,validation,305,2025-05-30,2026-05-28,305,1
+Poultry,Chicken Egg,Brown (Medium),Local,validation,364,2025-05-30,2026-05-28,364,1
+Poultry,Chicken Egg,White (Extra Large),Local,validation,364,2025-05-30,2026-05-28,364,1
+Poultry,Chicken Egg,White (Extra Small),Local,validation,364,2025-05-30,2026-05-28,364,1
+Poultry,Chicken Egg,White (Jumbo),Local,validation,364,2025-05-30,2026-05-28,364,1
+Poultry,Chicken Egg,White (Large),Local,validation,364,2025-05-30,2026-05-28,364,1
+Poultry,Chicken Egg,White (Medium),Local,validation,364,2025-05-30,2026-05-28,364,1
+Poultry,Chicken Egg,White (Pewee),Local,validation,364,2025-05-30,2026-05-28,364,1
+Poultry,Chicken Egg,White (Small),Local,validation,363,2025-05-30,2026-05-28,363,1
+Rice,Rice,Basmati,Imported,validation,163,2025-12-17,2026-05-28,163,1
+Rice,Rice,Glutinous,Imported,validation,165,2025-12-15,2026-05-28,165,1
+Rice,Rice,Glutinous,Local,validation,163,2025-12-17,2026-05-28,163,1
+Rice,Rice,Jasponica/Japonica,Imported,validation,165,2025-12-15,2026-05-28,165,1
+Rice,Rice,Kadiwa (Benteng Bigas),Local,validation,347,2025-06-16,2026-05-28,347,1
+Rice,Rice,Kadiwa Premium (RFA5),Local,validation,153,2025-06-16,2025-11-15,153,1
+Rice,Rice,Kadiwa Regular Milled (RFA100),Local,validation,153,2025-06-16,2025-11-15,153,1
+Rice,Rice,Kadiwa Well Milled (RFA25),Local,validation,170,2025-05-30,2025-11-15,170,1
+Rice,Rice,Premium,Imported,validation,364,2025-05-30,2026-05-28,364,1
+Rice,Rice,Premium,Local,validation,364,2025-05-30,2026-05-28,364,1
+Rice,Rice,Regular Milled,Imported,validation,364,2025-05-30,2026-05-28,364,1
+Rice,Rice,Regular Milled,Local,validation,364,2025-05-30,2026-05-28,364,1
+Rice,Rice,Special,Imported,validation,364,2025-05-30,2026-05-28,364,1
+Rice,Rice,Special,Local,validation,364,2025-05-30,2026-05-28,364,1
+Rice,Rice,Well Milled,Imported,validation,364,2025-05-30,2026-05-28,364,1
+Rice,Rice,Well Milled,Local,validation,364,2025-05-30,2026-05-28,364,1
+Sugar,Sugar,Brown,Local,validation,364,2025-05-30,2026-05-28,364,1
+Sugar,Sugar,Refined,Local,validation,361,2025-05-30,2026-05-28,361,1
+Sugar,Sugar,Washed,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Baguio Beans,Standard,Local,validation,335,2025-05-30,2026-05-28,335,1
+Vegetables,Bell Pepper,Green,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Bell Pepper,Red,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Bittergourd,Standard,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Broccoli,Standard,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Cabbage,Rare Ball,Local,validation,360,2025-05-30,2026-05-28,360,1
+Vegetables,Cabbage,Scorpio,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Cabbage,Wonder Ball,Local,validation,357,2025-05-30,2026-05-28,357,1
+Vegetables,Carrot,Standard,Local,validation,361,2025-05-30,2026-05-28,361,1
+Vegetables,Cauliflower,Standard,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Celery,Standard,Local,validation,352,2025-05-30,2026-05-28,352,1
+Vegetables,Chayote,Standard,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Chili,Green,Local,validation,106,2026-02-12,2026-05-28,106,1
+Vegetables,Chili,Labuyo,Local,validation,361,2025-05-30,2026-05-28,361,1
+Vegetables,Eggplant,Standard,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Garlic,Standard,Imported,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Garlic,Standard,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Ginger,Standard,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Lettuce,Green Ice,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Lettuce,Iceberg,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Lettuce,Romaine,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Mung Beans,Standard,Local,validation,138,2026-01-10,2026-05-28,138,1
+Vegetables,Pechay Baguio,Standard,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Pechay Tagalog,Standard,Local,validation,355,2025-05-30,2026-05-28,355,1
+Vegetables,Potato,White,Local,validation,358,2025-05-30,2026-05-28,358,1
+Vegetables,Red Onion,Medium,Imported,validation,212,2025-10-15,2026-05-28,212,1
+Vegetables,Red Onion,Standard,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,Squash,Standard,Local,validation,363,2025-05-30,2026-05-28,363,1
+Vegetables,String Beans,Standard,Local,validation,357,2025-05-30,2026-05-28,357,1
+Vegetables,Tomato,Standard,Local,validation,364,2025-05-30,2026-05-28,364,1
+Vegetables,White Onion,Medium,Imported,validation,303,2025-05-30,2026-05-28,303,1
+Vegetables,White Onion,Standard,Local,validation,242,2025-05-30,2026-05-28,242,1

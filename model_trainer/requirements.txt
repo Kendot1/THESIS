@@ -1,32 +1,11 @@
-# Core ML
-lightgbm>=4.0.0
-torch>=2.0.0
-scikit-learn>=1.3.0
-numpy>=1.24.0
-pandas>=2.0.0
-
-# Database
-supabase>=2.0.0
-
-# Feature Engineering
-scipy>=1.11.0
-
-# Explainability
-shap>=0.42.0
-
-# Scheduling
-schedule>=1.2.0
-
-# Logging
-python-json-logger>=2.0.0
-
-# Environment
-python-dotenv>=1.0.0
-
-# Visualization
-matplotlib>=3.7.0
-seaborn>=0.12.0
-
-# Cloud Storage
-boto3>=1.28.0
-
+# Reproducible direct dependencies for Python 3.11.
+lightgbm==4.6.0
+torch==2.11.0
+numpy==2.4.2
+pandas==3.0.1
+supabase==2.29.0
+schedule==1.2.2
+python-dotenv==1.2.2
+matplotlib==3.10.8
+boto3==1.43.2
+truststore==0.10.4

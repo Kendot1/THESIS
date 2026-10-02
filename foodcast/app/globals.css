@@ -27,6 +27,9 @@
 
   --color-positive: #2E7D32;
   --color-negative: #C62828;
+  /* Price direction follows market convention: rises red, falls green. */
+  --color-price-up: #C62828;
+  --color-price-down: #2E7D32;
 
   --font-display: 'Poppins', sans-serif;
   --font-body: 'Inter', sans-serif;

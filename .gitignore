@@ -2,6 +2,17 @@
 
 # dependencies
 /node_modules
+**/node_modules/
+**/.next/
+**/__pycache__/
+*.py[cod]
+.venv/
+.tmp/
+.codex/
+audits/**/training_snapshot.json
+audits/**/live_quality_inputs.json
+audits/**/*.log
+audits/**/probe_artifacts/
 /.pnp
 .pnp.js
 
@@ -23,6 +34,8 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+model_trainer/logs/*.log
+model_trainer/artifacts_v2/
 
 # local env files
 .env*.local

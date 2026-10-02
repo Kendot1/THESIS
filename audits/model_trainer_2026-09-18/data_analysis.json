@@ -1,0 +1,404 @@
+{
+  "snapshot_rows": 151344,
+  "raw_columns": [
+    "id",
+    "product_category",
+    "product_name",
+    "product_variant",
+    "unit",
+    "origin",
+    "price_index",
+    "report_date",
+    "source_pdf",
+    "created_at"
+  ],
+  "raw_dtypes": {
+    "id": "str",
+    "product_category": "str",
+    "product_name": "str",
+    "product_variant": "str",
+    "unit": "str",
+    "origin": "str",
+    "price_index": "float64",
+    "report_date": "datetime64[us]",
+    "source_pdf": "str",
+    "created_at": "str"
+  },
+  "snapshot_duplicate_ids": 0,
+  "current": {
+    "raw": {
+      "rows": 151344,
+      "start": "2019-10-10",
+      "end": "2026-09-17",
+      "unique_dates": 2527,
+      "series": 117
+    },
+    "valid": {
+      "rows": 151341,
+      "start": "2019-10-10",
+      "end": "2026-09-17",
+      "unique_dates": 2527,
+      "series": 117
+    },
+    "dedup": {
+      "rows": 151341,
+      "start": "2019-10-10",
+      "end": "2026-09-17",
+      "unique_dates": 2527,
+      "series": 117
+    },
+    "filled": {
+      "rows": 161525,
+      "start": "2019-10-10",
+      "end": "2026-09-17",
+      "unique_dates": 2535,
+      "series": 117
+    },
+    "clean": {
+      "rows": 161130,
+      "start": "2019-10-10",
+      "end": "2026-09-17",
+      "unique_dates": 2535,
+      "series": 117
+    },
+    "train_before_dropna": {
+      "rows": 126059,
+      "start": "2019-10-10",
+      "end": "2025-09-01",
+      "unique_dates": 2154,
+      "series": 106
+    },
+    "val_before_dropna": {
+      "rows": 35071,
+      "start": "2025-09-02",
+      "end": "2026-09-17",
+      "unique_dates": 381,
+      "series": 102
+    },
+    "train": {
+      "rows": 114881,
+      "start": "2019-11-09",
+      "end": "2025-09-01",
+      "unique_dates": 2116,
+      "series": 101
+    },
+    "validation": {
+      "rows": 33217,
+      "start": "2025-09-02",
+      "end": "2026-09-17",
+      "unique_dates": 381,
+      "series": 101
+    },
+    "independent_test_rows": 0,
+    "train_row_percent": 77.57093276073951,
+    "validation_row_percent": 22.42906723926049,
+    "missing_values": {
+      "id": 0,
+      "product_category": 0,
+      "product_name": 0,
+      "product_variant": 0,
+      "unit": 272,
+      "origin": 0,
+      "price_index": 0,
+      "report_date": 0,
+      "source_pdf": 0,
+      "created_at": 0
+    },
+    "units": {
+      "kg": 133035,
+      "piece": 13842,
+      "liter": 2559,
+      "ml": 566,
+      "NaN": 272,
+      "bottle": 239,
+      "350ml": 223,
+      "L": 216,
+      "Liter": 94,
+      "1L": 88,
+      "unit": 66,
+      "pc": 44,
+      "per kg": 44,
+      "pack": 32,
+      "1 Liter": 8,
+      "350 ml": 5,
+      "btl": 4,
+      "milliliter": 3,
+      "mL": 2,
+      "pc/btl": 1,
+      "per piece": 1
+    },
+    "multiunit_series": 60,
+    "same_day_multiunit_groups": 0,
+    "clean_gaps_gt_1_day": 75,
+    "retained_gaps_gt_1_day": 1567,
+    "training_sequence_count": 109308,
+    "category_counts": {
+      "Vegetables": 55725,
+      "Rice": 21476,
+      "Fruits": 15941,
+      "Fish": 13864,
+      "Poultry": 12571,
+      "Livestock": 11689,
+      "Oils": 8755,
+      "Sugar": 7573,
+      "Corn": 3750
+    },
+    "invalid_dates": 0,
+    "invalid_or_nonpositive_prices": 3,
+    "nonfinite_prices": 0,
+    "price_quantiles": {
+      "0.0": 0.0,
+      "0.01": 6.5,
+      "0.5": 85.55,
+      "0.99": 464.7813000000006,
+      "1.0": 1000.0
+    }
+  },
+  "historical_replay_not_original_snapshot": {
+    "raw": {
+      "rows": 141035,
+      "start": "2019-10-10",
+      "end": "2026-05-28",
+      "unique_dates": 2415,
+      "series": 114
+    },
+    "valid": {
+      "rows": 141032,
+      "start": "2019-10-10",
+      "end": "2026-05-28",
+      "unique_dates": 2415,
+      "series": 114
+    },
+    "dedup": {
+      "rows": 141032,
+      "start": "2019-10-10",
+      "end": "2026-05-28",
+      "unique_dates": 2415,
+      "series": 114
+    },
+    "filled": {
+      "rows": 150709,
+      "start": "2019-10-10",
+      "end": "2026-05-28",
+      "unique_dates": 2423,
+      "series": 114
+    },
+    "clean": {
+      "rows": 150371,
+      "start": "2019-10-10",
+      "end": "2026-05-28",
+      "unique_dates": 2423,
+      "series": 114
+    },
+    "train_before_dropna": {
+      "rows": 117509,
+      "start": "2019-10-10",
+      "end": "2025-05-29",
+      "unique_dates": 2059,
+      "series": 105
+    },
+    "val_before_dropna": {
+      "rows": 32862,
+      "start": "2025-05-30",
+      "end": "2026-05-28",
+      "unique_dates": 364,
+      "series": 100
+    },
+    "train": {
+      "rows": 107015,
+      "start": "2019-11-09",
+      "end": "2025-05-29",
+      "unique_dates": 2021,
+      "series": 98
+    },
+    "validation": {
+      "rows": 30916,
+      "start": "2025-05-30",
+      "end": "2026-05-28",
+      "unique_dates": 364,
+      "series": 98
+    },
+    "independent_test_rows": 0,
+    "train_row_percent": 77.5858943964736,
+    "validation_row_percent": 22.4141056035264,
+    "missing_values": {
+      "id": 0,
+      "product_category": 0,
+      "product_name": 0,
+      "product_variant": 0,
+      "unit": 272,
+      "origin": 0,
+      "price_index": 0,
+      "report_date": 0,
+      "source_pdf": 0,
+      "created_at": 0
+    },
+    "units": {
+      "kg": 124299,
+      "piece": 12377,
+      "liter": 2505,
+      "ml": 566,
+      "NaN": 272,
+      "bottle": 225,
+      "L": 216,
+      "350ml": 197,
+      "Liter": 94,
+      "1L": 74,
+      "unit": 66,
+      "pc": 44,
+      "per kg": 44,
+      "pack": 32,
+      "1 Liter": 8,
+      "350 ml": 5,
+      "btl": 4,
+      "milliliter": 3,
+      "mL": 2,
+      "pc/btl": 1,
+      "per piece": 1
+    },
+    "multiunit_series": 60,
+    "same_day_multiunit_groups": 0,
+    "clean_gaps_gt_1_day": 70,
+    "retained_gaps_gt_1_day": 1549,
+    "training_sequence_count": 101634,
+    "category_counts": {
+      "Vegetables": 52182,
+      "Rice": 19950,
+      "Fruits": 14821,
+      "Fish": 13148,
+      "Poultry": 11339,
+      "Livestock": 10749,
+      "Oils": 8307,
+      "Sugar": 7237,
+      "Corn": 3302
+    },
+    "invalid_dates": 0,
+    "invalid_or_nonpositive_prices": 3,
+    "nonfinite_prices": 0,
+    "price_quantiles": {
+      "0.0": 0.0,
+      "0.01": 6.5,
+      "0.5": 85.0,
+      "0.99": 459.14980000000014,
+      "1.0": 1000.0
+    }
+  },
+  "normalized_lgbm_load": "success (original bytes unchanged)",
+  "stored_ensemble_stats": {
+    "lgbm_weight": 0.5,
+    "lstm_weight": 0.5,
+    "lstm_rmse": 2.951209760013458,
+    "lstm_mae": 1.2021336697315164,
+    "lstm_mape": 0.8870337301142197,
+    "hybrid_rmse": 2.714795924042415,
+    "hybrid_mae": 1.3348896029690709,
+    "hybrid_mape": 1.0484361513297338,
+    "hybrid_dir_acc": 55.35714285714286,
+    "improvement_pct": 8.010743227210144
+  },
+  "diagnostic_comparison": {
+    "WARNING": "Known leaky pipeline; frozen artifacts lack verifiable training cutoff. Not a valid unseen test.",
+    "matched_span": {
+      "rows": 30044,
+      "start": "2025-09-02",
+      "end": "2026-08-19",
+      "unique_dates": 352,
+      "series": 95
+    },
+    "metrics": {
+      "lgbm": {
+        "rmse": 6.204166816453256,
+        "mae": 3.4200570867108224,
+        "mape": 2.444348875869109,
+        "r2": 0.9971891800659027,
+        "directional_accuracy": 60.62157549627234
+      },
+      "lstm": {
+        "rmse": 6.261829057229354,
+        "mae": 1.8335383835445629,
+        "mape": 1.14749913422183,
+        "r2": 0.9971366890974135,
+        "directional_accuracy": 46.75738794574688
+      },
+      "ensemble": {
+        "rmse": 5.44702128478199,
+        "mae": 2.361477447444907,
+        "mape": 1.6124972491703318,
+        "r2": 0.9978333725732785,
+        "directional_accuracy": 55.05703763585736
+      },
+      "naive_anchor": {
+        "rmse": 6.275083124279361,
+        "mae": 1.7823675276261484,
+        "mape": 1.1201946845695767,
+        "r2": 0.9971245550457752,
+        "directional_accuracy": 36.77804724692356
+      },
+      "seasonal_naive": {
+        "rmse": 15.326045017335812,
+        "mae": 5.4129080368437315,
+        "mape": 3.21323669598977,
+        "r2": 0.9828475451204918,
+        "directional_accuracy": 47.26039701787479
+      },
+      "moving_average_7": {
+        "rmse": 9.780876038224394,
+        "mae": 3.417694956453126,
+        "mape": 2.0443587919580413,
+        "r2": 0.9930141122786942,
+        "directional_accuracy": 47.47597233450103
+      }
+    },
+    "naive_anchor_differs_from_engineered_lag1": 198
+  },
+  "diagnostic_lstm_by_horizon": {
+    "1": {
+      "lstm": {
+        "rmse": 6.261829057229355,
+        "mae": 1.8335383835445627,
+        "mape": 1.1474991342218301,
+        "r2": 0.9971366890974135,
+        "directional_accuracy": 46.79299655067022
+      },
+      "naive": {
+        "rmse": 6.275083124279362,
+        "mae": 1.7823675276261484,
+        "mape": 1.1201946845695767,
+        "r2": 0.9971245550457752,
+        "directional_accuracy": 37.091210758415926
+      }
+    },
+    "7": {
+      "lstm": {
+        "rmse": 14.131883779231277,
+        "mae": 5.089420111586648,
+        "mape": 3.0576678343985217,
+        "r2": 0.9853177874956709,
+        "directional_accuracy": 52.99754944862593
+      },
+      "naive": {
+        "rmse": 15.362542313173886,
+        "mae": 5.434159233124751,
+        "mape": 3.2393011546931803,
+        "r2": 0.9826492770389004,
+        "directional_accuracy": 47.225625765797304
+      }
+    },
+    "30": {
+      "lstm": {
+        "rmse": 30.81151972909803,
+        "mae": 11.777706899780885,
+        "mape": 6.788294364566955,
+        "r2": 0.9307344614312261,
+        "directional_accuracy": 49.0221252193264
+      },
+      "naive": {
+        "rmse": 36.382080079923306,
+        "mae": 13.89548828385035,
+        "mape": 8.07694133989081,
+        "r2": 0.903424708691189,
+        "directional_accuracy": 38.755509907134
+      }
+    }
+  }
+}

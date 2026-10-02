@@ -1,614 +1,464 @@
-"""
-Main training orchestrator — Two-Stage Residual Hybrid Architecture.
-
-Pipeline:
-  1. Fetch → Preprocess → Feature Engineering
-  2. Train LightGBM on absolute prices (standalone baseline)
-  3. Train LSTM (Stage 1: base temporal model)
-  4. Compute LSTM residuals → Train LightGBM residual corrector (Stage 2)
-  5. Evaluate hybrid ensemble with adaptive shrinkage
-  6. Version & store
-"""
-
-import pandas as pd
-import numpy as np
+"""Leakage-safe training, calibration, and frozen holdout evaluation."""
+import hashlib
+import json
+import shutil
 from datetime import datetime, timezone
-from typing import Dict, Optional
+
+import numpy as np
+import pandas as pd
 
 from config.settings import get_settings
 from data.fetcher import DataFetcher
-from data.preprocessor import DataPreprocessor
-from features.temporal import TemporalFeatures
-from features.lag_features import LagFeatures
-from features.categorical import CategoricalEncoder
-from features.news_sentiment import NewsSentimentFeatures
+from data.preprocessor import DataPreprocessor, SERIES_KEY
+from features.builder import FEATURE_COLUMNS, FeatureBuilder, usable_targets
+from models.ensemble import INTERVAL_LEVELS, EnsembleModel
+from models.forecast_engine import ForecastEngine
 from models.lightgbm_model import LightGBMModel
 from models.lstm_model import LSTMModel
-from models.ensemble import EnsembleModel
 from models.model_store import ModelStore
-from pipeline.evaluator import ModelEvaluator
-from pipeline.drift_detector import DriftDetector
 from utils.logger import get_logger
+from utils.metrics import compute_all_metrics
 
 log = get_logger(__name__)
 
 
+def _jsonable(value):
+    if isinstance(value, dict):
+        return {str(k): _jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, (np.integer, np.floating)):
+        return value.item()
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    return value
+
+
 class TrainingPipeline:
-    """
-    Two-Stage Residual Hybrid training pipeline.
+    def __init__(self, artifact_root=None):
+        self.cfg = get_settings()
+        self.fetcher = DataFetcher()
+        self.preprocessor = DataPreprocessor()
+        self.store = ModelStore(artifact_root)
 
-    Architecture:
-      Stage 1: LSTM learns temporal patterns → produces base predictions
-      Stage 2: LightGBM learns to correct LSTM residuals → error correction
-      Final:   predicted_price = lstm_base + lgbm_residual_correction
+    def run_full_training(self, raw_df=None, activate=True):
+        raw = self.fetcher.fetch_all() if raw_df is None else raw_df
+        if raw.empty:
+            raise ValueError("No training data")
+        return self._train(raw, activate=activate)
 
-    Modes:
-      - full        -- Train from scratch on all available data
-      - incremental -- Fetch only new data, fine-tune existing models
-    """
+    def run_incremental_training(self, since_date=None, raw_df=None, activate=True):
+        log.info("Incremental warm starts are disabled; running a fresh causal retrain.")
+        return self.run_full_training(raw_df=raw_df, activate=activate)
 
-    # Features used by LightGBM (excludes raw text / date columns)
-    EXCLUDE_COLS = [
-        "id", "report_date", "source_pdf", "created_at",
-        "product_name", "product_category", "product_variant",
-        "origin", "unit",
-    ]
+    def run_daily(self):
+        return self.run_full_training()
 
-    def __init__(self):
-        self._cfg = get_settings()
-        self._fetcher = DataFetcher()
-        self._preprocessor = DataPreprocessor()
-        self._temporal = TemporalFeatures()
-        self._lags = LagFeatures()
-        self._encoder = CategoricalEncoder()
-        self._sentiment = NewsSentimentFeatures()
-        self._lgbm = LightGBMModel()
-        self._lstm = LSTMModel()
-        self._ensemble = EnsembleModel()
-        self._store = ModelStore()
-        self._evaluator = ModelEvaluator()
-        self._drift = DriftDetector()
+    def resume_candidate(self, run_id, raw, activate=False):
+        """Resume calibration/evaluation when complete fitted models already exist."""
+        run_dir = self.store.runs / run_id
+        if not run_dir.is_dir():
+            raise FileNotFoundError(run_id)
+        clean = self.preprocessor.validate(raw)
+        train, validation, test = self.preprocessor.split_three(
+            clean, self.cfg.validation_size, self.cfg.test_size)
+        split = {"train": self._partition_bounds(train),
+                 "validation": self._partition_bounds(validation),
+                 "test": self._partition_bounds(test)}
+        builder = FeatureBuilder(run_dir).load()
+        featured = builder.transform(clean)
+        lgbm = LightGBMModel(run_dir)
+        lgbm.load()
+        lstm = LSTMModel(run_dir)
+        lstm.load()
+        val_mask = (featured.report_date.between(
+            validation.report_date.min(), validation.report_date.max()) & usable_targets(featured))
+        lgbm_metrics = compute_all_metrics(
+            featured.loc[val_mask, "observed_price"].to_numpy(),
+            lgbm.predict(featured.loc[val_mask, FEATURE_COLUMNS]))
+        history = json.loads((run_dir / "lstm_history.json").read_text(encoding="utf-8"))
+        relative_lstm_metrics = {
+            "best_masked_relative_mae": min(row["val_loss"] for row in history),
+            "best_epoch": min(history, key=lambda row: row["val_loss"])["epoch"],
+            "resumed": True,
+        }
+        return self._finish_candidate(
+            raw, clean, featured, train, validation, test, split, run_dir,
+            builder, lgbm, lstm, lgbm_metrics, relative_lstm_metrics, activate,
+            base_model_scope='unknown_for_resumed_base_models')
 
-    # ──────────────────────────────────────────────
-    # Public entry points
-    # ──────────────────────────────────────────────
-    def run_full_training(self) -> Dict[str, float]:
-        """Complete training from scratch."""
-        log.info("=== FULL TRAINING PIPELINE ===")
+    def recalibrate_candidate(self, run_id, activate=False):
+        """Create a recalibrated child bundle while preserving its immutable parent."""
+        parent_dir = self.store.runs / run_id
+        metadata = json.loads((parent_dir / "metadata.json").read_text(encoding="utf-8"))
+        parent_test = dict(metadata["metrics"]["test"]["ensemble"])
+        run_dir = self.store.begin_run()
+        for name in ["categorical_mappings.json", "lightgbm_model.txt",
+                     "lightgbm_meta.json", "lstm_model.pt", "lstm_meta.json",
+                     "lstm_history.json"]:
+            shutil.copy2(parent_dir / name, run_dir / name)
+        validation = pd.read_csv(parent_dir / "validation_forecasts.csv")
+        test = pd.read_csv(parent_dir / "test_forecasts.csv")
+        tuning, calibration = self._split_forecasts(validation)
+        ensemble = EnsembleModel(run_dir).fit(
+            tuning, self.cfg.monthly_horizon, calibration_frame=calibration)
+        ensemble.calibration['base_model_scope'] = 'parent_validation_used_for_early_stopping'
+        ensemble.save()
+        for frame in [validation, test]:
+            frame["ensemble"] = ensemble.predict_rows(
+                frame.lstm.to_numpy(), frame.lgbm.to_numpy(), frame.horizon.to_numpy(),
+                frame.anchor.to_numpy(), frame.series.to_numpy(),
+                frame.moving_average7.to_numpy())
+        metrics = metadata["metrics"]
+        names = ["ensemble", "lstm", "lgbm", "persistence", "seasonal7", "moving_average7"]
+        metrics["validation"] = {name: self._metrics(validation, name) for name in names}
+        metrics["test"] = {name: self._metrics(test, name) for name in names}
+        interval_metrics = self._interval_metrics(ensemble, test)
+        metrics["test_interval_metrics"] = interval_metrics
+        metrics["interval_calibration"] = ensemble.calibration
+        metrics["test_interval_coverage"] = interval_metrics["0.8"]["observed_coverage"]
+        beats_persistence = self._beats_persistence(metrics["test"])
+        beats_parent = self._improves_all_by(
+            metrics["test"]["ensemble"], parent_test, .05)
+        # A parent may be older/weaker than the currently active model. Saved
+        # forecasts permit comparison only when their evaluation windows match.
+        champion = None
+        beats_champion = True
+        try:
+            active_path = self.store.active_path()
+        except FileNotFoundError:
+            active_path = None
+        if active_path is not None:
+            active = json.loads((active_path / 'metadata.json').read_text(encoding='utf-8'))
+            comparable = (active.get('data_fingerprint') == metadata.get('data_fingerprint')
+                          and active.get('split') == metadata.get('split'))
+            beats_champion = comparable and self._improves_all_by(
+                metrics['test']['ensemble'], active['metrics']['test']['ensemble'], .05)
+            champion = {'run_id': active_path.name, 'same_evaluation_window': comparable}
+        passed = beats_persistence and beats_parent and beats_champion
+        metrics["promotion_gate"] = {
+            "passed": bool(passed),
+            "beats_persistence": bool(beats_persistence),
+            "beats_parent": bool(beats_parent),
+            "beats_active_champion": bool(beats_champion),
+            "active_champion": champion,
+            "rule": (
+                "development-holdout ensemble beats persistence in all three "
+                "metrics and improves MAE, RMSE, and MAPE by at least 5% over "
+                "the parent and active models on the identical evaluation window"
+            ),
+        }
+        metrics["calibration_parent_run_id"] = run_id
+        metrics["recalibrated_at"] = datetime.now(timezone.utc).isoformat()
+        validation.to_csv(run_dir / "validation_forecasts.csv", index=False)
+        test.to_csv(run_dir / "test_forecasts.csv", index=False)
+        self.store.finalize(run_dir, _jsonable(metrics), metadata["split"],
+                            metadata["data_fingerprint"], activate=bool(activate and passed))
+        metrics["run_id"] = run_dir.name
+        metrics["activated"] = bool(activate and passed)
+        return _jsonable(metrics)
 
-        # 1. Fetch all data
-        raw_df = self._fetcher.fetch_all()
-        if raw_df.empty:
-            log.error("No data fetched -- aborting.")
-            return {}
+    @staticmethod
+    def _partition_bounds(frame):
+        return {"start": pd.Timestamp(frame.report_date.min()).isoformat(),
+                "end": pd.Timestamp(frame.report_date.max()).isoformat(),
+                "rows": int(len(frame)),
+                "observed_rows": int(frame.is_observed.sum())}
 
-        return self._train(raw_df, incremental=False)
+    @staticmethod
+    def _fingerprint(raw):
+        columns = [c for c in SERIES_KEY + ["report_date", "price_index", "source_pdf"]
+                   if c in raw.columns]
+        stable = raw[columns].astype(str).sort_values(columns).reset_index(drop=True)
+        values = pd.util.hash_pandas_object(stable, index=False).to_numpy().tobytes()
+        return hashlib.sha256(values).hexdigest()
 
-    def run_incremental_training(self, since_date: Optional[str] = None) -> Dict[str, float]:
-        """
-        Incremental training with new data only.
-        Falls back to full training if no existing model is found.
-        """
-        log.info("=== INCREMENTAL TRAINING PIPELINE ===")
+    def _backtest(self, clean, featured, partition, engine):
+        start = pd.Timestamp(partition.report_date.min())
+        end = pd.Timestamp(partition.report_date.max())
+        first_origin = start - pd.Timedelta(days=1)
+        last_origin = end - pd.Timedelta(days=self.cfg.monthly_horizon)
+        if last_origin < first_origin:
+            raise ValueError("Evaluation partition is shorter than the forecast horizon")
+        origins = pd.date_range(first_origin, last_origin, freq=f"{self.cfg.evaluation_stride}D")
+        rows, cases, contexts = [], [], []
+        feature_groups = {key: group for key, group in featured.groupby(SERIES_KEY, sort=False)}
+        for key, full_series in clean.groupby(SERIES_KEY, sort=True):
+            full_series = full_series.sort_values("report_date")
+            actual = full_series.set_index("report_date").observed_price
+            for origin in origins:
+                history = full_series[full_series.report_date <= origin]
+                try:
+                    prepared = engine._prepare(history, feature_groups[key])
+                except ValueError:
+                    continue
+                cases.append(prepared)
+                last_seven = history.price_index[np.isfinite(history.price_index)].tail(7).to_numpy()
+                contexts.append((key, origin, actual, last_seven))
+        paths = engine.forecast_many(cases, self.cfg.monthly_horizon)
+        for path, context in zip(paths, contexts):
+            key, origin, actual, last_seven = context
+            if pd.Timestamp(path.dates[0]) != origin + pd.Timedelta(days=1):
+                continue
+            if not len(last_seven):
+                continue
+            persistence = path.anchor
+            moving_average = float(last_seven.mean())
+            seasonal = np.resize(last_seven[-min(7, len(last_seven)):],
+                                 self.cfg.monthly_horizon)
+            for h, date in enumerate(pd.to_datetime(path.dates), start=1):
+                truth = actual.get(date, np.nan)
+                if not np.isfinite(truth):
+                    continue
+                rows.append({
+                    "series": "||".join(map(str, key)), "origin": origin,
+                    "date": date, "horizon": h, "actual": float(truth),
+                    "anchor": path.anchor, "lstm": path.lstm[h - 1],
+                    "lgbm": path.lgbm[h - 1], "persistence": persistence,
+                    "seasonal7": seasonal[h - 1], "moving_average7": moving_average,
+                })
+        result = pd.DataFrame(rows)
+        if result.empty:
+            raise ValueError("No observed labels were available for sampled backtesting")
+        return result
 
-        # Determine the date to fetch from
-        if since_date is None:
-            latest = self._store.get_latest_metrics()
-            if latest is None:
-                log.info("No previous model found -- switching to full training.")
-                return self.run_full_training()
-            # Fetch all data (we need history for lag features)
-            # but only retrain on recent data
-            raw_df = self._fetcher.fetch_all()
-        else:
-            raw_df = self._fetcher.fetch_all()
+    @staticmethod
+    def _metrics(frame, prediction):
+        return compute_all_metrics(frame.actual.to_numpy(),
+                                   frame[prediction].to_numpy(),
+                                   frame.anchor.to_numpy())
 
-        if raw_df.empty:
-            log.error("No data fetched -- aborting.")
-            return {}
+    @staticmethod
+    def _split_forecasts(frame, cutoff=None):
+        origins = np.sort(pd.to_datetime(frame.origin).unique())
+        if len(origins) < 3:
+            raise ValueError('At least three validation origins are required for separate calibration')
+        cutoff = pd.Timestamp(origins[int(len(origins)*2/3)] if cutoff is None else cutoff)
+        tuning = frame[pd.to_datetime(frame.date) <= cutoff].copy()
+        calibration = frame[pd.to_datetime(frame.origin) >= cutoff].copy()
+        if tuning.empty or calibration.empty:
+            raise ValueError('No disjoint tuning and calibration forecasts')
+        return tuning, calibration
 
-        return self._train(raw_df, incremental=True)
+    def _tuning_partition(self, validation):
+        origins = pd.date_range(validation.report_date.min()-pd.Timedelta(days=1),
+                                validation.report_date.max()-pd.Timedelta(days=self.cfg.monthly_horizon),
+                                freq=f'{self.cfg.evaluation_stride}D')
+        if len(origins) < 3:
+            raise ValueError('Validation needs three full forecast origins for separate calibration')
+        return validation[validation.report_date <= origins[int(len(origins)*2/3)]]
 
-    def run_daily(self) -> Dict[str, float]:
-        """
-        Daily pipeline run.
-        Checks for drift first, then decides between incremental or full retrain.
-        """
-        log.info("=== DAILY PIPELINE RUN ===")
+    @staticmethod
+    def _interval_metrics(ensemble, frame):
+        report = {}
+        for level in INTERVAL_LEVELS:
+            lower, upper = ensemble.intervals_rows(
+                frame.ensemble.to_numpy(), frame.anchor.to_numpy(),
+                frame.horizon.to_numpy(), confidence=level, series=frame.series.to_numpy())
+            actual = frame.actual.to_numpy(float)
+            covered = (actual >= lower) & (actual <= upper)
+            score = (upper-lower + 2/(1-level)*np.maximum(lower-actual, 0)
+                     + 2/(1-level)*np.maximum(actual-upper, 0))
+            report[str(level)] = {
+                "nominal_coverage": level,
+                "observed_coverage": float(np.mean(
+                    (frame.actual >= lower) & (frame.actual <= upper))),
+                "average_width": float(np.mean(upper - lower)),
+                "interval_score": float(np.mean(score)),
+                "sample_count": len(frame),
+                "by_category": {
+                    category: {"observed_coverage": float(covered[mask].mean()),
+                               "sample_count": int(mask.sum())}
+                    for category in sorted(frame.series.str.split('||', regex=False).str[0].unique())
+                    for mask in [(frame.series.str.split('||', regex=False).str[0] == category).to_numpy()]
+                },
+            }
+        return report
 
-        # Fetch all data for drift check
-        raw_df = self._fetcher.fetch_all()
-        if raw_df.empty:
-            log.warning("No data available -- skipping daily run.")
-            return {}
+    def _active_champion_metrics(self, clean, test, fingerprint, split):
+        """Evaluate the active model on the candidate's test window when needed."""
+        try:
+            active_dir = self.store.active_path()
+        except FileNotFoundError:
+            return None
+        metadata = json.loads((active_dir / "metadata.json").read_text(encoding="utf-8"))
+        if (metadata.get("data_fingerprint") == fingerprint
+                and metadata.get("split") == _jsonable(split)):
+            return {
+                "run_id": active_dir.name,
+                "ensemble": metadata["metrics"]["test"]["ensemble"],
+                "evaluation": "reused_identical_frozen_test",
+            }
 
-        # Preprocess for drift check
-        clean_df = self._preprocessor.validate(raw_df)
-
-        # Check for drift
-        needs_full_retrain = self._drift.check_drift(clean_df)
-
-        if needs_full_retrain:
-            log.warning("Drift detected -- performing FULL retrain.")
-            return self._train(raw_df, incremental=False)
-        else:
-            log.info("No significant drift -- performing incremental update.")
-            return self._train(raw_df, incremental=True)
-
-    # ──────────────────────────────────────────────
-    # Core training logic
-    # ──────────────────────────────────────────────
-    def _train(self, raw_df: pd.DataFrame, incremental: bool) -> Dict[str, float]:
-        """
-        Internal training method — Two-Stage Residual Hybrid.
-
-        Stage 1: Train LightGBM on absolute prices (proven baseline)
-        Stage 2: Train LSTM on temporal sequences (base temporal model)
-        Stage 3: Compute LSTM residuals → Train LightGBM residual corrector
-        Stage 4: Evaluate hybrid (LSTM base + LightGBM correction)
-        """
-
-        # ── Step 1: Preprocess ──
-        log.info("Step 1/8 -- Preprocessing ...")
-        clean_df = self._preprocessor.validate(raw_df)
-
-        # ── Step 2: Feature engineering ──
-        log.info("Step 2/8 -- Feature engineering ...")
-        featured_df = self._build_features(clean_df, fit=not incremental)
-
-        # ── Step 3: Prepare datasets ──
-        log.info("Step 3/8 -- Splitting data ...")
-        train_df, val_df = self._preprocessor.time_split(featured_df, test_size=0.15)
-
-        # Drop rows with NaN from lag features (first rows of each product)
-        train_df = train_df.dropna().reset_index(drop=True)
-        val_df = val_df.dropna().reset_index(drop=True)
-
-        if train_df.empty:
-            log.error("Training set is empty after processing -- aborting.")
-            return {}
-
-        log.info(
-            f"Data split -- train: {len(train_df):,} rows, "
-            f"val: {len(val_df):,} rows ({len(val_df)/(len(train_df)+len(val_df))*100:.1f}%)"
-        )
-
-        feature_cols = self._get_feature_columns(train_df)
-
-        # ── Step 4: Train LightGBM on absolute prices (baseline) ──
-        log.info("Step 4/8 -- Training LightGBM (absolute prices) ...")
-        X_train = train_df[feature_cols]
-        y_train = train_df["price_index"]
-        X_val = val_df[feature_cols] if not val_df.empty else None
-        y_val = val_df["price_index"] if not val_df.empty else None
-
-        lgbm_metrics = self._lgbm.train(
-            X_train, y_train, X_val, y_val,
-            incremental=incremental,
-        )
-
-        # ── Step 5: Train LSTM (Stage 1 — Base Temporal Model) ──
-        log.info("Step 5/8 -- Training LSTM (Stage 1: base temporal model) ...")
-        lstm_metrics = self._train_lstm(train_df, val_df, incremental)
-
-        # ── Step 6: Evaluate hybrid ensemble ──
-        log.info("Step 6/8 -- Evaluating blended hybrid ensemble ...")
-        ensemble_metrics = {}
-        if not val_df.empty and lstm_metrics:
-            ensemble_metrics = self._evaluate_hybrid(train_df, val_df, feature_cols)
-
-        # ── Step 7: Version & store ──
-        log.info("Step 7/8 -- Saving model version ...")
-        combined_metrics = {
-            "lgbm": lgbm_metrics,
-            "lstm": lstm_metrics,
-            "ensemble": ensemble_metrics,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "data_rows": len(clean_df),
-            "mode": "incremental" if incremental else "full",
+        try:
+            builder = FeatureBuilder(active_dir).load()
+            featured = builder.transform(clean)
+            lgbm = LightGBMModel(active_dir)
+            lgbm.load()
+            lstm = LSTMModel(active_dir)
+            lstm.load()
+            ensemble = EnsembleModel(active_dir)
+            ensemble.load()
+            engine = ForecastEngine(lgbm, lstm, ensemble, builder)
+            forecasts = self._backtest(clean, featured, test, engine)
+            forecasts["ensemble"] = ensemble.predict_rows(
+                forecasts.lstm.to_numpy(), forecasts.lgbm.to_numpy(),
+                forecasts.horizon.to_numpy(), forecasts.anchor.to_numpy(),
+                forecasts.series.to_numpy(), forecasts.moving_average7.to_numpy())
+        except (ValueError, FileNotFoundError) as exc:
+            raise RuntimeError("Cannot evaluate the active champion; promotion is blocked") from exc
+        return {
+            "run_id": active_dir.name,
+            "ensemble": self._metrics(forecasts, "ensemble"),
+            "evaluation": "backtested_on_candidate_frozen_test",
         }
 
-        self._store.create_version(
-            metrics=combined_metrics,
-            notes=f"{'Incremental' if incremental else 'Full'} training on {len(clean_df)} rows",
-        )
-
-        # Store reference distribution for future drift detection
-        self._drift.save_reference(clean_df)
-
-        # ── Step 8: Generate visual dashboards ──
-        log.info("Step 8/8 -- Generating visual training dashboards ...")
-        try:
-            self._generate_plots(train_df, val_df, feature_cols, combined_metrics)
-        except Exception as e:
-            log.error(f"Visual dashboard generation failed: {e}")
-
-        # ── Summary ──
-        self._log_training_summary(combined_metrics)
-
-        log.info("=== TRAINING COMPLETE ===")
-        return combined_metrics
-
-    def _generate_plots(self, train_df: pd.DataFrame, val_df: pd.DataFrame, feature_cols: list, combined_metrics: dict = None):
-        """Generate all 8 thesis-quality visual dashboards."""
-        log.info("Generating training and evaluation visual dashboards ...")
-        from utils.plotting import (
-            plot_lstm_loss, plot_learning_rate, plot_feature_importance,
-            plot_predictions_vs_actuals, plot_residual_distribution,
-            plot_per_category_metrics, plot_model_comparison,
-            plot_scatter_predicted_vs_actual,
-        )
-
-        artifacts = self._cfg.artifacts_dir
-        history_path = artifacts / "lstm_history.json"
-
-        # 1. LSTM Training vs Validation Loss Curve
-        try:
-            if history_path.exists():
-                plot_lstm_loss(history_path, artifacts / "loss_curves.png")
-                log.info(f"Generated plot 1/8: Loss Curves -> {artifacts / 'loss_curves.png'}")
-        except Exception as e:
-            log.error(f"Plot 1 (loss curves) failed: {e}")
-
-        # 2. Learning Rate Schedule
-        try:
-            if history_path.exists():
-                plot_learning_rate(history_path, artifacts / "lr_schedule.png")
-                log.info(f"Generated plot 2/8: LR Schedule -> {artifacts / 'lr_schedule.png'}")
-        except Exception as e:
-            log.error(f"Plot 2 (LR schedule) failed: {e}")
-
-        # 3. Feature Importance
-        try:
-            importance = self._lgbm.feature_importance()
-            if importance:
-                plot_feature_importance(importance, artifacts / "feature_importance.png", top_n=15)
-                log.info(f"Generated plot 3/8: Feature Importance -> {artifacts / 'feature_importance.png'}")
-        except Exception as e:
-            log.error(f"Plot 3 (feature importance) failed: {e}")
-
-        # 7. Model Comparison (does not need validation inference)
-        try:
-            if combined_metrics:
-                plot_model_comparison(combined_metrics, artifacts / "model_comparison.png")
-                log.info(f"Generated plot 7/8: Model Comparison -> {artifacts / 'model_comparison.png'}")
-        except Exception as e:
-            log.error(f"Plot 7 (model comparison) failed: {e}")
-
-        # Plots 4, 5, 6, 8 require validation inference
-        try:
-            if not val_df.empty:
-                seq_len = self._lstm._seq_len
-                train_tail = train_df.groupby(["product_category", "product_name", "product_variant", "origin"]).tail(seq_len - 1)
-                val_full_df = pd.concat([train_tail, val_df]).sort_values(["product_category", "product_name", "product_variant", "origin", "report_date"]).reset_index(drop=True)
-
-                X_val_seq, y_val_seq, val_indices, val_products, val_anchors = \
-                    self._lstm.build_sequences_inference(val_full_df)
-
-                if len(X_val_seq) > 0:
-                    # Get predictions from all models
-                    lstm_preds = self._lstm.predict(X_val_seq, products=val_products, current_prices=val_anchors)
-                    X_val_lgbm = val_full_df.iloc[val_indices][feature_cols].copy()
-                    lgbm_preds = self._lgbm.predict(X_val_lgbm)
-
-                    stats = self._ensemble.get_residual_stats()
-                    lstm_w = stats.get("lstm_weight", 0.5) if stats else 0.5
-                    lgbm_w = stats.get("lgbm_weight", 0.5) if stats else 0.5
-                    hybrid_preds = (lstm_preds * lstm_w) + (lgbm_preds * lgbm_w)
-
-                    _, lower_bound, upper_bound = self._lgbm.predict_with_intervals(X_val_lgbm)
-                    hybrid_error = hybrid_preds - lgbm_preds
-                    hybrid_lower = lower_bound + hybrid_error
-                    hybrid_upper = upper_bound + hybrid_error
-
-                    y_val_actual = val_full_df["price_index"].values[val_indices]
-
-                    # 4. Predicted vs Actual Time Series (representative product)
-                    try:
-                        product_counts = {}
-                        for p in val_products:
-                            product_counts[p] = product_counts.get(p, 0) + 1
-
-                        if product_counts:
-                            rep_product = max(product_counts, key=product_counts.get)
-                            rep_indices = [i for i, p in enumerate(val_products) if p == rep_product]
-
-                            if len(rep_indices) > 1:
-                                y_true_rep = y_val_actual[rep_indices]
-                                hybrid_rep = hybrid_preds[rep_indices]
-                                lstm_rep = lstm_preds[rep_indices]
-                                lgbm_rep = lgbm_preds[rep_indices]
-                                lower_rep = hybrid_lower[rep_indices]
-                                upper_rep = hybrid_upper[rep_indices]
-
-                                clean_prod_name = rep_product.split("||")[1] if "||" in rep_product else rep_product
-
-                                plot_predictions_vs_actuals(
-                                    y_true=y_true_rep, y_pred=hybrid_rep,
-                                    product_name=clean_prod_name, save_path=artifacts / "evaluation_results.png",
-                                    lstm_pred=lstm_rep, lgbm_pred=lgbm_rep,
-                                    lower_bound=lower_rep, upper_bound=upper_rep
-                                )
-                                log.info(f"Generated plot 4/8: Predicted vs Actual ({clean_prod_name}) -> {artifacts / 'evaluation_results.png'}")
-                    except Exception as e:
-                        log.error(f"Plot 4 (predicted vs actual) failed: {e}")
-
-                    # 5. Residual Distribution
-                    try:
-                        plot_residual_distribution(
-                            y_val_actual, hybrid_preds,
-                            save_path=artifacts / "residual_distribution.png",
-                            model_name="Hybrid Ensemble"
-                        )
-                        log.info(f"Generated plot 5/8: Residual Distribution -> {artifacts / 'residual_distribution.png'}")
-                    except Exception as e:
-                        log.error(f"Plot 5 (residual distribution) failed: {e}")
-
-                    # 6. Per-Category Metrics
-                    try:
-                        eval_df = val_full_df.iloc[val_indices].copy()
-                        eval_df["predicted_price"] = hybrid_preds
-                        from pipeline.evaluator import ModelEvaluator
-                        evaluator = ModelEvaluator()
-                        cat_metrics = evaluator.evaluate_per_category(eval_df).to_dict("records")
-                        if cat_metrics:
-                            plot_per_category_metrics(cat_metrics, artifacts / "per_category_metrics.png")
-                            log.info(f"Generated plot 6/8: Per-Category Metrics -> {artifacts / 'per_category_metrics.png'}")
-                    except Exception as e:
-                        log.error(f"Plot 6 (per-category metrics) failed: {e}")
-
-                    # 8. Scatter Plot (Predicted vs Actual)
-                    try:
-                        cat_labels = val_full_df["product_category"].values[val_indices]
-                        plot_scatter_predicted_vs_actual(
-                            y_val_actual, hybrid_preds,
-                            save_path=artifacts / "scatter_predicted_vs_actual.png",
-                            model_name="Hybrid Ensemble",
-                            category_labels=np.array(cat_labels)
-                        )
-                        log.info(f"Generated plot 8/8: Scatter Plot -> {artifacts / 'scatter_predicted_vs_actual.png'}")
-                    except Exception as e:
-                        log.error(f"Plot 8 (scatter plot) failed: {e}")
-
-        except Exception as e:
-            log.error(f"Validation inference for plots failed: {e}")
-
-    # ──────────────────────────────────────────────
-    def _build_features(self, df: pd.DataFrame, fit: bool = True) -> pd.DataFrame:
-        """Apply all feature engineering transformations."""
-        df = self._temporal.transform(df)
-        df = self._lags.transform(df)
-
-        if fit:
-            df = self._encoder.fit_transform(df)
-        else:
-            df = self._encoder.transform(df)
-
-        # News sentiment is strictly excluded from forecasting to avoid leakage.
-        # It is handled independently by the reasoning pipeline post-prediction.
-
-        return df
-
-    def _get_feature_columns(self, df: pd.DataFrame) -> list:
-        """Get columns suitable for LightGBM training."""
-        exclude = set(self.EXCLUDE_COLS + ["price_index"])
-        features = [
-            c for c in df.columns
-            if c not in exclude
-            and df[c].dtype in ["int64", "float64", "int32", "float32"]
-            and "sentiment" not in c
-            and "news" not in c
-            and "supply_shock" not in c
-        ]
-
-        # Explicit validation safeguards as requested
-        assert not any("sentiment" in f for f in features), "CRITICAL LEAKAGE: Sentiment found in features"
-        assert not any("news" in f for f in features), "CRITICAL LEAKAGE: News found in features"
-        
-        log.info(f"LightGBM using {len(features)} historical data features. No reasoning features included.")
-        return features
-
-    def _train_lstm(self, train_df: pd.DataFrame, val_df: pd.DataFrame, incremental: bool) -> Dict:
-        """Stage 1: Build multi-feature sequences and train LSTM."""
-        try:
-            X_train_seq, y_train_seq = self._lstm.build_sequences(train_df)
-            if len(X_train_seq) == 0:
-                log.warning("Not enough training data for LSTM sequences.")
-                return {}
-
-            # Build validation sequences using fitted scalers
-            X_val_seq, y_val_seq, val_indices, val_products, val_anchors = np.array([]), np.array([]), [], [], np.array([])
-            if not val_df.empty:
-                # Need lag history from train_df to build sequences that predict into val_df
-                seq_len = self._lstm._seq_len
-                train_tail = train_df.groupby(["product_category", "product_name", "product_variant", "origin"]).tail(seq_len - 1)
-                val_full_df = pd.concat([train_tail, val_df]).sort_values(["product_category", "product_name", "product_variant", "origin", "report_date"]).reset_index(drop=True)
-                
-                X_val_seq, y_val_seq, val_indices, val_products, val_anchors = self._lstm.build_sequences_inference(val_full_df)
-
-            log.info(
-                f"LSTM sequences -- train: {len(X_train_seq)}, val: {len(X_val_seq)}, "
-                f"features: {X_train_seq.shape[2] if len(X_train_seq) > 0 else 0}"
-            )
-
-            return self._lstm.train(
-                X_train_seq, y_train_seq,
-                X_val_seq if len(X_val_seq) > 0 else None,
-                y_val_seq if len(y_val_seq) > 0 else None,
-                val_products=val_products if len(val_products) > 0 else None,
-                val_anchors=val_anchors if len(val_anchors) > 0 else None,
-                incremental=incremental,
-            )
-        except Exception as e:
-            log.error(f"LSTM training failed: {e}")
-            import traceback
-            traceback.print_exc()
-            return {}
-
-    def _train_lgbm_residual(
-        self,
-        train_df: pd.DataFrame,
-        val_df: pd.DataFrame,
-        feature_cols: list,
-        incremental: bool,
-    ) -> Dict:
-        """
-        Stage 2: Train LightGBM on LSTM residuals.
-
-        Flow:
-          1. Get LSTM 1-step predictions on the training set
-          2. Compute residuals: actual_price - lstm_prediction
-          3. Add lstm_prediction as an extra feature
-          4. Train LightGBM to predict the residuals
-        """
-        try:
-            # Get LSTM predictions on training data using inference mode
-            X_train_seq, y_train_seq, train_indices, train_products, train_anchors = \
-                self._lstm.build_sequences_inference(train_df)
-
-            if len(X_train_seq) == 0:
-                log.warning("No LSTM sequences for residual training -- falling back to direct LightGBM.")
-                return self._train_lgbm_direct(train_df, val_df, feature_cols, incremental)
-
-            # Get LSTM 1-step predictions (absolute prices)
-            lstm_train_preds = self._lstm.predict(
-                X_train_seq, products=train_products, current_prices=train_anchors
-            )
-
-            # Get actual prices at the aligned indices
-            y_train_actual = train_df["price_index"].values[train_indices]
-
-            # Compute residuals: what LSTM got wrong
-            train_residuals = y_train_actual - lstm_train_preds
-
-            log.info(
-                f"Residual stats (train) -- mean: {np.mean(train_residuals):.4f}, "
-                f"std: {np.std(train_residuals):.4f}, "
-                f"median: {np.median(train_residuals):.4f}"
-            )
-
-            # Build feature matrix for LightGBM (tabular features + lstm_prediction)
-            X_train_lgbm = train_df.iloc[train_indices][feature_cols].copy()
-            X_train_lgbm["lstm_prediction"] = lstm_train_preds
-
-            # Repeat for validation
-            X_val_lgbm = None
-            val_residuals = None
-
-            if not val_df.empty:
-                seq_len = self._lstm._seq_len
-                train_tail = train_df.groupby(["product_category", "product_name", "product_variant", "origin"]).tail(seq_len - 1)
-                val_full_df = pd.concat([train_tail, val_df]).sort_values(["product_category", "product_name", "product_variant", "origin", "report_date"]).reset_index(drop=True)
-
-                X_val_seq, y_val_seq, val_indices, val_products, val_anchors = \
-                    self._lstm.build_sequences_inference(val_full_df)
-
-                if len(X_val_seq) > 0:
-                    lstm_val_preds = self._lstm.predict(
-                        X_val_seq, products=val_products, current_prices=val_anchors
-                    )
-                    y_val_actual = val_full_df["price_index"].values[val_indices]
-                    val_residuals = y_val_actual - lstm_val_preds
-
-                    X_val_lgbm = val_full_df.iloc[val_indices][feature_cols].copy()
-                    X_val_lgbm["lstm_prediction"] = lstm_val_preds
-
-                    log.info(
-                        f"Residual stats (val) -- mean: {np.mean(val_residuals):.4f}, "
-                        f"std: {np.std(val_residuals):.4f}"
-                    )
-
-            # Train LightGBM on residuals
-            residual_metrics = self._lgbm.train_residual(
-                X_train_lgbm, train_residuals,
-                X_val_lgbm, val_residuals,
-            )
-
-            return residual_metrics
-
-        except Exception as e:
-            log.error(f"Residual training failed: {e}")
-            import traceback
-            traceback.print_exc()
-            # Fallback: train LightGBM directly on prices
-            log.warning("Falling back to direct LightGBM price training.")
-            return self._train_lgbm_direct(train_df, val_df, feature_cols, incremental)
-
-    def _train_lgbm_direct(
-        self,
-        train_df: pd.DataFrame,
-        val_df: pd.DataFrame,
-        feature_cols: list,
-        incremental: bool,
-    ) -> Dict:
-        """Fallback: train LightGBM directly on prices (non-hybrid mode)."""
-        X_train = train_df[feature_cols]
-        y_train = train_df["price_index"]
-        X_val = val_df[feature_cols] if not val_df.empty else None
-        y_val = val_df["price_index"] if not val_df.empty else None
-
-        return self._lgbm.train(
-            X_train, y_train, X_val, y_val,
-            incremental=incremental,
-        )
-
-    def _evaluate_hybrid(self, train_df: pd.DataFrame, val_df: pd.DataFrame, feature_cols: list) -> Dict:
-        """Evaluate the full hybrid ensemble on validation data."""
-        try:
-            # Get LSTM predictions on validation
-            seq_len = self._lstm._seq_len
-            train_tail = train_df.groupby(["product_category", "product_name", "product_variant", "origin"]).tail(seq_len - 1)
-            val_full_df = pd.concat([train_tail, val_df]).sort_values(["product_category", "product_name", "product_variant", "origin", "report_date"]).reset_index(drop=True)
-
-            X_val_seq, y_val_seq, val_indices, val_products, val_anchors = \
-                self._lstm.build_sequences_inference(val_full_df)
-
-            if len(X_val_seq) == 0:
-                log.warning("No LSTM sequences for hybrid evaluation.")
-                return {}
-
-            lstm_preds = self._lstm.predict(
-                X_val_seq, products=val_products, current_prices=val_anchors
-            )
-
-            # Get LightGBM Base predictions
-            X_val_lgbm = val_full_df.iloc[val_indices][feature_cols].copy()
-            lgbm_preds = self._lgbm.predict(X_val_lgbm)
-
-            # Get actual prices
-            y_val_actual = val_full_df["price_index"].values[val_indices]
-
-            # Evaluate blended hybrid
-            return self._ensemble.train_blended_ensemble(
-                lstm_preds, lgbm_preds, y_val_actual
-            )
-
-        except Exception as e:
-            log.error(f"Hybrid evaluation failed: {e}")
-            import traceback
-            traceback.print_exc()
-            return {}
-
-    def _log_training_summary(self, metrics: Dict):
-        """Log a clean summary of all model performances."""
-        log.info("=" * 60)
-        log.info("TRAINING SUMMARY")
-        log.info("=" * 60)
-
-        if metrics.get("lgbm"):
-            m = metrics["lgbm"]
-            log.info(f"  LightGBM (standalone): RMSE={m.get('rmse', 'N/A'):.4f}  MAE={m.get('mae', 'N/A'):.4f}  MAPE={m.get('mape', 'N/A'):.2f}%")
-        
-        if metrics.get("lstm"):
-            m = metrics["lstm"]
-            log.info(f"  LSTM (base):           RMSE={m.get('rmse', 'N/A'):.4f}  MAE={m.get('mae', 'N/A'):.4f}  MAPE={m.get('mape', 'N/A'):.2f}%")
-        
-        if metrics.get("lgbm_residual"):
-            m = metrics["lgbm_residual"]
-            log.info(f"  LightGBM (residual):   RMSE={m.get('rmse', 'N/A'):.4f}  MAE={m.get('mae', 'N/A'):.4f}")
-
-        if metrics.get("ensemble"):
-            m = metrics["ensemble"]
-            log.info(f"  HYBRID ENSEMBLE:       RMSE={m.get('rmse', 'N/A'):.4f}  MAE={m.get('mae', 'N/A'):.4f}  MAPE={m.get('mape', 'N/A'):.2f}%")
-        
-        log.info("=" * 60)
+    def _train(self, raw, activate=True):
+        run_dir = self.store.begin_run()
+        log.info("Training candidate bundle %s", run_dir.name)
+        clean = self.preprocessor.validate(raw)
+        train, validation, test = self.preprocessor.split_three(
+            clean, self.cfg.validation_size, self.cfg.test_size)
+        tuning_partition = self._tuning_partition(validation)
+        split = {"train": self._partition_bounds(train),
+                 "validation": self._partition_bounds(validation),
+                 "test": self._partition_bounds(test)}
+
+        builder = FeatureBuilder(run_dir).fit(train)
+        featured = builder.transform(clean)
+        train_mask = featured.report_date.between(train.report_date.min(), train.report_date.max())
+        val_mask = featured.report_date.between(tuning_partition.report_date.min(), tuning_partition.report_date.max())
+        train_rows = train_mask & usable_targets(featured)
+        val_rows = val_mask & usable_targets(featured)
+        if not train_rows.any() or not val_rows.any():
+            raise ValueError("No finite observed LightGBM targets after causal feature construction")
+
+        lgbm = LightGBMModel(run_dir)
+        lgbm_metrics = lgbm.train(
+            featured.loc[train_rows, FEATURE_COLUMNS],
+            featured.loc[train_rows, "observed_price"],
+            featured.loc[val_rows, FEATURE_COLUMNS],
+            featured.loc[val_rows, "observed_price"])
+
+        lstm = LSTMModel(run_dir).fit_scalers(train)
+        train_start, train_end = train.report_date.min(), train.report_date.max()
+        val_start, val_end = tuning_partition.report_date.min(), tuning_partition.report_date.max()
+        x_train, y_train, _, _, _ = lstm.build_sequences(
+            featured, target_start=train_start, target_end=train_end,
+            stride=self.cfg.training_sequence_stride)
+        x_val, y_val, _, _, _ = lstm.build_sequences(
+            featured, target_start=val_start, target_end=val_end)
+        relative_lstm_metrics = lstm.train(x_train, y_train, x_val, y_val)
+
+        return self._finish_candidate(
+            raw, clean, featured, train, validation, test, split, run_dir,
+            builder, lgbm, lstm, lgbm_metrics, relative_lstm_metrics, activate)
+
+    def _finish_candidate(self, raw, clean, featured, train, validation, test,
+                          split, run_dir, builder, lgbm, lstm, lgbm_metrics,
+                          relative_lstm_metrics, activate,
+                          base_model_scope='calibration_excluded_from_early_stopping'):
+        raw_engine = ForecastEngine(lgbm, lstm, None, builder)
+        validation_forecasts = self._backtest(clean, featured, validation, raw_engine)
+        tuning, calibration = self._split_forecasts(
+            validation_forecasts, cutoff=self._tuning_partition(validation).report_date.max())
+        ensemble = EnsembleModel(run_dir).fit(
+            tuning, self.cfg.monthly_horizon, calibration_frame=calibration)
+        ensemble.calibration['base_model_scope'] = base_model_scope
+        ensemble.save()
+        validation_forecasts["ensemble"] = ensemble.predict_rows(
+            validation_forecasts.lstm.to_numpy(), validation_forecasts.lgbm.to_numpy(),
+            validation_forecasts.horizon.to_numpy(), validation_forecasts.anchor.to_numpy(),
+            validation_forecasts.series.to_numpy(),
+            validation_forecasts.moving_average7.to_numpy())
+
+        frozen_engine = ForecastEngine(lgbm, lstm, ensemble, builder)
+        test_forecasts = self._backtest(clean, featured, test, frozen_engine)
+        test_forecasts["ensemble"] = ensemble.predict_rows(
+            test_forecasts.lstm.to_numpy(), test_forecasts.lgbm.to_numpy(),
+            test_forecasts.horizon.to_numpy(), test_forecasts.anchor.to_numpy(),
+            test_forecasts.series.to_numpy(), test_forecasts.moving_average7.to_numpy())
+        interval_metrics = self._interval_metrics(ensemble, test_forecasts)
+        observed = clean.loc[clean.is_observed, "report_date"]
+        source_data = {
+            "processed_from": (
+                pd.Timestamp(observed.min()).date().isoformat() if not observed.empty else None
+            ),
+            "processed_through": (
+                pd.Timestamp(observed.max()).date().isoformat() if not observed.empty else None
+            ),
+            "observed_rows": int(clean.is_observed.sum()),
+            "series_count": int(clean.groupby(SERIES_KEY).ngroups),
+        }
+
+        metrics = {
+            "lightgbm_one_step_validation": lgbm_metrics,
+            "lstm_relative_validation": relative_lstm_metrics,
+            "validation": {
+                name: self._metrics(validation_forecasts, name)
+                for name in ["ensemble", "lstm", "lgbm", "persistence",
+                             "seasonal7", "moving_average7"]
+            },
+            "test": {
+                name: self._metrics(test_forecasts, name)
+                for name in ["ensemble", "lstm", "lgbm", "persistence",
+                             "seasonal7", "moving_average7"]
+            },
+            "test_interval_coverage": interval_metrics["0.8"]["observed_coverage"],
+            "test_interval_metrics": interval_metrics,
+            "interval_calibration": ensemble.calibration,
+            "source_data": source_data,
+            "validation_samples": int(len(validation_forecasts)),
+            "test_samples": int(len(test_forecasts)),
+            "evaluation_stride_days": self.cfg.evaluation_stride,
+            "evaluation_scope": (
+                "retrospective source-dated backtest; the database has no immutable "
+                "historical ingestion vintages for point-in-time reconstruction"
+            ),
+            "trained_at": datetime.now(timezone.utc).isoformat(),
+        }
+        fingerprint = self._fingerprint(raw)
+        champion = self._active_champion_metrics(clean, test, fingerprint, split)
+        beats_baseline, beats_champion, passed = self._promotion_decision(
+            metrics["test"], champion["ensemble"] if champion else None)
+        metrics["promotion_gate"] = {
+            "passed": bool(passed),
+            "beats_persistence": bool(beats_baseline),
+            "beats_active_champion": bool(beats_champion),
+            "active_champion": champion,
+            "rule": (
+                "frozen test ensemble beats persistence in all three metrics and "
+                "improves MAE, RMSE, and MAPE by at least 5% over the active "
+                "champion on the same test window"
+            ),
+        }
+        validation_forecasts.to_csv(run_dir / "validation_forecasts.csv", index=False)
+        test_forecasts.to_csv(run_dir / "test_forecasts.csv", index=False)
+        run_id = self.store.finalize(
+            run_dir, _jsonable(metrics), split, fingerprint,
+            activate=bool(activate and passed))
+        metrics["run_id"] = run_id
+        metrics["activated"] = bool(activate and passed)
+        log.info("Candidate %s complete; activated=%s", run_id, metrics["activated"])
+        return _jsonable(metrics)
+
+    @staticmethod
+    def _beats_persistence(test_metrics):
+        return TrainingPipeline._improves_all(
+            test_metrics["ensemble"], test_metrics["persistence"])
+
+    @staticmethod
+    def _promotion_decision(test_metrics, champion_metrics=None):
+        beats_persistence = TrainingPipeline._beats_persistence(test_metrics)
+        beats_champion = (champion_metrics is None or TrainingPipeline._improves_all_by(
+            test_metrics["ensemble"], champion_metrics, .05))
+        return beats_persistence, beats_champion, beats_persistence and beats_champion
+
+    @staticmethod
+    def _improves_all(candidate, reference):
+        return all(candidate[name] < reference[name] for name in ["mae", "rmse", "mape"])
+
+    @staticmethod
+    def _improves_all_by(candidate, reference, fraction):
+        return all(candidate[name] <= reference[name] * (1 - fraction)
+                   for name in ["mae", "rmse", "mape"])

@@ -1,0 +1,24 @@
+{
+  "modelRunId": "20261001T025925Z_0661960a",
+  "metrics": {
+    "mae": 9.109274103212362,
+    "rmse": 26.174824536751913,
+    "mape": 5.161809814389095,
+    "directional_accuracy": null,
+    "interval_level": 0.8,
+    "interval_coverage": 0.8228591293599599,
+    "prediction_success": 0.7393873846034995,
+    "success_tolerance": 0.05,
+    "success_definition": "absolute_percentage_error_at_most_tolerance",
+    "evaluation_source": "historical_holdout",
+    "coverage_sample_count": 25889,
+    "sample_count": 25889,
+    "processed_from": "2019-10-10",
+    "processed_through": "2026-09-30",
+    "processed_observed_rows": null,
+    "processed_series_count": null,
+    "test_start": "2025-09-13T00:00:00",
+    "test_end": "2026-09-30T00:00:00",
+    "evaluation_scope": "retrospective source-dated backtest; the database has no immutable historical ingestion vintages for point-in-time reconstruction"
+  }
+}

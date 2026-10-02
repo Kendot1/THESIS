@@ -209,7 +209,7 @@ const ProductCard = ({
 
         {/* Rate Change Badge (Pill Style) */}
         <div className="absolute top-3 right-3 z-10">
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/20 shadow-sm ${isUp ? "bg-white/90 text-positive" : "bg-white/90 text-negative"}`}>
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/20 shadow-sm ${isUp ? "bg-white/90 text-price-up" : "bg-white/90 text-price-down"}`}>
             <span className="text-[10px] font-black uppercase tracking-wider">
               {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(1)}%
             </span>
@@ -218,7 +218,7 @@ const ProductCard = ({
 
         {/* Sentiment Dot (Top Left) */}
         <div className="absolute top-4 left-4 z-10 transition-transform duration-300 md:group-hover:scale-110">
-          <div className={`w-3 h-3 rounded-full border-2 border-white shadow-sm ${isUp ? "bg-positive" : "bg-negative"}`} />
+          <div className={`w-3 h-3 rounded-full border-2 border-white shadow-sm ${isUp ? "bg-price-up" : "bg-price-down"}`} />
         </div>
       </div>
 
@@ -370,7 +370,7 @@ const ProductCard = ({
           </div>
           <div className="flex items-center justify-between gap-1 w-full min-w-0">
             <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-bold tracking-wider shrink-0">{t("predicted")}</span>
-            <span className={`text-[12px] sm:text-[14px] font-black truncate ${isUp ? "text-positive" : "text-negative"}`}>₱{predictedPrice.toFixed(1)}{unit ? `/${unit}` : ''}</span>
+            <span className={`text-[12px] sm:text-[14px] font-black truncate ${isUp ? "text-price-up" : "text-price-down"}`}>₱{predictedPrice.toFixed(1)}{unit ? `/${unit}` : ''}</span>
           </div>
         </div>
 
