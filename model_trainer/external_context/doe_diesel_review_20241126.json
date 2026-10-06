@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-10-04",
+  "source_id": "doe_document_aaa5ce5ef8bdb242",
+  "artifact_sha256": "f3149e4053c8c9c37a6a845bae0135f9cf50f99801e8ec864269d8f4a50a443f",
+  "pdf_page": 1,
+  "reference_start": "2024-11-26",
+  "reference_end": "2024-12-02",
+  "review_method": "Visual comparison of original PDF page 1: weekly report header, DIESEL product row, city label, overall range and company cells.",
+  "unit": null,
+  "unit_verified": false,
+  "rows": [
+    {"city_literal": "BANGUED", "range_low": "59.90", "range_high": "59.90"},
+    {"city_literal": "TABUK CITY", "range_low": "52.35", "range_high": "60.13"},
+    {"city_literal": "LAGAWE", "range_low": "54.76", "range_high": "59.08"}
+  ],
+  "limitation": "Numeric transcription only; unit and geographic mapping unverified. The PDF prints TABUK CITY beside APAYAO; preserve both source literals and require geographic review before aggregation. The weekly header states November 26, while the index URL says November 27; use the PDF's explicit reference period."
+}

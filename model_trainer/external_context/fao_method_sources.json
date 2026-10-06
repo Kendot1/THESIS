@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "seed_documents": [
+    {"id":"fao_ffpi_methodology_current","dataset":"fao_ffpi_definition","url":"https://www.fao.org/worldfoodsituation/foodpricesindex/en/"},
+    {"id":"fao_food_outlook_june2020","dataset":"fao_ffpi_definition","url":"https://www.fao.org/3/ca9509en/ca9509en.pdf"}
+  ]
+}

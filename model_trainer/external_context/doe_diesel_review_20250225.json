@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-10-04",
+  "source_id": "doe_document_512d3852daba17c6",
+  "artifact_sha256": "38c911ccbd5c1a70a0e25e4ce859cdbcf1257836d599c704b9675b197f1909a6",
+  "pdf_page": 1,
+  "reference_start": "2025-02-25",
+  "reference_end": "2025-03-03",
+  "review_method": "Visual comparison of original Region II PDF page 1, dated weekly header, municipality labels, DIESEL rows, overall ranges and company cells.",
+  "unit": null,
+  "unit_verified": false,
+  "rows": [
+    {"city_literal":"ALCALA","range_low":"56.25","range_high":"56.25"},
+    {"city_literal":"CLAVERIA","range_low":"62.20","range_high":"62.20"},
+    {"city_literal":"IGUIG","range_low":"56.30","range_high":"56.30"}
+  ],
+  "limitation": "Numeric transcription only; unit and commodity relationships unverified. GATTARAN has no outlet prices and printed zero placeholders; it remains missing in the queue."
+}

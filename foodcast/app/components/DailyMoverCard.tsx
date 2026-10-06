@@ -14,6 +14,9 @@ interface DailyMoverCardProps {
   image?: string;
   currentPrice: number;
   predictedPrice: number;
+  forecastDate: string | null;
+  lastActualDate?: string;
+  forecastSource?: "model" | "trend_fallback";
   variant?: string;
   origin?: string;
   unit: string;
@@ -26,19 +29,29 @@ const DailyMoverCard = ({
   image,
   currentPrice,
   predictedPrice,
+  forecastDate,
+  lastActualDate,
+  forecastSource,
   variant,
   origin,
   unit,
 }: DailyMoverCardProps) => {
-  const { t } = useLanguage();
-  const change = ((predictedPrice - currentPrice) / currentPrice) * 100;
+  const { t, language } = useLanguage();
+  const change = currentPrice > 0 ? ((predictedPrice - currentPrice) / currentPrice) * 100 : 0;
   const priceChange = predictedPrice - currentPrice;
   const isUp = change >= 0;
+  const formatDate = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(
+    language === "tl" ? "fil-PH" : "en-PH",
+    { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" },
+  );
 
   const displayName = t(name) + (variant && variant !== "Standard" ? ` (${variant})` : "");
 
-  // Generate a practical market insight
+  // Describe the forecast without inventing supply causes or buying advice.
   const getInsight = () => {
+    if (!forecastDate) return t("dailyForecastUnavailable");
+    if (forecastSource === "trend_fallback") return t("dailyForecastFallback");
+    if (Math.abs(priceChange) < 0.005) return t("dailyForecastUnchanged");
     const absChange = Math.abs(change);
     if (isUp) {
       if (absChange > 5) return t("insightSurging");
@@ -93,7 +106,7 @@ const DailyMoverCard = ({
         </div>
 
         {/* Trend badge on image */}
-        <div className={`absolute top-3 right-3 flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full
+        {forecastDate && <div className={`absolute top-3 right-3 flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full
           ${isUp
             ? "bg-price-up/80 text-white border border-price-up/30"
             : "bg-price-down/80 text-white border border-price-down/30"
@@ -101,7 +114,7 @@ const DailyMoverCard = ({
         >
           {isUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
           {isUp ? "+" : ""}{change.toFixed(2)}%
-        </div>
+        </div>}
 
         {/* Product name overlaid at bottom of image */}
         <div className="absolute bottom-3 left-3 right-3">
@@ -119,7 +132,7 @@ const DailyMoverCard = ({
         {/* Price Row */}
         <div className="flex items-baseline justify-between gap-2 mb-3">
           <div>
-            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">{t("currentPrice")}</span>
+            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">{t("dailyLastObserved")}</span>
             <span className="text-2xl sm:text-3xl font-black text-gray-900 tabular-nums leading-none">
               ₱{currentPrice.toFixed(2)}
               {unit && <span className="text-sm sm:text-base text-gray-500 ml-1 font-medium">/ {unit}</span>}
@@ -127,12 +140,19 @@ const DailyMoverCard = ({
 
           </div>
           <div className="text-right">
-            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">{t("tomorrow")}</span>
+            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">{t("dailyNextForecast")}</span>
+            {forecastDate ? <>
             <span className={`text-lg sm:text-xl font-bold tabular-nums leading-none ${isUp ? 'text-price-up' : 'text-price-down'}`}>
               ₱{predictedPrice.toFixed(2)}
               {unit && <span className="text-xs sm:text-sm opacity-70 ml-1 font-medium">/ {unit}</span>}
             </span>
+            </> : <span className="text-sm text-gray-500">{t("dailyForecastUnavailable")}</span>}
           </div>
+        </div>
+
+        <div className="flex justify-between gap-2 text-[10px] text-gray-500 mb-3">
+          <span>{lastActualDate ? formatDate(lastActualDate) : "—"}</span>
+          <span>{forecastDate ? formatDate(forecastDate) : "—"}</span>
         </div>
 
         {/* Divider */}
@@ -145,14 +165,14 @@ const DailyMoverCard = ({
 
         {/* Bottom CTA */}
         <div className="flex items-center justify-between mt-auto pt-2">
-          <div className={`inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-bold px-2.5 py-1.5 rounded-lg
+          {forecastDate && <div className={`inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-bold px-2.5 py-1.5 rounded-lg
             ${isUp
               ? 'text-price-up bg-price-up/10'
               : 'text-price-down bg-price-down/10'
             }`}
           >
             {isUp ? "+" : ""}₱{priceChange.toFixed(2)} {t("expectedChange")}
-          </div>
+          </div>}
           <span className="text-xs text-gray-400 font-medium flex items-center gap-0.5 group-hover:text-primary-700 transition-colors">
             {t("details")} <ChevronRight className="w-3.5 h-3.5" />
           </span>

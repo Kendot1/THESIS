@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-10-04",
+  "review_method": "Visual inspection of PDF page 78, printed page 72, plus official FAO methodology page",
+  "source_id": "fao_food_outlook_june2020",
+  "artifact_sha256": "1604731d81c74a217a6e2df90af8348691d46111458ed585fdfc65d459fd12b3",
+  "source_url": "https://www.fao.org/3/ca9509en/ca9509en.pdf",
+  "pdf_page": 78,
+  "printed_page": 72,
+  "metric": "FAO Food Price Index",
+  "unit": "index_points",
+  "base_period": "2014-2016=100",
+  "release_not_before": "2020-07-01",
+  "reference_not_before": "2020-06",
+  "geography": "international commodity markets",
+  "commodity_scope": ["cereals", "vegetable oils", "sugar", "meat", "dairy"],
+  "mapping": "Global food-market context; not a domestic retail price, CPI, volume, or geographic sourcing weight",
+  "transformation": "Preserve initial release level; no rebasing, interpolation, or retrospective replacement",
+  "limitation": "Methodology interpretation only. Numerical historical availability requires independently verified source replays. Pre-July-2020 release levels are excluded from this definition."
+}

@@ -28,8 +28,13 @@ New LSTM bundles also consume additional available lag, volatility, and annual
 seasonality signals. Only currency-valued inputs are divided by the sample price
 anchor; dimensionless indicators such as RSI, volatility, and percentage changes
 remain on their natural scales. Existing bundles retain their original input
-contract. A candidate must beat persistence and reduce MAE, RMSE, and MAPE by at
-least 5% each versus the active champion on the same frozen holdout to activate.
+contract. Training and recalibration currently stage candidates without automatic
+activation: the internal chronological test has been repeatedly inspected during
+development. Relative error improvements on that split are diagnostics only.
+Production promotion requires independently verified final-holdout MAE <= 5,
+RMSE <= 5, and MAPE <= 5%, stable validation improvement, and explicit product
+coverage. The standalone [frozen holdout scorer](evaluation/README.md) verifies
+sealed forecasts and reports realized errors; it does not itself activate models.
 
 The pipeline enforces one causal contract from training through serving:
 
@@ -38,12 +43,11 @@ The pipeline enforces one causal contract from training through serving:
   treated as observed labels;
 - lag, rolling, indicator, and trend features use data available before the
   target date;
-- train, validation, and frozen test partitions are chronological;
+- train, validation, and retrospective test partitions are chronological;
 - LightGBM early stopping and ensemble weights use validation only;
 - new LightGBM bundles predict relative price movement; legacy absolute-price
   bundles remain loadable;
-- promotion requires frozen-test ensemble MAE, RMSE, and MAPE to beat both
-  persistence and the active champion on the same test window;
+- an internal test comparison cannot authorize automatic promotion;
 - live prediction uses the same recursive forecast engine used in backtesting.
 
 ## Setup
@@ -94,8 +98,11 @@ listed above is required before running the updated GitHub daily workflow.
     # Regenerate the measured capability snapshot for this exact active model.
     python main.py export-quality --output ../foodcast/app/lib/model-quality.json
 
-    # Train from Supabase. A candidate activates only after passing the test gate.
+    # Train from Supabase and stage the candidate for independent final evaluation.
     python main.py train --mode full
+
+    # Bound a research run to the declared development period at the database.
+    python main.py train --mode full --through 2025-09-12 --no-activate
 
     # Reproducible offline run against a JSON or CSV snapshot.
     python main.py train --mode full --data ../audits/model_trainer_2026-09-18/food_prices_snapshot.json
@@ -128,6 +135,14 @@ Incremental mode intentionally performs a fresh fit. Warm-starting a model after
 recomputing categorical mappings and normalization would mix incompatible
 training contracts.
 
+`train` and `preview` accept `--through YYYY-MM-DD`. Supabase applies this
+inclusive report-date bound on every page; local snapshots are filtered before
+preprocessing. Resume/recalibration retain their original scope and reject this
+option. The bound limits observation dates; it does not reconstruct historical
+database revisions or prove when source data became public. Keep declared final
+holdout dates outside research inputs and retain verified publication vintages
+for external features.
+
 ## Verification
 
     python -m unittest discover -s tests -v
@@ -140,3 +155,23 @@ bundle hashes, and a small end-to-end train/serialize/backtest run.
 Bundles live under artifacts_v2/runs/<run_id>/. The active pointer is
 artifacts_v2/manifest.json; legacy artifacts under artifacts/ are never loaded
 by v2.
+
+Fresh GitHub runners restore the serving bundle from R2 before training. A
+completed training candidate does not create an active pointer: promotion still
+requires independent reviewed evidence. If R2 has no `model_artifacts_v2/manifest.json`,
+restore the existing production champion from a machine with its intact active
+bundle by running `python -m utils.r2_sync upload` from `model_trainer`. This
+uploads the bundle first and its active pointer last. Then run
+`python -m utils.r2_sync download` and `python main.py predict --horizon monthly`
+on the runner. The restore command fails immediately if the remote pointer is
+missing, so a daily run does not waste training before discovering that it cannot
+serve forecasts. Retain the incumbent when a retrained candidate is not promoted.
+
+External observation vintages can be checked with
+`features.external_vintages.ObservationArchive`. The default lookup excludes
+unverified availability dates and selects only revisions known at the forecast
+origin. Retain the exact source artifact and publication evidence before marking
+a vintage verified. The diagnostic-only opt-in is not production authorization.
+The source research and conditional PAGASA experiment are documented in
+`../audits/target5_20261002/PAGASA_FINDINGS.md`; those inputs are not enabled in the
+production feature builder.

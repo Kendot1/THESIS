@@ -4,7 +4,8 @@ import json
 import lightgbm as lgb
 import numpy as np
 from config.settings import get_settings
-from features.builder import FEATURE_COLUMNS, FEATURE_VERSION, LEGACY_FEATURE_COLUMNS
+from features.builder import (FEATURE_COLUMNS, FEATURE_COLUMNS_V3, FEATURE_VERSION,
+                              LEGACY_FEATURE_COLUMNS)
 from utils.metrics import compute_all_metrics
 
 
@@ -78,7 +79,8 @@ class LightGBMModel:
 
     def load(self):
         meta = json.loads((self.path/'lightgbm_meta.json').read_text(encoding='utf-8'))
-        supported = {2: LEGACY_FEATURE_COLUMNS, FEATURE_VERSION: FEATURE_COLUMNS}
+        supported = {2: LEGACY_FEATURE_COLUMNS, 3: FEATURE_COLUMNS_V3,
+                     FEATURE_VERSION: FEATURE_COLUMNS}
         version = meta.get('feature_version')
         if version not in supported or meta.get('features') != supported[version]:
             raise ValueError('Incompatible LightGBM bundle; retrain with the current schema')

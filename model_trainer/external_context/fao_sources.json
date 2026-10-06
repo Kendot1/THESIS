@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "seed_documents": [
+    {"id":"fao_newsletters_index","dataset":"fao_ffpi","url":"https://www.fao.org/markets-and-trade/resources/newsletters/food-price-index-newsletter-archive/en"},
+    {"id":"fao_ffpi_202312_release","dataset":"fao_ffpi","url":"https://www.fao.org/newsroom/detail/fao-food-price-index-declines-in-december/en"},
+    {"id":"fao_ffpi_202401_release","dataset":"fao_ffpi","url":"https://www.fao.org/newsroom/detail/fao-food-price-index-down-again-in-january-led-by-lower-wheat-and-maize-prices/en"},
+    {"id":"fao_ffpi_202506_release","dataset":"fao_ffpi","url":"https://www.fao.org/newsroom/detail/fao-food-price-index-up-slightly-in-june-due-to-higher-meat--dairy-and-vegetable-oil-prices/"}
+  ]
+}

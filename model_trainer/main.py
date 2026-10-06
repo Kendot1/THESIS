@@ -10,19 +10,34 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent))
 
 
-def _read_data(path):
+def _read_data(path, through_date=None):
+    if through_date is not None:
+        from data.fetcher import iso_report_date
+        through_date = iso_report_date(through_date)
     path = Path(path)
     if path.suffix.lower() == ".csv":
-        return pd.read_csv(path)
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if isinstance(data, dict):
-        data = data.get("rows", data.get("data", data))
-    return pd.DataFrame(data)
+        frame = pd.read_csv(path)
+    else:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(data, dict):
+            data = data.get("rows", data.get("data", data))
+        frame = pd.DataFrame(data)
+    if through_date is not None:
+        dates = pd.to_datetime(frame.report_date, errors="raise").dt.normalize()
+        frame = frame.loc[dates <= pd.Timestamp(through_date)].copy()
+    return frame
 
 
 def cmd_train(args):
     from pipeline.trainer import TrainingPipeline
-    raw = _read_data(args.data) if args.data else None
+    from data.fetcher import DataFetcher
+    if args.through and (args.resume or args.recalibrate):
+        raise ValueError("--through is for new training runs; resume/recalibrate must retain their original data scope")
+    raw = None
+    if args.data:
+        raw = _read_data(args.data, args.through)
+    elif args.through:
+        raw = DataFetcher().fetch_all(through_date=args.through)
     pipeline = TrainingPipeline()
     if args.recalibrate:
         metrics = pipeline.recalibrate_candidate(
@@ -113,20 +128,49 @@ def cmd_preview(args):
     """Generate local forecasts without resolving product IDs or publishing."""
     from data.fetcher import DataFetcher
     from data.preprocessor import DataPreprocessor, SERIES_KEY
+    from features.builder import FeatureBuilder
     from models.registry import ModelRegistry
     from pipeline.prediction_writer import HORIZON_MAP
 
-    raw = _read_data(args.data) if args.data else DataFetcher().fetch_all()
+    raw = (_read_data(args.data, args.through) if args.data else
+           DataFetcher().fetch_all(through_date=args.through))
     clean = DataPreprocessor().validate(raw)
     registry = ModelRegistry.get().load_all()
     query = (args.product or "").casefold()
     results, failures = [], []
+    selected = []
     for key, series in clean.groupby(SERIES_KEY, sort=True):
         identity = "||".join(map(str, key))
         if query and query not in identity.casefold():
             continue
+        selected.append((key, series))
+        if len(selected) >= args.limit:
+            break
+    market_daily = FeatureBuilder.category_return_history(clean)
+    market_daily["category_return"] = market_daily.category_return.fillna(0.0)
+    market_groups = {str(category): group for category, group
+                     in market_daily.groupby("product_category", sort=False)}
+    prepared, metadata = [], []
+    for key, series in selected:
         try:
-            forecast = registry.engine.forecast(series, HORIZON_MAP[args.horizon])
+            category = str(key[0])
+            origin = pd.Timestamp(series.report_date.max())
+            market = market_groups.get(category)
+            market_history = ([] if market is None else market.loc[
+                pd.to_datetime(market.report_date) <= origin,
+                "category_return"].to_numpy(dtype=float).tolist())
+            prepared.append(registry.engine._prepare(series, None, market_history))
+            metadata.append((key, series))
+        except (ValueError, FileNotFoundError) as exc:
+            failures.append({"series": "||".join(map(str, key)), "error": str(exc)})
+    try:
+        forecasts = registry.engine.forecast_many(prepared, HORIZON_MAP[args.horizon])
+    except (ValueError, FileNotFoundError) as exc:
+        forecasts = []
+        failures.extend({"series": "||".join(map(str, key)), "error": str(exc)}
+                        for key, _ in metadata)
+    for (key, series), forecast in zip(metadata, forecasts):
+        try:
             lower, upper = registry.engine.ensemble.intervals(
                 forecast.point, forecast.anchor, confidence=args.confidence, category=key[0])
             results.append({
@@ -142,9 +186,7 @@ def cmd_preview(args):
                 } for index, date in enumerate(forecast.dates)],
             })
         except (ValueError, FileNotFoundError) as exc:
-            failures.append({"series": identity, "error": str(exc)})
-        if len(results) >= args.limit:
-            break
+            failures.append({"series": "||".join(map(str, key)), "error": str(exc)})
     if not results:
         detail = f" matching {args.product!r}" if args.product else ""
         raise ValueError(f"No forecastable product series found{detail}; failures={failures[:1]}")
@@ -159,11 +201,14 @@ def cmd_schedule(args):
 
 
 def main():
+    from data.fetcher import iso_report_date
     parser = argparse.ArgumentParser(prog="foodcast-trainer")
     commands = parser.add_subparsers(dest="command", required=True)
     train = commands.add_parser("train")
     train.add_argument("--mode", choices=["full", "incremental", "daily"], default="full")
     train.add_argument("--data", help="Offline JSON or CSV snapshot")
+    train.add_argument("--through", type=iso_report_date,
+                       help="Inclusive report-date cutoff (YYYY-MM-DD), applied before preprocessing")
     train.add_argument("--no-activate", action="store_true",
                        help="Keep the completed bundle as a candidate")
     train.add_argument("--resume", help="Resume calibration for a fitted candidate run ID")
@@ -188,6 +233,8 @@ def main():
     preview.add_argument("--limit", type=int, default=5,
                          help="Maximum matching product series to display")
     preview.add_argument("--data", help="Optional offline JSON or CSV snapshot")
+    preview.add_argument("--through", type=iso_report_date,
+                         help="Inclusive report-date cutoff (YYYY-MM-DD)")
     preview.set_defaults(func=cmd_preview)
     schedule = commands.add_parser("schedule")
     schedule.add_argument("--time", default="02:00")

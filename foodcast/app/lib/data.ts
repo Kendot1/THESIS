@@ -38,6 +38,34 @@ export interface Product {
   lastActualDate?: string;
 }
 
+export interface RangeHitMetrics {
+  interval_coverage?: number | null;
+  covered_count?: number | null;
+  interval_level?: number | null;
+  sample_count?: number | null;
+  coverage_sample_count?: number | null;
+  effective_sample_count?: number | null;
+  coverage_uncertainty_method?: string;
+  coverage_uncertainty_approximate?: boolean;
+  coverage_uncertainty_validated?: boolean;
+  sample_basis?: string;
+  evaluation_source?: string | null;
+  horizon_min_days?: number;
+  horizon_max_days?: number;
+  horizon_basis?: string;
+  observed_min_lead_days?: number;
+  observed_max_lead_days?: number;
+}
+
+export interface CoverageConfidenceInterval {
+  lower: number;
+  upper: number;
+  confidenceLevel: 0.95;
+  effectiveSampleCount: number;
+  method: "wilson_effective_sample";
+  approximate: true;
+}
+
 export interface ForecastQualityMetrics {
   mae: number | null;
   rmse: number | null;
@@ -56,14 +84,79 @@ export interface ForecastQualityMetrics {
   processed_series_count?: number | null;
   product_metrics?: Record<string, {
     interval_coverage: number;
+    interval_level?: number | null;
     sample_count: number;
     sample_basis?: string;
     mape?: number | null;
     prediction_success?: number;
     evaluation_source?: string;
+    horizon_metrics?: Record<string, RangeHitMetrics>;
   }>;
   evaluation_scope?: string | null;
   evaluation_source?: string | null;
+}
+
+/** Return only measured coverage for the nominal 80% prediction interval. */
+export function verifiedRangeHitRate(metrics: RangeHitMetrics | null | undefined, minimumSamples = 30): number | null {
+  const coverage = metrics?.interval_coverage;
+  const sampleCount = metrics?.coverage_sample_count ?? metrics?.sample_count ?? 0;
+  if (metrics?.coverage_sample_count != null && metrics.sample_count != null
+      && metrics.coverage_sample_count !== metrics.sample_count) return null;
+  if (metrics?.covered_count != null && (!Number.isInteger(metrics.covered_count)
+      || metrics.covered_count < 0 || metrics.covered_count > sampleCount
+      || coverage == null || Math.abs(metrics.covered_count / sampleCount - coverage) > 1e-12)) return null;
+  return (metrics?.evaluation_source === "historical_holdout"
+    || metrics?.evaluation_source === "realized_vintages")
+    && metrics.interval_level === 0.8
+    && Number.isInteger(sampleCount) && sampleCount >= minimumSamples
+    && coverage != null && Number.isFinite(coverage) && coverage >= 0 && coverage <= 1
+    ? coverage : null;
+}
+
+/** Do not let next-day evidence stand in for the long end of a 30-day outlook. */
+export function verifiedLongRangeHitRate(metrics: RangeHitMetrics | null | undefined,
+  minimumSamples = 20): number | null {
+  return metrics?.evaluation_source === "realized_vintages"
+    && metrics.sample_basis === "unique_actual_dates"
+    && metrics.horizon_basis === "philippine_publication_date"
+    && metrics.horizon_min_days === 15 && metrics.horizon_max_days === 30
+    && Number.isInteger(metrics.observed_min_lead_days) && metrics.observed_min_lead_days! >= 15
+    && Number.isInteger(metrics.observed_max_lead_days) && metrics.observed_max_lead_days! <= 30
+    && metrics.observed_min_lead_days! <= metrics.observed_max_lead_days!
+    ? verifiedRangeHitRate(metrics, minimumSamples) : null;
+}
+
+/** Approximate 95% interval; the serial adjustment has no exact coverage guarantee. */
+export function verifiedCoverageConfidenceInterval(
+  metrics: RangeHitMetrics | null | undefined,
+  minimumSamples = 20,
+): CoverageConfidenceInterval | null {
+  if (verifiedRangeHitRate(metrics, minimumSamples) == null) return null;
+  if (metrics?.evaluation_source !== "realized_vintages"
+      || metrics.sample_basis !== "unique_actual_dates"
+      || metrics.coverage_uncertainty_method !== "positive_serial_wilson_7d"
+      || metrics.coverage_uncertainty_approximate !== true
+      || metrics.coverage_uncertainty_validated !== true) return null;
+  const hits = metrics?.covered_count;
+  const total = metrics?.coverage_sample_count ?? metrics?.sample_count;
+  const effectiveTotal = metrics?.effective_sample_count;
+  if (!Number.isInteger(hits) || !Number.isInteger(total) || hits == null || total == null
+      || hits < 0 || total < 1 || hits > total
+      || effectiveTotal == null || !Number.isFinite(effectiveTotal)
+      || effectiveTotal < 1 || effectiveTotal > total) return null;
+  const observed = hits / total;
+  // Ensure the displayed rate and exact counts describe the same evidence.
+  if (Math.abs(observed - metrics!.interval_coverage!) > 1e-12) return null;
+  const z = 1.959963984540054;
+  const z2 = z * z;
+  const denominator = 1 + z2 / effectiveTotal;
+  const center = (observed + z2 / (2 * effectiveTotal)) / denominator;
+  const margin = z * Math.sqrt(observed * (1 - observed) / effectiveTotal
+    + z2 / (4 * effectiveTotal * effectiveTotal))
+    / denominator;
+  return { lower: Math.max(0, center - margin), upper: Math.min(1, center + margin),
+    confidenceLevel: 0.95, effectiveSampleCount: effectiveTotal,
+    method: "wilson_effective_sample", approximate: true };
 }
 
 export function verifiedPredictionSuccess(metrics: ForecastQualityMetrics | null | undefined) {
@@ -142,15 +235,39 @@ export interface NewsArticle {
   effectMagnitude?: string;
 }
 
+export function formatNewsPublicationDate(
+  publishedAt: string | null,
+  publishedDate: string | null,
+  precision: string | null,
+): string {
+  const sourceDate = precision === "date" ? publishedDate
+    : precision === "timestamp" ? publishedAt : null;
+  if (!sourceDate) return "Publication date unavailable";
+  const dateValue = precision === "date" ? `${publishedDate}T12:00:00Z` : publishedAt!;
+  const parsed = new Date(dateValue);
+  if (!Number.isFinite(parsed.getTime())) return "Publication date unavailable";
+  return parsed.toLocaleDateString("en-US", {
+    year: "numeric", month: "short", day: "numeric", timeZone: "UTC",
+  });
+}
+
 // Dashboard cards and search need prices, not the full chart/history payload.
 export type DashboardProduct = Pick<Product,
   "id" | "name" | "category" | "image" | "variant" | "origin" |
-  "currentPrice" | "predictedPrice" | "unit" | "forecastSource"
->;
+  "currentPrice" | "predictedPrice" | "unit" | "forecastSource" | "lastActualDate"
+> & { forecastDate: string | null };
 
 export function toDashboardProduct(product: Product): DashboardProduct {
-  const { id, name, category, image, variant, origin, currentPrice, predictedPrice, unit, forecastSource } = product;
-  return { id, name, category, image, variant, origin, currentPrice, predictedPrice, unit, forecastSource };
+  const { id, name, category, image, variant, origin, currentPrice, unit, lastActualDate } = product;
+  const actualTime = Date.parse(`${lastActualDate}T00:00:00Z`);
+  const expectedDate = Number.isFinite(actualTime)
+    ? new Date(actualTime + 86_400_000).toISOString().split("T")[0] : null;
+  const nextDay = product.dailyForecast?.find(row => row.date === expectedDate
+    && Number.isFinite(row.predicted_price) && row.predicted_price > 0);
+  return { id, name, category, image, variant, origin, currentPrice, unit, lastActualDate,
+    predictedPrice: nextDay?.predicted_price ?? currentPrice,
+    forecastDate: nextDay?.date ?? null,
+    forecastSource: nextDay ? product.forecastSource : "trend_fallback" };
 }
 
 // ─── Supabase Edge Function Base URL ───────────────────────
@@ -358,13 +475,19 @@ export async function fetchDashboardProducts(): Promise<DashboardProduct[]> {
     const data = await fetchFromNetwork<unknown>("dashboard-products", 3, true);
     // Older Edge deployments answer unknown paths with their status object.
     // Never pass that object into Home, which expects an iterable product list.
-    if (Array.isArray(data)) return data as DashboardProduct[];
-    console.warn("Dashboard summary endpoint returned a non-array; using legacy products");
-    return (await fetchProducts()).map(toDashboardProduct);
+    if (Array.isArray(data) && data.every(product =>
+      product && Object.hasOwn(product, "forecastDate"))) return data as DashboardProduct[];
+    console.warn("Dashboard summary has no dated daily forecast; using live product details");
   } catch (e) {
     console.error("Error fetching dashboard products:", e);
-    // Keep the dashboard usable while the summary endpoint is unavailable.
-    return (await fetchProducts()).map(toDashboardProduct);
+  }
+  try {
+    // Never resurrect a cached weekly average as a live daily forecast when
+    // the summary endpoint times out or an older Edge deployment is serving.
+    return (await fetchLiveProducts()).map(toDashboardProduct);
+  } catch (e) {
+    console.error("Error fetching live dashboard fallback:", e);
+    return [];
   }
 }
 
@@ -467,7 +590,7 @@ export async function fetchPaginatedNews(
 ): Promise<{ data: NewsArticle[], total: number }> {
   try {
     const { supabase } = await import("../../lib/supabase");
-    let query = supabase.from("news_articles").select("id, title, title_tl, content, content_tl, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products", { count: "exact" });
+    let query = supabase.from("news_articles").select("id, title, title_tl, content, content_tl, event_type, published_at, published_date, publication_precision, image_url, url, source, sentiment_score, keywords, affected_products", { count: "exact" });
 
     if (search) {
       query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%,source.ilike.%${search}%`);
@@ -501,7 +624,7 @@ export async function fetchPaginatedNews(
       content: article.content || "",
       content_tl: article.content_tl || "",
       category: (article.event_type || "News").replace(/_/g, ' '),
-      date: new Date(article.published_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+      date: formatNewsPublicationDate(article.published_at, article.published_date, article.publication_precision),
       image: article.image_url || "/news/market.png",
       url: article.url,
       source: article.source,

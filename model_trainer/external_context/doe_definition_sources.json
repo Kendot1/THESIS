@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "seed_documents": [
+    {
+      "id": "doe_foi_063580042687",
+      "dataset": "doe_fuel_definition",
+      "url": "https://www.foi.gov.ph/agencies/doe/monthly-pump-prices-pesos-per-liter/",
+      "purpose": "DOE response links North Luzon monitoring in answer to a 2021-2025 pump-price request specifying pesos per liter; contextual unit-definition evidence, not historical observations or availability proof."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-10-04",
+  "source_id": "doe_document_fe1a8337bec612d7",
+  "artifact_sha256": "1bfd03197158076986f0ce2d384ccff06a3628f929739f67013da651a2748f25",
+  "pdf_page": 1,
+  "reference_start": "2024-06-25",
+  "reference_end": "2024-06-25",
+  "review_method": "Visual comparison of source PDF page 1, explicit as-of date, DIESEL rows and sampled-company range extrema. Printed RAINGE spelling retained.",
+  "unit": null,
+  "unit_verified": false,
+  "rows": [
+    {"city_literal":"Tabuk City","range_low":"58.45","range_high":"61.25"},
+    {"city_literal":"Baguio City","range_low":"62.00","range_high":"65.74"},
+    {"city_literal":"La Trinidad","range_low":"62.15","range_high":"62.15"}
+  ],
+  "limitation": "Numeric transcription verified. Unit and commodity-route mapping require separate evidence. The report gives an as-of date; no seven-day applicability is inferred from the weekday template."
+}

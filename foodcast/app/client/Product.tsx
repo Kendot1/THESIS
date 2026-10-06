@@ -34,7 +34,7 @@ const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
 });
 import ProductCard from "../components/ProductCard";
 import ScrollReveal from "../components/ScrollReveal";
-import { Product as ProductType, fetchNews, DEFAULT_PRODUCT_IMAGE, formatRelativeAge, formatScheduledDaRefreshAge } from "../lib/data";
+import { Product as ProductType, fetchNews, DEFAULT_PRODUCT_IMAGE, formatRelativeAge, formatScheduledDaRefreshAge, verifiedRangeHitRate, verifiedLongRangeHitRate, verifiedCoverageConfidenceInterval } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { useClock, useForecastStatus, useProducts, useNews } from "../lib/hooks";
 import { encryptId, decryptId } from "../../lib/idCipher";
@@ -411,19 +411,37 @@ export default function Product({
     ((priceChange) / product.currentPrice) * 100;
   const isUp = priceChange >= 0;
   const hasModelForecast = product.forecastSource === "model";
-  const productRangeResult = forecastStatus?.metrics?.product_metrics?.[product.id];
+  const productRangeResult = forecastStatus?.metrics?.product_metrics?.[product.id]?.horizon_metrics?.days_15_30;
   const verifiedDates = productRangeResult?.sample_basis === "unique_actual_dates"
-    ? productRangeResult.sample_count : 0;
-  const hasReliableRangeRate = !!productRangeResult
-    && verifiedDates >= MIN_VERIFIED_DATES_FOR_RATE
-    && Number.isFinite(productRangeResult.interval_coverage)
-    && productRangeResult.interval_coverage >= 0 && productRangeResult.interval_coverage <= 1;
+    ? productRangeResult.sample_count ?? 0 : 0;
+  const recentRangeHitRate = verifiedLongRangeHitRate(productRangeResult, MIN_VERIFIED_DATES_FOR_RATE);
+  const modelRangeHitRate = verifiedRangeHitRate(forecastStatus?.modelMetrics);
+  const rangeHitRate = recentRangeHitRate ?? modelRangeHitRate;
+  const rangeHitSampleCount = recentRangeHitRate != null
+    ? verifiedDates
+    : forecastStatus?.modelMetrics?.coverage_sample_count
+      ?? forecastStatus?.modelMetrics?.sample_count
+      ?? 0;
+  const rangeHitEvidence = recentRangeHitRate != null
+    ? productRangeResult
+    : modelRangeHitRate != null ? forecastStatus?.modelMetrics : null;
+  const rangeHitConfidenceInterval = verifiedCoverageConfidenceInterval(
+    rangeHitEvidence, recentRangeHitRate != null ? MIN_VERIFIED_DATES_FOR_RATE : 30);
+  const confidenceIntervalLabel = rangeHitConfidenceInterval
+    ? `${t("approximateConfidence")} 95% ${t("coverageConfidenceIntervalShort")} ${(rangeHitConfidenceInterval.lower * 100).toFixed(1)}–${(rangeHitConfidenceInterval.upper * 100).toFixed(1)}%`
+    : null;
   const rangeRateDescription = [
     t("rangeHitRateExplanation"),
-    verifiedDates > 0
-      ? `${verifiedDates} ${t("verifiedDays")}`
+    ...(recentRangeHitRate != null ? [t("longRangeHitRateExplanation")] : []),
+    ...(recentRangeHitRate == null && modelRangeHitRate != null ? [t("modelRangeHitRateExplanation")] : []),
+    rangeHitRate != null
+      ? `${(rangeHitRate * 100).toFixed(1)}% observed coverage of 80% ranges across ${rangeHitSampleCount} ${recentRangeHitRate != null ? t("verifiedDays") : t("modelBacktestOutcomes")}`
       : t("rangeHistoryUnavailable"),
-    ...(!hasReliableRangeRate && verifiedDates > 0 ? [t("insufficientVerifiedHistory")] : []),
+    ...(confidenceIntervalLabel ? [confidenceIntervalLabel, t("coverageUncertaintyExplanation")] : []),
+    ...(!confidenceIntervalLabel && rangeHitRate != null ? [t("confidenceNotCalibrated")] : []),
+    ...(recentRangeHitRate == null && verifiedDates > 0 && verifiedDates < MIN_VERIFIED_DATES_FOR_RATE
+      ? [t("insufficientVerifiedHistory")]
+      : []),
   ].join(" · ");
   const dataUpdateAge = formatRelativeAge(forecastStatus?.generatedAt, language, now)
     ?? formatScheduledDaRefreshAge(language, now);
@@ -900,7 +918,7 @@ export default function Product({
                 {/* AI Market Analysis */}
                 <ScrollReveal delay={150}>
                   <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                    <div className="flex items-center justify-between gap-3 mb-8">
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-positive/10 flex items-center justify-center text-positive shadow-inner">
                           <Activity className="w-5 h-5" />
@@ -917,17 +935,25 @@ export default function Product({
                           </p>
                         </div>
                       </div>
-                      <div className="hidden sm:flex shrink-0 flex-col items-end">
+                      <div className="flex min-w-0 flex-col items-end max-w-full sm:max-w-[55%]">
                         <div className="flex items-center gap-1.5 px-3 py-1 bg-accent/10 border border-accent/20 rounded-full" title={hasModelForecast ? rangeRateDescription : undefined}>
                           <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-accent animate-pulse" />
                           <span className="text-[10px] font-bold text-accent uppercase tracking-wider whitespace-nowrap">
                             {product.forecastSource !== "model"
                               ? t("fallbackEstimate")
-                            : hasReliableRangeRate
-                              ? `${(productRangeResult.interval_coverage * 100).toFixed(1)}% ${t("rangeHitRate")}`
+                            : rangeHitRate != null
+                              ? `${(rangeHitRate * 100).toFixed(1)}% ${recentRangeHitRate != null ? t("longRangeHitRate") : t("modelRangeHitRate")}`
                               : `— ${t("rangeHitRate")}`}
                           </span>
                         </div>
+                        {hasModelForecast && (
+                          <span className="text-[9px] text-gray-500 font-medium mt-1 text-right">
+                            80% {t("rangeConfidence")}
+                            {confidenceIntervalLabel ? ` · ${confidenceIntervalLabel}` : ""}
+                            {!confidenceIntervalLabel && rangeHitRate != null ? ` · ${t("confidenceNotCalibrated")}` : ""}
+                            {rangeHitRate != null ? ` · n=${rangeHitSampleCount}` : ""}
+                          </span>
+                        )}
                         <span className="text-[8px] text-gray-400 font-bold mt-1 uppercase">
                           {daProcessingStatus}
                         </span>
@@ -1177,11 +1203,11 @@ export default function Product({
                               <span className="text-xs font-black text-primary-800 uppercase tracking-tight">{t(insight.action)}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest" title={t("rangeHitRateExplanation")}>{t("historicalRangeHitRate")}</span>
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest" title={rangeRateDescription}>{recentRangeHitRate != null ? t("longRangeHitRate") : t("historicalRangeHitRate")}</span>
                               <span className="text-xs font-bold text-gray-600">
                                 {hasModelForecast
-                                  ? hasReliableRangeRate
-                                    ? `${(productRangeResult.interval_coverage * 100).toFixed(1)}% · ${verifiedDates} ${t("verifiedDays")}`
+                                  ? rangeHitRate != null
+                                    ? `${(rangeHitRate * 100).toFixed(1)}% · 80% ${t("rangeConfidence")} · ${confidenceIntervalLabel ?? t("confidenceNotCalibrated")} · n=${rangeHitSampleCount}`
                                     : verifiedDates > 0
                                       ? `${t("insufficientVerifiedHistory")} · ${verifiedDates} ${t("verifiedDays")}`
                                       : t("rangeHistoryUnavailable")

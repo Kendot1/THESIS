@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "seed_documents": [
+    {"id":"ndrrmc_egay_2023_01","event_id":"egay_habagat_2023","url":"https://ndrrmc.gov.ph/attachments/article/4234/SitRep_No._1_for_TC_EGAY_2023.pdf"},
+    {"id":"ndrrmc_egay_2023_07","event_id":"egay_habagat_2023","url":"https://ndrrmc.gov.ph/attachments/article/4234/SitRep_No_7_for_the_Combined_Effects_of_Southwest_Monsoon_and_TC_EGAY_2023.pdf"},
+    {"id":"ndrrmc_carina_2024_33","event_id":"butchoy_carina_habagat_2024","url":"https://ndrrmc.gov.ph/attachments/article/4259/SitRep_No_33_for_the_Combined_Effects_of_Southwest_Monsoon_and_TCs_BUTCHOY_and_CARINA_2024.pdf"},
+    {"id":"ndrrmc_carina_2024_40","event_id":"butchoy_carina_habagat_2024","url":"https://ndrrmc.gov.ph/attachments/article/4259/SitRep_No_40_for_the_Combined_Effects_of_Southwest_Monsoon_and_TCs_BUTCHOY_and_CARINA_2024.pdf"}
+  ]
+}

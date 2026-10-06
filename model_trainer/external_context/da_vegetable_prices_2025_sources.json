@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "seed_documents": [
+    {"id":"car_daily_price_2025","url":"https://drive.google.com/drive/folders/1MM2QJnKeGYx9bGgraH070ru4IXgk67A8"},
+    {"id":"car_search_damage","url":"https://car.da.gov.ph/?s=damage"},
+    {"id":"car_search_supply","url":"https://car.da.gov.ph/?s=supply"}
+  ]
+}

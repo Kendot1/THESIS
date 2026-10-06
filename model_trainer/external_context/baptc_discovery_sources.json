@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "note": "BAPTC reports hosted under named preparer account; authenticity and historical availability require corroboration before feature admission.",
+  "seed_documents": [
+    {"id":"baptc_2024q1_flipbook","url":"https://fliphtml5.com/usyzc/vduo/BAPTC_1st_Quarter_2024_Accomplishment_Report/"},
+    {"id":"baptc_2024q3_flipbook","url":"https://fliphtml5.com/usyzc/vuoh/BAPTC_3rd_Quarter_2024_Accomplishment_Report/"},
+    {"id":"baptc_2024annual_flipbook","url":"https://fliphtml5.com/usyzc/baxh/2024_BAPTC_Management_Accomplishment_Report/"},
+    {"id":"bsu_transparency","url":"https://bsu.edu.ph/transparency-seal/"},
+    {"id":"bsu_2024annual","url":"https://bsu.edu.ph/wp-content/uploads/TS2025/BSU-Annual-Report-2024.pdf"}
+  ]
+}

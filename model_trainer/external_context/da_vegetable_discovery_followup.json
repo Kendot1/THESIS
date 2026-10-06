@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "seed_documents": [
+    {"id":"car_vegetable_rest_page1","url":"https://car.da.gov.ph/?rest_route=/wp/v2/posts&search=vegetable&after=2018-01-01T00%3A00%3A00&before=2026-01-01T00%3A00%3A00&per_page=100&page=1"},
+    {"id":"car_damage_rest_page1","url":"https://car.da.gov.ph/?rest_route=/wp/v2/posts&search=damage&after=2018-01-01T00%3A00%3A00&before=2026-01-01T00%3A00%3A00&per_page=100&page=1"},
+    {"id":"car_supply_rest_page1","url":"https://car.da.gov.ph/?rest_route=/wp/v2/posts&search=supply&after=2018-01-01T00%3A00%3A00&before=2026-01-01T00%3A00%3A00&per_page=100&page=1"},
+    {"id":"car_daily_price_drive","url":"https://drive.google.com/drive/folders/1AvyHySx13HSFqEtPmGqdtVlJluHpz5Mr"}
+  ]
+}

@@ -1,0 +1,339 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-10-03",
+  "acquisition_updated_on": "2026-10-04",
+  "target_period": [
+    "2018-01-01",
+    "2026-12-31"
+  ],
+  "classification_note": "PROMISING is not production admission. HIGH PRIORITY requires verified availability and source mapping; none of the new discoveries is certified yet. Coverage claims below distinguish identified archives from downloaded observations.",
+  "datasets": [
+    {
+      "id": "da_car_vegetable_context",
+      "publisher": "Department of Agriculture - Cordillera Administrative Region",
+      "family": "supply/disaster",
+      "priority": "PROMISING",
+      "url": "https://car.da.gov.ph/",
+      "format": "public HTML articles",
+      "frequency": "irregular",
+      "geography": "Cordillera; selected destination links",
+      "coverage": "All 24 annual search queries captured after one retry of three failures. Public pagination expands inventory to 45 URLs: 38 archived and seven article requests timed out. Initial 19 bodies reviewed; newer bodies pending.",
+      "pit": "No publication/modified meta dates in 19 article bodies; six targeted exact-URL archive queries returned no captures through 2025. Historical availability unverified.",
+      "existing_evidence": "audits/external_context_20261004/DA_CAR_VEGETABLE_FINDINGS.md",
+      "next": "Investigate original dated damage bulletins and historical arrivals; preserve commodity scope, aid-versus-loss semantics and ambiguous shipment years. No training admission."
+    },
+    {
+      "id": "da_car_daily_prices",
+      "publisher": "Department of Agriculture - Cordillera Administrative Region",
+      "family": "supply",
+      "priority": "PROMISING",
+      "url": "https://drive.google.com/drive/folders/1AvyHySx13HSFqEtPmGqdtVlJluHpz5Mr",
+      "format": "public Drive folder linked by official DA-CAR website",
+      "frequency": "daily, according to archive label; individual observations not yet reviewed",
+      "geography": "source markets require document review",
+      "coverage": "Captured 2025 embedded listing exposes only October, November and December; pagination completeness unproven. No numerical observations extracted.",
+      "pit": "Folder metadata and filename dates do not establish historical public availability. Exposed months postdate current development origins.",
+      "existing_evidence": "audits/external_context_20261004/DA_CAR_VEGETABLE_FINDINGS.md",
+      "next": "Investigate older coverage and prospective acquisition without backdating mutable files."
+    },
+    {
+      "id": "pagasa_monthly",
+      "publisher": "PAGASA",
+      "family": "weather",
+      "priority": "PROMISING",
+      "url": "https://pubfiles.pagasa.dost.gov.ph/pagasaweb/files/climate/monthlyclimateassessment/",
+      "format": "PDF",
+      "frequency": "monthly",
+      "geography": "Philippines and broad regions",
+      "coverage": "31 previously archived 2023–2025 bulletins; 2018–2022 not audited",
+      "pit": "Issue dates and current directory metadata; exact historical public availability unverified",
+      "existing_evidence": "audits/target5_20261002/PAGASA_FINDINGS.md",
+      "next": "Expand archive inventory and preserve each publication revision"
+    },
+    {
+      "id": "pagasa_stations",
+      "publisher": "PAGASA",
+      "family": "weather",
+      "priority": "PROMISING",
+      "url": "https://www.pagasa.dost.gov.ph/climate/climate-data",
+      "format": "station PDF and request-based records",
+      "frequency": "station-dependent",
+      "geography": "Philippine stations",
+      "coverage": "Station climate records identified; complete 2018–2026 extraction not established",
+      "pit": "Annual summaries become available after observation dates",
+      "next": "Inventory station-year availability and match production-region stations"
+    },
+    {
+      "id": "pagasa_cyclones",
+      "publisher": "PAGASA",
+      "family": "disaster",
+      "priority": "PROMISING",
+      "url": "https://pubfiles.pagasa.dost.gov.ph/pagasaweb/files/tamss/weather/tcprelimsummary/",
+      "format": "PDF versions",
+      "frequency": "event",
+      "geography": "Philippine tropical cyclone domain",
+      "coverage": "2024–2025 reports and revisions observed in index; other years require inventory",
+      "pit": "Post-event analyses cannot be backdated to cyclone day; original operational bulletins preferred",
+      "next": "Separate operational advisories from retrospective revised tracks"
+    },
+    {
+      "id": "ndrrmc_sitreps",
+      "publisher": "NDRRMC",
+      "family": "disaster",
+      "priority": "PROMISING",
+      "url": "https://ndrrmc.gov.ph/8-ndrrmc-update/4293-effects-of-southwest-monsoon-and-tc-crising-2025.html",
+      "format": "HTML index and PDF",
+      "frequency": "event updates, often twice daily",
+      "geography": "affected regions",
+      "coverage": "Three exact historical PDFs recovered for 2023 Egay and 2024 Carina: 576 physical pages, three visually reviewed Ilocos Norte crop rows (18 values). Full 2018–2026 event coverage pending.",
+      "pit": "Verified capture times are February/March 2025, not storm dates. Reviewed August 2024 rows are 229 days old at first verified availability; no recent-shock admission.",
+      "existing_evidence": "audits/external_context_20261004/NDRRMC_RECONSTRUCTION_FINDINGS.md",
+      "next": "Recover timely original bulletin vintages and resolve report-40 archive timeout; retain cumulative-update, geographic and commodity scope without double counting."
+    },
+    {
+      "id": "da_damage",
+      "publisher": "Department of Agriculture",
+      "family": "disaster",
+      "priority": "PROMISING",
+      "url": "https://www.da.gov.ph/da-readies-p495-4-m-worth-of-inputs-for-support-in-storm-affected-areas/",
+      "format": "dated HTML and bulletin attachments",
+      "frequency": "event",
+      "geography": "reported affected regions",
+      "coverage": "July 20, 22, 24 2025 seed releases; historical expansion pending",
+      "pit": "Published estimates are preliminary cumulative vintages; no backward replacement by final loss",
+      "next": "Reconstruct damage values, units, commodity scope, report date and publication evidence"
+    },
+    {
+      "id": "psa_production",
+      "publisher": "PSA",
+      "family": "supply",
+      "priority": "PROMISING",
+      "url": "https://rssocar.psa.gov.ph/content/situation-selected-high-value-vegetable-crops-benguet-2024",
+      "format": "HTML, PDF, OpenSTAT",
+      "frequency": "quarterly/annual",
+      "geography": "province/region",
+      "coverage": "2024 Benguet release identified; broader 2018–2026 collection pending",
+      "pit": "Reference year is not availability date; crop-specific release lag required",
+      "next": "Collect crop/province vintages and avoid substituting output share for NCR shipment share"
+    },
+    {
+      "id": "psa_farmgate",
+      "publisher": "PSA OpenSTAT",
+      "family": "supply",
+      "priority": "PROMISING",
+      "url": "https://openstat.psa.gov.ph/PXWeb/api/v1/en/DB/2M/NFG/0032M4AFN06.px",
+      "format": "PXWeb API/CSV",
+      "frequency": "monthly",
+      "geography": "province",
+      "coverage": "Existing leafy-vegetable subset queried for 2019–2026; actual missing cells require audit",
+      "pit": "Current API values may be revised; period labels do not establish historical publication",
+      "existing_evidence": "audits/target5_20261002/psa_openstat_metadata.json",
+      "next": "Preserve API metadata/query/raw response and obtain release vintages"
+    },
+    {
+      "id": "doe_fuel",
+      "publisher": "DOE",
+      "family": "fuel",
+      "priority": "PROMISING",
+      "url": "https://doe.gov.ph/data-and-prices/liquid-fuels/retail-pump-prices",
+      "format": "regional HTML/PDF",
+      "frequency": "weekly",
+      "geography": "NCR, North/South Luzon, Visayas, Mindanao",
+      "coverage": "548 North Luzon index links labelled 2018-2026; 517 PDFs labelled 2018-2025 acquired; 300 identical historical PDF payloads matched. 3,314 diesel-range candidates across supported vertical layouts; 16 visually reviewed ranges. OCR completed for 84 pages in 16 historically matched PDFs. Potential zero-lag coverage at age 60 days: tuning 1/3, calibration 1/3, development 1/6. Full calendar coverage and units not yet certified.",
+      "pit": "Historical available-by bounds from CDX payload matches for 300 PDFs; monitoring periods remain distinct. Earliest capture found is December 2022; older report years do not imply earlier public availability.",
+      "existing_evidence": "audits/external_context_20261004/DOE_RECONSTRUCTION_FINDINGS.md",
+      "next": "Verify level-unit mapping, expand reviewed regional/layout coverage, add OCR as needed, and run identical-scope causal fuel ablation"
+    },
+    {
+      "id": "bpi_rice",
+      "publisher": "BPI NPQSD",
+      "family": "trade",
+      "priority": "PROMISING",
+      "url": "https://npqsd.bpi-npqsd.com.ph/wp-content/uploads/2026/03/2019-2026-Rice-Arrival-per-Origin-as-of-March-05.pdf",
+      "format": "PDF",
+      "frequency": "periodic cumulative arrivals",
+      "geography": "Philippines by exporting country",
+      "coverage": "2019–2026 annual totals in one 2026 vintage; not historical first-release values",
+      "pit": "2026 retrospective totals must not be exposed to 2019–2025 forecasts",
+      "next": "Find older dated arrival reports; preserve arrivals versus permits distinction"
+    },
+    {
+      "id": "boc_rice",
+      "publisher": "Bureau of Customs",
+      "family": "trade",
+      "priority": "PROMISING",
+      "url": "https://customs.gov.ph/memoranda-for-reference-values/",
+      "format": "dated table and scanned/text-layer PDF memoranda",
+      "frequency": "weekly/irregular",
+      "geography": "national imports by country of origin and rice grade",
+      "coverage": "353 unique mixed-commodity links; 335 rice-labelled candidates; 334 archived PDFs with year labels 2017–2026, including 18 labelled 2018. One 2023 link returns 404. 1,472 pages; 1,211 flagged for OCR review. No calendar completeness claimed.",
+      "pit": "Inspected references are USD/kg valuation benchmarks, not import volumes. Table year and date ranges can disagree; PDF issue date is not established first-public release. Historical admission pending.",
+      "existing_evidence": "audits/external_context_20261004/RECONSTRUCTION_STATUS.md",
+      "next": "OCR scanned PDFs; visually validate grade/country/value rows and publication vintages; test as an import-price indicator only after PIT review"
+    },
+    {
+      "id": "ppa_cargo",
+      "publisher": "Philippine Ports Authority",
+      "family": "transport",
+      "priority": "PROMISING",
+      "url": "https://www.ppa.com.ph/annual-statistical-report-by-year-vol-2",
+      "format": "PDF/XLSX reports",
+      "frequency": "quarterly/annual",
+      "geography": "port/port management office",
+      "coverage": "2018–2025 annual archive entries identified",
+      "pit": "Revisions exist; cargo throughput includes nonfood and is not NCR food arrivals",
+      "next": "Extract commodity/port tables only when food relevance and publication are supported"
+    },
+    {
+      "id": "psa_cpi",
+      "publisher": "PSA",
+      "family": "economic",
+      "priority": "PROMISING",
+      "url": "https://psa.gov.ph/content/summary-inflation-report-consumer-price-index-2018100-june-2025",
+      "format": "dated HTML, XLSX, PDF",
+      "frequency": "monthly",
+      "geography": "Philippines, NCR, regions",
+      "coverage": "June 2025 release identified, released July 4; older monthly releases require inventory",
+      "pit": "Use release date and vintage; avoid mixing CPI base years or annual inflation with index levels",
+      "next": "Reconstruct national/NCR food CPI and inflation from original releases"
+    },
+    {
+      "id": "dti_prices",
+      "publisher": "DTI/FTEB",
+      "family": "economic",
+      "priority": "PROMISING",
+      "url": "https://fairtrade.dti.gov.ph/faq/where-can-consumers-check-the-latest-suggested-retail-price-srp-of-bnpcs/",
+      "format": "e-Presyo, SRP and price-freeze notices",
+      "frequency": "policy/event or monitoring",
+      "geography": "national and local",
+      "coverage": "Historical notices identified; bulk observed-price history not established",
+      "pit": "Suggested prices and legal freezes are policy variables, not observed retail prices",
+      "next": "Separate policy events from monitored prices; map covered products precisely"
+    },
+    {
+      "id": "dost_sarai",
+      "publisher": "DOST-PCAARRD/UPLB SARAI",
+      "family": "weather",
+      "priority": "PROMISING",
+      "url": "https://www.sarai.ph/",
+      "format": "portal/station data and advisories",
+      "frequency": "station/advisory dependent",
+      "geography": "participating stations and crop areas",
+      "coverage": "Current service identified; accessible 2018–2026 historical archive unverified",
+      "pit": "New station deployment is not historical coverage; live portal cannot supply old vintages by assumption",
+      "next": "Inspect historical export and instrument metadata"
+    },
+    {
+      "id": "fao_ffpi",
+      "publisher": "FAO",
+      "family": "trade",
+      "priority": "PROMISING",
+      "url": "https://www.fao.org/worldfoodsituation/foodpricesindex/en/",
+      "format": "monthly releases and downloadable indices",
+      "frequency": "monthly",
+      "geography": "international commodity markets",
+      "coverage": "56 newsletters acquired; 40 corroborated current releases; 30 independently timestamped historical numerical releases. Reviewed global index levels plus 128 sector monthly percentage changes and 22 explicit missing sector slots. Sparse 2021-2025 panel.",
+      "pit": "Exact archived payloads and declared dates verified; available-by capture timestamp used with explicit freshness and lag. No revised-history backfill.",
+      "next": "No production admission: aggregate-index design worsens all errors; sector-momentum design slightly improves MAE/RMSE but worsens MAPE. Prioritize dated vegetable supply/damage information for the dominant remaining errors.",
+      "existing_evidence": "audits/external_context_20261004/FAO_SECTOR_ABLATION_FINDINGS.md"
+    },
+    {
+      "id": "bsp_fx",
+      "publisher": "BSP",
+      "family": "economic",
+      "priority": "PROMISING",
+      "url": "https://www.bsp.gov.ph/SitePages/Statistics/DailyRERB.aspx",
+      "format": "dated PDF",
+      "frequency": "business day",
+      "geography": "national PHP exchange rates",
+      "coverage": "Archive advertised since 2017; original downloads previously denied",
+      "pit": "Document run time is not public release; exact bulletin measure must be preserved",
+      "existing_evidence": "audits/target5_20261002/bsp_rerb/SOURCE_DISCOVERY.md",
+      "next": "Acquire original files and historical release-policy evidence"
+    },
+    {
+      "id": "noaa_enso",
+      "publisher": "NOAA CPC",
+      "family": "climate",
+      "priority": "LOW PRIORITY",
+      "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_disc_jan2023/ensodisc.shtml",
+      "format": "monthly HTML",
+      "frequency": "monthly",
+      "geography": "tropical Pacific",
+      "coverage": "31 archived monthly 2023–July 2025 releases",
+      "pit": "Issue-date delay assumption only; final advisories mean event ended",
+      "existing_evidence": "audits/target5_20261002/ENSO_FINDINGS.md",
+      "next": "Retain provenance archive; tested feature set worsened RMSE and is excluded"
+    },
+    {
+      "id": "ecmwf_hres",
+      "publisher": "ECMWF via Open-Meteo single-run archive",
+      "family": "weather",
+      "priority": "LOW PRIORITY",
+      "url": "https://open-meteo.com/en/docs/single-runs-api",
+      "format": "forecast-vintage JSON API",
+      "frequency": "forecast initialization",
+      "geography": "Baguio supply-region grid in prior experiments",
+      "coverage": "Operational 49r1 after November 12 2024; earlier hindcasts excluded",
+      "pit": "Initialization and availability differ; preserve forecast vintage, geography, units and lag",
+      "existing_evidence": "audits/target5_20261002/WEEKLY_WEATHER_FINDINGS.md",
+      "next": "Broaden only with supported commodity-source mappings; tested weather variants failed"
+    },
+    {
+      "id": "bfar_closures",
+      "publisher": "DA/BFAR",
+      "family": "supply",
+      "priority": "LOW PRIORITY",
+      "url": "https://www.bfar.da.gov.ph/2021/11/04/da-bfars-press-release-galunggong-closed-fishing-season-in-northern-palawan-begins/",
+      "format": "dated policy announcements",
+      "frequency": "annual policy calendar",
+      "geography": "Palawan/Davao waters",
+      "coverage": "Dated 2021 policies archived; later policy revisions require separate vintages",
+      "pit": "Retail Local label does not establish fishing-ground origin",
+      "existing_evidence": "audits/target5_20261002/ADAPTIVE_AND_FISH_FINDINGS.md",
+      "next": "Retain tiny/inconsistent ablation result; do not assert actual source waters"
+    }
+  ],
+  "seed_documents": [
+    {
+      "id": "da_damage_20250720",
+      "dataset": "da_damage",
+      "url": "https://www.da.gov.ph/da-readies-aid-for-farmers-fisherfolk-in-wake-of-ts-crising-habagat/"
+    },
+    {
+      "id": "da_damage_20250722",
+      "dataset": "da_damage",
+      "url": "https://www.da.gov.ph/da-readies-p495-4-m-worth-of-inputs-for-support-in-storm-affected-areas/"
+    },
+    {
+      "id": "da_damage_20250724",
+      "dataset": "da_damage",
+      "url": "https://www.da.gov.ph/tc-crising-habagat-inflict-p454m-in-farm-damage-rice-farmers-hit-hardest/"
+    },
+    {
+      "id": "da_cordillera_mapping",
+      "dataset": "psa_production",
+      "url": "https://www.da.gov.ph/da-to-help-increase-diversify-vegetable-output-of-cordillera-farmers/"
+    },
+    {
+      "id": "psa_cpi_202506",
+      "dataset": "psa_cpi",
+      "url": "https://psa.gov.ph/content/summary-inflation-report-consumer-price-index-2018100-june-2025"
+    },
+    {
+      "id": "da_vegetable_roadmap",
+      "dataset": "psa_production",
+      "url": "https://www.da.gov.ph/wp-content/uploads/2023/05/Philippine-Vegetable-Industry-Roadmap.pdf"
+    },
+    {
+      "id": "boc_reference_index",
+      "dataset": "boc_rice",
+      "url": "https://customs.gov.ph/memoranda-for-reference-values/"
+    },
+    {
+      "id": "bsp_inflation_202507_table",
+      "dataset": "psa_cpi",
+      "url": "https://www.bsp.gov.ph/Media_And_Research/Media%20Releases/2025_08/news-08052025a1.aspx"
+    }
+  ]
+}

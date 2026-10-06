@@ -5,11 +5,13 @@ import csv
 import json
 
 import numpy as np
+import pandas as pd
 from supabase import create_client
 
 from config.settings import get_settings
 from data.fetcher import DataFetcher
 from data.preprocessor import DataPreprocessor, SERIES_KEY
+from features.builder import FeatureBuilder
 from models.registry import ModelRegistry
 from models.model_store import ModelStore
 from utils.metrics import SUCCESS_TOLERANCE
@@ -148,6 +150,8 @@ class PredictionWriter:
         product_metrics = {
             product_id: {
                 "interval_coverage": sample["covered"] / sample["count"],
+                "covered_count": sample["covered"],
+                "interval_level": 0.8,
                 "sample_count": sample["count"],
                 "sample_basis": "unique_actual_dates",
                 "prediction_success": sample['successes']/sample['count'],
@@ -183,6 +187,7 @@ class PredictionWriter:
             "directional_accuracy": None,
             "interval_level": 0.8,
             "interval_coverage": range_coverage,
+            "covered_count": unique_covered if unique_count else None,
             "prediction_success": prediction_success,
             "success_tolerance": SUCCESS_TOLERANCE,
             "success_definition": "absolute_percentage_error_at_most_tolerance",
@@ -206,16 +211,26 @@ class PredictionWriter:
         clean = self.preprocessor.validate(self.fetcher.fetch_all())
         series_count = clean.groupby(SERIES_KEY).ngroups
         rows, failures, fallbacks = [], [], []
+        market_daily = FeatureBuilder.category_return_history(clean)
+        market_daily['category_return'] = market_daily.category_return.fillna(0.0)
+        market_groups = {str(category): group for category, group
+                         in market_daily.groupby('product_category', sort=False)}
+        prepared, prepared_meta = [], []
         for key, series in clean.groupby(SERIES_KEY, sort=True):
             product_id = product_ids.get(tuple(key))
             if product_id is None:
                 failures.append({"series": tuple(key), "error": "missing products row"})
                 continue
             try:
-                forecast = registry.engine.forecast(series, horizon_days)
-                rows.extend(self._rows(
-                    product_id, forecast.dates, forecast.point,
-                    forecast.lower, forecast.upper))
+                category = str(key[0])
+                origin = pd.Timestamp(series.report_date.max())
+                market = market_groups.get(category)
+                history = ([] if market is None else market.loc[
+                    pd.to_datetime(market.report_date) <= origin,
+                    'category_return'].to_numpy(dtype=float).tolist())
+                item = registry.engine._prepare(series, None, history)
+                prepared.append(item)
+                prepared_meta.append((tuple(key), series, product_id))
             except (ValueError, FileNotFoundError) as exc:
                 if self._is_history_shortfall(exc):
                     try:
@@ -228,6 +243,15 @@ class PredictionWriter:
                         failures.append({"series": tuple(key), "error": str(fallback_exc)})
                 else:
                     failures.append({"series": tuple(key), "error": str(exc)})
+        if prepared:
+            try:
+                forecasts = registry.engine.forecast_many(prepared, horizon_days)
+                for (_, _, product_id), forecast in zip(prepared_meta, forecasts):
+                    rows.extend(self._rows(product_id, forecast.dates, forecast.point,
+                                           forecast.lower, forecast.upper))
+            except (ValueError, FileNotFoundError) as exc:
+                failures.extend({"series": key, "error": str(exc)}
+                                for key, _, _ in prepared_meta)
         if failures:
             raise RuntimeError(
                 f"Forecast vintage was not published: {len(failures)} unsupported series; "

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "purpose": "Independent public-archive capture evidence, not inferred original posting dates",
+  "seed_documents": [
+    {"id":"customs_index_snapshot_20210124","dataset":"publication_evidence","archive_timestamp":"20210124152842","original_url":"https://customs.gov.ph/memoranda-for-reference-values/","url":"https://web.archive.org/web/20210124152842id_/https://customs.gov.ph/memoranda-for-reference-values/"},
+    {"id":"customs_index_snapshot_20180903","dataset":"publication_evidence","archive_timestamp":"20180903101952","original_url":"http://customs.gov.ph/memoranda-for-reference-values/","url":"https://web.archive.org/web/20180903101952id_/http://customs.gov.ph/memoranda-for-reference-values/"},
+    {"id":"customs_index_snapshot_20240225","dataset":"publication_evidence","archive_timestamp":"20240225152535","original_url":"https://customs.gov.ph/memoranda-for-reference-values/","url":"https://web.archive.org/web/20240225152535id_/https://customs.gov.ph/memoranda-for-reference-values/"},
+    {"id":"customs_index_snapshot_20250102","dataset":"publication_evidence","archive_timestamp":"20250102041531","original_url":"https://customs.gov.ph/memoranda-for-reference-values/","url":"https://web.archive.org/web/20250102041531id_/https://customs.gov.ph/memoranda-for-reference-values/"},
+    {"id":"customs_index_snapshot_20250714","dataset":"publication_evidence","archive_timestamp":"20250714030221","original_url":"https://customs.gov.ph/memoranda-for-reference-values/","url":"https://web.archive.org/web/20250714030221id_/https://customs.gov.ph/memoranda-for-reference-values/"},
+    {"id":"customs_pdf_cdx_2024","dataset":"publication_evidence","url":"https://web.archive.org/cdx/search/cdx?url=customs.gov.ph%2Fwp-content%2Fuploads%2F2024%2F&matchType=prefix&output=json&filter=statuscode%3A200&filter=mimetype%3Aapplication%2Fpdf&filter=original%3A.*%28Ref%7CREF%7Cref%7CRice%7Crice%29.*&fl=timestamp%2Coriginal%2Cdigest&collapse=urlkey&to=20251231"},
+    {"id":"customs_pdf_cdx_2019_reviewed","dataset":"publication_evidence","url":"https://web.archive.org/cdx/search/cdx?url=customs.gov.ph%2Fwp-content%2Fuploads%2F2023%2F01%2Focom-memo-2-2020-Shipments_of_Rice.pdf&output=json&filter=statuscode%3A200&fl=timestamp%2Coriginal%2Cdigest&collapse=digest&to=20251231"},
+    {"id":"customs_pdf_cdx_2023","dataset":"publication_evidence","url":"https://web.archive.org/cdx/search/cdx?url=customs.gov.ph%2Fwp-content%2Fuploads%2F2023%2F&matchType=prefix&output=json&filter=statuscode%3A200&filter=mimetype%3Aapplication%2Fpdf&filter=original%3A.*%28Ref%7CREF%7Cref%7CRice%7Crice%29.*&fl=timestamp%2Coriginal%2Cdigest&collapse=urlkey&to=20251231"},
+    {"id":"customs_pdf_cdx_2025","dataset":"publication_evidence","url":"https://web.archive.org/cdx/search/cdx?url=customs.gov.ph%2Fwp-content%2Fuploads%2F2025%2F&matchType=prefix&output=json&filter=statuscode%3A200&filter=mimetype%3Aapplication%2Fpdf&filter=original%3A.*%28Ref%7CREF%7Cref%7CRice%7Crice%29.*&fl=timestamp%2Coriginal%2Cdigest&collapse=urlkey&to=20251231"}
+  ]
+}

@@ -149,6 +149,34 @@ class CausalPipelineTests(unittest.TestCase):
                 equal_nan=True,
             )
 
+    def test_category_return_features_are_lagged_and_match_live_state(self):
+        first = panel(80)
+        second = panel(80)
+        second["product_name"] = "Beans"
+        second["price_index"] = 80 + np.arange(80) * .2 + np.sin(np.arange(80) / 4)
+        second["observed_price"] = second["price_index"]
+        data = pd.concat([first, second], ignore_index=True)
+        with tempfile.TemporaryDirectory() as tmp:
+            builder = FeatureBuilder(Path(tmp)).fit(data.iloc[:100])
+            featured = builder.transform(data)
+            target_date = pd.Timestamp("2025-02-15")
+            market = FeatureBuilder.category_return_history(data)
+            history = market.loc[
+                (market.product_category == "Rice") & (market.report_date < target_date),
+                "category_return"].fillna(0.).tolist()
+            one_series = data[(data.product_name == "Rice") &
+                              (data.report_date < target_date)]
+            incremental = CausalFeatureState(one_series, builder.encoder).row(
+                target_date, history).iloc[0]
+            batch = featured[(featured.product_name == "Rice") &
+                             (featured.report_date == target_date)].iloc[0]
+            np.testing.assert_allclose(
+                batch[["category_return_lag_1d", "category_return_mean_7d",
+                       "category_return_std_7d"]].to_numpy(float),
+                incremental[["category_return_lag_1d", "category_return_mean_7d",
+                             "category_return_std_7d"]].to_numpy(float),
+                rtol=1e-10, atol=1e-10)
+
     def test_preprocessor_keeps_truth_separate_from_causal_fill(self):
         raw = panel(10).iloc[[0, 4, 9]].copy()
         raw["is_observed"] = [True, False, True]
@@ -383,7 +411,12 @@ class CausalPipelineTests(unittest.TestCase):
             run = store.begin_run()
             for name in REQUIRED_FILES - {"metadata.json"}:
                 (run / name).write_bytes(b"valid")
-            store.finalize(run, {"ok": True}, {"test": {}}, "abc", activate=True)
+            store.finalize(run, {"ok": True}, {"test": {}}, "abc", activate=False)
+            with self.assertRaisesRegex(ValueError, "final-holdout evidence"):
+                store.activate(run.name)
+            # Existing deployments remain readable; this fixture is not a
+            # newly authorized activation or a statistical approval.
+            store.manifest.write_text(json.dumps({"active_run": run.name}))
             self.assertEqual(store.active_path(), run)
             (run / "ensemble.json").write_bytes(b"tampered")
             with self.assertRaises(ValueError):
@@ -409,12 +442,24 @@ class CausalPipelineTests(unittest.TestCase):
                                     "learning_rate": .1, "num_threads": 1})
             raw = panel(660).drop(columns="observed_price")
             with tempfile.TemporaryDirectory() as tmp:
-                result = TrainingPipeline(Path(tmp)).run_full_training(
-                    raw_df=raw, activate=False)
+                pipeline = TrainingPipeline(Path(tmp))
+                # Even a successful internal comparison cannot substitute for
+                # independent final evidence or authorize automatic activation.
+                with patch.object(TrainingPipeline, "_promotion_decision", return_value=(True, True, True)):
+                    result = pipeline.run_full_training(raw_df=raw, activate=True)
                 run = Path(tmp) / "runs" / result["run_id"]
                 self.assertTrue(REQUIRED_FILES.issubset({p.name for p in run.iterdir()}))
                 self.assertGreater(result["test_samples"], 0)
                 self.assertFalse(result["activated"])
+                self.assertTrue(result["promotion_gate"]["development_comparison_passed"])
+                self.assertFalse(result["promotion_gate"]["independent_final_holdout_verified"])
+                self.assertFalse((Path(tmp) / "manifest.json").exists())
+                with patch.object(TrainingPipeline, "_beats_persistence", return_value=True), \
+                        patch.object(TrainingPipeline, "_improves_all_by", return_value=True):
+                    recalibrated = pipeline.recalibrate_candidate(result["run_id"], activate=True)
+                self.assertTrue(recalibrated["promotion_gate"]["development_comparison_passed"])
+                self.assertFalse(recalibrated["activated"])
+                self.assertFalse((Path(tmp) / "manifest.json").exists())
         finally:
             for name, value in saved.items():
                 setattr(cfg, name, value)

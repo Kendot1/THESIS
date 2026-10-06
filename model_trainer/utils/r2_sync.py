@@ -64,8 +64,13 @@ def download(bucket, root):
         except ClientError as exc:
             code = str(exc.response.get("Error", {}).get("Code", ""))
             if code in {"404", "NoSuchKey", "NotFound"}:
-                print("No remote v2 bundle exists yet; a successful training run must create one.")
-                return
+                raise RuntimeError(
+                    "No active v2 model bundle exists in Cloudflare R2. "
+                    "Daily training stages candidates and cannot activate one "
+                    "without reviewed independent frozen-holdout evidence. "
+                    "Restore or publish an approved active bundle before the "
+                    "workflow trains and publishes forecasts."
+                ) from exc
             raise
         manifest = json.loads(remote_manifest.read_text(encoding="utf-8"))
         run_id = manifest["active_run"]

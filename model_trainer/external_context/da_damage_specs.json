@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "event_id": "crising_habagat_2025",
+  "documents": {
+    "da_damage_20250720": {
+      "report_date": "2025-07-20",
+      "geography_literal": "Western Visayas and Region IV-B",
+      "geography_interpretation": "Combined damage across named regions; no regional allocation supplied.",
+      "metrics": [
+        {"metric":"damage_php","commodity":"all_reported_agriculture","pattern":"combined damage from the storm and monsoon at around P(?P<value>53) million","unit":"million PHP","multiplier":1000000,"normalized_unit":"PHP","qualifier":"approximate"},
+        {"metric":"affected_farmers","commodity":"all_reported_agriculture","pattern":"Around (?P<value>2,099) farmers","unit":"persons","multiplier":1,"normalized_unit":"persons","qualifier":"approximate"},
+        {"metric":"affected_area_ha","commodity":"all_reported_agriculture","pattern":"more than (?P<value>2,400) hectares were affected","unit":"hectares","multiplier":1,"normalized_unit":"hectares","qualifier":"lower_bound_exclusive"}
+      ]
+    },
+    "da_damage_20250722": {
+      "report_date": "2025-07-22",
+      "geography_literal": null,
+      "geography_interpretation": "Damage covers reported affected areas. Regions 1, 2, 3, 4A, 4B and 6 are named for aid allocation; do not assign the damage total to each region.",
+      "metrics": [
+        {"metric":"damage_php","commodity":"rice_corn_cassava_high_value_crops_fisheries_livestock_poultry","pattern":"caused P(?P<value>134\\.7) million in losses","unit":"million PHP","multiplier":1000000,"normalized_unit":"PHP","qualifier":"reported_estimate"},
+        {"metric":"affected_area_ha","commodity":"all_reported_agriculture","pattern":"Affected areas span (?P<value>8,035) hectares","unit":"hectares","multiplier":1,"normalized_unit":"hectares","qualifier":"reported_estimate"},
+        {"metric":"affected_farmers_fisherfolk","commodity":"all_reported_agriculture","pattern":"affected farmers and fisherfolk number (?P<value>6,377)","unit":"persons","multiplier":1,"normalized_unit":"persons","qualifier":"reported_estimate"}
+      ]
+    },
+    "da_damage_20250724": {
+      "report_date": "2025-07-24",
+      "geography_literal": null,
+      "geography_interpretation": "Aggregate affected areas; article lists places hit hardest but supplies no allocation. Cagayan Valley is a region despite the article's collective provinces wording.",
+      "metrics": [
+        {"metric":"damage_php","commodity":"all_reported_agriculture","pattern":"have reached P(?P<value>454\\.1) million","unit":"million PHP","multiplier":1000000,"normalized_unit":"PHP","qualifier":"reported_estimate"},
+        {"metric":"affected_area_ha","commodity":"all_reported_agriculture","pattern":"affected about (?P<value>20,413) hectares","unit":"hectares","multiplier":1,"normalized_unit":"hectares","qualifier":"approximate"},
+        {"metric":"affected_farmers_fisherfolk","commodity":"all_reported_agriculture","pattern":"affected (?P<value>20,959) farmers and fisherfolk","unit":"persons","multiplier":1,"normalized_unit":"persons","qualifier":"reported_estimate"},
+        {"metric":"affected_farmers","commodity":"rice","pattern":"impacted—(?P<value>16,937) farmers—were rice growers","unit":"persons","multiplier":1,"normalized_unit":"persons","qualifier":"reported_estimate"},
+        {"metric":"affected_area_ha","commodity":"rice","pattern":"Of the (?P<value>18,490) hectares of affected rice lands","unit":"hectares","multiplier":1,"normalized_unit":"hectares","qualifier":"reported_estimate"},
+        {"metric":"totally_damaged_area_ha","commodity":"rice","pattern":"(?P<value>3,504) hectares were declared totally damaged","unit":"hectares","multiplier":1,"normalized_unit":"hectares","qualifier":"reported_estimate"},
+        {"metric":"production_loss_mt","commodity":"rice","pattern":"production losses amounted to (?P<value>8,256) metric tons of rice","unit":"metric tons","multiplier":1,"normalized_unit":"metric tons","qualifier":"reported_estimate"},
+        {"metric":"damage_php","commodity":"rice","pattern":"valued at around P(?P<value>275) million","unit":"million PHP","multiplier":1000000,"normalized_unit":"PHP","qualifier":"approximate"},
+        {"metric":"production_loss_mt","commodity":"high_value_crops","pattern":"Around (?P<value>3,540) metric tons of high value crops","unit":"metric tons","multiplier":1,"normalized_unit":"metric tons","qualifier":"approximate"},
+        {"metric":"damage_php","commodity":"high_value_crops","pattern":"high value crops valued at P(?P<value>117\\.2) million","unit":"million PHP","multiplier":1000000,"normalized_unit":"PHP","qualifier":"reported_estimate"},
+        {"metric":"damage_php","commodity":"corn","pattern":"damage to corn crops was estimated at P(?P<value>38\\.9) million","unit":"million PHP","multiplier":1000000,"normalized_unit":"PHP","qualifier":"reported_estimate"}
+      ]
+    }
+  }
+}

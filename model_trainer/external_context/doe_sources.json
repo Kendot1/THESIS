@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "seed_documents": [
+    {"id":"doe_oil_monitor_index_legacy","dataset":"doe_oil_monitor","url":"https://legacy.doe.gov.ph/oil-monitor"},
+    {"id":"doe_oil_monitor_20230822","dataset":"doe_oil_monitor","url":"https://legacy.doe.gov.ph/oil-monitor/oil-monitor-22-august-2023"},
+    {"id":"doe_north_luzon_index","dataset":"doe_fuel","url":"https://doe.gov.ph/data-and-prices/liquid-fuels/retail-pump-prices/north-luzon-pump-prices"},
+    {"id":"doe_north_luzon_20240123","dataset":"doe_fuel","url":"https://legacy.doe.gov.ph/sites/default/files/pdf/price_watch/petro_nluz_2024-jan-23.pdf"}
+  ]
+}

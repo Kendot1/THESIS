@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-10-04",
+  "source_id": "doe_document_4486df120f8714d5",
+  "artifact_sha256": "8ac20d7559ecb838b68429ecd89599e06dba5bb53b129b8fd99baa0f4d03b9cf",
+  "pdf_page": 1,
+  "reference_start": "2023-12-05",
+  "reference_end": "2023-12-07",
+  "review_method": "Visual comparison of rendered original PDF page against DIESEL overall range and company columns",
+  "unit": null,
+  "unit_verified": false,
+  "rows": [
+    {"city_literal":"Batac City","range_low":"58.70","range_high":"61.25"},
+    {"city_literal":"Laoag City","range_low":"57.70","range_high":"63.15"},
+    {"city_literal":"Candon City","range_low":"60.75","range_high":"61.95"},
+    {"city_literal":"Vigan City","range_low":"61.25","range_high":"61.25"},
+    {"city_literal":"Dagupan City","range_low":"56.35","range_high":"62.60"},
+    {"city_literal":"Urdaneta City","range_low":"53.05","range_high":"55.15"},
+    {"city_literal":"San Carlos City","range_low":"55.85","range_high":"56.90"}
+  ],
+  "limitation": "Numeric and row alignment review only. This table does not print a price unit; cross-document unit mapping and predictive utility remain unverified."
+}

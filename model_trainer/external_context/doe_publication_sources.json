@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "seed_documents": [
+    {
+      "dataset": "publication_evidence",
+      "id": "doe_nluz_cdx_legacy_doe_gov_ph",
+      "url": "https://web.archive.org/cdx/search/cdx?url=legacy.doe.gov.ph%2Fsites%2Fdefault%2Ffiles%2Fpdf%2Fprice_watch%2F&matchType=prefix&output=json&fl=timestamp%2Coriginal%2Cdigest&collapse=urlkey&to=20251231&filter=statuscode%3A200&filter=mimetype%3Aapplication%2Fpdf&filter=original%3A.*%28nluz%7CNLuz%7CNLUZ%29.*"
+    },
+    {
+      "dataset": "publication_evidence",
+      "id": "doe_nluz_cdx_doe_gov_ph",
+      "url": "https://web.archive.org/cdx/search/cdx?url=doe.gov.ph%2Fsites%2Fdefault%2Ffiles%2Fpdf%2Fprice_watch%2F&matchType=prefix&output=json&fl=timestamp%2Coriginal%2Cdigest&collapse=urlkey&to=20251231&filter=statuscode%3A200&filter=mimetype%3Aapplication%2Fpdf&filter=original%3A.*%28nluz%7CNLuz%7CNLUZ%29.*"
+    },
+    {
+      "dataset": "publication_evidence",
+      "id": "doe_nluz_cdx_www_doe_gov_ph",
+      "url": "https://web.archive.org/cdx/search/cdx?url=www.doe.gov.ph%2Fsites%2Fdefault%2Ffiles%2Fpdf%2Fprice_watch%2F&matchType=prefix&output=json&fl=timestamp%2Coriginal%2Cdigest&collapse=urlkey&to=20251231&filter=statuscode%3A200&filter=mimetype%3Aapplication%2Fpdf&filter=original%3A.*%28nluz%7CNLuz%7CNLUZ%29.*"
+    }
+  ]
+}

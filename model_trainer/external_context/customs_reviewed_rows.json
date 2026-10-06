@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "review_method": "Assistant visual transcription of original PDF render; not a separate human audit",
+  "review_date_local": "2026-10-04",
+  "documents": [
+    {
+      "source_id": "boc_reference_11d03e8aebd00bb2",
+      "artifact_sha256": "734cead201995ce5784879f8f6df9a7dd9fb7bc38cc2a54b409f9774f3a4b5f2",
+      "ocr_config_sha256": "05c6312ef9523d1c9e1324e50607f4cd32ab30d33bb34b669c269909979510a4",
+      "cover_page": 1,
+      "cover_image_sha256": "f9f34538a28a7cef19fb1b9e46cc0502de26a972f80eea4ae6f94ff5d347e891",
+      "memo_identifier_literal": "OCOM Memo No. 2-2020",
+      "issue_date": "2019-12-23",
+      "reference_start": "2019-12-23",
+      "reference_end": "2019-12-29",
+      "revision_order_literal": "98",
+      "date_note": "Cover and annex give December 23, 2019, while handwritten memo identifier contains 2020. Neither is verified as the first public posting date.",
+      "pages": [
+        {
+          "pdf_page": 4,
+          "annex_page": 3,
+          "image_sha256": "3b143f850917250239350f29e71b8ab55ddd4eb0328ac058b2459039a0295bb4",
+          "unit_literal": "US$ Per kg",
+          "rows": [
+            ["White Rice 10% Broken", "TH", "$0.404"],
+            ["White Rice 10% Broken", "VN", "$0.340"],
+            ["White Rice 10% Broken", "KH", "$0.401"],
+            ["White Rice 10% Broken", "PK", "$0.345"],
+            ["White Rice 15% Broken", "TH", "$0.402"],
+            ["White Rice 15% Broken", "VN", "$0.335"],
+            ["White Rice 15% Broken", "PK", "$0.341"],
+            ["White Rice 25% Broken", "TH", "$0.394"],
+            ["White Rice 25% Broken", "VN", "$0.325"],
+            ["White Rice 25% Broken", "KH", "$0.385"],
+            ["White Rice 25% Broken", "PK", "$0.320"],
+            ["White Rice 25% Broken", "IN", "$0.355"],
+            ["White Rice 25% Broken", "MM", "$0.270"],
+            ["Fragrant Rice 5% Broken", "VN", "$0.460"],
+            ["KDM Fragrant Rice 5% Broken", "VN", "$0.643"],
+            ["Phka Malis/ Phka Rumduol (Wet Season) 5% Broken STX", "KH", "$0.835"],
+            ["Sen Kra Ob/Sen Pidao (Dry Season) 5% Broken STX", "KH", "$0.750"],
+            ["Swarna 5% Broken", "IN", "$0.377"],
+            ["Sharbati 2% Broken", "IN", "$0.700"],
+            ["White Rice A1 Super 100% Broken", "TH", "$0.377"],
+            ["White Rice A1 Super 100% Broken", "KH", "$0.370"],
+            ["White Rice 100% Broken Rice", "VN", "$0.310"],
+            ["White Rice 100% Broken Rice", "PK", "$0.302"],
+            ["White Rice 100% Broken Rice", "IN", "$0.312"],
+            ["Fragrant 100% Broken A1 Super", "KH", "$0.465"],
+            ["White Rice 386 2% Broken", "PK", "$0.625"]
+          ]
+        }
+      ]
+    }
+  ]
+}

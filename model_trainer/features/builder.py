@@ -6,7 +6,7 @@ from features.temporal import TemporalFeatures, holiday_proximity
 from features.lag_features import LagFeatures
 from features.categorical import CategoricalEncoder
 
-FEATURE_VERSION = 3
+FEATURE_VERSION = 4
 CALENDAR = ['day_of_week','day_of_month','day_of_year','week_of_year','month','quarter',
     'year','is_weekend','is_month_start','is_month_end','month_sin','month_cos',
     'dow_sin','dow_cos','doy_sin','doy_cos','is_wet_season','is_christmas_season',
@@ -16,8 +16,12 @@ PRICE = [f'price_lag_{k}d' for k in [1,2,3,7,8,14,30]] + [
 ] + ['price_volatility_14d','price_pct_change_1d','price_pct_change_7d',
      'price_expanding_mean','price_deviation_from_mean','price_rsi_14d','price_macd','price_macd_signal',
      'price_acceleration_1d','price_bollinger_position_14d']
-FEATURE_COLUMNS = CALENDAR + PRICE + [f'{c}_encoded' for c in SERIES_KEY]
-LEGACY_FEATURE_COLUMNS = [c for c in FEATURE_COLUMNS if c not in {
+SERIES_FEATURES = [f'{c}_encoded' for c in SERIES_KEY]
+FEATURE_COLUMNS_V3 = CALENDAR + PRICE + SERIES_FEATURES
+MARKET_FEATURES = ['category_return_lag_1d', 'category_return_mean_7d',
+    'category_return_std_7d']
+FEATURE_COLUMNS = CALENDAR + PRICE + MARKET_FEATURES + SERIES_FEATURES
+LEGACY_FEATURE_COLUMNS = [c for c in FEATURE_COLUMNS_V3 if c not in {
     'is_payday_window', 'is_holiday_proximity',
     'price_acceleration_1d', 'price_bollinger_position_14d',
 }]
@@ -46,7 +50,38 @@ class FeatureBuilder:
     def transform(self, df):
         df = df.sort_values(SERIES_KEY + ['report_date']).reset_index(drop=True)
         assert_daily(df)
-        return self.encoder.transform(self.lags.transform(self.temporal.transform(df)))
+        featured = self.encoder.transform(self.lags.transform(self.temporal.transform(df)))
+        return self.add_category_return_features(featured)
+
+    @staticmethod
+    def category_return_history(df):
+        """Median same-category price return by date, available after that date closes."""
+        work = df.sort_values(SERIES_KEY + ['report_date']).copy()
+        work['_series_return'] = work.groupby(SERIES_KEY, sort=False).price_index.pct_change(
+            fill_method=None)
+        market = (work.groupby(['product_category', 'report_date'], sort=True)['_series_return']
+                  .median().rename('category_return').reset_index())
+        return market
+
+    @classmethod
+    def add_category_return_features(cls, featured):
+        market = cls.category_return_history(featured)
+        market = market.sort_values(['product_category', 'report_date']).copy()
+        grouped = market.groupby('product_category', sort=False)['category_return']
+        market['category_return_lag_1d'] = grouped.shift(1)
+        shifted = grouped.shift(1)
+        market['category_return_mean_7d'] = shifted.groupby(
+            market.product_category, sort=False).transform(
+                lambda values: values.rolling(7, min_periods=1).mean())
+        market['category_return_std_7d'] = shifted.groupby(
+            market.product_category, sort=False).transform(
+                lambda values: values.rolling(7, min_periods=2).std(ddof=0))
+        columns = ['category_return_lag_1d', 'category_return_mean_7d',
+                   'category_return_std_7d']
+        market[columns] = market[columns].replace([np.inf, -np.inf], np.nan).fillna(0.0)
+        return featured.merge(market[['product_category', 'report_date'] + columns],
+                              on=['product_category', 'report_date'], how='left',
+                              validate='many_to_one')
 
     def load(self):
         self.encoder._load_mappings()
@@ -81,7 +116,7 @@ class CausalFeatureState:
             return float(np.std(finite, ddof=1)) if len(finite) > 1 else np.nan
         return float(getattr(np, operation)(finite))
 
-    def row(self, date):
+    def row(self, date, market_history=None):
         date = pd.Timestamp(date)
         p = np.asarray(self.prices, dtype=float)
         result = dict(self.key)
@@ -137,6 +172,15 @@ class CausalFeatureState:
             if std14 and np.isfinite(std14) and std14 > 0
             and np.isfinite(mean14) and len(p) > 0 and np.isfinite(p[-1])
             else 0.0)
+        if market_history is None:
+            market = p[1:] / p[:-1] - 1.0 if len(p) > 1 else np.asarray([], dtype=float)
+        else:
+            market = np.asarray(market_history, dtype=float)
+        market = market[np.isfinite(market)]
+        result['category_return_lag_1d'] = float(market[-1]) if len(market) else 0.0
+        result['category_return_mean_7d'] = float(np.mean(market[-7:])) if len(market) else 0.0
+        result['category_return_std_7d'] = (float(np.std(market[-7:]))
+                                             if len(market) >= 2 else 0.0)
         for column, mapping in self.encoder._mappings.items():
             result[f'{column}_encoded'] = mapping.get(
                 str(result[column]), max(mapping.values())+1 if mapping else 0)

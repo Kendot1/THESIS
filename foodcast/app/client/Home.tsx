@@ -626,6 +626,9 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
                     image={p.image}
                     currentPrice={p.currentPrice}
                     predictedPrice={p.predictedPrice}
+                    forecastDate={p.forecastDate}
+                    lastActualDate={p.lastActualDate}
+                    forecastSource={p.forecastSource}
                     variant={p.variant}
                     origin={p.origin}
                     unit={p.unit}

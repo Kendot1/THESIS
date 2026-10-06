@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "purpose": "Discover original DA-CAR supply/disruption records; current API dates do not establish historical availability.",
+  "seed_documents": [
+    {"id":"car_vegetable_posts_page1","url":"https://car.da.gov.ph/wp-json/wp/v2/posts?search=vegetable&after=2018-01-01T00%3A00%3A00&before=2026-01-01T00%3A00%3A00&per_page=100&page=1"},
+    {"id":"car_damage_posts_page1","url":"https://car.da.gov.ph/wp-json/wp/v2/posts?search=damage&after=2018-01-01T00%3A00%3A00&before=2026-01-01T00%3A00%3A00&per_page=100&page=1"},
+    {"id":"car_supply_posts_page1","url":"https://car.da.gov.ph/wp-json/wp/v2/posts?search=supply&after=2018-01-01T00%3A00%3A00&before=2026-01-01T00%3A00%3A00&per_page=100&page=1"},
+    {"id":"car_hauling_1865","url":"https://car.da.gov.ph/?p=1865"},
+    {"id":"car_production_1694","url":"https://car.da.gov.ph/?p=1694"}
+  ]
+}

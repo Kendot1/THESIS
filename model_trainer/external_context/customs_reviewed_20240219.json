@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "review_method": "Assistant visual transcription of original PDF render; not a separate human audit",
+  "review_date_local": "2026-10-04",
+  "documents": [{
+    "source_id": "boc_reference_abcd25eb83566411",
+    "artifact_sha256": "d71ab796396df226bc848bcb09e2a92706109c5863d3c08c5f9c984ad34278de",
+    "ocr_config_sha256": "3a5afc8d64ab1059e0c5a0eed6ae167383e895a373c0c8d8ea14618d99e123da",
+    "cover_page": 1,
+    "cover_image_sha256": "82062a8b863d1ebd5a4581262189bd3e67247b2764549249d1ddcdb0beaf6d0a",
+    "memo_identifier_literal": "Ref-Val-2024-02-003",
+    "issue_date": "2024-02-19", "reference_start": "2024-02-19", "reference_end": "2024-02-25",
+    "revision_order_literal": "309",
+    "date_note": "Cover states issue date and applicability period. Historical availability requires separate archived-payload evidence.",
+    "pages": [{
+      "pdf_page": 3, "annex_page": 2,
+      "image_sha256": "eea6678f9cec1217666c6fdc5e2bf9ee5dbaabb16ea0b91cc92dc157b03053f8",
+      "unit_literal": "US$ Per kg",
+      "tariff_headings_by_row": {"1":"1006.3091","2":"1006.3091","3":"1006.3091","4":"1006.3091","5":"1006.3091","6":"1006.3091","7":"1006.3091","8":"1006.3091","9":"1006.3099","10":"1006.3099","11":"1006.3099","12":"1006.3099","13":"1006.3099","14":"1006.3099","15":"1006.3099","16":"1006.3099","17":"1006.3099","18":"1006.3099","19":"1006.3099","20":"1006.3099"},
+      "rows": [
+        ["Parboiled Milled Rice 100% STX","TH","$0.604"],
+        ["Parboiled Milled Rice 5% STX","TH","$0.599"],
+        ["Parboiled Milled Rice 5% Broken STX","MM","$0.663"],
+        ["1509 Parboiled Basmati Rice 2%","IN","$0.950"],
+        ["Pusa Parboiled Milled Basmati Rice 2%","IN","$0.950"],
+        ["1121 Parboiled Milled Basmati Rice 2%","IN","$1.034"],
+        ["Parboiled Milled Rice 5% Broken STX","PK","$0.621"],
+        ["Super Kernel Parboiled Milled Basmati Rice 2%","PK","$0.969"],
+        ["White Rice 100% Grade B","TH","$0.610"],
+        ["Pathumthani Fragrant 100% Grade B","TH","$0.789"],
+        ["White Rice 5% Broken","TH","$0.600"],
+        ["White Rice 5% Broken","VN","$0.610"],
+        ["White Rice 5% Broken","MM","$0.609"],
+        ["White Rice 5% Broken","IN","NA"],
+        ["White Rice 5% Broken","PK","$0.602"],
+        ["White Rice 25% Broken","TH","$0.549"],
+        ["White Rice 25% Broken","VN","$0.579"],
+        ["White Rice 25% Broken","MM","$0.569"],
+        ["White Rice 25% Broken","IN","NA"],
+        ["White Rice 25% Broken","PK","$0.539"]
+      ]
+    }]
+  }]
+}

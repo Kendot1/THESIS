@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "document_id": "ndrrmc_carina_2024_33",
+  "pdf_sha256": "9e7681d64aa230406ee24bcc0812e128cdeb951ccae15fad7dc46cca58cda1fb",
+  "text_sha256": "90e3169eab117d745d415aef35105d670c14485eca9ef58c8a2526cc166138a6",
+  "physical_page": 258,
+  "printed_page": "256/397",
+  "reference_date": "2024-08-03",
+  "as_of_literal": "August 03, 2024 08:00",
+  "geography": "Ilocos Norte",
+  "subprovincial_breakdown": "No breakdown",
+  "reviewed_on": "2026-10-04",
+  "review_image": "audits/external_context_20261004/ndrrmc/carina33_agriculture_page258.png",
+  "rows": [
+    {"commodity":"Rice", "affected_farmers_fisherfolk":792, "area_totally_damaged_ha":9, "area_partially_damaged_ha":270, "affected_area_ha":279, "production_loss_mt":3, "production_loss_or_damage_php":1912596},
+    {"commodity":"Corn", "affected_farmers_fisherfolk":187, "area_totally_damaged_ha":5.3, "area_partially_damaged_ha":68.87, "affected_area_ha":74.17, "production_loss_mt":81, "production_loss_or_damage_php":2443748},
+    {"commodity":"High Value Crops", "affected_farmers_fisherfolk":339, "area_totally_damaged_ha":1.99, "area_partially_damaged_ha":38.98, "affected_area_ha":40.97, "production_loss_mt":43, "production_loss_or_damage_php":1994206}
+  ],
+  "scope_note": "Cumulative reported damage; high-value crops have no individual vegetable allocation. Do not sum successive reports or add province rows to regional/grand totals."
+}

@@ -59,15 +59,22 @@ class ModelStore:
             self.activate(run_dir.name)
         return run_dir.name
 
-    def activate(self, run_id):
+    def activate(self, run_id, *, evidence_dir=None):
         path = self.runs / run_id
         if not path.is_dir():
             raise FileNotFoundError(run_id)
         metadata = json.loads((path / "metadata.json").read_text(encoding="utf-8"))
+        if metadata.get("run_id") != run_id or set(metadata.get("sha256", {})) != REQUIRED_FILES - {"metadata.json"}:
+            raise ValueError("Model bundle identity or required hashes are incomplete")
         for name, expected in metadata.get("sha256", {}).items():
             if self._digest(path / name) != expected:
                 raise ValueError(f"Hash mismatch in {name}")
+        if evidence_dir is None:
+            raise ValueError("Reviewed final-holdout evidence is required for activation")
+        from evaluation.promotion import verify_promotion_evidence
+        evidence = verify_promotion_evidence(path, evidence_dir)
         payload = {"schema_version": 2, "active_run": run_id,
+                   "promotion_evidence": evidence,
                    "updated_at": datetime.now(timezone.utc).isoformat()}
         self.root.mkdir(parents=True, exist_ok=True)
         temporary = self.root / "manifest.json.tmp"
@@ -82,13 +89,18 @@ class ModelStore:
         if not path.is_dir():
             raise FileNotFoundError(f"Active bundle is missing: {path}")
         metadata = json.loads((path / "metadata.json").read_text(encoding="utf-8"))
+        if metadata.get("run_id") != path.name or set(metadata.get("sha256", {})) != REQUIRED_FILES - {"metadata.json"}:
+            raise ValueError("Active bundle identity or required hashes are incomplete")
+        evidence = data.get("promotion_evidence")
+        if evidence and self._digest(path / "metadata.json") != evidence.get("model_metadata_sha256"):
+            raise ValueError("Active model metadata changed after reviewed promotion")
         for name, expected in metadata.get("sha256", {}).items():
             if self._digest(path / name) != expected:
                 raise ValueError(f"Active bundle hash mismatch in {name}")
         return path
 
-    def rollback(self, run_id):
-        self.activate(run_id)
+    def rollback(self, run_id, *, evidence_dir=None):
+        self.activate(run_id, evidence_dir=evidence_dir)
 
     def list_versions(self):
         results = []

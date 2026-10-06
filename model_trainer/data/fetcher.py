@@ -4,7 +4,7 @@ Supports full fetch and incremental (since last date) fetch.
 """
 
 import pandas as pd
-from datetime import datetime, timedelta, timezone
+from datetime import date
 from typing import Optional
 
 from supabase import create_client, Client
@@ -13,6 +13,20 @@ from config.settings import get_settings
 from utils.logger import get_logger
 
 log = get_logger(__name__)
+
+# Cursor, series identity, observed price and source-date provenance. Keep the
+# projection aligned with DataPreprocessor and TrainingPipeline._fingerprint.
+PRICE_COLUMNS = (
+    "id,product_category,product_name,product_variant,origin,unit,"
+    "report_date,price_index,source_pdf"
+)
+
+
+def iso_report_date(value: str) -> str:
+    """Accept only an unambiguous calendar date for database bounds."""
+    if not isinstance(value, str) or date.fromisoformat(value).isoformat() != value:
+        raise ValueError("Date bounds must use YYYY-MM-DD")
+    return value
 
 
 class DataFetcher:
@@ -30,21 +44,21 @@ class DataFetcher:
     # ──────────────────────────────────────────────
     # Public API
     # ──────────────────────────────────────────────
-    def fetch_all(self) -> pd.DataFrame:
-        """Fetch the entire food_prices table."""
-        log.info("Fetching ALL food price records ...")
-        rows = self._paginated_fetch()
+    def fetch_all(self, through_date: Optional[str] = None) -> pd.DataFrame:
+        """Fetch prices, optionally bounded by an inclusive report date."""
+        log.info("Fetching food prices through %s ...", through_date or "latest")
+        rows = self._paginated_fetch(through_date=through_date)
         df = pd.DataFrame(rows)
         log.info(f"Fetched {len(df):,} rows total.")
         return df
 
-    def fetch_since(self, since_date: str) -> pd.DataFrame:
+    def fetch_since(self, since_date: str, through_date: Optional[str] = None) -> pd.DataFrame:
         """
         Fetch rows where report_date >= *since_date* (ISO format).
-        Used for incremental training.
+        An optional through_date bounds the inclusive end of the query.
         """
         log.info(f"Fetching food prices since {since_date} ...")
-        rows = self._paginated_fetch(since_date=since_date)
+        rows = self._paginated_fetch(since_date=since_date, through_date=through_date)
         df = pd.DataFrame(rows)
         log.info(f"Fetched {len(df):,} new rows since {since_date}.")
         return df
@@ -66,7 +80,7 @@ class DataFetcher:
         self, product_name: str, product_variant: Optional[str] = None, origin: Optional[str] = None, product_category: Optional[str] = None, limit: int = 365
     ) -> pd.DataFrame:
         """Fetch historical data for a specific product and variant."""
-        query = self._client.table(self._table).select("*").eq("product_name", product_name)
+        query = self._client.table(self._table).select(PRICE_COLUMNS).eq("product_name", product_name)
         
         if product_variant:
             query = query.eq("product_variant", product_variant)
@@ -91,7 +105,7 @@ class DataFetcher:
         """Fetch all products within a category."""
         resp = (
             self._client.table(self._table)
-            .select("*")
+            .select(PRICE_COLUMNS)
             .eq("product_category", category)
             .order("report_date", desc=True)
             .execute()
@@ -102,22 +116,34 @@ class DataFetcher:
     # Internals
     # ──────────────────────────────────────────────
     def _paginated_fetch(
-        self, since_date: Optional[str] = None, page_size: int = 1000
+        self, since_date: Optional[str] = None, page_size: int = 1000,
+        through_date: Optional[str] = None,
     ) -> list:
         """
         Supabase caps responses at 1 000 rows by default.
         This paginates with a stable (report_date, id) cursor so concurrent
         inserts cannot shift later pages and silently duplicate or skip rows.
         """
+        if since_date is not None:
+            since_date = iso_report_date(since_date)
+        if through_date is not None:
+            through_date = iso_report_date(through_date)
+        if since_date and through_date and since_date > through_date:
+            raise ValueError("since_date must not follow through_date")
+        if type(page_size) is not int or not 1 <= page_size <= 1000:
+            raise ValueError("page_size must be an integer between 1 and 1000")
         all_rows: list = []
         last_date = None
         last_id = None
 
         while True:
-            query = self._client.table(self._table).select("*")
+            query = self._client.table(self._table).select(PRICE_COLUMNS)
 
             if since_date:
                 query = query.gte("report_date", since_date)
+
+            if through_date:
+                query = query.lte("report_date", through_date)
 
             if last_date is not None:
                 query = query.or_(

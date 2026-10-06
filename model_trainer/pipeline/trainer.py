@@ -135,17 +135,26 @@ class TrainingPipeline:
             beats_champion = comparable and self._improves_all_by(
                 metrics['test']['ensemble'], active['metrics']['test']['ensemble'], .05)
             champion = {'run_id': active_path.name, 'same_evaluation_window': comparable}
-        passed = beats_persistence and beats_parent and beats_champion
+        development_passed = beats_persistence and beats_parent and beats_champion
+        # Saved retrospective forecasts have been used for repeated development.
+        # They cannot establish an independent final holdout for this child model.
+        passed = False
         metrics["promotion_gate"] = {
             "passed": bool(passed),
+            "development_comparison_passed": bool(development_passed),
+            "independent_final_holdout_verified": False,
+            "blocked_reason": "Recalibration has no independent frozen final-holdout evidence",
+            "target_met_on_development_rows": all(
+                0 <= metrics["test"]["ensemble"][name] <= 5
+                for name in ("mae", "rmse", "mape")),
             "beats_persistence": bool(beats_persistence),
             "beats_parent": bool(beats_parent),
             "beats_active_champion": bool(beats_champion),
             "active_champion": champion,
             "rule": (
-                "development-holdout ensemble beats persistence in all three "
-                "metrics and improves MAE, RMSE, and MAPE by at least 5% over "
-                "the parent and active models on the identical evaluation window"
+                "Retrospective comparisons are diagnostic. Activation requires "
+                "independent frozen final-holdout MAE <= 5, RMSE <= 5, MAPE <= 5%, "
+                "validated selection provenance and declared product coverage."
             ),
         }
         metrics["calibration_parent_run_id"] = run_id
@@ -183,13 +192,23 @@ class TrainingPipeline:
         origins = pd.date_range(first_origin, last_origin, freq=f"{self.cfg.evaluation_stride}D")
         rows, cases, contexts = [], [], []
         feature_groups = {key: group for key, group in featured.groupby(SERIES_KEY, sort=False)}
+        market_daily = FeatureBuilder.category_return_history(clean)
+        market_daily['category_return'] = market_daily.category_return.fillna(0.0)
+        market_histories = {}
+        for category, group in market_daily.groupby('product_category', sort=False):
+            dates = pd.to_datetime(group.report_date)
+            for origin in origins:
+                market_histories[(str(category), pd.Timestamp(origin))] = (
+                    group.loc[dates <= origin, 'category_return'].to_numpy(dtype=float).tolist())
         for key, full_series in clean.groupby(SERIES_KEY, sort=True):
             full_series = full_series.sort_values("report_date")
             actual = full_series.set_index("report_date").observed_price
             for origin in origins:
                 history = full_series[full_series.report_date <= origin]
                 try:
-                    prepared = engine._prepare(history, feature_groups[key])
+                    category = str(full_series.product_category.iloc[-1])
+                    market_history = market_histories.get((category, pd.Timestamp(origin)), [])
+                    prepared = engine._prepare(history, feature_groups[key], market_history)
                 except ValueError:
                     continue
                 cases.append(prepared)
@@ -419,17 +438,27 @@ class TrainingPipeline:
         }
         fingerprint = self._fingerprint(raw)
         champion = self._active_champion_metrics(clean, test, fingerprint, split)
-        beats_baseline, beats_champion, passed = self._promotion_decision(
+        beats_baseline, beats_champion, development_passed = self._promotion_decision(
             metrics["test"], champion["ensemble"] if champion else None)
+        # This function creates and inspects an internal chronological split.
+        # Re-running it cannot turn that reused development data into a final
+        # holdout. Stage the bundle until independent final evidence is reviewed.
+        passed = False
         metrics["promotion_gate"] = {
             "passed": bool(passed),
+            "development_comparison_passed": bool(development_passed),
+            "independent_final_holdout_verified": False,
+            "blocked_reason": "Training has no independent frozen final-holdout evidence",
+            "target_met_on_development_rows": all(
+                0 <= metrics["test"]["ensemble"][name] <= 5
+                for name in ("mae", "rmse", "mape")),
             "beats_persistence": bool(beats_baseline),
             "beats_active_champion": bool(beats_champion),
             "active_champion": champion,
             "rule": (
-                "frozen test ensemble beats persistence in all three metrics and "
-                "improves MAE, RMSE, and MAPE by at least 5% over the active "
-                "champion on the same test window"
+                "Retrospective comparisons are diagnostic. Activation requires "
+                "independent frozen final-holdout MAE <= 5, RMSE <= 5, MAPE <= 5%, "
+                "validated selection provenance and declared product coverage."
             ),
         }
         validation_forecasts.to_csv(run_dir / "validation_forecasts.csv", index=False)
@@ -449,6 +478,7 @@ class TrainingPipeline:
 
     @staticmethod
     def _promotion_decision(test_metrics, champion_metrics=None):
+        """Development comparison only; this does not authorize activation."""
         beats_persistence = TrainingPipeline._beats_persistence(test_metrics)
         beats_champion = (champion_metrics is None or TrainingPipeline._improves_all_by(
             test_metrics["ensemble"], champion_metrics, .05))

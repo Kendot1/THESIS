@@ -54,21 +54,40 @@ class ForecastEngine:
                 prepared.append(self._prepare(history, featured_history))
         if not prepared:
             return []
+        market_states = {}
+        for item in prepared:
+            key = (item['origin'], item['category'])
+            if key not in market_states:
+                initial = item.get('market_history')
+                if initial is None:
+                    prices = np.asarray(item['state'].prices, dtype=float)
+                    initial = prices[1:] / prices[:-1] - 1.0 if len(prices) > 1 else []
+                market_states[key] = list(initial)
+            item['market_key'] = key
+            item['market_state'] = market_states[key]
         sequences = np.concatenate([item["sequence"] for item in prepared])
         anchors = np.asarray([item["anchor"] for item in prepared])
         lstm_paths = self.lstm.predict_paths(sequences, anchors)[:, :horizon]
         lgbm_paths = np.empty((len(prepared), horizon), dtype=float)
         for step in range(1, horizon + 1):
             rows = pd.concat([
-                item["state"].row(item["origin"] + pd.Timedelta(days=step))
+                item["state"].row(item["origin"] + pd.Timedelta(days=step),
+                                   item['market_state'])
                 for item in prepared
             ], ignore_index=True)
             if not np.isfinite(rows[FEATURE_COLUMNS].to_numpy(dtype=float)).all():
                 raise ValueError(f"Incomplete LightGBM features at horizon {step}")
             predictions = self.lgbm.predict(rows[FEATURE_COLUMNS])
             lgbm_paths[:, step - 1] = predictions
+            category_returns = {}
             for item, prediction in zip(prepared, predictions):
+                previous = item['state'].prices[-1]
+                if np.isfinite(previous) and previous > 0:
+                    category_returns.setdefault(item['market_key'], []).append(
+                        float(prediction / previous - 1.0))
                 item["state"].append(prediction)
+            for key, values in category_returns.items():
+                market_states[key].append(float(np.median(values)))
         results = []
         for index, item in enumerate(prepared):
             lstm_path, lgbm_path = lstm_paths[index], lgbm_paths[index]
@@ -87,7 +106,7 @@ class ForecastEngine:
                                         point, lower, upper))
         return results
 
-    def _prepare(self, history, featured_history):
+    def _prepare(self, history, featured_history, market_history=None):
         history = history.sort_values("report_date").copy()
         finite = history.index[np.isfinite(history.price_index)]
         if len(finite) == 0:
@@ -110,6 +129,7 @@ class ForecastEngine:
         recent = history.price_index[np.isfinite(history.price_index)].tail(7).to_numpy(float)
         return {"origin": origin, "anchor": anchor,
                 "category": str(history.product_category.iloc[-1]), "sequence": sequence,
+                "market_history": None if market_history is None else list(market_history),
                 "product": (f"{history.product_category.iloc[-1]}||"
                             f"{history.product_name.iloc[-1]}"),
                 "moving_average7": float(recent.mean()),
