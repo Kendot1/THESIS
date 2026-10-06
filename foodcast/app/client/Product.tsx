@@ -34,6 +34,7 @@ const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
 });
 import ProductCard from "../components/ProductCard";
 import ScrollReveal from "../components/ScrollReveal";
+import ConfidenceGauge from "../components/ConfidenceGauge";
 import { Product as ProductType, fetchNews, DEFAULT_PRODUCT_IMAGE, formatRelativeAge, formatScheduledDaRefreshAge, verifiedRangeHitRate, verifiedLongRangeHitRate, verifiedCoverageConfidenceInterval } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { useClock, useForecastStatus, useProducts, useNews } from "../lib/hooks";
@@ -936,23 +937,27 @@ export default function Product({
                         </div>
                       </div>
                       <div className="flex min-w-0 flex-col items-end max-w-full sm:max-w-[55%]">
-                        <div className="flex items-center gap-1.5 px-3 py-1 bg-accent/10 border border-accent/20 rounded-full" title={hasModelForecast ? rangeRateDescription : undefined}>
-                          <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-accent animate-pulse" />
-                          <span className="text-[10px] font-bold text-accent uppercase tracking-wider whitespace-nowrap">
-                            {product.forecastSource !== "model"
-                              ? t("fallbackEstimate")
-                            : rangeHitRate != null
+                        {product.forecastSource !== "model" ? (
+                          <div className="flex items-center gap-1.5 px-3 py-1 bg-accent/10 border border-accent/20 rounded-full">
+                            <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-accent animate-pulse" />
+                            <span className="text-[10px] font-bold text-accent uppercase tracking-wider whitespace-nowrap">
+                              {t("fallbackEstimate")}
+                            </span>
+                          </div>
+                        ) : (
+                          <ConfidenceGauge
+                            percentage={rangeHitRate != null ? rangeHitRate * 100 : null}
+                            size={56}
+                            strokeWidth={4.5}
+                            label={rangeHitRate != null
                               ? `${(rangeHitRate * 100).toFixed(1)}% ${recentRangeHitRate != null ? t("longRangeHitRate") : t("modelRangeHitRate")}`
-                              : `— ${t("rangeHitRate")}`}
-                          </span>
-                        </div>
-                        {hasModelForecast && (
-                          <span className="text-[9px] text-gray-500 font-medium mt-1 text-right">
-                            80% {t("rangeConfidence")}
-                            {confidenceIntervalLabel ? ` · ${confidenceIntervalLabel}` : ""}
-                            {!confidenceIntervalLabel && rangeHitRate != null ? ` · ${t("confidenceNotCalibrated")}` : ""}
-                            {rangeHitRate != null ? ` · n=${rangeHitSampleCount}` : ""}
-                          </span>
+                              : t("rangeHitRate")}
+                            sublabel={rangeHitRate != null ? `n=${rangeHitSampleCount}` : undefined}
+                            calibrated={confidenceIntervalLabel != null}
+                            confidenceIntervalLabel={confidenceIntervalLabel}
+                            variant="badge"
+                            title={hasModelForecast ? rangeRateDescription : undefined}
+                          />
                         )}
                         <span className="text-[8px] text-gray-400 font-bold mt-1 uppercase">
                           {daProcessingStatus}
@@ -1204,15 +1209,31 @@ export default function Product({
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest" title={rangeRateDescription}>{recentRangeHitRate != null ? t("longRangeHitRate") : t("historicalRangeHitRate")}</span>
-                              <span className="text-xs font-bold text-gray-600">
-                                {hasModelForecast
-                                  ? rangeHitRate != null
-                                    ? `${(rangeHitRate * 100).toFixed(1)}% · 80% ${t("rangeConfidence")} · ${confidenceIntervalLabel ?? t("confidenceNotCalibrated")} · n=${rangeHitSampleCount}`
-                                    : verifiedDates > 0
+                              {hasModelForecast ? (
+                                rangeHitRate != null ? (
+                                  <ConfidenceGauge
+                                    percentage={rangeHitRate * 100}
+                                    size={48}
+                                    strokeWidth={4}
+                                    label={`${(rangeHitRate * 100).toFixed(1)}%`}
+                                    sublabel={`n=${rangeHitSampleCount}`}
+                                    calibrated={confidenceIntervalLabel != null}
+                                    confidenceIntervalLabel={confidenceIntervalLabel}
+                                    variant="card"
+                                    title={rangeRateDescription}
+                                  />
+                                ) : (
+                                  <span className="text-xs font-bold text-gray-600">
+                                    {verifiedDates > 0
                                       ? `${t("insufficientVerifiedHistory")} · ${verifiedDates} ${t("verifiedDays")}`
-                                      : t("rangeHistoryUnavailable")
-                                  : t("notAvailable")}
-                              </span>
+                                      : t("rangeHistoryUnavailable")}
+                                  </span>
+                                )
+                              ) : (
+                                <span className="text-xs font-bold text-gray-600">
+                                  {t("notAvailable")}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>

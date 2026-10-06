@@ -56,6 +56,15 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
+      // If initial server data was empty (e.g. SSG without env), fetch on mount
+      if (initialNews.length === 0) {
+        setLoading(true);
+        fetchPaginatedNews(0, PAGE_SIZE, "", "All", "All").then(({ data, total }) => {
+          setNews(data);
+          setTotalRecords(total);
+          setLoading(false);
+        });
+      }
       return;
     }
     setLoading(true);

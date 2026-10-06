@@ -241,9 +241,9 @@ export function formatNewsPublicationDate(
   precision: string | null,
 ): string {
   const sourceDate = precision === "date" ? publishedDate
-    : precision === "timestamp" ? publishedAt : null;
+    : precision === "timestamp" ? publishedAt : publishedAt;
   if (!sourceDate) return "Publication date unavailable";
-  const dateValue = precision === "date" ? `${publishedDate}T12:00:00Z` : publishedAt!;
+  const dateValue = precision === "date" ? `${publishedDate}T12:00:00Z` : sourceDate;
   const parsed = new Date(dateValue);
   if (!Number.isFinite(parsed.getTime())) return "Publication date unavailable";
   return parsed.toLocaleDateString("en-US", {
@@ -590,7 +590,7 @@ export async function fetchPaginatedNews(
 ): Promise<{ data: NewsArticle[], total: number }> {
   try {
     const { supabase } = await import("../../lib/supabase");
-    let query = supabase.from("news_articles").select("id, title, title_tl, content, content_tl, event_type, published_at, published_date, publication_precision, image_url, url, source, sentiment_score, keywords, affected_products", { count: "exact" });
+    let query = supabase.from("news_articles").select("id, title, title_tl, content, content_tl, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products", { count: "exact" });
 
     if (search) {
       query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%,source.ilike.%${search}%`);
@@ -624,7 +624,7 @@ export async function fetchPaginatedNews(
       content: article.content || "",
       content_tl: article.content_tl || "",
       category: (article.event_type || "News").replace(/_/g, ' '),
-      date: formatNewsPublicationDate(article.published_at, article.published_date, article.publication_precision),
+      date: formatNewsPublicationDate(article.published_at, null, null),
       image: article.image_url || "/news/market.png",
       url: article.url,
       source: article.source,

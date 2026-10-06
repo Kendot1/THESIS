@@ -14,6 +14,10 @@ import mimetypes
 from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
 from urllib.parse import urlparse, quote_plus
+try:
+    from .publication_time import publication_metadata
+except ImportError:  # direct script execution
+    from publication_time import publication_metadata
 
 import httpx
 from supabase import create_client, Client
@@ -341,30 +345,7 @@ class NewsScraper:
 
         # Extract title and image
         title = ""
-        published_at = ""
-        if result.metadata:
-            published_at = result.metadata.get("published_at", "")
-            
-        # Try extracting exact published date from meta tags
-        if not published_at and result.html:
-            pub_match = re.search(r'<meta[^>]+property=["\']article:published_time["\'][^>]+content=["\']([^"\']+)["\']', result.html, re.I)
-            if not pub_match:
-                pub_match = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']article:published_time["\']', result.html, re.I)
-            if pub_match:
-                published_at = pub_match.group(1)
-                
-        # Try extracting from JSON-LD
-        if not published_at and result.html:
-            ld_match = re.search(r'"datePublished"\s*:\s*"([^"]+)"', result.html, re.I)
-            if ld_match:
-                published_at = ld_match.group(1)
-                
-        # Fallback to URL date if present (e.g. /2026/4/28/)
-        if not published_at and result.url:
-            url_date_match = re.search(r'/(\d{4})/(\d{1,2})/(\d{1,2})/', result.url)
-            if url_date_match:
-                y, m, d = url_date_match.groups()
-                published_at = f"{y}-{int(m):02d}-{int(d):02d}T00:00:00Z"
+        publication = publication_metadata(result.metadata, result.html, result.url or url)
 
         image_url = ""
         if result.metadata:
@@ -452,7 +433,7 @@ class NewsScraper:
             "source": source,
             "url": url,
             "content_hash": content_hash,
-            "published_at": published_at if published_at else datetime.now(timezone.utc).isoformat(),
+            **publication,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "sentiment_score": llm_result.get("sentiment_score", 0.0),
             "keywords": llm_result.get("keywords", []),
@@ -637,6 +618,9 @@ class NewsScraper:
                 "url": article["url"],
                 "content_hash": article["content_hash"],
                 "published_at": article["published_at"],
+                "published_date": article["published_date"],
+                "publication_precision": article["publication_precision"],
+                "publication_source": article["publication_source"],
                 "created_at": article["created_at"],
                 "sentiment_score": article["sentiment_score"],
                 "keywords": article["keywords"],
