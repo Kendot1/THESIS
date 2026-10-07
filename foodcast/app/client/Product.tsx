@@ -952,16 +952,11 @@ export default function Product({
                             label={rangeHitRate != null
                               ? `${(rangeHitRate * 100).toFixed(1)}% ${recentRangeHitRate != null ? t("longRangeHitRate") : t("modelRangeHitRate")}`
                               : t("rangeHitRate")}
-                            sublabel={rangeHitRate != null ? `n=${rangeHitSampleCount}` : undefined}
-                            calibrated={confidenceIntervalLabel != null}
-                            confidenceIntervalLabel={confidenceIntervalLabel}
+                            sublabel={daProcessingStatus}
                             variant="badge"
                             title={hasModelForecast ? rangeRateDescription : undefined}
                           />
                         )}
-                        <span className="text-[8px] text-gray-400 font-bold mt-1 uppercase">
-                          {daProcessingStatus}
-                        </span>
                       </div>
                     </div>
 
@@ -1207,34 +1202,7 @@ export default function Product({
                               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t("nextAction")}</span>
                               <span className="text-xs font-black text-primary-800 uppercase tracking-tight">{t(insight.action)}</span>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest" title={rangeRateDescription}>{recentRangeHitRate != null ? t("longRangeHitRate") : t("historicalRangeHitRate")}</span>
-                              {hasModelForecast ? (
-                                rangeHitRate != null ? (
-                                  <ConfidenceGauge
-                                    percentage={rangeHitRate * 100}
-                                    size={48}
-                                    strokeWidth={4}
-                                    label={`${(rangeHitRate * 100).toFixed(1)}%`}
-                                    sublabel={`n=${rangeHitSampleCount}`}
-                                    calibrated={confidenceIntervalLabel != null}
-                                    confidenceIntervalLabel={confidenceIntervalLabel}
-                                    variant="card"
-                                    title={rangeRateDescription}
-                                  />
-                                ) : (
-                                  <span className="text-xs font-bold text-gray-600">
-                                    {verifiedDates > 0
-                                      ? `${t("insufficientVerifiedHistory")} · ${verifiedDates} ${t("verifiedDays")}`
-                                      : t("rangeHistoryUnavailable")}
-                                  </span>
-                                )
-                              ) : (
-                                <span className="text-xs font-bold text-gray-600">
-                                  {t("notAvailable")}
-                                </span>
-                              )}
-                            </div>
+
                           </div>
                         </div>
                       </div>

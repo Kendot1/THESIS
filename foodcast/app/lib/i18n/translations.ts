@@ -184,7 +184,7 @@ export const translations = {
   rangeConfidence: { en: "prediction range", tl: "saklaw ng hula" },
   historicalRangeHitRate: { en: "Historical range hit rate", tl: "Pagtama ng saklaw sa nakaraan" },
   rangeHitRateExplanation: { en: "Share of distinct product/date outcomes where an earlier forecast range contained the actual price. This measured history is not the probability that the next range will hit.", tl: "Bahagi ng magkakaibang produkto at petsa kung kailan saklaw ng naunang forecast range ang aktuwal na presyo. Hindi ito posibilidad na tatama ang susunod na range." },
-  modelRangeHitRate: { en: "all-horizon backtest hit", tl: "pagtama sa backtest, lahat ng haba" },
+  modelRangeHitRate: { en: "confidence level", tl: "antas ng kumpiyansa" },
   modelRangeHitRateExplanation: { en: "Overall model coverage across historical backtest products and horizons. This fallback is not product-specific or a measured 30-day success probability. Product-specific 15–30-day history is shown when enough verified outcomes are available.", tl: "Pangkalahatang pagtama ng saklaw sa mga produkto at haba ng forecast sa backtest. Hindi ito resulta ng partikular na produkto o posibilidad ng tagumpay sa 30 araw. Ipinapakita ang kasaysayan ng produkto sa 15–30 araw kapag may sapat na nasuring kinalabasan." },
   modelBacktestOutcomes: { en: "historical backtest outcomes", tl: "kinalabasan ng pagsusuri sa nakaraang datos" },
   insufficientVerifiedHistory: { en: "Insufficient verified history", tl: "Kulang ang nasuring kasaysayan" },

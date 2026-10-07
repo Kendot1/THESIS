@@ -1,12 +1,13 @@
 {
   "modelRunId": "20261001T025925Z_0661960a",
   "metrics": {
-    "mae": 9.109274103212362,
+    "mae": 9.109274103212364,
     "rmse": 26.174824536751913,
-    "mape": 5.161809814389095,
+    "mape": 5.161809814389093,
     "directional_accuracy": null,
     "interval_level": 0.8,
     "interval_coverage": 0.8228591293599599,
+    "covered_count": 21303,
     "prediction_success": 0.7393873846034995,
     "success_tolerance": 0.05,
     "success_definition": "absolute_percentage_error_at_most_tolerance",

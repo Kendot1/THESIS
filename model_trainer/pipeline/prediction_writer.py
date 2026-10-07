@@ -219,6 +219,22 @@ class PredictionWriter:
         for key, series in clean.groupby(SERIES_KEY, sort=True):
             product_id = product_ids.get(tuple(key))
             if product_id is None:
+                category, name, variant, origin_val, unit = key
+                try:
+                    res = self.db.table("products").upsert({
+                        "name": str(name),
+                        "variant": str(variant),
+                        "origin": str(origin_val),
+                        "category": str(category),
+                        "unit": str(unit),
+                        "description": f"{variant} {name} is a tracked commodity in the NCR agri-fishery market.",
+                    }, on_conflict="name,variant,origin,unit").execute()
+                    if res.data:
+                        product_id = res.data[0]["id"]
+                        product_ids[tuple(key)] = product_id
+                except Exception:
+                    pass
+            if product_id is None:
                 failures.append({"series": tuple(key), "error": "missing products row"})
                 continue
             try:
@@ -266,38 +282,47 @@ class PredictionWriter:
             "p_metrics": self._quality_metrics(registry.run_id, product_ids),
         }
         quality_metrics_published = True
-        try:
-            result = self.db.rpc("publish_forecast_run_with_metrics", payload).execute()
-        except Exception as exc:
-            if "21000" in str(exc) and "DELETE requires a WHERE clause" in str(exc):
-                raise RuntimeError(
-                    f"Supabase safe-update enforcement blocked forecast publication. "
-                f"Apply {SAFE_DELETE_MIGRATION}, then retry. The failed RPC was "
-                    "rolled back atomically."
-                ) from exc
-            message = str(exc).lower()
-            metrics_rpc_missing = (
-                "publish_forecast_run_with_metrics" in message
-                and ("schema cache" in message or "does not exist" in message
-                     or "could not find the function" in message)
-            )
-            if metrics_rpc_missing:
-                # Preserve normal forecast publishing during migration rollout;
-                # quality metrics become available after the migration is applied.
-                legacy_payload = {key: value for key, value in payload.items()
-                                  if key != "p_metrics"}
-                try:
-                    result = self.db.rpc("publish_forecast_run", legacy_payload).execute()
-                except Exception as legacy_exc:
-                    if "publish_forecast_run" in str(legacy_exc):
-                        raise RuntimeError(
-                            f"Supabase atomic forecast publishing is unavailable. Apply "
-                            f"{MIGRATION}, then retry."
-                        ) from legacy_exc
+        result = None
+        for attempt in range(3):
+            try:
+                result = self.db.rpc("publish_forecast_run_with_metrics", payload).execute()
+                break
+            except Exception as exc:
+                if "57014" in str(exc) and attempt < 2:
+                    import time
+                    time.sleep(2.0 * (attempt + 1))
+                    continue
+                if "21000" in str(exc) and "DELETE requires a WHERE clause" in str(exc):
+                    raise RuntimeError(
+                        f"Supabase safe-update enforcement blocked forecast publication. "
+                        f"Apply {SAFE_DELETE_MIGRATION}, then retry. The failed RPC was "
+                        "rolled back atomically."
+                    ) from exc
+                message = str(exc).lower()
+                metrics_rpc_missing = (
+                    "publish_forecast_run_with_metrics" in message
+                    and ("schema cache" in message or "does not exist" in message
+                         or "could not find the function" in message)
+                )
+                if metrics_rpc_missing:
+                    # Preserve normal forecast publishing during migration rollout;
+                    # quality metrics become available after the migration is applied.
+                    legacy_payload = {key: value for key, value in payload.items()
+                                      if key != "p_metrics"}
+                    try:
+                        result = self.db.rpc("publish_forecast_run", legacy_payload).execute()
+                        break
+                    except Exception as legacy_exc:
+                        if "publish_forecast_run" in str(legacy_exc):
+                            raise RuntimeError(
+                                f"Supabase atomic forecast publishing is unavailable. Apply "
+                                f"{MIGRATION}, then retry."
+                            ) from legacy_exc
+                        raise
+                    quality_metrics_published = False
+                    break
+                else:
                     raise
-                quality_metrics_published = False
-            else:
-                raise
         return {"forecast_run_id": run_id, "model_run_id": registry.run_id,
                 "series": series_count,
                 "model_series": series_count-len(fallbacks),

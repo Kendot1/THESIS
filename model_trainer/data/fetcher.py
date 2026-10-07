@@ -158,7 +158,16 @@ class DataFetcher:
                 .limit(page_size)
             )
 
-            resp = query.execute()
+            resp = None
+            for attempt in range(4):
+                try:
+                    resp = query.execute()
+                    break
+                except Exception:
+                    if attempt == 3:
+                        raise
+                    import time
+                    time.sleep(1.5 * (attempt + 1))
             batch = resp.data or []
             all_rows.extend(batch)
 

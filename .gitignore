@@ -1,53 +1,102 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
+# ============================================
+# Dependencies
+# ============================================
 **/node_modules/
-**/.next/
+/.pnp
+.pnp.js
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ============================================
+# Python
+# ============================================
+**/.venv/
 **/__pycache__/
 *.py[cod]
-.venv/
+*$py.class
+*.egg-info/
+dist/
 .python-runtime/
-.tmp/
-.codex/
+
+# ============================================
+# Next.js / React
+# ============================================
+**/.next/
+/out/
+
+# ============================================
+# Build & Production
+# ============================================
+/build
+/coverage
+
+# ============================================
+# Environment & Secrets
+# ============================================
+.env
+.env*.local
+
+# ============================================
+# Logs
+# ============================================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+model_trainer/logs/*.log
+.tmp/**/*.log
+.tmp/**/*.json
+
+# ============================================
+# ML Artifacts & Training Output (large/generated)
+# ============================================
+model_trainer/artifacts/
+model_trainer/artifacts_v2/
+model_trainer/plots/
+
+# ============================================
+# Audit artifacts (generated snapshots & probes)
+# ============================================
 audits/**/training_snapshot.json
 audits/**/live_quality_inputs.json
 audits/**/*.log
 audits/**/probe_artifacts/
-/.pnp
-.pnp.js
 
-# testing
-/coverage
+# ============================================
+# Temporary / tool-generated directories
+# ============================================
+.tmp/
+.codex/
+.opencode/
 
-# next.js
-/.next/
-/out/
+# ============================================
+# Supabase
+# ============================================
+supabase/.temp/
 
-# production
-/build
+# ============================================
+# IDE & Editor
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# misc
+# ============================================
+# OS files
+# ============================================
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# ============================================
+# Misc
+# ============================================
 *.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-model_trainer/logs/*.log
-model_trainer/artifacts_v2/
-
-# local env files
-.env*.local
-.env
-
-# vercel
-.vercel
-
-# typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# supabase
-supabase/.temp/
+.vercel

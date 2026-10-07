@@ -20,8 +20,6 @@ interface ConfidenceGaugeProps {
   strokeWidth?: number;
   label?: string;
   sublabel?: string;
-  calibrated?: boolean;
-  confidenceIntervalLabel?: string | null;
   variant?: "badge" | "card";
   title?: string;
 }
@@ -39,8 +37,6 @@ export default function ConfidenceGauge({
   strokeWidth = 5,
   label,
   sublabel,
-  calibrated = false,
-  confidenceIntervalLabel,
   variant = "badge",
   title,
 }: ConfidenceGaugeProps) {
@@ -120,26 +116,8 @@ export default function ConfidenceGauge({
           </span>
         )}
 
-        {hasData && (
-          <span className={`text-[9px] font-medium leading-tight mt-0.5 ${isBadge ? "text-gray-500" : "text-gray-500"}`}>
-            80% prediction range
-          </span>
-        )}
-
-        {hasData && confidenceIntervalLabel && (
-          <span className="text-[9px] text-gray-400 font-medium leading-tight mt-0.5">
-            {confidenceIntervalLabel}
-          </span>
-        )}
-
-        {hasData && !calibrated && !confidenceIntervalLabel && (
-          <span className="text-[9px] text-amber-500 font-medium leading-tight mt-0.5">
-            Not yet calibrated
-          </span>
-        )}
-
         {sublabel && (
-          <span className="text-[8px] text-gray-400 font-medium mt-0.5">
+          <span className="text-[8px] text-gray-400 font-bold mt-0.5 uppercase">
             {sublabel}
           </span>
         )}
