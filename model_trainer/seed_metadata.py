@@ -1,11 +1,15 @@
 """
 Seed the `products` table from food_prices data.
-Run after creating the tables via the SQL migration.
+Paginates through all records in food_prices with unit normalization.
 """
 import sys
-sys.path.insert(0, '.')
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from supabase import create_client
 from config.settings import get_settings
+from data.preprocessor import normalize_unit
 
 cfg = get_settings()
 sb = create_client(cfg.supabase_url, cfg.supabase_key)
@@ -62,27 +66,74 @@ DESCRIPTIONS = {
 }
 
 
+def fetch_batch_combos(range_tuple):
+    start, end = range_tuple
+    client = create_client(cfg.supabase_url, cfg.supabase_key)
+    res = client.table("food_prices").select(
+        "product_name, product_variant, origin, product_category, unit"
+    ).range(start, end).execute()
+    return res.data
+
+
 def main():
-    print("Fetching unique product series from food_prices...")
-    r = sb.table("food_prices").select(
-        "product_name, product_variant, origin, product_category, unit").execute()
+    print("=" * 60)
+    print("Transferring products from food_prices to products table")
+    print("=" * 60)
+
+    # 1. Determine total count in food_prices
+    count_res = sb.table("food_prices").select("id", count="exact").limit(1).execute()
+    total_records = count_res.count or 0
+    print(f"Total food_prices records to scan: {total_records:,}")
+
+    if total_records == 0:
+        print("No records found in food_prices. Exiting.")
+        return
+
+    # 2. Paginate across all records in parallel
+    batch_size = 1000
+    ranges = [(i, min(i + batch_size - 1, total_records - 1)) for i in range(0, total_records, batch_size)]
+    print(f"Paginating {len(ranges)} batches across food_prices...")
 
     combos = {}
-    for row in r.data:
-        name = row["product_name"]
-        variant = row.get("product_variant") or ""
-        if not variant or variant.lower() == "unknown":
-            variant = "Standard"
-        origin = row.get("origin") or ""
-        category = row["product_category"]
-        unit = (row.get("unit") or "").strip().lower()
-        if not unit or unit == "unknown":
-            continue
-        key = (name, variant, origin, unit)
-        if key not in combos:
-            combos[key] = category
+    with ThreadPoolExecutor(max_workers=12) as executor:
+        for batch_data in executor.map(fetch_batch_combos, ranges):
+            for row in batch_data:
+                name = row.get("product_name")
+                if not name:
+                    continue
+                name = name.strip()
+                if not name or name.lower() == "unknown":
+                    continue
 
-    print(f"Found {len(combos)} unique product series. Seeding products table...")
+                variant = (row.get("product_variant") or "").strip()
+                if not variant or variant.lower() in ("unknown", "null"):
+                    variant = "Standard"
+
+                origin = (row.get("origin") or "").strip()
+                if not origin:
+                    origin = "Unknown"
+
+                category = (row.get("product_category") or "").strip()
+                if not category or category.lower() == "unknown":
+                    continue
+
+                unit = normalize_unit(row.get("unit"))
+                if category == "Oils" and variant.lower() == "1l":
+                    unit = "liter"
+                elif category == "Oils" and variant.lower() == "350ml":
+                    unit = "350ml"
+                elif name == "Chicken Egg":
+                    unit = "piece"
+
+                if not unit or unit == "unknown":
+                    continue
+
+                key = (name, variant, origin, unit)
+                if key not in combos:
+                    combos[key] = category
+
+    print(f"Found {len(combos)} unique product series across food_prices.")
+    print("Upserting into products table...")
 
     inserted = 0
     for (name, variant, origin, unit), category in sorted(combos.items()):
@@ -99,21 +150,22 @@ def main():
             }, on_conflict="name,variant,origin,unit").execute()
             inserted += 1
         except Exception as e:
-            print(f"  FAIL {name} | {variant} | {origin}: {e}")
+            print(f"  FAIL {name} | {variant} | {origin} | {unit}: {e}")
 
-    print(f"Inserted {inserted}/{len(combos)} products.")
+    print(f"Successfully upserted {inserted}/{len(combos)} products.")
 
-    # Verify
-    r = sb.table("products").select("id, name, variant, origin, category").order("id").execute()
-    print(f"\nVerification: {len(r.data)} rows in products table")
-    for p in r.data[:5]:
+    # 3. Verification
+    r = sb.table("products").select("id, name, variant, origin, category, unit").order("name").execute()
+    print(f"\nVerification: {len(r.data)} total rows in products table.")
+    for p in r.data[:8]:
         v = p.get("variant") or "-"
         o = p.get("origin") or "-"
-        id_str = str(p['id'])[:8] + "..." # Truncate UUID for display
-        print(f"  id={id_str:11s} | {p['category']:12s} | {p['name']:20s} | {v:30s} | {o}")
-    if len(r.data) > 5:
-        print(f"  ... and {len(r.data) - 5} more")
-    print("\nDone!")
+        u = p.get("unit") or "-"
+        id_str = str(p['id'])[:8] + "..."
+        print(f"  id={id_str:11s} | {p['category']:12s} | {p['name']:20s} | {v:20s} | {o:10s} | {u}")
+    if len(r.data) > 8:
+        print(f"  ... and {len(r.data) - 8} more")
+    print("\nTransfer complete!")
 
 
 if __name__ == "__main__":

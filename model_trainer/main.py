@@ -110,7 +110,6 @@ def cmd_export_quality(args):
     forecasts = pd.read_csv(path/'test_forecasts.csv', usecols=['series'])
     identities = {tuple(series.split('||')): series for series in forecasts.series.unique()}
     metrics = PredictionWriter._quality_metrics(path.name, identities)
-    metrics.pop('product_metrics', None)
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps({'modelRunId': path.name, 'metrics': metrics}, indent=2), encoding='utf-8')

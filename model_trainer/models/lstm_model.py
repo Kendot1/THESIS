@@ -1,10 +1,22 @@
 """Direct multi-horizon LSTM with causal sequences and masked targets."""
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
 import pandas as pd
+
+# PyTorch can request a per-user Inductor cache while creating an optimizer.
+# On Windows runtimes without a USERNAME environment variable, getpass falls
+# back to importing the Unix-only ``pwd`` module. Give Torch a stable temp path
+# before importing it so local Windows training does not fail during setup.
+if os.name == "nt" and not os.environ.get("TORCHINDUCTOR_CACHE_DIR"):
+    os.environ["TORCHINDUCTOR_CACHE_DIR"] = str(
+        Path(tempfile.gettempdir()) / "foodcast_torchinductor"
+    )
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset

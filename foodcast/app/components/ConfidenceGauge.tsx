@@ -2,16 +2,14 @@
 
 /**
  * ConfidenceGauge – a circular/radial SVG progress gauge that
- * displays a hit-rate percentage visually.
+ * displays a backend reliability percentage visually.
  *
  * Props:
- *  - percentage: 0–100 (the hit-rate value, e.g. 82.3)
+ *  - percentage: backend score from 0–100, or null when unavailable
  *  - size: pixel diameter (default 64)
  *  - strokeWidth: thickness of the arc (default 5)
- *  - label: short text beneath the number (e.g. "15–30d hit")
+ *  - label: backend confidence level
  *  - sublabel: optional secondary line (e.g. "n=25889")
- *  - calibrated: whether the CI has been calibrated
- *  - confidenceIntervalLabel: optional CI text
  *  - variant: "badge" (compact, top bar) | "card" (larger, insight card)
  */
 interface ConfidenceGaugeProps {
@@ -25,9 +23,9 @@ interface ConfidenceGaugeProps {
 }
 
 function getGaugeColor(pct: number): { stroke: string; text: string; bg: string; glow: string } {
-  if (pct >= 75) return { stroke: "#2E7D32", text: "text-positive", bg: "bg-positive/10", glow: "shadow-[0_0_12px_rgba(46,125,50,0.25)]" };
-  if (pct >= 60) return { stroke: "#7ED957", text: "text-accent-dark", bg: "bg-accent/10", glow: "shadow-[0_0_12px_rgba(126,217,87,0.25)]" };
-  if (pct >= 45) return { stroke: "#FFB300", text: "text-yellow-600", bg: "bg-yellow/10", glow: "shadow-[0_0_12px_rgba(255,179,0,0.2)]" };
+  if (pct >= 90) return { stroke: "#2E7D32", text: "text-positive", bg: "bg-positive/10", glow: "shadow-[0_0_12px_rgba(46,125,50,0.25)]" };
+  if (pct >= 80) return { stroke: "#7ED957", text: "text-accent-dark", bg: "bg-accent/10", glow: "shadow-[0_0_12px_rgba(126,217,87,0.25)]" };
+  if (pct >= 70) return { stroke: "#FFB300", text: "text-yellow-600", bg: "bg-yellow/10", glow: "shadow-[0_0_12px_rgba(255,179,0,0.2)]" };
   return { stroke: "#C62828", text: "text-negative", bg: "bg-negative/10", glow: "shadow-[0_0_12px_rgba(198,40,40,0.2)]" };
 }
 
@@ -48,9 +46,9 @@ export default function ConfidenceGauge({
   const progress = hasData ? Math.min(Math.max(pct / 100, 0), 1) : 0;
   const dashOffset = circumference * (1 - progress);
 
-  const { stroke, text, bg, glow } = hasData
+  const { stroke, text, glow } = hasData
     ? getGaugeColor(pct)
-    : { stroke: "#d1d5db", text: "text-gray-400", bg: "bg-gray-100", glow: "" };
+    : { stroke: "#d1d5db", text: "text-gray-400", glow: "" };
 
   const isBadge = variant === "badge";
 

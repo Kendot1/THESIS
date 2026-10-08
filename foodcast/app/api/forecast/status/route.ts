@@ -7,7 +7,8 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const status = withModelCapability(await fetchForecastStatus(), capabilitySnapshot);
+    const rawStatus = await fetchForecastStatus();
+    const status = withModelCapability(rawStatus, capabilitySnapshot);
     return Response.json(status, {
       headers: { "Cache-Control": "no-store, max-age=0" },
     });

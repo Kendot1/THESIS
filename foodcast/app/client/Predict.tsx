@@ -10,7 +10,7 @@ const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
   ssr: false,
 });
 import ScrollReveal from "../components/ScrollReveal";
-import { Product, fetchCategories, DEFAULT_PRODUCT_IMAGE } from "../lib/data";
+import { Product, fetchCategories, DEFAULT_PRODUCT_IMAGE, forecastHorizonPoints, type ForecastHorizon } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { encryptId } from "../../lib/idCipher";
 import { useProducts, useTrendingInteractions, useNews } from "../lib/hooks";
@@ -45,6 +45,7 @@ function PredictContent({ initialProducts }: PredictProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const allMarketsRef = useRef<HTMLElement>(null);
   const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [featuredHorizon, setFeaturedHorizon] = useState<ForecastHorizon>("daily");
   const [isHoveringFeatured, setIsHoveringFeatured] = useState(false);
 
   // Swipe gesture support for mobile/touch screens
@@ -172,7 +173,12 @@ function PredictContent({ initialProducts }: PredictProps) {
   }, [deferredQuery, deferredCategory, products]);
 
   /* ─── Layout Data Prep ────────────────────── */
-  const featuredProduct = featuredItems[featuredIndex] || products[0] || null;
+  const featuredProduct: Product | null = featuredItems[featuredIndex] || products[0] || null;
+  const featuredForecast = featuredProduct?.forecastSource === "model"
+    ? forecastHorizonPoints(featuredProduct.forecastData, featuredProduct.forecastOriginDate, featuredHorizon)[0]
+    : undefined;
+  const featuredChange = featuredForecast?.predicted != null && featuredProduct?.currentPrice
+    ? (featuredForecast.predicted - featuredProduct.currentPrice) / featuredProduct.currentPrice * 100 : null;
 
 
 
@@ -275,7 +281,7 @@ function PredictContent({ initialProducts }: PredictProps) {
     ).slice(0, 5);
   }, [query, products]);
 
-  if (products.length === 0 || isTransitioning) {
+  if (products.length === 0 || !featuredProduct || isTransitioning) {
     return (
       <main className="min-h-screen bg-surface">
         <section className="relative py-12 sm:py-15 pt-28 sm:pt-30 bg-primary-900 overflow-hidden">
@@ -508,19 +514,31 @@ function PredictContent({ initialProducts }: PredictProps) {
                   </div>
 
                   <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2 sm:gap-2">
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold ${featuredProduct.sentiment === 'Bullish' ? 'text-price-up bg-price-up/10' : 'text-price-down bg-price-down/10'}`}>
-                      {featuredProduct.sentiment === 'Bullish' ? '▲' : '▼'} {Math.abs(((featuredProduct.predictedPrice - featuredProduct.currentPrice) / featuredProduct.currentPrice) * 100).toFixed(1)}% {featuredProduct.sentiment}
-                    </div>
+                    {featuredChange != null && <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold ${featuredChange >= 0 ? 'text-price-up bg-price-up/10' : 'text-price-down bg-price-down/10'}`}>
+                      {featuredChange >= 0 ? '▲' : '▼'} {Math.abs(featuredChange).toFixed(1)}%
+                    </div>}
                     <span className="text-3xl sm:text-4xl font-black text-primary-900 leading-none">
-                      ₱{featuredProduct.predictedPrice.toFixed(1)}
+                      {featuredForecast?.predicted != null ? `₱${featuredForecast.predicted.toFixed(2)}` : "—"}
                     </span>
+                    <span className="text-xs text-gray-500">{t("predictedPrice")} · {featuredForecast?.date ?? "—"}</span>
                   </div>
                 </div>
 
                 {/* Retaining Previous Chart Design (with grid and legend) */}
                 <div className="mt-2">
+                  <div className="flex items-center p-1 mb-3 bg-gray-50 rounded-xl border border-gray-100 w-fit">
+                    {(["daily", "weekly", "monthly"] as const).map(horizon => (
+                      <button key={horizon} onClick={() => setFeaturedHorizon(horizon)}
+                        aria-pressed={featuredHorizon === horizon}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg ${featuredHorizon === horizon ? "bg-white text-primary-800 shadow-sm" : "text-gray-500"}`}>
+                        {t(horizon)}
+                      </button>
+                    ))}
+                  </div>
                   <ForecastChart
                     data={featuredProduct.forecastData}
+                    forecastOriginDate={featuredProduct.forecastSource === "model" ? featuredProduct.forecastOriginDate : undefined}
+                    period={featuredHorizon}
                     showGrid={true}
                     showLegend={true}
                     productName={featuredProduct.variant && featuredProduct.variant !== "Standard" ? `${featuredProduct.name} (${featuredProduct.variant})` : featuredProduct.name}

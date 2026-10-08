@@ -7,8 +7,6 @@ export interface ForecastDataPoint {
   name: string;
   actual: number | null;
   predicted: number | null;
-  lower: number | null;
-  upper: number | null;
 }
 
 export interface Product {
@@ -30,11 +28,11 @@ export interface Product {
   dailyForecast: {
     date: string;
     predicted_price: number;
-    lower_bound?: number | null;
-    upper_bound?: number | null;
     reasoning: string;
   }[];
   forecastSource?: "model" | "trend_fallback";
+  forecastOriginDate?: string;
+  forecastModelRunId?: string;
   lastActualDate?: string;
 }
 
@@ -90,10 +88,75 @@ export interface ForecastQualityMetrics {
     mape?: number | null;
     prediction_success?: number;
     evaluation_source?: string;
+    confidence_by_horizon?: Partial<Record<ForecastHorizon, ForecastConfidenceMetric>>;
     horizon_metrics?: Record<string, RangeHitMetrics>;
   }>;
   evaluation_scope?: string | null;
   evaluation_source?: string | null;
+}
+
+export type ForecastHorizon = "daily" | "weekly" | "monthly";
+
+export interface ForecastConfidenceMetric {
+  forecast_horizon_days: 1 | 7 | 30;
+  confidence_score: number | null;
+  confidence_level: "Very High" | "High" | "Moderate" | "Low" | "Very Low" | "Insufficient data";
+  mae: number | null;
+  rmse: number | null;
+  mape: number | null;
+  sample_count: number;
+  sample_support?: number;
+  evaluation_source: "chronological_validation";
+  confidence_method: string;
+  model_version: string;
+  evidence_status: "validated" | "insufficient_data" | "unverified_provenance";
+}
+
+export const FORECAST_HORIZON_DAYS = { daily: 1, weekly: 7, monthly: 30 } as const;
+
+/** Calendar lead time is measured from the saved backend vintage, never row position. */
+export function forecastTargetDate(origin: string | undefined, horizon: ForecastHorizon): string | null {
+  if (!origin || !/^\d{4}-\d{2}-\d{2}$/.test(origin)) return null;
+  const timestamp = Date.parse(`${origin}T00:00:00Z`);
+  if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString().slice(0, 10) !== origin) return null;
+  return new Date(timestamp + FORECAST_HORIZON_DAYS[horizon] * 86400000).toISOString().slice(0, 10);
+}
+
+/** Sample saved model prices at the selected cadence, without averaging or
+ * extending the model's forecast window. Monthly uses the trained 30-day lead. */
+export function forecastHorizonPoints(data: ForecastDataPoint[], origin: string | undefined, horizon: ForecastHorizon) {
+  if (!forecastTargetDate(origin, horizon)) return [];
+  const originTime = Date.parse(`${origin}T00:00:00Z`);
+  const cadence = FORECAST_HORIZON_DAYS[horizon];
+  return data.filter(point => {
+    const timestamp = Date.parse(`${point.date}T00:00:00Z`);
+    const lead = (timestamp - originTime) / 86400000;
+    return Number.isInteger(lead) && lead > 0 && lead % cadence === 0
+      && new Date(timestamp).toISOString().slice(0, 10) === point.date
+      && point.predicted != null && Number.isFinite(point.predicted) && point.predicted > 0;
+  })
+    .sort((left, right) => left.date.localeCompare(right.date));
+}
+
+/** Display only backend evidence tied to this product, horizon, and forecast model. */
+export function productHorizonConfidence(product: Product, status: ForecastStatus | null | undefined,
+  horizon: ForecastHorizon): ForecastConfidenceMetric | null {
+  const target = forecastTargetDate(product.forecastOriginDate, horizon);
+  if (product.forecastSource !== "model" || !product.forecastModelRunId
+    || product.forecastModelRunId !== status?.modelRunId || !target
+    || !product.lastActualDate || target <= product.lastActualDate
+    || !forecastHorizonPoints(product.forecastData, product.forecastOriginDate, horizon)
+      .some(point => point.date === target)) return null;
+  const metric = status.modelMetrics?.product_metrics?.[product.id]?.confidence_by_horizon?.[horizon];
+  if (!metric || metric.forecast_horizon_days !== FORECAST_HORIZON_DAYS[horizon]
+    || metric.model_version !== product.forecastModelRunId
+    || metric.evaluation_source !== "chronological_validation" || metric.evidence_status !== "validated"
+    || !metric.confidence_method || !Number.isInteger(metric.sample_count) || metric.sample_count < 1
+    || metric.confidence_score == null || !Number.isFinite(metric.confidence_score)
+    || metric.confidence_score < 0 || metric.confidence_score > 100
+    || !["Very High", "High", "Moderate", "Low", "Very Low"].includes(metric.confidence_level)
+    || [metric.mae, metric.rmse, metric.mape].some(value => value == null || !Number.isFinite(value) || value < 0)) return null;
+  return metric;
 }
 
 /** Return only measured coverage for the nominal 80% prediction interval. */
@@ -277,8 +340,9 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const EDGE_FN_BASE = `${SUPABASE_URL}/functions/v1/foodcast`;
 
 const memoryCache: Record<string, { data: any; expiry: number }> = {};
+const pendingRequests = new Map<string, Promise<unknown>>();
 
-const CACHE_VERSION = "v4_canonical_units_bounded_fallback";
+const CACHE_VERSION = "v7_forecast_cadence";
 const LOCAL_CACHE_PREFIX = `foodcast_cache_${CACHE_VERSION}_`;
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour persistent cache
 
@@ -448,18 +512,22 @@ async function edgeFetch<T>(path: string): Promise<T> {
   }
 
   // 3. Fallback to network fetch (causes loading state)
-  return fetchFromNetwork<T>(path);
+  // Share a cold request between components instead of repeating the same
+  // expensive upstream query before the first response reaches the cache.
+  let pending = pendingRequests.get(path);
+  if (!pending) {
+    pending = fetchFromNetwork<T>(path).finally(() => pendingRequests.delete(path));
+    pendingRequests.set(path, pending);
+  }
+  return pending as Promise<T>;
 }
 
 // ─── Data Fetching (calls Supabase Edge Function) ──────────
 
 export async function fetchProducts(): Promise<Product[]> {
-  try {
-    return await edgeFetch<Product[]>("products");
-  } catch (e) {
-    console.error("Error fetching products:", e);
-    return [];
-  }
+  // A failed refresh must not replace existing rows with an empty list. SWR
+  // retains its previous data on rejection; ISR retains the last good page.
+  return edgeFetch<Product[]>("products");
 }
 
 // Comparison prices should reflect the current database/forecast state, not

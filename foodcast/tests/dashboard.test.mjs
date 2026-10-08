@@ -13,7 +13,7 @@ function loadModule(file, imports = {}) {
   });
   const exports = {};
   vm.runInNewContext(outputText, {
-    exports, process, console, Response,
+    exports, process, console, Response, URL, Deno: { env: { get: () => '' } },
     require: (name) => {
       if (Object.hasOwn(imports, name)) return imports[name];
       throw new Error(`Unexpected eager import: ${name}`);
@@ -22,14 +22,74 @@ function loadModule(file, imports = {}) {
   return exports;
 }
 
+function edgeHandler(resolveQuery) {
+  let handler;
+  const client = { from(table) {
+    const state = { table, filters: {} };
+    const query = {
+      select(columns) { state.columns = columns; return this; },
+      order() { return this; }, gte() { return this; }, limit() { return this; },
+      eq(key, value) { state.filters[key] = value; return this; },
+      range() { return Promise.resolve(resolveQuery(state)); },
+      maybeSingle() { return Promise.resolve(resolveQuery(state)); },
+      then(resolve, reject) { return Promise.resolve(resolveQuery(state)).then(resolve, reject); },
+    };
+    return query;
+  } };
+  loadModule('../supabase/functions/foodcast/index.ts', {
+    'https://deno.land/std@0.168.0/http/server.ts': { serve: fn => { handler = fn; } },
+    'https://esm.sh/@supabase/supabase-js@2.42.0': { createClient: () => client },
+    './dashboard.ts': loadModule('../supabase/functions/foodcast/dashboard.ts'),
+    './forecast.ts': loadModule('../supabase/functions/foodcast/forecast.ts'),
+    './quality.ts': {},
+  });
+  return handler;
+}
+
+test('product endpoint supplies immutable forecast origin and model required by horizon chart', async () => {
+  const queries = [];
+  const handler = edgeHandler(query => {
+    queries.push(query);
+    const identity = { product_name: 'Lettuce', product_variant: 'Romaine', origin: 'Local', unit: 'kg', product_category: 'Vegetables' };
+    const data = {
+      products: [{ id: 'lettuce', name: 'Lettuce', variant: 'Romaine', origin: 'Local', unit: 'kg', category: 'Vegetables' }],
+      food_prices: [1, 2].map(day => ({ ...identity, report_date: `2026-10-0${day}`, price_index: 283.26 })),
+      forecast_runs: { id: 'vintage-a', model_run_id: 'model-a', metrics: {} },
+      forecast_values: [{ product_id: 'lettuce', prediction_date: '2026-10-03', predicted_price: 287.90 }],
+    }[query.table];
+    assert.ok(data, `unexpected table ${query.table}`);
+    return { data, error: null };
+  });
+  const response = await handler(new Request('https://example.test/products'));
+  assert.equal(response.status, 200);
+  const [product] = await response.json();
+  assert.equal(product.forecastOriginDate, '2026-10-02');
+  assert.equal(product.forecastModelRunId, 'model-a');
+  assert.equal(product.forecastData.at(-1).predicted, 287.90);
+  assert.equal(queries.find(q => q.table === 'forecast_values').filters.run_id, 'vintage-a');
+  const { forecastHorizonPoints } = loadModule('app/lib/data.ts');
+  assert.equal(forecastHorizonPoints(product.forecastData, product.forecastOriginDate, 'daily')[0].predicted, 287.90);
+});
+
+test('news remains readable before the additive provenance migration is installed', async () => {
+  const handler = edgeHandler(query => query.columns.includes('publication_precision')
+    ? { data: null, error: { code: '42703', message: 'column news_articles.published_date does not exist' } }
+    : { data: [{ id: 'article', title: 'Price report', content: 'Report', published_at: '2026-10-01T00:00:00Z' }], error: null });
+  const response = await handler(new Request('https://example.test/news'));
+  assert.equal(response.status, 200);
+  const [article] = await response.json();
+  assert.equal(article.title, 'Price report');
+  assert.equal(article.date, 'Publication date unavailable');
+});
+
 test('dashboard projection preserves card/search fields and excludes chart data', () => {
   const { toDashboardProduct } = loadModule('app/lib/data.ts');
   const expected = {
     id: 'rice-1', name: 'Rice', category: 'Grains', image: '/rice.jpg',
     variant: 'Premium', origin: 'Local', currentPrice: 0, predictedPrice: 55, unit: 'kg',
-    forecastSource: 'model',
+    forecastSource: 'model', lastActualDate: '2026-09-24', forecastDate: '2026-09-25',
   };
-  const product = Object.freeze({ ...expected, description: 'Full detail', forecastData: [{ actual: 50 }], dailyForecast: [{ reasoning: 'Detail' }], sparklineData: [{ value: 50 }] });
+  const product = Object.freeze({ ...expected, description: 'Full detail', forecastData: [{ actual: 50 }], dailyForecast: [{ date: '2026-09-25', predicted_price: 55, reasoning: 'Detail' }], sparklineData: [{ value: 50 }] });
   assert.deepEqual(JSON.parse(JSON.stringify(toDashboardProduct(product))), expected);
   assert.equal(product.forecastData.length, 1);
 });
@@ -61,6 +121,8 @@ test('dashboard SWR cache is isolated and retries empty server fallback only', a
   assert.equal(calls[0].options.refreshInterval, 60 * 1000);
   assert.equal(calls[1].options.revalidateOnMount, true);
   assert.notEqual(calls[0].key, calls[2].key);
+  assert.equal(calls[2].options.revalidateOnMount, true);
+  assert.equal(calls[2].key, 'supabase_products_v6_horizons');
 });
 
 test('summary API caches successful responses and exposes failures for SWR retry', async () => {
@@ -78,7 +140,7 @@ test('summary API caches successful responses and exposes failures for SWR retry
   assert.equal(failure.headers.get('cache-control'), null);
 });
 
-test('forecast selection excludes actual and expired dates, sorts, deduplicates, and clamps intervals', () => {
+test('forecast selection excludes expired dates and returns point prices without intervals', () => {
   const { selectFuturePredictions } = loadModule('../supabase/functions/foodcast/forecast.ts');
   const selected = selectFuturePredictions([
     { prediction_date: '2026-09-23', predicted_price: 90, lower_bound: 80, upper_bound: 100 },
@@ -91,9 +153,9 @@ test('forecast selection excludes actual and expired dates, sorts, deduplicates,
   ], '2026-09-24');
 
   assert.deepEqual(JSON.parse(JSON.stringify(selected)), [
-    { date: '2026-09-25', predicted_price: 94, lower_bound: 89, upper_bound: 99 },
-    { date: '2026-09-26', predicted_price: 94.5, lower_bound: 90, upper_bound: 98 },
-    { date: '2026-09-27', predicted_price: 95, lower_bound: 95, upper_bound: 95 },
+    { date: '2026-09-25', predicted_price: 94 },
+    { date: '2026-09-26', predicted_price: 94.5 },
+    { date: '2026-09-27', predicted_price: 95 },
   ]);
 });
 
@@ -120,27 +182,18 @@ test('forecast chart data never marks one date as both actual and predicted', ()
 
   assert.equal(chart.some((point) => point.actual !== null && point.predicted !== null), false);
   assert.deepEqual(JSON.parse(JSON.stringify(chart.at(-1))), {
-    date: '2026-09-25', name: 'Sep 25', actual: null, predicted: 103, lower: 98, upper: 108,
+    date: '2026-09-25', name: 'Sep 25', actual: null, predicted: 103,
   });
 });
 
-test('fallback uses persistence instead of inventing a trend', () => {
-  const { makeTrendFallback, meanFirstWeek } = loadModule('../supabase/functions/foodcast/forecast.ts');
-  const forecast = makeTrendFallback('2026-12-31', 100, [94, 95, 96, 97, 98, 99, 100]);
-  assert.equal(forecast.length, 30);
-  assert.equal(forecast[0].date, '2027-01-01');
-  assert.equal(forecast.at(-1).date, '2027-01-30');
-  assert.equal(forecast[0].predicted_price, 100);
-  assert.equal(forecast.at(-1).predicted_price, 100);
-  assert.equal(meanFirstWeek(forecast, 100), 100);
-  assert.equal(forecast.every((row) => row.lower_bound === null && row.upper_bound === null), true);
-});
-
-test('fallback stays at persistence when sparse data would create a runaway forecast', () => {
-  const { makeTrendFallback } = loadModule('../supabase/functions/foodcast/forecast.ts');
-  const forecast = makeTrendFallback('2025-12-29', 408.33, [385.71, 408.33]);
-  assert.equal(forecast[0].predicted_price, 408.33);
-  assert.equal(forecast.at(-1).predicted_price, 408.33);
+test('missing forecasts leave only actual history and do not invent a future trajectory', () => {
+  const { selectFuturePredictions, buildForecastData, meanFirstWeek } = loadModule('../supabase/functions/foodcast/forecast.ts');
+  const forecasts = selectFuturePredictions([], '2026-12-31');
+  const chart = buildForecastData([{ report_date: '2026-12-31', price_index: 100 }], forecasts);
+  assert.equal(chart.length, 1);
+  assert.equal(chart[0].actual, 100);
+  assert.equal(chart[0].predicted, null);
+  assert.equal(meanFirstWeek(forecasts, 100), 100);
 });
 
 test('dashboard summary does not turn a missing model into a trading signal', () => {

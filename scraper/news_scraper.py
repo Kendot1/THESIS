@@ -11,19 +11,27 @@ import re
 import io
 import uuid
 import mimetypes
+import os
+import sys
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
 from urllib.parse import urlparse, quote_plus
-try:
+
+# Support both ``python -m scraper.news_scraper`` and the historical direct
+# script command without masking ImportErrors raised inside the helper itself.
+if __package__ in (None, ""):
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from scraper.publication_time import publication_metadata
+else:
     from .publication_time import publication_metadata
-except ImportError:  # direct script execution
-    from publication_time import publication_metadata
 
 import httpx
 from supabase import create_client, Client
 
-import os
-import sys
 
 # Force UTF-8 encoding for Windows console (prevents UnicodeEncodeError when printing emojis)
 if sys.stdout.encoding != 'utf-8':
@@ -34,6 +42,13 @@ if sys.stdout.encoding != 'utf-8':
 
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+# Crawl4AI stores its robots SQLite database under this base directory. Use a
+# workspace temp path by default so sandboxed Windows runs do not depend on the
+# user profile being writable; honor an explicit local or runner override.
+os.environ.setdefault(
+    "CRAWL4_AI_BASE_DIRECTORY",
+    str(Path(__file__).resolve().parent.parent / ".tmp" / "crawl4ai"),
+)
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

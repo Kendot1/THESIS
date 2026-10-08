@@ -6,15 +6,11 @@ export interface PriceHistoryRow {
 export interface PredictionRow {
   prediction_date: string;
   predicted_price: number;
-  lower_bound?: number | null;
-  upper_bound?: number | null;
 }
 
 export interface NormalizedPrediction {
   date: string;
   predicted_price: number;
-  lower_bound: number | null;
-  upper_bound: number | null;
 }
 
 export interface ForecastPoint {
@@ -22,8 +18,6 @@ export interface ForecastPoint {
   name: string;
   actual: number | null;
   predicted: number | null;
-  lower: number | null;
-  upper: number | null;
 }
 
 const MONTH_NAMES = [
@@ -37,7 +31,8 @@ export function dateOnly(value: string): string {
 
 function isIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) &&
-    Number.isFinite(Date.parse(`${value}T00:00:00Z`));
+    Number.isFinite(Date.parse(`${value}T00:00:00Z`)) &&
+    new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 }
 
 function roundPrice(value: number): number {
@@ -62,14 +57,9 @@ export function selectFuturePredictions(
     const point = Number(row.predicted_price);
     if (!isIsoDate(date) || date <= lastActualDate || !Number.isFinite(point) || point <= 0) continue;
 
-    const rawLower = Number(row.lower_bound);
-    const rawUpper = Number(row.upper_bound);
-    const hasInterval = Number.isFinite(rawLower) && Number.isFinite(rawUpper) && rawLower > 0 && rawUpper > 0;
     byDate.set(date, {
       date,
       predicted_price: roundPrice(point),
-      lower_bound: hasInterval ? roundPrice(Math.min(rawLower, point)) : null,
-      upper_bound: hasInterval ? roundPrice(Math.max(rawUpper, point)) : null,
     });
   }
   const ordered = Array.from(byDate.values())
@@ -83,22 +73,6 @@ export function selectFuturePredictions(
     if (contiguous.length === horizon) break;
   }
   return contiguous;
-}
-
-export function makeTrendFallback(
-  lastActualDate: string,
-  currentPrice: number,
-  recentPrices: number[],
-  horizon = 30,
-): NormalizedPrediction[] {
-  void recentPrices;
-  const point = roundPrice(Math.max(0.01, Number(currentPrice)));
-  return Array.from({ length: horizon }, (_, index) => ({
-    date: addUtcDays(lastActualDate, index + 1),
-    predicted_price: point,
-    lower_bound: null,
-    upper_bound: null,
-  }));
 }
 
 export function meanFirstWeek(predictions: NormalizedPrediction[], fallback: number): number {
@@ -128,8 +102,6 @@ export function buildForecastData(
       name: `${MONTH_NAMES[parsed.getUTCMonth()]} ${parsed.getUTCDate()}`,
       actual: roundPrice(prices.reduce((sum, price) => sum + price, 0) / prices.length),
       predicted: null,
-      lower: null,
-      upper: null,
     });
   }
   for (const prediction of predictions) {
@@ -139,8 +111,6 @@ export function buildForecastData(
       name: `${MONTH_NAMES[parsed.getUTCMonth()]} ${parsed.getUTCDate()}`,
       actual: null,
       predicted: prediction.predicted_price,
-      lower: prediction.lower_bound,
-      upper: prediction.upper_bound,
     });
   }
   return result.sort((a, b) => a.date.localeCompare(b.date));

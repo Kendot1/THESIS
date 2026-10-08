@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import SparklineChart from "../components/SparklineChart";
 import ProductComparison from "../components/ProductComparison";
 import ScrollReveal from "../components/ScrollReveal";
-import { Product, fetchCategories } from "../lib/data";
+import { Product } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { encryptId } from "../../lib/idCipher";
 import { useProducts } from "../lib/hooks";
@@ -23,7 +23,9 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
   const { data: products = [], isLoading } = useProducts(initialProducts);
 
   const [query, setQuery] = useState("");
-  const [categories, setCategories] = useState<string[]>(["All"]);
+  const categories = useMemo(() => ["All", ...Array.from(new Set(
+    products.map(product => product.category).filter(Boolean),
+  )).sort()], [products]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -49,12 +51,6 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
 
   const itemsPerPage = 12;
   const router = useRouter();
-
-  useEffect(() => {
-    fetchCategories().then((cats) => {
-      setCategories(cats);
-    });
-  }, []);
 
   // Responsive visible categories
   useEffect(() => {
@@ -276,7 +272,9 @@ export default function MarketData({ initialProducts }: { initialProducts: Produ
     </button>
   );
 
-  if (isLoading || isTransitioning) {
+  // SWR marks the initial refresh as loading even when server fallback data
+  // is available. Keep those rows visible while fresh prices arrive.
+  if ((isLoading && products.length === 0) || isTransitioning) {
     return (
       <main className="min-h-screen bg-surface">
         {/* Header Skeleton */}

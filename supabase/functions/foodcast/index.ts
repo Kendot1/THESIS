@@ -7,7 +7,7 @@ import {
 } from "./dashboard.ts"
 import {
   buildForecastData,
-  makeTrendFallback,
+  addUtcDays,
   meanFirstWeek,
   selectFuturePredictions,
 } from "./forecast.ts"
@@ -265,18 +265,41 @@ async function fetchAllPaginated(queryFactory: (start: number, end: number) => a
 }
 
 // ── /products ────────────────────────────────────────────
+let productsRequest: Promise<any[]> | null = null;
+let productsCache: { rows: any[]; expiresAt: number } | null = null;
+
 async function handleProducts() {
+  // Coalesce concurrent history queries during page loads and builds. Cache
+  // successful results briefly per worker; failures never become empty data.
+  if (productsCache && productsCache.expiresAt > Date.now()) return productsCache.rows;
+  if (!productsRequest) {
+    productsRequest = loadProducts().then(rows => {
+      if (rows.length) productsCache = { rows, expiresAt: Date.now() + 30_000 };
+      return rows;
+    }).finally(() => { productsRequest = null; });
+  }
+  return productsRequest;
+}
+
+async function loadProducts() {
   const supabase = getSupabase()
 
   const oneYearAgo = new Date();
   oneYearAgo.setDate(oneYearAgo.getDate() - 365);
   const sinceDate = oneYearAgo.toISOString().split("T")[0];
 
-  const [productRows, priceRows, predRows] = await Promise.all([
+  const [productRows, priceRows, runResponse] = await Promise.all([
     fetchAllPaginated((s, e) => supabase.from("products").select("id, name, variant, origin, category, unit, image_url, description").range(s, e)),
     fetchAllPaginated((s, e) => supabase.from("food_prices").select("product_name, product_category, product_variant, origin, price_index, report_date, unit").gte("report_date", sinceDate).order("report_date", { ascending: true }).range(s, e)),
-    fetchAllPaginated((s, e) => supabase.from("predictions").select("product_id, prediction_date, predicted_price, lower_bound, upper_bound").order("prediction_date", { ascending: true }).range(s, e)),
+    supabase.from("forecast_runs").select("id, model_run_id, generated_at, metrics")
+      .order("generated_at", { ascending: false }).order("id", { ascending: false }).limit(1).maybeSingle(),
   ]);
+  if (runResponse.error) throw runResponse.error;
+  const forecastRun = runResponse.data;
+  // Read a single immutable vintage so a concurrent publication cannot mix models.
+  const predRows = forecastRun ? await fetchAllPaginated((s, e) => supabase
+    .from("forecast_values").select("product_id, prediction_date, predicted_price")
+    .eq("run_id", forecastRun.id).order("product_id").order("prediction_date").range(s, e)) : [];
 
   if (priceRows.length === 0) return [];
 
@@ -326,15 +349,13 @@ async function handleProducts() {
     }
 
     const lastActualDate = String(rows[rows.length - 1].report_date).split("T")[0];
-    const freshModelPredictions = selectFuturePredictions(allPredictions, lastActualDate);
+    const savedProduct = forecastRun?.metrics?.forecast_products?.[metaRow?.id];
+    const freshModelPredictions = savedProduct?.source === "persistence_fallback" ? []
+      : selectFuturePredictions(allPredictions, lastActualDate);
     const forecastSource = freshModelPredictions.length > 0 ? "model" : "trend_fallback";
-    const forecastDays = freshModelPredictions.length > 0
-      ? freshModelPredictions
-      : makeTrendFallback(
-          lastActualDate,
-          currentPrice,
-          rows.slice(-7).map((row: any) => row.price_index),
-        );
+    const forecastDays = freshModelPredictions;
+    const firstSavedDate = allPredictions[0]?.prediction_date?.split("T")[0];
+    const forecastOriginDate = savedProduct?.origin_date ?? (firstSavedDate ? addUtcDays(firstSavedDate, -1) : null);
     const predictedPrice = meanFirstWeek(forecastDays, currentPrice);
 
     const changePct = currentPrice === 0 ? 0 : ((predictedPrice - currentPrice) / currentPrice) * 100;
@@ -349,24 +370,11 @@ async function handleProducts() {
     const dailyForecast: any[] = [];
     for (let i = 0; i < forecastDays.length; i++) {
       const p = forecastDays[i];
-      const prevPrice = i === 0 ? currentPrice : forecastDays[i - 1].predicted_price;
-      const diff = p.predicted_price - prevPrice;
-      const pct = prevPrice === 0 ? 0 : (diff / prevPrice) * 100;
-
-      let reasoning = "Model forecast is unavailable; this is a bounded statistical fallback and not a market recommendation.";
-      if (forecastSource === "model") {
-        reasoning = "Market forces expected to stabilize with consistent inventory levels.";
-        if (pct > 0.5) reasoning = "Expected supply tightness combined with elevated local demand indicates upward pressure.";
-        else if (pct < -0.5) reasoning = "Inflow of new harvests and eased supply chain bottlenecks are projected to ease prices.";
-        else if (pct > 0.1) reasoning = "Slight uptick due to minor seasonal fluctuations and transport costs.";
-        else if (pct < -0.1) reasoning = "Minor downward correction following market saturation in key trading posts.";
-      }
+      const reasoning = "Price forecast from historical price patterns.";
 
       dailyForecast.push({
         date: p.date,
         predicted_price: p.predicted_price,
-        lower_bound: p.lower_bound,
-        upper_bound: p.upper_bound,
         reasoning,
       });
     }
@@ -389,6 +397,8 @@ async function handleProducts() {
       forecastData,
       dailyForecast,
       forecastSource,
+      forecastOriginDate,
+      forecastModelRunId: forecastRun?.model_run_id ?? null,
       lastActualDate,
     });
   }
@@ -409,8 +419,11 @@ async function handleDashboardProducts() {
   if (error || !data || !Array.isArray(data.rows) || data.requires_legacy) {
     // Existing queries do not define ordering for ties. Preserve that path
     // instead of silently picking a different metadata row/price/order.
-    return (await handleProducts()).map(({ id, name, category, image, variant, origin, currentPrice, predictedPrice, unit }) =>
-      ({ id, name, category, image, variant, origin, currentPrice, predictedPrice, unit }));
+    return (await handleProducts()).map(({ id, name, category, image, variant, origin, currentPrice, unit, dailyForecast, forecastSource, lastActualDate }) =>
+      ({ id, name, category, image, variant, origin, currentPrice, unit,
+         predictedPrice: dailyForecast[0]?.predicted_price ?? currentPrice,
+         forecastDate: dailyForecast[0]?.date ?? null,
+         forecastSource, lastActualDate }));
   }
   return mapDashboardSummary(data.rows, {
     slugify,
@@ -526,12 +539,21 @@ async function handleNews(url: URL) {
   const supabase = getSupabase()
   const limit = parseInt(url.searchParams.get("limit") || "10", 10);
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("news_articles")
-    .select("id, title, title_tl, content, content_tl, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products, time_validity_days, probability, effect_magnitude")
+    .select("id, title, title_tl, content, content_tl, event_type, published_at, published_date, publication_precision, image_url, url, source, sentiment_score, keywords, affected_products, time_validity_days, probability, effect_magnitude")
     .order("published_at", { ascending: false })
     .limit(limit);
 
+  // Keep news readable while the additive publication-provenance migration
+  // rolls out. Without provenance, the source publication date stays unknown.
+  if (error?.code === "42703" && /published_date|publication_precision/.test(error.message)) {
+    const legacy = await supabase.from("news_articles")
+      .select("id, title, title_tl, content, content_tl, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products, time_validity_days, probability, effect_magnitude")
+      .order("published_at", { ascending: false }).limit(limit);
+    data = legacy.data?.map(article => ({ ...article, published_date: null, publication_precision: "unknown" })) ?? null;
+    error = legacy.error;
+  }
   if (error) throw error;
 
   return (data || []).map((article: any) => ({
@@ -542,7 +564,17 @@ async function handleNews(url: URL) {
     content: article.content || "",
     content_tl: article.content_tl || "",
     category: (article.event_type || "News").replace(/_/g, ' '),
-    date: new Date(article.published_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+    date: (() => {
+      const sourceDate = article.publication_precision === "date" ? article.published_date
+        : article.publication_precision === "timestamp" ? article.published_at : null;
+      if (!sourceDate) return "Publication date unavailable";
+      const dateValue = article.publication_precision === "date"
+        ? `${article.published_date}T12:00:00Z` : article.published_at;
+      const parsed = new Date(dateValue);
+      return Number.isFinite(parsed.getTime())
+        ? parsed.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" })
+        : "Publication date unavailable";
+    })(),
     image: article.image_url || "/news/market.png",
     url: article.url,
     source: article.source,

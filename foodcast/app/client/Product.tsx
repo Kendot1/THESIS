@@ -35,15 +35,11 @@ const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
 import ProductCard from "../components/ProductCard";
 import ScrollReveal from "../components/ScrollReveal";
 import ConfidenceGauge from "../components/ConfidenceGauge";
-import { Product as ProductType, fetchNews, DEFAULT_PRODUCT_IMAGE, formatRelativeAge, formatScheduledDaRefreshAge, verifiedRangeHitRate, verifiedLongRangeHitRate, verifiedCoverageConfidenceInterval } from "../lib/data";
+import { Product as ProductType, fetchNews, DEFAULT_PRODUCT_IMAGE, formatRelativeAge, formatScheduledDaRefreshAge, ForecastHorizon, productHorizonConfidence } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { useClock, useForecastStatus, useProducts, useNews } from "../lib/hooks";
 import { encryptId, decryptId } from "../../lib/idCipher";
 import { getInheritedTags } from "../lib/tags";
-
-// Disclosure gate only: even above this count, the hit rate is not a
-// calibrated probability that the next price prediction will be correct.
-const MIN_VERIFIED_DATES_FOR_RATE = 20;
 
 // Helper to find logically related products based on culinary usage
 function getRelatedProducts(current: ProductType, allProducts: ProductType[]): ProductType[] {
@@ -412,38 +408,22 @@ export default function Product({
     ((priceChange) / product.currentPrice) * 100;
   const isUp = priceChange >= 0;
   const hasModelForecast = product.forecastSource === "model";
-  const productRangeResult = forecastStatus?.metrics?.product_metrics?.[product.id]?.horizon_metrics?.days_15_30;
-  const verifiedDates = productRangeResult?.sample_basis === "unique_actual_dates"
-    ? productRangeResult.sample_count ?? 0 : 0;
-  const recentRangeHitRate = verifiedLongRangeHitRate(productRangeResult, MIN_VERIFIED_DATES_FOR_RATE);
-  const modelRangeHitRate = verifiedRangeHitRate(forecastStatus?.modelMetrics);
-  const rangeHitRate = recentRangeHitRate ?? modelRangeHitRate;
-  const rangeHitSampleCount = recentRangeHitRate != null
-    ? verifiedDates
-    : forecastStatus?.modelMetrics?.coverage_sample_count
-      ?? forecastStatus?.modelMetrics?.sample_count
-      ?? 0;
-  const rangeHitEvidence = recentRangeHitRate != null
-    ? productRangeResult
-    : modelRangeHitRate != null ? forecastStatus?.modelMetrics : null;
-  const rangeHitConfidenceInterval = verifiedCoverageConfidenceInterval(
-    rangeHitEvidence, recentRangeHitRate != null ? MIN_VERIFIED_DATES_FOR_RATE : 30);
-  const confidenceIntervalLabel = rangeHitConfidenceInterval
-    ? `${t("approximateConfidence")} 95% ${t("coverageConfidenceIntervalShort")} ${(rangeHitConfidenceInterval.lower * 100).toFixed(1)}–${(rangeHitConfidenceInterval.upper * 100).toFixed(1)}%`
-    : null;
-  const rangeRateDescription = [
-    t("rangeHitRateExplanation"),
-    ...(recentRangeHitRate != null ? [t("longRangeHitRateExplanation")] : []),
-    ...(recentRangeHitRate == null && modelRangeHitRate != null ? [t("modelRangeHitRateExplanation")] : []),
-    rangeHitRate != null
-      ? `${(rangeHitRate * 100).toFixed(1)}% observed coverage of 80% ranges across ${rangeHitSampleCount} ${recentRangeHitRate != null ? t("verifiedDays") : t("modelBacktestOutcomes")}`
-      : t("rangeHistoryUnavailable"),
-    ...(confidenceIntervalLabel ? [confidenceIntervalLabel, t("coverageUncertaintyExplanation")] : []),
-    ...(!confidenceIntervalLabel && rangeHitRate != null ? [t("confidenceNotCalibrated")] : []),
-    ...(recentRangeHitRate == null && verifiedDates > 0 && verifiedDates < MIN_VERIFIED_DATES_FOR_RATE
-      ? [t("insufficientVerifiedHistory")]
-      : []),
-  ].join(" · ");
+  const selectedHorizon = chartPeriod.toLowerCase() as ForecastHorizon;
+  const confidenceMetric = productHorizonConfidence(product, forecastStatus, selectedHorizon);
+  const confidenceLevelKeys = {
+    "Very High": "confidenceVeryHigh",
+    High: "confidenceHigh",
+    Moderate: "confidenceModerate",
+    Low: "confidenceLow",
+    "Very Low": "confidenceVeryLow",
+    "Insufficient data": "confidenceInsufficientData",
+  } as const;
+  const confidenceLabel = confidenceMetric
+    ? t(confidenceLevelKeys[confidenceMetric.confidence_level])
+    : t("confidenceUnavailable");
+  const confidenceTitle = confidenceMetric?.confidence_score != null
+    ? `Chronological validation at t+${confidenceMetric.forecast_horizon_days}: MAPE ${confidenceMetric.mape?.toFixed(2)}%, MAE ${confidenceMetric.mae?.toFixed(2)}, RMSE ${confidenceMetric.rmse?.toFixed(2)}, n=${confidenceMetric.sample_count}.`
+    : t("confidenceUnavailable");
   const dataUpdateAge = formatRelativeAge(forecastStatus?.generatedAt, language, now)
     ?? formatScheduledDaRefreshAge(language, now);
   const daProcessingStatus = `${forecastStatus?.generatedAt ? t("updatedPrefix") : t("scheduledRefresh")} ${dataUpdateAge}`;
@@ -894,6 +874,7 @@ export default function Product({
                           <button
                             key={period}
                             onClick={() => setChartPeriod(period)}
+                            aria-pressed={chartPeriod === period}
                             className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${chartPeriod === period ? "bg-white text-primary-800 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-600"}`}
                           >
                             {t(period.toLowerCase() as any)}
@@ -909,6 +890,7 @@ export default function Product({
                         showLegend
                         productName={product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name}
                         period={chartPeriod}
+                        forecastOriginDate={hasModelForecast ? product.forecastOriginDate : undefined}
                       />
                     </div>
                   </div>
@@ -946,15 +928,17 @@ export default function Product({
                           </div>
                         ) : (
                           <ConfidenceGauge
-                            percentage={rangeHitRate != null ? rangeHitRate * 100 : null}
+                            percentage={confidenceMetric?.confidence_score ?? null}
                             size={56}
                             strokeWidth={4.5}
-                            label={rangeHitRate != null
-                              ? `${(rangeHitRate * 100).toFixed(1)}% ${recentRangeHitRate != null ? t("longRangeHitRate") : t("modelRangeHitRate")}`
-                              : t("rangeHitRate")}
-                            sublabel={daProcessingStatus}
+                            label={confidenceMetric?.confidence_score != null
+                              ? `${t("confidenceLevel")}: ${confidenceLabel}`
+                              : confidenceLabel}
+                            sublabel={confidenceMetric
+                              ? `${t(chartPeriod.toLowerCase() as any)} · n=${confidenceMetric.sample_count} · ${daProcessingStatus}`
+                              : daProcessingStatus}
                             variant="badge"
-                            title={hasModelForecast ? rangeRateDescription : undefined}
+                            title={hasModelForecast ? confidenceTitle : undefined}
                           />
                         )}
                       </div>

@@ -59,4 +59,4 @@ websockets==15.0.1
 yarl==1.23.0
 zstandard==0.25.0
 google-genai
-crawl4ai
+crawl4ai==0.8.6

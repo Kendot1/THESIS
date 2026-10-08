@@ -15,12 +15,15 @@ from features.builder import FeatureBuilder
 from models.registry import ModelRegistry
 from models.model_store import ModelStore
 from utils.metrics import SUCCESS_TOLERANCE
+from evaluation.product_confidence import validation_confidence, METHOD as CONFIDENCE_METHOD
 
 
 HORIZON_MAP = {"daily": 1, "weekly": 7, "monthly": 30}
 MIGRATION = "supabase/migrations/202609240001_atomic_forecast_vintages.sql"
 SAFE_DELETE_MIGRATION = "supabase/migrations/202609250001_fix_forecast_safe_delete.sql"
 QUALITY_METRICS_MIGRATION = "supabase/migrations/202610010002_forecast_run_quality_metrics.sql"
+
+
 
 
 class PredictionWriter:
@@ -161,6 +164,9 @@ class PredictionWriter:
             }
             for product_id, sample in product_samples.items() if sample["count"]
         }
+        confidence_metrics = validation_confidence(bundle_path, product_ids)
+        for product_id, horizons in confidence_metrics.items():
+            product_metrics.setdefault(product_id, {})["confidence_by_horizon"] = horizons
         source_data = metrics.get("source_data", {})
         processed_from = source_data.get("processed_from")
         if not processed_from:
@@ -195,6 +201,8 @@ class PredictionWriter:
             "coverage_sample_count": unique_count or None,
             "sample_count": unique_count or test.get("n"),
             "product_metrics": product_metrics,
+            "confidence_method": CONFIDENCE_METHOD,
+            "confidence_evaluation_source": "chronological_validation",
             "processed_from": processed_from,
             "processed_through": processed_through,
             "processed_observed_rows": source_data.get("observed_rows"),
@@ -211,6 +219,7 @@ class PredictionWriter:
         clean = self.preprocessor.validate(self.fetcher.fetch_all())
         series_count = clean.groupby(SERIES_KEY).ngroups
         rows, failures, fallbacks = [], [], []
+        forecast_products = {}
         market_daily = FeatureBuilder.category_return_history(clean)
         market_daily['category_return'] = market_daily.category_return.fillna(0.0)
         market_groups = {str(category): group for category, group
@@ -254,6 +263,10 @@ class PredictionWriter:
                             registry.engine, series, horizon_days)
                         rows.extend(self._rows(
                             product_id, dates, point, lower, upper))
+                        forecast_products[product_id] = {
+                            "source": "persistence_fallback",
+                            "origin_date": str(np.datetime_as_string(dates[0]-np.timedelta64(1, "D"), unit="D")),
+                        }
                         fallbacks.append({"series": tuple(key), "reason": str(exc)})
                     except ValueError as fallback_exc:
                         failures.append({"series": tuple(key), "error": str(fallback_exc)})
@@ -265,6 +278,10 @@ class PredictionWriter:
                 for (_, _, product_id), forecast in zip(prepared_meta, forecasts):
                     rows.extend(self._rows(product_id, forecast.dates, forecast.point,
                                            forecast.lower, forecast.upper))
+                    forecast_products[product_id] = {
+                        "source": "model",
+                        "origin_date": str(np.datetime_as_string(forecast.dates[0]-np.timedelta64(1, "D"), unit="D")),
+                    }
             except (ValueError, FileNotFoundError) as exc:
                 failures.extend({"series": key, "error": str(exc)}
                                 for key, _, _ in prepared_meta)
@@ -282,6 +299,7 @@ class PredictionWriter:
             "p_metrics": self._quality_metrics(registry.run_id, product_ids),
         }
         quality_metrics_published = True
+        payload["p_metrics"]["forecast_products"] = forecast_products
         result = None
         for attempt in range(3):
             try:

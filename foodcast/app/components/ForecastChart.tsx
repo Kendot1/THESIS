@@ -11,14 +11,13 @@ import {
   type Time,
 } from "lightweight-charts";
 import { useLanguage } from "../lib/i18n/LanguageContext";
+import { forecastHorizonPoints, type ForecastHorizon } from "../lib/data";
 
 interface DataPoint {
   date: string;
   name: string;
   actual: number | null;
   predicted: number | null;
-  lower?: number | null;
-  upper?: number | null;
 }
 
 interface ForecastChartProps {
@@ -28,6 +27,7 @@ interface ForecastChartProps {
   showLegend?: boolean;
   productName?: string;
   period?: string;
+  forecastOriginDate: string | undefined;
 }
 
 function getSeriesValue(value: unknown): number | undefined {
@@ -42,6 +42,7 @@ const ForecastChart = ({
   showGrid = true,
   showLegend = true,
   period = "Daily",
+  forecastOriginDate,
 }: ForecastChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -57,59 +58,15 @@ const ForecastChart = ({
 
   // Build series data
   const { actualData, predictedData } = useMemo(() => {
-    const groupedActuals = new Map<string, number[]>();
-    const groupedPredictions = new Map<string, number[]>();
-
-    const getGroupKey = (dateStr: string) => {
-      if (period === "Weekly") {
-        const d = new Date(dateStr + "T00:00:00");
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        const weekStart = new Date(d.getFullYear(), d.getMonth(), diff);
-        const pad = (n: number) => n.toString().padStart(2, "0");
-        return `${weekStart.getFullYear()}-${pad(weekStart.getMonth() + 1)}-${pad(weekStart.getDate())}`;
-      }
-      if (period === "Monthly") {
-        return dateStr.substring(0, 7) + "-01";
-      }
-      return dateStr;
-    };
-
-    for (const point of data) {
-      if (!point.date) continue;
-      const key = getGroupKey(point.date);
-
-      if (point.actual !== null) {
-        if (!groupedActuals.has(key)) groupedActuals.set(key, []);
-        groupedActuals.get(key)!.push(point.actual);
-      }
-
-      if (point.predicted !== null) {
-        if (!groupedPredictions.has(key)) groupedPredictions.set(key, []);
-        groupedPredictions.get(key)!.push(point.predicted);
-      }
-
-    }
-
-    const actuals = Array.from(groupedActuals.entries())
-      // A boundary week/month may contain both observed and future days. Keep
-      // it on the forecast side so two aggregate series never claim one bucket.
-      .filter(([time]) => period === "Daily" || !groupedPredictions.has(time))
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([time, values]) => ({
-        time: time as Time,
-        value: values.reduce((a, b) => a + b, 0) / values.length,
-      }));
-
-    const predictions = Array.from(groupedPredictions.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([time, values]) => ({
-        time: time as Time,
-        value: values.reduce((a, b) => a + b, 0) / values.length,
-      }));
+    const actuals = data.filter(point => point.actual != null && Number.isFinite(point.actual))
+      .sort((left, right) => left.date.localeCompare(right.date))
+      .map(point => ({ time: point.date as Time, value: point.actual! }));
+    const predictions = forecastHorizonPoints(data, forecastOriginDate,
+      period.toLowerCase() as ForecastHorizon)
+      .map(point => ({ time: point.date as Time, value: point.predicted! }));
 
     return { actualData: actuals, predictedData: predictions };
-  }, [data, period]);
+  }, [data, period, forecastOriginDate]);
 
   const forecastRising = useMemo(() => {
     const latestActual = actualData[actualData.length - 1]?.value;
@@ -201,6 +158,8 @@ const ForecastChart = ({
         : "rgba(46, 125, 50, 0.01)",
       lineWidth: 3,
       lineStyle: LineStyle.Dashed,
+      pointMarkersVisible: true,
+      pointMarkersRadius: 3,
       priceFormat: { type: "custom", formatter: (p: number) => `₱${p.toFixed(2)}` },
       crosshairMarkerRadius: 5,
       crosshairMarkerBorderColor: forecastColor,
@@ -293,11 +252,10 @@ const ForecastChart = ({
     }
   }, [t]);
 
-  // Keep enough history for context without compressing 30 forecast days into
-  // a one-year view. Weekly/monthly modes receive proportionate windows.
+  // All tabs keep actual daily dates; predictions follow the selected cadence.
   const applyRelevantRange = useCallback(() => {
     if (!chartRef.current) return;
-    const historyBars = period === "Daily" ? 90 : period === "Weekly" ? 26 : 12;
+    const historyBars = period.toLowerCase() === "daily" ? 14 : period.toLowerCase() === "weekly" ? 28 : 90;
     const first = actualData[Math.max(0, actualData.length - historyBars)]?.time
       ?? predictedData[0]?.time;
     const last = predictedData[predictedData.length - 1]?.time
@@ -347,6 +305,7 @@ const ForecastChart = ({
           </div>
         </div>
       )}
+      {predictedData.length === 0 && <p className="mt-1 ml-2 text-xs text-gray-500">{t("forecastPeriodUnavailable")}</p>}
     </div>
   );
 };

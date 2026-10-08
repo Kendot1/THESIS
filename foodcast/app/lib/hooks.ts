@@ -23,9 +23,12 @@ function getSyncCache<T>(key: string): T | undefined {
 }
 
 export function useProducts(fallbackData?: Product[]) {
-  return useSWR<Product[]>("supabase_products", fetchProducts, {
+  return useSWR<Product[]>("supabase_products_v6_horizons", fetchProducts, {
     revalidateOnFocus: false,
     revalidateIfStale: false,
+    // Static pages may still contain the previous API contract or stripped
+    // chart arrays. Hydrate with the versioned full-product cache on mount.
+    revalidateOnMount: true,
     dedupingInterval: 5 * 60 * 1000, // 5 min dedup
     fallbackData: fallbackData || getSyncCache<Product[]>("products"),
   });

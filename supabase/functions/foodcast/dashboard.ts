@@ -5,6 +5,7 @@ interface PriceRow {
   product_category: string | null;
   price_index: number;
   unit: string | null;
+  report_date?: string;
 }
 
 export interface DashboardSummaryRow {
@@ -48,15 +49,22 @@ export function mapDashboardSummary(rows: DashboardSummaryRow[], helpers: {
     const variant = first.product_variant || "";
     const origin = first.origin || "";
     const currentPrice = last.price_index;
-    const predictedPrice = prediction_prices.length > 0
-      ? Math.round((prediction_prices.reduce((sum, price) => sum + price, 0) / prediction_prices.length) * 100) / 100
-      : currentPrice;
+    const lastActualDate = last.report_date?.split("T")[0];
+    const actualTime = Date.parse(`${lastActualDate}T00:00:00Z`);
+    const hasForecast = prediction_prices.length > 0 && Number.isFinite(actualTime)
+      && Number.isFinite(prediction_prices[0]) && prediction_prices[0] > 0;
+    // The SQL summary already requires a contiguous forecast starting one day
+    // after the last observation. A daily card must use that first day's price.
+    const predictedPrice = hasForecast ? prediction_prices[0] : currentPrice;
+    const forecastDate = hasForecast
+      ? new Date(actualTime + 86_400_000).toISOString().split("T")[0] : null;
     return {
       id: meta ? meta.id : helpers.slugify(`${name} ${variant} ${origin}`),
       name, category: meta?.category || first.product_category || "Other",
       image: meta?.image_url || helpers.defaultImage, variant, origin,
       currentPrice, predictedPrice, unit: normalizeSeriesUnit(last),
-      forecastSource: prediction_prices.length > 0 ? "model" : "trend_fallback",
+      forecastSource: hasForecast ? "model" : "trend_fallback",
+      lastActualDate, forecastDate,
     };
   });
   return mapped.sort((a, b) => a.name.localeCompare(b.name));
