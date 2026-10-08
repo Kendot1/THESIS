@@ -67,59 +67,80 @@ ABSCBN_SECTIONS = [
 
 # Google News queries restricted to abs-cbn.com (last 30 days)
 GOOGLE_SEARCH_QUERIES = [
-    "abs-cbn.com rice price Philippines",
-    "abs-cbn.com food prices Philippines",
-    "abs-cbn.com vegetable price Philippines",
-    "abs-cbn.com chicken pork price Philippines",
-    "abs-cbn.com oil fuel price Philippines",
-    "abs-cbn.com inflation Philippines",
-    "abs-cbn.com typhoon crop damage Philippines",
-    "abs-cbn.com agriculture supply Philippines",
-    "abs-cbn.com import tariff food Philippines",
-    "abs-cbn.com price cap Philippines",
-    "abs-cbn.com war conflict food supply Philippines",
-    "abs-cbn.com El Nino drought agriculture Philippines",
-    "abs-cbn.com La Nina flood agriculture Philippines",
+    "abs-cbn.com Philippines rice palay bigas price supply",
+    "abs-cbn.com Philippines food commodity retail prices",
+    "abs-cbn.com Philippines vegetable prices onion garlic tomato",
+    "abs-cbn.com Philippines chicken pork beef egg prices",
+    "abs-cbn.com Philippines fish bangus tilapia galunggong prices",
+    "abs-cbn.com Philippines crop harvest production supply",
+    "abs-cbn.com Philippines typhoon flood drought crop damage harvest",
+    "abs-cbn.com Philippines agriculture fishery supply shortage",
+    "abs-cbn.com Philippines food import tariff rice sugar corn",
+    "abs-cbn.com Philippines food price cap hoarding smuggling",
+    "abs-cbn.com Philippines El Nino agriculture crops harvest",
+    "abs-cbn.com Philippines La Nina agriculture crops fisheries",
 ]
 
 # ──────────────────────────────────────────────
 # Keyword Pre-filter (to save LLM tokens)
 # ──────────────────────────────────────────────
-PRE_FILTER_KEYWORDS = [
-    "price", "presyo", "agriculture", "agrikultura", "food supply",
-    "inflation", "import", "export", "crop", "harvest", "drought",
-    "flood", "typhoon", "bagyo", "vegetable", "gulay", "rice", "bigas",
-    "onion", "sibuyas", "chicken", "manok", "pork", "baboy", "fish", "isda",
-    "sugar", "asukal", "corn", "mais", "department of agriculture",
-    "supply shortage", "kakulangan", "price hike", "price increase",
-    "surplus", "smuggling", "fuel", "diesel", "gasoline", "oil price",
-    "el nino", "la nina", "war", "conflict"
-]
+AGRI_FOOD_TOPIC_TERMS = (
+    "food commodity", "food commodities", "food price", "food prices", "food supply",
+    "agri-fishery", "agri fishery", "agriculture", "agrikultura", "agricultural",
+    "farm", "farms", "farmer", "farmers", "pagsasaka", "magsasaka", "crop", "crops",
+    "harvest", "palay", "rice", "bigas", "corn", "mais", "vegetable", "vegetables", "gulay",
+    "onion", "sibuyas", "garlic", "bawang", "tomato", "kamatis", "chicken", "manok",
+    "pork", "baboy", "beef", "baka", "egg", "itlog", "fish", "isda", "fishery", "fisheries",
+    "fishing", "fisherfolk", "aquaculture", "bangus", "tilapia", "galunggong", "sugar", "asukal",
+    "cooking oil", "potato", "carrot", "banana", "calamansi", "livestock", "poultry",
+)
+
+MARKET_IMPACT_TERMS = (
+    "price", "prices", "presyo", "presyuhan", "cost", "costs", "mahal", "mura", "hike", "surge",
+    "increase", "increases", "increased", "rise", "rises", "rose", "higher", "decrease", "decline",
+    "declined", "drop", "fell", "lower", "pagtaas", "tumaas", "bumaba", "pagbaba", "pumalo", "bawas",
+    "dagdag", "ani", "naani", "nasira", "kakulangan", "naapektuhan", "market rate", "retail",
+    "wholesale", "supply", "shortage", "scarcity", "oversupply", "surplus", "production", "yield",
+    "catch", "harvest", "import", "imports", "export", "exports", "tariff", "quota", "price cap",
+    "price ceiling", "hoarding", "smuggling", "stock", "stocks", "stockpile", "crop damage",
+    "damaged crops", "destroyed crops", "farm damage", "fish kill", "bagyo", "drought", "flood",
+    "el nino", "la nina", "typhoon",
+)
+
+SUPPORTED_PRODUCTS = (
+    "Rice", "Well Milled Rice", "Regular Milled Rice", "Chicken", "Pork", "Beef", "Egg",
+    "Bangus", "Tilapia", "Galunggong", "Red Onion", "White Onion", "Garlic", "Tomato",
+    "Cabbage", "Eggplant", "Squash", "String Beans", "Kangkong", "Pechay Tagalog", "Ampalaya",
+    "Siling Labuyo", "Ginger", "Potato", "Carrot", "Banana", "Calamansi", "Sugar", "Cooking Oil", "Corn",
+)
+SUPPORTED_EVENT_TYPES = {
+    "supply_shock", "demand_spike", "policy_change", "import_export", "price_movement", "weather", "fuel_energy",
+}
 
 # ──────────────────────────────────────────────
 # Strict LLM prompt — rejects anything not directly impacting food prices
 # ──────────────────────────────────────────────
 LLM_SYSTEM_PROMPT = """You are a strict food-price intelligence filter for a Philippine food price forecasting system.
 
-Your job: determine if a news article DIRECTLY impacts food commodity prices in the Philippines.
+Your job: determine if a news article has a concrete, evidence-based connection to the prices, availability, or production of a Philippine agri-fishery food commodity.
 
 RELEVANT articles include:
 - Direct price changes of food commodities (rice, vegetables, meat, fish, etc.)
 - Government price caps, tariffs, or import/export policies on food
 - Supply chain disruptions (typhoons destroying crops, floods, droughts, El Niño/La Niña)
-- Fuel/oil price changes (these affect transportation and food costs)
-- War or geopolitical events affecting imports/exports of food or fuel
-- Inflation reports mentioning food prices
+- Fuel or transport costs only when the article explicitly connects them to farming, fishing, food processing, or distribution of a named food commodity
+- Trade or geopolitical events only when the article identifies a concrete effect on Philippine food imports, exports, or commodity supply
+- Inflation reports only when they report food or named food-commodity prices
 - Smuggling or hoarding of food commodities
 - Harvest reports, crop yield data, planting season updates
 
 NOT RELEVANT (REJECT these):
-- Wildlife stories (snakes, animals) even if they mention food animals
-- Marine conservation or reef protection stories
-- Food safety warnings about specific incidents (poisoned food, recalls)
-- Celebrity news, sports, entertainment, politics unrelated to food policy
-- General economic news not specifically about food/fuel prices
-- Crime stories even if they happen near farms
+- General inflation, fuel/oil, currency, business, trade, war, weather, or political stories without a concrete Philippine food-commodity price, production, or supply impact
+- Wildlife, animal rescue, marine conservation, reef protection, and fishing enforcement stories with no reported food supply or price effect
+- Food safety incidents, recalls, nutrition programs, or food aid that do not report a commodity-market effect
+- Celebrity news, sports, entertainment, unrelated politics, and crime near farms
+
+Only mark an article relevant when its text supports at least one specific product from the supplied product list. Do not infer a product or market impact from a broad topic alone. Treat fuel as an indirect cause only; never list fuel as an affected food product.
 
 Respond with ONLY valid JSON, no markdown fences, no explanation.
 
@@ -129,7 +150,7 @@ If relevant:
 {
   "relevant": true,
   "sentiment_score": <float -1.0 to 1.0. Negative = prices will INCREASE (bad for consumers). Positive = prices will DECREASE (good for consumers). 0 = neutral/stable>,
-  "event_type": "<supply_shock | demand_spike | policy_change | import_export | price_movement | weather | fuel_energy | general>",
+  "event_type": "<supply_shock | demand_spike | policy_change | import_export | price_movement | weather | fuel_energy>",
   "affected_products": ["<from: Rice, Well Milled Rice, Regular Milled Rice, Chicken, Pork, Beef, Egg, Bangus, Tilapia, Galunggong, Red Onion, White Onion, Garlic, Tomato, Cabbage, Eggplant, Squash, String Beans, Kangkong, Pechay Tagalog, Ampalaya, Siling Labuyo, Ginger, Potato, Carrot, Banana, Calamansi, Sugar, Cooking Oil, Corn>"],
   "keywords": ["<MAXIMUM 3 broad market drivers, e.g.: Fuel Hike, Weather Disturbance, Import Policy, Typhoon, Price Surge. Avoid specific nouns like 'Meralco' or 'Diesel'>"],
   "time_validity_days": <integer. How long will this event affect the market? e.g., 7 for a quick spike, 30 for a seasonal issue, 90 for El Nino>,
@@ -270,7 +291,10 @@ class NewsScraper:
 
     def _is_article_url(self, url: str) -> bool:
         """Check if a URL is a potentially food/price-relevant ABS-CBN article."""
-        if not url or "abs-cbn.com" not in url:
+        if not url:
+            return False
+        host = (urlparse(url).hostname or "").lower().removeprefix("www.")
+        if host != "abs-cbn.com":
             return False
         if not re.search(r'/\d{4}/\d{1,2}/\d{1,2}/', url):
             return False
@@ -282,20 +306,11 @@ class NewsScraper:
         ]
         if any(s in url for s in skip_sections):
             return False
-        # URL slug keyword boost — accept business/news URLs,
-        # or any URL whose slug contains a food/price keyword
-        always_relevant_sections = ["/business/", "/news/nation/", "/news/regions/"]
-        if any(s in url for s in always_relevant_sections):
-            return True
-        slug = url.split("/")[-1].lower()
-        slug_keywords = [
-            "price", "presyo", "food", "agri", "rice", "bigas",
-            "vegetable", "gulay", "chicken", "pork", "fish",
-            "fuel", "diesel", "oil", "inflation", "import",
-            "export", "tariff", "typhoon", "drought", "flood",
-            "supply", "harvest", "crop", "onion", "sugar",
-        ]
-        return any(kw in slug for kw in slug_keywords)
+        # Avoid crawling every article from broad business/nation/region feeds.
+        # Google News discovery still provides a second route for relevant stories
+        # whose URL slug is vague.
+        slug = urlparse(url).path.rsplit("/", 1)[-1].replace("-", " ").replace("_", " ")
+        return self._pre_filter_content("", slug)
 
     # ------------------------------------------------------------------
     # Deduplication
@@ -344,6 +359,13 @@ class NewsScraper:
 
         if not result or not result.success or not result.markdown:
             log.warning(f"  ✗ SKIP (crawl failed): {url}")
+            return None
+
+        # Google News discovery links must resolve to the requested publisher.
+        resolved_url = result.url or url
+        resolved_host = (urlparse(resolved_url).hostname or "").lower().removeprefix("www.")
+        if resolved_host != "abs-cbn.com":
+            log.info(f"  ✗ SKIP (unexpected publisher {resolved_host or 'unknown'}): {url}")
             return None
 
         # Clean content — extract article body
@@ -419,7 +441,7 @@ class NewsScraper:
 
         # ── Pre-Filter (Keyword Check) ──
         if not self._pre_filter_content(title, content):
-            log.info(f"  ✗ SKIP (no food/price keywords): {title[:60]}")
+            log.info(f"  ✗ SKIP (no food-market topic and impact): {title[:60]}")
             return None
 
         # ── LLM Analysis (strict filter) ──
@@ -429,8 +451,8 @@ class NewsScraper:
             log.warning(f"  ✗ SKIP (LLM call failed): {title[:60]}")
             return None
 
-        if not llm_result.get("relevant", False):
-            log.info(f"  ✗ SKIP (LLM: not relevant): {title[:60]}")
+        if not self._has_supported_market_evidence(llm_result):
+            log.info(f"  ✗ SKIP (no supported food-market evidence): {title[:60]}")
             return None
 
         log.info(
@@ -535,12 +557,42 @@ class NewsScraper:
         return content.strip()
 
     def _pre_filter_content(self, title: str, content: str) -> bool:
-        """Check if article contains at least one relevant keyword to save LLM tokens."""
-        text = (title + " " + content).lower()
-        for kw in PRE_FILTER_KEYWORDS:
-            if kw in text:
-                return True
-        return False
+        """Require both a food/agri-fishery topic and a market-impact signal."""
+        text = (title + " " + content).casefold()
+
+        def contains_any(terms: tuple[str, ...]) -> bool:
+            return any(
+                re.search(r"(?<!\w)" + re.escape(term) + r"(?!\w)", text)
+                for term in terms
+            )
+
+        return contains_any(AGRI_FOOD_TOPIC_TERMS) and contains_any(MARKET_IMPACT_TERMS)
+
+    def _has_supported_market_evidence(self, result: Dict[str, Any]) -> bool:
+        """Reject positive model labels without a supported product and event type."""
+        if not isinstance(result, dict) or result.get("relevant") is not True:
+            return False
+
+        event_type = result.get("event_type")
+        if not isinstance(event_type, str) or event_type.strip().casefold() not in SUPPORTED_EVENT_TYPES:
+            return False
+
+        products = result.get("affected_products")
+        if not isinstance(products, list):
+            return False
+        canonical_products = {name.casefold(): name for name in SUPPORTED_PRODUCTS}
+        matched = []
+        for product in products:
+            if isinstance(product, str):
+                canonical = canonical_products.get(product.strip().casefold())
+                if canonical and canonical not in matched:
+                    matched.append(canonical)
+        if not matched:
+            return False
+
+        result["affected_products"] = matched
+        result["event_type"] = event_type.strip().casefold()
+        return True
 
     # ------------------------------------------------------------------
     # LLM Analysis

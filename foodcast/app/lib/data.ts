@@ -106,7 +106,7 @@ export interface ForecastConfidenceMetric {
   mape: number | null;
   sample_count: number;
   sample_support?: number;
-  evaluation_source: "chronological_validation";
+  evaluation_source: "chronological_validation" | "historical_holdout";
   confidence_method: string;
   model_version: string;
   evidence_status: "validated" | "insufficient_data" | "unverified_provenance";
@@ -147,16 +147,29 @@ export function productHorizonConfidence(product: Product, status: ForecastStatu
     || !product.lastActualDate || target <= product.lastActualDate
     || !forecastHorizonPoints(product.forecastData, product.forecastOriginDate, horizon)
       .some(point => point.date === target)) return null;
-  const metric = status.modelMetrics?.product_metrics?.[product.id]?.confidence_by_horizon?.[horizon];
-  if (!metric || metric.forecast_horizon_days !== FORECAST_HORIZON_DAYS[horizon]
-    || metric.model_version !== product.forecastModelRunId
-    || metric.evaluation_source !== "chronological_validation" || metric.evidence_status !== "validated"
-    || !metric.confidence_method || !Number.isInteger(metric.sample_count) || metric.sample_count < 1
-    || metric.confidence_score == null || !Number.isFinite(metric.confidence_score)
-    || metric.confidence_score < 0 || metric.confidence_score > 100
-    || !["Very High", "High", "Moderate", "Low", "Very Low"].includes(metric.confidence_level)
-    || [metric.mae, metric.rmse, metric.mape].some(value => value == null || !Number.isFinite(value) || value < 0)) return null;
-  return metric;
+  const identity = [product.category, product.name, product.variant || "Standard",
+    product.origin || "Unknown", product.unit || "unknown"].join("||");
+  const metricsByProduct = status.modelMetrics?.product_metrics;
+  const candidates = [
+    metricsByProduct?.[product.id]?.confidence_by_horizon?.[horizon],
+    metricsByProduct?.[identity]?.confidence_by_horizon?.[horizon],
+  ];
+  for (const metric of candidates) {
+    if (!metric || metric.forecast_horizon_days !== FORECAST_HORIZON_DAYS[horizon]
+      || metric.model_version !== product.forecastModelRunId
+      || metric.evaluation_source !== "chronological_validation"
+      || !metric.confidence_method || !Number.isInteger(metric.sample_count) || metric.sample_count < 0
+      || [metric.mae, metric.rmse, metric.mape].some(value => value != null && (!Number.isFinite(value) || value < 0))) continue;
+    const validScore = metric.evidence_status === "validated" && metric.sample_count >= 8
+      && metric.confidence_score != null && Number.isFinite(metric.confidence_score)
+      && metric.confidence_score >= 0 && metric.confidence_score <= 100
+      && ["Very High", "High", "Moderate", "Low", "Very Low"].includes(metric.confidence_level)
+      && [metric.mae, metric.rmse, metric.mape].every(value => value != null);
+    const insufficient = metric.evidence_status === "insufficient_data" && metric.sample_count < 8
+      && metric.confidence_score == null && metric.confidence_level === "Insufficient data";
+    if (validScore || insufficient) return metric;
+  }
+  return null;
 }
 
 /** Return only measured coverage for the nominal 80% prediction interval. */
@@ -304,7 +317,7 @@ export function formatNewsPublicationDate(
   precision: string | null,
 ): string {
   const sourceDate = precision === "date" ? publishedDate
-    : precision === "timestamp" ? publishedAt : publishedAt;
+    : precision === "timestamp" ? publishedAt : null;
   if (!sourceDate) return "Publication date unavailable";
   const dateValue = precision === "date" ? `${publishedDate}T12:00:00Z` : sourceDate;
   const parsed = new Date(dateValue);

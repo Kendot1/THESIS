@@ -421,9 +421,6 @@ export default function Product({
   const confidenceLabel = confidenceMetric
     ? t(confidenceLevelKeys[confidenceMetric.confidence_level])
     : t("confidenceUnavailable");
-  const confidenceTitle = confidenceMetric?.confidence_score != null
-    ? `Chronological validation at t+${confidenceMetric.forecast_horizon_days}: MAPE ${confidenceMetric.mape?.toFixed(2)}%, MAE ${confidenceMetric.mae?.toFixed(2)}, RMSE ${confidenceMetric.rmse?.toFixed(2)}, n=${confidenceMetric.sample_count}.`
-    : t("confidenceUnavailable");
   const dataUpdateAge = formatRelativeAge(forecastStatus?.generatedAt, language, now)
     ?? formatScheduledDaRefreshAge(language, now);
   const daProcessingStatus = `${forecastStatus?.generatedAt ? t("updatedPrefix") : t("scheduledRefresh")} ${dataUpdateAge}`;
@@ -934,11 +931,8 @@ export default function Product({
                             label={confidenceMetric?.confidence_score != null
                               ? `${t("confidenceLevel")}: ${confidenceLabel}`
                               : confidenceLabel}
-                            sublabel={confidenceMetric
-                              ? `${t(chartPeriod.toLowerCase() as any)} · n=${confidenceMetric.sample_count} · ${daProcessingStatus}`
-                              : daProcessingStatus}
+                            sublabel={daProcessingStatus}
                             variant="badge"
-                            title={hasModelForecast ? confidenceTitle : undefined}
                           />
                         )}
                       </div>

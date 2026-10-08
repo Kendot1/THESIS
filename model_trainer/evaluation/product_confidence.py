@@ -12,6 +12,7 @@ from statistics import mean, stdev
 
 HORIZONS = {1: "daily", 7: "weekly", 30: "monthly"}
 METHOD = "chronological_mape_reliability_v1"
+HOLDOUT_METHOD = "heldout_test_mape_v1"
 MIN_SAMPLES = 8
 
 
@@ -81,6 +82,82 @@ def validation_confidence(bundle, product_ids):
             groups[key[:2]].append(sample)
 
     return score_groups(result, groups)
+
+
+def test_holdout_confidence(bundle, product_ids):
+    """Measure per-product/per-lead accuracy on the untouched final test split.
+
+    This source does not depend on validation/calibration metadata. It is valid
+    only when the sealed test forecast file is complete for the metadata's test
+    sample count and every target falls inside the recorded test window.
+    """
+    result = {pid: {name: {
+        "forecast_horizon_days": lead, "confidence_score": None,
+        "confidence_level": "Insufficient data", "mae": None, "rmse": None,
+        "mape": None, "sample_count": 0, "model_version": bundle.name,
+        "evaluation_source": "historical_holdout", "confidence_method": HOLDOUT_METHOD,
+        "evidence_status": "unverified_provenance",
+    } for lead, name in HORIZONS.items()} for pid in set(product_ids.values())}
+    try:
+        metadata = json.loads((bundle / "metadata.json").read_text(encoding="utf-8"))
+        test = metadata["split"]["test"]
+        start = date.fromisoformat(test["start"][:10])
+        end = date.fromisoformat(test["end"][:10])
+        expected_rows = metadata["metrics"]["test"]["ensemble"]["n"]
+        with (bundle / "test_forecasts.csv").open(newline="", encoding="utf-8") as stream:
+            rows = list(csv.DictReader(stream))
+        if (not isinstance(expected_rows, int) or len(rows) != expected_rows
+                or not rows or end < start):
+            return result
+        parsed = []
+        for row in rows:
+            lead = int(row["horizon"])
+            origin, target = (date.fromisoformat(row[key][:10]) for key in ("origin", "date"))
+            actual, predicted = float(row["actual"]), float(row["ensemble"])
+            if (lead < 1 or lead > 30 or (target-origin).days != lead
+                    or target < start or target > end
+                    or not all(math.isfinite(x) and x > 0 for x in (actual, predicted))):
+                return result
+            parsed.append((row.get("series", ""), lead, origin, target, actual, predicted))
+    except (OSError, ValueError, KeyError, TypeError):
+        return result
+
+    for horizons in result.values():
+        for metric in horizons.values():
+            metric["evidence_status"] = "insufficient_data"
+
+    samples, conflicts = {}, set()
+    for identity, lead, origin, target, actual, predicted in parsed:
+        if lead not in HORIZONS:
+            continue
+        pid = product_ids.get(tuple(identity.split("||")))
+        if pid is None:
+            continue
+        key = (pid, lead, target)
+        sample = (origin, abs(predicted-actual), abs(predicted-actual)/actual*100)
+        if key in samples and samples[key] != sample:
+            conflicts.add(key)
+        samples[key] = sample
+
+    groups = defaultdict(list)
+    for key, sample in samples.items():
+        if key not in conflicts:
+            groups[key[:2]].append(sample)
+
+    for (pid, lead), group in groups.items():
+        metric = result[pid][HORIZONS[lead]]
+        errors = [sample[1] for sample in group]
+        apes = [sample[2] for sample in group]
+        metric.update(mae=mean(errors), rmse=math.sqrt(mean(error*error for error in errors)),
+                      mape=mean(apes), sample_count=len(group),
+                      evaluation_start=min(sample[0] for sample in group).isoformat(),
+                      evaluation_end=max(sample[0] for sample in group).isoformat())
+        if len(group) < MIN_SAMPLES:
+            continue
+        score = round(_score(apes), 1)
+        metric.update(confidence_score=score, confidence_level=level(score),
+                      evidence_status="validated")
+    return result
 
 
 def score_groups(result, groups):

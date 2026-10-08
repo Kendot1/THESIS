@@ -18,6 +18,7 @@ function isConfidenceMetric(value: unknown, lead: 1 | 7 | 30): value is Forecast
   const metric = value as Record<string, unknown>;
   const nonnegative = (number: unknown) => number === null
     || (typeof number === 'number' && Number.isFinite(number) && number >= 0);
+  const evaluationIsTrusted = metric.evaluation_source === 'chronological_validation';
   return metric.forecast_horizon_days === lead
     && nonnegative(metric.confidence_score)
     && (metric.confidence_score === null || (metric.confidence_score as number) <= 100)
@@ -25,7 +26,7 @@ function isConfidenceMetric(value: unknown, lead: 1 | 7 | 30): value is Forecast
     && ['Very High', 'High', 'Moderate', 'Low', 'Very Low', 'Insufficient data'].includes(metric.confidence_level)
     && [metric.mae, metric.rmse, metric.mape].every(nonnegative)
     && typeof metric.sample_count === 'number' && Number.isInteger(metric.sample_count) && metric.sample_count >= 0
-    && metric.evaluation_source === 'chronological_validation'
+    && evaluationIsTrusted
     && typeof metric.confidence_method === 'string' && metric.confidence_method.length > 0
     && typeof metric.model_version === 'string' && metric.model_version.length > 0
     && typeof metric.evidence_status === 'string'
@@ -56,8 +57,22 @@ export function withModelCapability(status: ForecastStatus | null, snapshot: Cap
   const measured = (metrics: Pick<ForecastQualityMetrics, 'evaluation_source' | 'success_definition'> | null | undefined) =>
     metrics?.evaluation_source === 'historical_holdout'
       && metrics.success_definition === 'absolute_percentage_error_at_most_tolerance';
-  const modelMetrics = measured(status.modelMetrics) ? status.modelMetrics
+  const baseMetrics = measured(status.modelMetrics) ? status.modelMetrics
     : measured(status.metrics) ? status.metrics
     : status.modelRunId === snapshot.modelRunId && measured(snapshot.metrics) ? readSnapshotMetrics(snapshot.metrics) : null;
+  let modelMetrics = baseMetrics;
+  if (status.modelRunId === snapshot.modelRunId && measured(snapshot.metrics)) {
+    const snapshotMetrics = readSnapshotMetrics(snapshot.metrics);
+    const product_metrics = { ...(baseMetrics?.product_metrics ?? {}) };
+    for (const [identity, snapshotProduct] of Object.entries(snapshotMetrics.product_metrics ?? {})) {
+      if (!snapshotProduct.confidence_by_horizon) continue;
+      product_metrics[identity] = {
+        ...snapshotProduct,
+        ...product_metrics[identity],
+        confidence_by_horizon: snapshotProduct.confidence_by_horizon,
+      };
+    }
+    modelMetrics = { ...(baseMetrics ?? snapshotMetrics), product_metrics };
+  }
   return { ...status, modelMetrics };
 }
