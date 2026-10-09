@@ -15,7 +15,8 @@ test('formats only source-verified news publication dates', () => {
 });
 
 test('uses measured capability for matching legacy model only', () => {
-  assert.equal(withModelCapability({ modelRunId: 'evaluated', metrics: null }, snapshot).modelMetrics, capability);
+  assert.deepEqual(withModelCapability({ modelRunId: 'evaluated', metrics: null }, snapshot).modelMetrics,
+    { ...capability, product_metrics: {} });
   assert.equal(withModelCapability({ modelRunId: 'different', metrics: null }, snapshot).modelMetrics, null);
   assert.equal(withModelCapability(null, snapshot), null);
 });
