@@ -44,7 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: scrape_da_prices
     env:
-      CRAWL4_AI_BASE_DIRECTORY: ${{ runner.temp }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       GROQ_API_KEY_NEWS_SCRAPER: ${{ secrets.GROQ_API_KEY_NEWS_SCRAPER }}
@@ -60,16 +59,20 @@ jobs:
           cache: "pip"
 
       - name: Install dependencies
+        env:
+          CRAWL4_AI_BASE_DIRECTORY: ${{ runner.temp }}
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r scraper/requirements.txt
           crawl4ai-setup
 
       - name: Run News Scraper
+        env:
+          CRAWL4_AI_BASE_DIRECTORY: ${{ runner.temp }}
         run: python -m scraper.news_scraper
 
   train_model:
-    name: Daily Model Training
+    name: Daily Forecast Publication
     runs-on: ubuntu-latest
     needs: scrape_da_prices
     timeout-minutes: 120
@@ -109,17 +112,12 @@ jobs:
         working-directory: model_trainer
         run: python -m utils.r2_sync download
 
-      - name: Train and evaluate candidate
-        working-directory: model_trainer
-        run: python main.py train --mode daily
-
+      # Keep training/evaluation separate from live inference. An unrestricted
+      # daily retrain would score reserved prospective holdout dates as they
+      # arrive. New candidates require a declared development cutoff and review.
       - name: Publish forecasts and measured model capability
         working-directory: model_trainer
         run: python main.py predict --horizon monthly
-
-      - name: Persist active v2 model
-        working-directory: model_trainer
-        run: python -m utils.r2_sync upload
 
       - name: Trigger Vercel Rebuild
         if: env.VERCEL_DEPLOY_HOOK_URL != ''
