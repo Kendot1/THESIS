@@ -7,44 +7,26 @@ import NewsCard from "../components/NewsCard";
 import ScrollReveal from "../components/ScrollReveal";
 import Image from "next/image";
 import { Search, Filter, Calendar, Newspaper, ArrowLeft, TrendingUp, Clock, Tag, ExternalLink, ChevronDown } from "lucide-react";
-import { fetchPaginatedNews, toEventTypeKey, NewsArticle } from "../lib/data";
+import {
+  fetchPaginatedNews,
+  fetchPaginatedUniqueNews,
+  mergeUniqueNews,
+  newsIdentityKeys,
+  toEventTypeKey,
+  INITIAL_UNIQUE_NEWS_COUNT,
+  NewsArticle,
+} from "../lib/data";
 import { getNewsTagKeywords } from "../lib/tags";
 import Link from "next/link";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 
-const ROWS_PER_LOAD_MORE = 3;
+const ROWS_PER_LOAD_MORE = 2;
 
 interface NewsProps {
   initialNews: NewsArticle[];
   initialTotal: number;
   initialOffset: number;
   initialCategories: string[];
-}
-
-function newsIdentityKeys(article: NewsArticle) {
-  const normalize = (value: string) => value.normalize("NFKC").trim().toLowerCase().replace(/\s+/g, " ");
-  const keys: string[] = [];
-  const canonicalUrl = article.url.trim().toLowerCase()
-    .replace(/^https?:\/\/(?:www\.)?/, "")
-    .split(/[?#]/, 1)[0]
-    .replace(/\/+$/, "");
-  if (canonicalUrl) keys.push(`url:${canonicalUrl}`);
-
-  const title = normalize(article.title);
-  if (title) keys.push(`story:${title}|${normalize(article.source)}|${normalize(article.date)}`);
-  return keys.length ? keys : [`id:${article.id}`];
-}
-
-function mergeUniqueNews(existing: NewsArticle[], incoming: NewsArticle[]) {
-  const seen = new Set(existing.flatMap(newsIdentityKeys));
-  const merged = [...existing];
-  for (const article of incoming) {
-    const keys = newsIdentityKeys(article);
-    if (keys.some(key => seen.has(key))) continue;
-    keys.forEach(key => seen.add(key));
-    merged.push(article);
-  }
-  return merged;
 }
 
 export default function News({ initialNews, initialTotal, initialOffset, initialCategories }: NewsProps) {
@@ -96,7 +78,7 @@ export default function News({ initialNews, initialTotal, initialOffset, initial
       // If initial server data was empty (e.g. SSG without env), fetch on mount
       if (initialNews.length === 0) {
         setLoading(true);
-        fetchPaginatedNews(0, PAGE_SIZE, "", "All", "All").then(({ data, total, rawCount }) => {
+        fetchPaginatedUniqueNews(0, INITIAL_UNIQUE_NEWS_COUNT, "", "All", "All").then(({ data, total, rawCount }) => {
           setNews(mergeUniqueNews([], data));
           setTotalRecords(total);
           setNextOffset(rawCount);
@@ -107,7 +89,7 @@ export default function News({ initialNews, initialTotal, initialOffset, initial
     }
     setLoading(true);
     const dbCategory = selectedCategory === "All" ? "All" : toEventTypeKey(selectedCategory);
-    fetchPaginatedNews(0, PAGE_SIZE, searchQuery, dbCategory, dateFilter).then(({ data, total, rawCount }) => {
+    fetchPaginatedUniqueNews(0, 10, searchQuery, dbCategory, dateFilter).then(({ data, total, rawCount }) => {
       setNews(mergeUniqueNews([], data));
       setTotalRecords(total);
       setNextOffset(rawCount);
@@ -532,11 +514,11 @@ export default function News({ initialNews, initialTotal, initialOffset, initial
                 </h3>
                 <div className="h-[1px] flex-1 bg-gray-100 mx-8 hidden md:block" />
               </div>
-              <div className="flex flex-wrap justify-center gap-6 sm:gap-8 lg:gap-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
                 {displayNews.map((article, i) => (
                   <ScrollReveal
                     key={article.id}
-                    className="h-full w-full min-w-0 sm:basis-[calc(50%_-_1rem)] lg:basis-[calc(33.333333%_-_1.666667rem)]"
+                    className="h-full min-w-0"
                     delay={(i % PAGE_SIZE) * 30}
                     animation="fade-up"
                   >

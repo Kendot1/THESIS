@@ -449,6 +449,8 @@ export interface NewsArticle {
   effectMagnitude?: string;
 }
 
+export const INITIAL_UNIQUE_NEWS_COUNT = 7;
+
 const PRICE_IMPACT_NEWS_EVENT_TYPES = new Set([
   "supply_shock",
   "demand_spike",
@@ -984,6 +986,65 @@ export async function fetchPaginatedNews(
     console.error("Failed to fetch paginated news:", e);
     return { data: [], total: 0, rawCount: 0 };
   }
+}
+
+export function newsIdentityKeys(article: NewsArticle) {
+  const normalize = (value: string) => value.normalize("NFKC").trim().toLowerCase().replace(/\s+/g, " ");
+  const keys: string[] = [];
+  const canonicalUrl = article.url.trim().toLowerCase()
+    .replace(/^https?:\/\/(?:www\.)?/, "")
+    .split(/[?#]/, 1)[0]
+    .replace(/\/+$/, "");
+  if (canonicalUrl) keys.push(`url:${canonicalUrl}`);
+
+  const title = normalize(article.title);
+  if (title) keys.push(`story:${title}|${normalize(article.source)}|${normalize(article.date)}`);
+  return keys.length ? keys : [`id:${article.id}`];
+}
+
+export function mergeUniqueNews(existing: NewsArticle[], incoming: NewsArticle[]) {
+  const seen = new Set(existing.flatMap(newsIdentityKeys));
+  const merged = [...existing];
+  for (const article of incoming) {
+    const keys = newsIdentityKeys(article);
+    if (keys.some(key => seen.has(key))) continue;
+    keys.forEach(key => seen.add(key));
+    merged.push(article);
+  }
+  return merged;
+}
+
+/** Keep paging through duplicate stories until the requested unique count is reached. */
+export async function fetchPaginatedUniqueNews(
+  start: number,
+  uniqueLimit: number,
+  search?: string,
+  category?: string,
+  dateFilter?: string,
+): Promise<{ data: NewsArticle[], total: number, rawCount: number }> {
+  const articles: NewsArticle[] = [];
+  const seen = new Set<string>();
+  let total = 0;
+  let rawCount = 0;
+
+  while (articles.length < uniqueLimit) {
+    const pageSize = uniqueLimit - articles.length;
+    const page = await fetchPaginatedNews(start + rawCount, pageSize, search, category, dateFilter);
+    total = page.total;
+    if (page.rawCount === 0) break;
+
+    rawCount += page.rawCount;
+    for (const article of page.data) {
+      const keys = newsIdentityKeys(article);
+      if (keys.some(key => seen.has(key))) continue;
+      keys.forEach(key => seen.add(key));
+      articles.push(article);
+    }
+
+    if (start + rawCount >= total) break;
+  }
+
+  return { data: articles, total, rawCount };
 }
 
 // Hooks have been moved to hooks.ts to support Server Components

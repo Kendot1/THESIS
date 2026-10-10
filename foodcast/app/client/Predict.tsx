@@ -21,7 +21,7 @@ interface PredictProps {
 }
 
 const INITIAL_VISIBLE_PRODUCTS = 4;
-const ROWS_PER_LOAD_MORE = 3;
+const ROWS_PER_LOAD_MORE = 2;
 
 export default function Predict({ initialProducts }: PredictProps) {
   return (

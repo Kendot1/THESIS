@@ -1,4 +1,4 @@
-import { fetchPaginatedNews, fetchNewsCategories } from "../lib/data";
+import { fetchPaginatedUniqueNews, fetchNewsCategories, INITIAL_UNIQUE_NEWS_COUNT } from "../lib/data";
 import News from "../client/News";
 
 export const revalidate = 3600; // ISR revalidation (1 hour)
@@ -7,7 +7,7 @@ export const dynamic = 'force-static';
 export default async function NewsPage() {
   // Fetch initial data on the server during SSG/ISR
   const [newsData, categories] = await Promise.all([
-    fetchPaginatedNews(0, 10, "", "All", "All"),
+    fetchPaginatedUniqueNews(0, INITIAL_UNIQUE_NEWS_COUNT, "", "All", "All"),
     fetchNewsCategories()
   ]);
 
