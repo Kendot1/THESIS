@@ -15,6 +15,7 @@ export default async function NewsPage() {
     <News 
       initialNews={newsData.data} 
       initialTotal={newsData.total} 
+      initialOffset={newsData.rawCount}
       initialCategories={categories} 
     />
   );

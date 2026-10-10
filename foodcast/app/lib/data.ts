@@ -897,7 +897,7 @@ export async function fetchPaginatedNews(
   search?: string, 
   category?: string,
   dateFilter?: string
-): Promise<{ data: NewsArticle[], total: number }> {
+): Promise<{ data: NewsArticle[], total: number, rawCount: number }> {
   try {
     const { supabase } = await import("../../lib/supabase");
     const fetchRows = async (withPublicationMetadata: boolean) => {
@@ -941,7 +941,7 @@ export async function fetchPaginatedNews(
 
     if (error) {
       console.error("Error fetching paginated news:", error);
-      return { data: [], total: 0 };
+      return { data: [], total: 0, rawCount: 0 };
     }
 
     type NewsRow = {
@@ -961,6 +961,7 @@ export async function fetchPaginatedNews(
       keywords: string[] | null;
       affected_products: string[] | null;
     };
+    const rawCount = data?.length ?? 0;
     const articles = ((data || []) as unknown as NewsRow[]).map(article => ({
       id: article.id,
       title: article.title,
@@ -978,10 +979,10 @@ export async function fetchPaginatedNews(
       affectedProducts: article.affected_products || [],
     })).filter(isPriceImpactNews);
 
-    return { data: articles, total: count || 0 };
+    return { data: articles, total: count || 0, rawCount };
   } catch (e) {
     console.error("Failed to fetch paginated news:", e);
-    return { data: [], total: 0 };
+    return { data: [], total: 0, rawCount: 0 };
   }
 }
 

@@ -73,13 +73,13 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
       {/* Card */}
       <div
         onClick={() => setIsOpen(true)}
-        className={`group bg-white overflow-hidden cursor-pointer ${_compact
+        className={`group min-w-0 bg-white overflow-hidden cursor-pointer ${_compact
           ? "flex h-full w-full flex-row-reverse items-center gap-3 px-4 py-3 transition-all duration-300"
-          : "rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500 flex flex-col h-full"
+          : "w-full rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500 flex flex-col h-full"
           }`}
       >
         {/* Image Container */}
-        <div className={`relative overflow-hidden bg-gray-100 shrink-0 ${_compact ? "w-16 h-16 rounded-lg" : "h-48"}`}>
+        <div className={`relative overflow-hidden bg-gray-100 shrink-0 ${_compact ? "w-16 h-16 rounded-lg" : "h-44 sm:h-48"}`}>
           {hasImage ? (
             <Image
               src={image}
@@ -94,7 +94,7 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
         </div>
 
         {/* Content */}
-        <div className={`min-w-0 flex flex-col flex-1 ${_compact ? "py-0" : "p-6"}`}>
+        <div className={`min-w-0 flex flex-col flex-1 ${_compact ? "py-0" : "p-5 sm:p-6"}`}>
           <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-400 text-[10px] font-medium ${_compact ? "mb-1" : "mb-3"}`}>
             <span className={`inline-flex max-w-full items-center gap-1 font-bold uppercase text-primary-800 ${_compact
               ? "text-[9px] tracking-[0.12em]"
@@ -111,7 +111,7 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
             )}
           </div>
 
-          <h3 className={`${_compact ? "text-[13px] mb-1" : "text-lg mb-3"} font-bold text-gray-900 leading-tight group-hover:text-primary-800 transition-colors line-clamp-2`}>
+          <h3 className={`${_compact ? "text-[13px] mb-1" : "text-base sm:text-lg mb-3"} font-bold text-gray-900 leading-tight group-hover:text-primary-800 transition-colors line-clamp-2`}>
             {displayTitle}
           </h3>
 
@@ -128,7 +128,7 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
               </div>
             ) : (
               <>
-                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
+                <div className="min-w-0 truncate text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
                   {source || t("marketNews")}
                 </div>
                 <a
@@ -136,7 +136,7 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center font-bold text-primary-700 hover:text-primary-900 transition-colors group/link z-10 gap-2 text-xs"
+                  className="inline-flex shrink-0 items-center whitespace-nowrap font-bold text-primary-700 hover:text-primary-900 transition-colors group/link z-10 gap-2 text-[11px] sm:text-xs"
                 >
                   {t("readMore")}
                   <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/link:translate-x-1" />

@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Home, Search, Table2, Info, Mail, MapPin, TrendingUp, BarChart3 } from "lucide-react";
 import GrassField from "./GrassField";
-import { verifiedHistoricalAccuracy } from "../lib/data";
+import { verifiedWithinTenAccuracy } from "../lib/data";
 import { useForecastStatus } from "../lib/hooks";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { usePathname } from "next/navigation";
@@ -11,13 +11,7 @@ import { usePathname } from "next/navigation";
 const Footer = () => {
   const { t, isTransitioning } = useLanguage();
   const { data: forecastStatus } = useForecastStatus();
-  const accuracyBenchmark = verifiedHistoricalAccuracy(
-    forecastStatus?.historicalAccuracy,
-    forecastStatus?.modelRunId,
-  );
-  const predictionSuccess = accuracyBenchmark
-    ? accuracyBenchmark.within_tolerance_count / accuracyBenchmark.sample_count
-    : null;
+  const accuracyPercent = verifiedWithinTenAccuracy(forecastStatus?.modelMetrics);
   const currentYear = new Date().getFullYear();
   const pathname = usePathname();
 
@@ -120,8 +114,8 @@ const Footer = () => {
                   </div>
                   <div>
                     <div className="text-white/80 text-xs font-semibold">
-                      {predictionSuccess != null
-                        ? `${(predictionSuccess * 100).toFixed(1)}%`
+                      {accuracyPercent != null
+                        ? `${accuracyPercent.toFixed(1)}%`
                         : "—"}
                     </div>
                     <div className="text-white/60 text-[10px]">{t("predictionSuccess")}</div>

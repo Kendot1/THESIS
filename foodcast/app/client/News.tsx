@@ -12,14 +12,44 @@ import { getNewsTagKeywords } from "../lib/tags";
 import Link from "next/link";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 
+const ROWS_PER_LOAD_MORE = 3;
+
 interface NewsProps {
   initialNews: NewsArticle[];
   initialTotal: number;
+  initialOffset: number;
   initialCategories: string[];
 }
 
-export default function News({ initialNews, initialTotal, initialCategories }: NewsProps) {
-  const [news, setNews] = useState<NewsArticle[]>(initialNews);
+function newsIdentityKeys(article: NewsArticle) {
+  const normalize = (value: string) => value.normalize("NFKC").trim().toLowerCase().replace(/\s+/g, " ");
+  const keys: string[] = [];
+  const canonicalUrl = article.url.trim().toLowerCase()
+    .replace(/^https?:\/\/(?:www\.)?/, "")
+    .split(/[?#]/, 1)[0]
+    .replace(/\/+$/, "");
+  if (canonicalUrl) keys.push(`url:${canonicalUrl}`);
+
+  const title = normalize(article.title);
+  if (title) keys.push(`story:${title}|${normalize(article.source)}|${normalize(article.date)}`);
+  return keys.length ? keys : [`id:${article.id}`];
+}
+
+function mergeUniqueNews(existing: NewsArticle[], incoming: NewsArticle[]) {
+  const seen = new Set(existing.flatMap(newsIdentityKeys));
+  const merged = [...existing];
+  for (const article of incoming) {
+    const keys = newsIdentityKeys(article);
+    if (keys.some(key => seen.has(key))) continue;
+    keys.forEach(key => seen.add(key));
+    merged.push(article);
+  }
+  return merged;
+}
+
+export default function News({ initialNews, initialTotal, initialOffset, initialCategories }: NewsProps) {
+  const [news, setNews] = useState<NewsArticle[]>(() => mergeUniqueNews([], initialNews));
+  const [nextOffset, setNextOffset] = useState(initialOffset);
   const [failedFeaturedImage, setFailedFeaturedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -54,6 +84,11 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
 
   const [categories, setCategories] = useState<string[]>(initialCategories);
 
+  const featuredArticle = news.length > 0 ? news[0] : null;
+  const displayNews = searchQuery || selectedCategory !== "All" || dateFilter !== "All"
+    ? news
+    : news.slice(1);
+
   // Filter changes
   useEffect(() => {
     if (isInitialMount.current) {
@@ -61,9 +96,10 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
       // If initial server data was empty (e.g. SSG without env), fetch on mount
       if (initialNews.length === 0) {
         setLoading(true);
-        fetchPaginatedNews(0, PAGE_SIZE, "", "All", "All").then(({ data, total }) => {
-          setNews(data);
+        fetchPaginatedNews(0, PAGE_SIZE, "", "All", "All").then(({ data, total, rawCount }) => {
+          setNews(mergeUniqueNews([], data));
           setTotalRecords(total);
+          setNextOffset(rawCount);
           setLoading(false);
         });
       }
@@ -71,9 +107,10 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
     }
     setLoading(true);
     const dbCategory = selectedCategory === "All" ? "All" : toEventTypeKey(selectedCategory);
-    fetchPaginatedNews(0, PAGE_SIZE, searchQuery, dbCategory, dateFilter).then(({ data, total }) => {
-      setNews(data);
+    fetchPaginatedNews(0, PAGE_SIZE, searchQuery, dbCategory, dateFilter).then(({ data, total, rawCount }) => {
+      setNews(mergeUniqueNews([], data));
       setTotalRecords(total);
+      setNextOffset(rawCount);
       setLoading(false);
     });
   }, [searchQuery, selectedCategory, dateFilter]);
@@ -81,17 +118,38 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
   const handleLoadMore = async () => {
     if (loadingMore) return;
     setLoadingMore(true);
-    const start = news.length;
     const dbCategory = selectedCategory === "All" ? "All" : toEventTypeKey(selectedCategory);
-    const { data } = await fetchPaginatedNews(start, PAGE_SIZE, searchQuery, dbCategory, dateFilter);
-    setNews(prev => [...prev, ...data]);
-    setLoadingMore(false);
-  };
+    const columns = window.innerWidth >= 1024 ? 3 : window.innerWidth >= 640 ? 2 : 1;
+    const cardsToCompleteCurrentRow = (columns - (displayNews.length % columns)) % columns;
+    const targetCount = cardsToCompleteCurrentRow + columns * ROWS_PER_LOAD_MORE;
+    const seen = new Set(news.flatMap(newsIdentityKeys));
+    const additions: NewsArticle[] = [];
+    let offset = nextOffset;
+    let total = totalRecords;
 
-  const featuredArticle = news.length > 0 ? news[0] : null;
-  const displayNews = searchQuery || selectedCategory !== "All" || dateFilter !== "All"
-    ? news
-    : news.slice(1);
+    try {
+      while (additions.length < targetCount && offset < total) {
+        const requestLimit = targetCount - additions.length;
+        const result = await fetchPaginatedNews(offset, requestLimit, searchQuery, dbCategory, dateFilter);
+        if (result.rawCount === 0) break;
+
+        offset += result.rawCount;
+        total = result.total;
+        for (const article of result.data) {
+          const keys = newsIdentityKeys(article);
+          if (keys.some(key => seen.has(key))) continue;
+          keys.forEach(key => seen.add(key));
+          additions.push(article);
+        }
+      }
+
+      setNews(prev => mergeUniqueNews(prev, additions));
+      setNextOffset(offset);
+      setTotalRecords(total);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   // Lock body scroll when featured modal is open
   useEffect(() => {
@@ -158,7 +216,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
             <div className="h-4 w-32 bg-gray-200 rounded-lg skeleton-shimmer" />
             <div className="h-[1px] flex-1 bg-gray-100 mx-8 hidden md:block" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
             {[0, 1, 2, 3, 4, 5].map(i => (
               <div key={i} className="bg-white rounded-3xl border border-gray-100 p-4 h-[380px] flex flex-col shadow-sm">
                 <div className="h-48 w-full bg-gray-100 rounded-2xl mb-5 skeleton-shimmer" style={{ animationDelay: `${i * 80}ms` }} />
@@ -452,7 +510,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
         {/* Article Grid */}
         <section className="py-5 max-w-7xl mx-auto px-5 lg:px-10">
           {loading || isTransitioning ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
               {[1, 2, 3, 4, 5, 6].map(i => (
                 <div key={i} className="bg-white rounded-3xl border border-gray-100 p-4 h-[380px] flex flex-col shadow-sm">
                   <div className="h-48 w-full bg-gray-100 rounded-2xl mb-5 animate-pulse" />
@@ -474,19 +532,24 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                 </h3>
                 <div className="h-[1px] flex-1 bg-gray-100 mx-8 hidden md:block" />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+              <div className="flex flex-wrap justify-center gap-6 sm:gap-8 lg:gap-10">
                 {displayNews.map((article, i) => (
-                  <ScrollReveal key={article.id} delay={(i % PAGE_SIZE) * 30} animation="fade-up">
+                  <ScrollReveal
+                    key={article.id}
+                    className="h-full w-full min-w-0 sm:basis-[calc(50%_-_1rem)] lg:basis-[calc(33.333333%_-_1.666667rem)]"
+                    delay={(i % PAGE_SIZE) * 30}
+                    animation="fade-up"
+                  >
                     <NewsCard {...article} content={article.content} />
                   </ScrollReveal>
                 ))}
               </div>
 
-              {news.length < totalRecords && (
+              {nextOffset < totalRecords && (
                 <div className="mt-16 text-center">
                   <button
                     onClick={handleLoadMore}
-                    disabled={loadingMore}
+                    disabled={loadingMore || loading}
                     className="group relative px-10 py-5 bg-white border border-gray-200 rounded-[2rem] text-primary-900 font-black uppercase tracking-[0.2em] text-[10px] hover:text-white transition-all duration-500 overflow-hidden shadow-lg hover:shadow-primary-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="relative z-10">{loadingMore ? t("loading") : t("loadMore")}</span>

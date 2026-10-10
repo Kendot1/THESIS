@@ -60,8 +60,9 @@ async function fetchForecastStatus(): Promise<ForecastStatus | null> {
   return response.json();
 }
 
-export function useForecastStatus() {
+export function useForecastStatus(fallbackData?: ForecastStatus | null) {
   return useSWR<ForecastStatus | null>("forecast_status_v1", fetchForecastStatus, {
+    fallbackData,
     revalidateOnFocus: true,
     refreshInterval: 60_000,
     dedupingInterval: 30_000,

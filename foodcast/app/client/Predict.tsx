@@ -20,6 +20,9 @@ interface PredictProps {
   initialProducts: Product[];
 }
 
+const INITIAL_VISIBLE_PRODUCTS = 4;
+const ROWS_PER_LOAD_MORE = 3;
+
 export default function Predict({ initialProducts }: PredictProps) {
   return (
     <Suspense fallback={<div className="min-h-screen bg-surface flex items-center justify-center"><div className="w-8 h-8 border-3 border-accent border-t-transparent rounded-full animate-spin" /></div>}>
@@ -39,7 +42,7 @@ function PredictContent({ initialProducts }: PredictProps) {
   const [categories, setCategories] = useState<string[]>(["All"]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [showAllRows, setShowAllRows] = useState(false);
+  const [visibleProductCount, setVisibleProductCount] = useState(INITIAL_VISIBLE_PRODUCTS);
   const [showMoreCategories, setShowMoreCategories] = useState(false);
   const [visibleCategoryCount, setVisibleCategoryCount] = useState(6);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -268,7 +271,11 @@ function PredictContent({ initialProducts }: PredictProps) {
     return Array.from(groupedMap.values());
   }, [filtered]);
 
-  const visibleCount = (showAllRows || query) ? groupedProducts.length : 4;
+  useEffect(() => {
+    setVisibleProductCount(INITIAL_VISIBLE_PRODUCTS);
+  }, [deferredQuery, deferredCategory]);
+
+  const visibleCount = query ? groupedProducts.length : visibleProductCount;
 
   /* ─── Search Suggestions ────────────────────── */
   const searchSuggestions = useMemo(() => {
@@ -751,10 +758,14 @@ function PredictContent({ initialProducts }: PredictProps) {
                 })}
               </div>
 
-              {!showAllRows && !query && groupedProducts.length > 4 && (
+              {!query && visibleCount < groupedProducts.length && (
                 <div className="mt-10 text-center">
                   <button
-                    onClick={() => setShowAllRows(true)}
+                    onClick={() => {
+                      const columns = window.innerWidth >= 1024 ? 4 : window.innerWidth >= 640 ? 3 : 2;
+                      setVisibleProductCount(current =>
+                        Math.min(current + columns * ROWS_PER_LOAD_MORE, groupedProducts.length));
+                    }}
                     className="group relative px-10 py-4 bg-white border border-gray-200 rounded-[2rem] text-primary-900 font-black text-xs hover:text-white transition-all duration-500 overflow-hidden shadow-lg hover:shadow-primary-900/20 active:scale-95"
                   >
                     <span className="relative z-10 flex items-center gap-2">
