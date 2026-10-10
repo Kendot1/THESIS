@@ -59,7 +59,7 @@ def fill_missing_days(start: date, end: date) -> dict:
                  for i in range((end - start).days + 1)]
     missing_dates = [d for d in all_dates if d not in rows_by_date]
 
-    summary = {"filled": 0, "skipped": 0, "rows_inserted": 0}
+    summary = {"filled": 0, "skipped": 0, "rows_inserted": 0, "insert_failures": 0}
     if not missing_dates:
         print("✅ No missing dates found.")
         return summary
@@ -95,6 +95,7 @@ def fill_missing_days(start: date, end: date) -> dict:
             summary["filled"] += 1
             summary["rows_inserted"] += len(new_rows)
         except Exception as e:
+            summary["insert_failures"] += 1
             print(f"  ❌ {missing_date}: insert failed — {e}")
             summary["skipped"] += 1
 

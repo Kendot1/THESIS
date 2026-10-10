@@ -7,6 +7,14 @@ export interface ForecastDataPoint {
   name: string;
   actual: number | null;
   predicted: number | null;
+  horizon?: ForecastHorizon;
+  target_period_start?: string;
+  target_period_end?: string;
+  forecast_step?: number;
+  covered_days?: number;
+  period_days?: number;
+  confidence_score?: number | null;
+  confidence_level?: string | null;
 }
 
 export interface Product {
@@ -36,60 +44,44 @@ export interface Product {
   lastActualDate?: string;
 }
 
-export interface RangeHitMetrics {
-  interval_coverage?: number | null;
-  covered_count?: number | null;
-  interval_level?: number | null;
-  sample_count?: number | null;
-  coverage_sample_count?: number | null;
-  effective_sample_count?: number | null;
-  coverage_uncertainty_method?: string;
-  coverage_uncertainty_approximate?: boolean;
-  coverage_uncertainty_validated?: boolean;
-  sample_basis?: string;
-  evaluation_source?: string | null;
-  horizon_min_days?: number;
-  horizon_max_days?: number;
-  horizon_basis?: string;
-  observed_min_lead_days?: number;
-  observed_max_lead_days?: number;
-}
-
-export interface CoverageConfidenceInterval {
-  lower: number;
-  upper: number;
-  confidenceLevel: 0.95;
-  effectiveSampleCount: number;
-  method: "wilson_effective_sample";
-  approximate: true;
-}
-
 export interface ForecastQualityMetrics {
   mae: number | null;
   rmse: number | null;
   mape: number | null;
   directional_accuracy: number | null;
-  interval_level: number | null;
-  interval_coverage: number | null;
   prediction_success: number | null;
   success_tolerance?: number | null;
   success_definition?: string;
+  within_10_tolerance?: number | null;
+  within_10_definition?: string;
+  within_10_accuracy_pct?: number | null;
+  within_10_count?: number | null;
+  within_10_sample_count?: number | null;
+  metric_aggregation?: string;
+  training_through?: string | null;
   sample_count: number | null;
-  coverage_sample_count?: number | null;
   processed_from?: string | null;
   processed_through?: string | null;
   processed_observed_rows?: number | null;
   processed_series_count?: number | null;
   product_metrics?: Record<string, {
-    interval_coverage: number;
-    interval_level?: number | null;
     sample_count: number;
+    sample_origin_count?: number;
     sample_basis?: string;
     mape?: number | null;
-    prediction_success?: number;
+    prediction_success?: number | null;
     evaluation_source?: string;
     confidence_by_horizon?: Partial<Record<ForecastHorizon, ForecastConfidenceMetric>>;
-    horizon_metrics?: Record<string, RangeHitMetrics>;
+    confidence_by_step?: Partial<Record<ForecastHorizon, Record<number, ForecastStepConfidenceMetric>>>;
+    horizon_metrics?: Record<string, {
+      mae: number | null;
+      rmse: number | null;
+      mape: number | null;
+      prediction_success?: number | null;
+      sample_count: number;
+      horizon_min_days?: number;
+      horizon_max_days?: number;
+    }>;
   }>;
   evaluation_scope?: string | null;
   evaluation_source?: string | null;
@@ -105,14 +97,77 @@ export interface ForecastConfidenceMetric {
   rmse: number | null;
   mape: number | null;
   sample_count: number;
+  sample_origin_count?: number;
   sample_support?: number;
-  evaluation_source: "chronological_validation" | "historical_holdout";
+  evaluation_source: "chronological_validation";
   confidence_method: string;
   model_version: string;
   evidence_status: "validated" | "insufficient_data" | "unverified_provenance";
 }
 
+export interface ForecastStepConfidenceMetric extends Omit<ForecastConfidenceMetric, "forecast_horizon_days"> {
+  forecast_horizon_days: number;
+  forecast_step: number;
+}
+
+export interface HorizonAccuracySummary {
+  within_tolerance_count: number;
+  sample_count: number;
+  mae: number;
+  rmse: number;
+  mape: number;
+}
+
+export interface HistoricalForecastAccuracy {
+  model_run_id: string;
+  tolerance: number;
+  within_tolerance_count: number;
+  sample_count: number;
+  mae: number;
+  rmse: number;
+  mape: number;
+  evaluation_source: string;
+  window_start: string;
+  window_end: string;
+  aggregation: string;
+  development_test_reused_for_selection: boolean;
+  horizons: Record<ForecastHorizon, HorizonAccuracySummary>;
+}
+
+/** Accept only the publisher-aligned, model-bound Within-10% backtest summary. */
+export function verifiedHistoricalAccuracy(
+  benchmark: HistoricalForecastAccuracy | null | undefined,
+  modelRunId: string | null | undefined,
+): HistoricalForecastAccuracy | null {
+  if (!benchmark || !modelRunId || benchmark.model_run_id !== modelRunId
+    || benchmark.tolerance !== 0.1
+    || benchmark.evaluation_source !== "chronological_development_test"
+    || benchmark.aggregation !== "row_weighted_pooled_published_horizons"
+    || typeof benchmark.development_test_reused_for_selection !== "boolean"
+    || !/^\d{4}-\d{2}-\d{2}$/.test(benchmark.window_start)
+    || !/^\d{4}-\d{2}-\d{2}$/.test(benchmark.window_end)
+    || benchmark.window_end < benchmark.window_start) return null;
+
+  const finiteNonnegative = (value: number) => Number.isFinite(value) && value >= 0;
+  const horizonMetrics = [benchmark.horizons?.daily, benchmark.horizons?.weekly, benchmark.horizons?.monthly]
+    .filter((metric): metric is HorizonAccuracySummary => Boolean(metric));
+  if (horizonMetrics.length !== 3 || horizonMetrics.some(metric =>
+    !Number.isInteger(metric.sample_count) || metric.sample_count <= 0
+    || !Number.isInteger(metric.within_tolerance_count) || metric.within_tolerance_count < 0
+    || metric.within_tolerance_count > metric.sample_count
+    || [metric.mae, metric.rmse, metric.mape].some(value => !finiteNonnegative(value)))) return null;
+
+  const samples = horizonMetrics.reduce((total, metric) => total + metric.sample_count, 0);
+  const successes = horizonMetrics.reduce((total, metric) => total + metric.within_tolerance_count, 0);
+  if (samples !== benchmark.sample_count || successes !== benchmark.within_tolerance_count
+    || !Number.isInteger(benchmark.sample_count) || benchmark.sample_count <= 0
+    || !finiteNonnegative(benchmark.mae) || !finiteNonnegative(benchmark.rmse)
+    || !finiteNonnegative(benchmark.mape)) return null;
+  return benchmark;
+}
+
 export const FORECAST_HORIZON_DAYS = { daily: 1, weekly: 7, monthly: 30 } as const;
+const PUBLISHED_FORECAST_MONTHS = 3;
 
 /** Calendar lead time is measured from the saved backend vintage, never row position. */
 export function forecastTargetDate(origin: string | undefined, horizon: ForecastHorizon): string | null {
@@ -122,31 +177,95 @@ export function forecastTargetDate(origin: string | undefined, horizon: Forecast
   return new Date(timestamp + FORECAST_HORIZON_DAYS[horizon] * 86400000).toISOString().slice(0, 10);
 }
 
-/** Sample saved model prices at the selected cadence, without averaging or
- * extending the model's forecast window. Monthly uses the trained 30-day lead. */
+/** Use saved period prices, filling missing periods from the same daily model path. */
 export function forecastHorizonPoints(data: ForecastDataPoint[], origin: string | undefined, horizon: ForecastHorizon) {
-  if (!forecastTargetDate(origin, horizon)) return [];
-  const originTime = Date.parse(`${origin}T00:00:00Z`);
-  const cadence = FORECAST_HORIZON_DAYS[horizon];
-  return data.filter(point => {
+  if (!forecastTargetDate(origin, "daily")) return [];
+  const points = data.filter(point => {
     const timestamp = Date.parse(`${point.date}T00:00:00Z`);
-    const lead = (timestamp - originTime) / 86400000;
-    return Number.isInteger(lead) && lead > 0 && lead % cadence === 0
+    const lead = (timestamp - Date.parse(`${origin}T00:00:00Z`)) / 86400000;
+    const legacyDaily = !point.horizon && horizon === "daily";
+    return (point.horizon === horizon || legacyDaily) && Number.isInteger(lead) && lead > 0
       && new Date(timestamp).toISOString().slice(0, 10) === point.date
       && point.predicted != null && Number.isFinite(point.predicted) && point.predicted > 0;
-  })
+    })
     .sort((left, right) => left.date.localeCompare(right.date));
+  if (horizon === "daily") return points;
+
+  // Older published vintages can have the daily path without saved calendar
+  // period rows. Fill only missing weeks/months from those same model prices.
+  const periods = new Map<string, ForecastDataPoint>();
+  for (const point of points) periods.set(point.target_period_start ?? point.date, point);
+  const dailyForecasts = data.filter(point => {
+    const timestamp = Date.parse(`${point.date}T00:00:00Z`);
+    const lead = (timestamp - Date.parse(`${origin}T00:00:00Z`)) / 86400000;
+    return (point.horizon === "daily" || !point.horizon)
+      && Number.isInteger(lead) && lead > 0
+      && new Date(timestamp).toISOString().slice(0, 10) === point.date
+      && point.predicted != null && Number.isFinite(point.predicted) && point.predicted > 0;
+  }).sort((left, right) => left.date.localeCompare(right.date));
+  const grouped = new Map<string, { start: string; end: string; values: number[]; lastDate: string }>();
+  for (const point of dailyForecasts) {
+    const date = new Date(`${point.date}T00:00:00Z`);
+    let start: Date;
+    let end: Date;
+    if (horizon === "weekly") {
+      start = new Date(date);
+      start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
+      end = new Date(start);
+      end.setUTCDate(end.getUTCDate() + 6);
+    } else {
+      start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+      end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
+    }
+    const startDate = start.toISOString().slice(0, 10);
+    const endDate = end.toISOString().slice(0, 10);
+    const group = grouped.get(startDate) ?? { start: startDate, end: endDate, values: [], lastDate: point.date };
+    group.values.push(point.predicted!);
+    group.lastDate = point.date;
+    grouped.set(startDate, group);
+  }
+  const labelDate = (value: string, options: Intl.DateTimeFormatOptions) =>
+    new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", { ...options, timeZone: "UTC" });
+  const derived = [...grouped.values()].sort((left, right) => left.start.localeCompare(right.start));
+  derived.forEach((period, index) => {
+    if (periods.has(period.start)) return;
+    const name = horizon === "weekly"
+      ? `Week ${labelDate(period.start, { month: "short", day: "numeric" })}–${labelDate(period.end, { month: "short", day: "numeric" })}`
+      : labelDate(period.start, { month: "long", year: "numeric" });
+    periods.set(period.start, {
+      date: period.lastDate,
+      name,
+      actual: null,
+      predicted: period.values.reduce((sum, value) => sum + value, 0) / period.values.length,
+      horizon,
+      target_period_start: period.start,
+      target_period_end: period.end,
+      forecast_step: index + 1,
+      covered_days: period.values.length,
+      period_days: Math.round((Date.parse(`${period.end}T00:00:00Z`) - Date.parse(`${period.start}T00:00:00Z`)) / 86400000) + 1,
+      confidence_score: null,
+      confidence_level: "Insufficient data",
+    });
+  });
+  const combined = [...periods.values()].sort((left, right) => left.date.localeCompare(right.date));
+  const originDate = new Date(`${origin}T00:00:00Z`);
+  const horizonEnd = new Date(Date.UTC(
+    originDate.getUTCFullYear(),
+    originDate.getUTCMonth() + PUBLISHED_FORECAST_MONTHS + 1,
+    0,
+  )).toISOString().slice(0, 10);
+  const withinPublishedHorizon = combined.filter(point => point.date <= horizonEnd);
+  return horizon === "weekly" ? withinPublishedHorizon.slice(0, 12) : withinPublishedHorizon;
 }
 
 /** Display only backend evidence tied to this product, horizon, and forecast model. */
 export function productHorizonConfidence(product: Product, status: ForecastStatus | null | undefined,
   horizon: ForecastHorizon): ForecastConfidenceMetric | null {
-  const target = forecastTargetDate(product.forecastOriginDate, horizon);
+  const originIsValid = forecastTargetDate(product.forecastOriginDate, "daily") != null;
+  const points = forecastHorizonPoints(product.forecastData, product.forecastOriginDate, horizon);
   if (product.forecastSource !== "model" || !product.forecastModelRunId
-    || product.forecastModelRunId !== status?.modelRunId || !target
-    || !product.lastActualDate || target <= product.lastActualDate
-    || !forecastHorizonPoints(product.forecastData, product.forecastOriginDate, horizon)
-      .some(point => point.date === target)) return null;
+    || product.forecastModelRunId !== status?.modelRunId || !originIsValid
+    || !product.lastActualDate || !points.some(point => point.date > product.lastActualDate!)) return null;
   const identity = [product.category, product.name, product.variant || "Standard",
     product.origin || "Unknown", product.unit || "unknown"].join("||");
   const metricsByProduct = status.modelMetrics?.product_metrics;
@@ -161,85 +280,103 @@ export function productHorizonConfidence(product: Product, status: ForecastStatu
       || !metric.confidence_method || !Number.isInteger(metric.sample_count) || metric.sample_count < 0
       || [metric.mae, metric.rmse, metric.mape].some(value => value != null && (!Number.isFinite(value) || value < 0))) continue;
     const validScore = metric.evidence_status === "validated" && metric.sample_count >= 8
+      && Number.isInteger(metric.sample_origin_count) && metric.sample_origin_count! >= 8
       && metric.confidence_score != null && Number.isFinite(metric.confidence_score)
       && metric.confidence_score >= 0 && metric.confidence_score <= 100
       && ["Very High", "High", "Moderate", "Low", "Very Low"].includes(metric.confidence_level)
       && [metric.mae, metric.rmse, metric.mape].every(value => value != null);
-    const insufficient = metric.evidence_status === "insufficient_data" && metric.sample_count < 8
+    const insufficient = metric.evidence_status === "insufficient_data"
+      && ((Number.isInteger(metric.sample_origin_count) && metric.sample_origin_count! < 8)
+        || metric.sample_count < 8)
       && metric.confidence_score == null && metric.confidence_level === "Insufficient data";
     if (validScore || insufficient) return metric;
   }
   return null;
 }
 
-/** Return only measured coverage for the nominal 80% prediction interval. */
-export function verifiedRangeHitRate(metrics: RangeHitMetrics | null | undefined, minimumSamples = 30): number | null {
-  const coverage = metrics?.interval_coverage;
-  const sampleCount = metrics?.coverage_sample_count ?? metrics?.sample_count ?? 0;
-  if (metrics?.coverage_sample_count != null && metrics.sample_count != null
-      && metrics.coverage_sample_count !== metrics.sample_count) return null;
-  if (metrics?.covered_count != null && (!Number.isInteger(metrics.covered_count)
-      || metrics.covered_count < 0 || metrics.covered_count > sampleCount
-      || coverage == null || Math.abs(metrics.covered_count / sampleCount - coverage) > 1e-12)) return null;
-  return (metrics?.evaluation_source === "historical_holdout"
-    || metrics?.evaluation_source === "realized_vintages")
-    && metrics.interval_level === 0.8
-    && Number.isInteger(sampleCount) && sampleCount >= minimumSamples
-    && coverage != null && Number.isFinite(coverage) && coverage >= 0 && coverage <= 1
-    ? coverage : null;
+export interface ProductValidationReliability {
+  confidence_score: number;
+  confidence_level: Exclude<ForecastConfidenceMetric["confidence_level"], "Insufficient data">;
+  sample_count: number;
+  sample_origin_count: number;
 }
 
-/** Do not let next-day evidence stand in for the long end of a 30-day outlook. */
-export function verifiedLongRangeHitRate(metrics: RangeHitMetrics | null | undefined,
-  minimumSamples = 20): number | null {
-  return metrics?.evaluation_source === "realized_vintages"
-    && metrics.sample_basis === "unique_actual_dates"
-    && metrics.horizon_basis === "philippine_publication_date"
-    && metrics.horizon_min_days === 15 && metrics.horizon_max_days === 30
-    && Number.isInteger(metrics.observed_min_lead_days) && metrics.observed_min_lead_days! >= 15
-    && Number.isInteger(metrics.observed_max_lead_days) && metrics.observed_max_lead_days! <= 30
-    && metrics.observed_min_lead_days! <= metrics.observed_max_lead_days!
-    ? verifiedRangeHitRate(metrics, minimumSamples) : null;
-}
+/** Use a model-bound, chronological per-product validation hit rate when a
+ * horizon-specific confidence estimate has not been validated yet. */
+export function productValidationReliability(product: Product, status: ForecastStatus | null | undefined): ProductValidationReliability | null {
+  const metrics = status?.modelMetrics;
+  const originIsValid = forecastTargetDate(product.forecastOriginDate, "daily") != null;
+  const hasFutureForecast = forecastHorizonPoints(
+    product.forecastData, product.forecastOriginDate, "daily",
+  ).some(point => point.date > (product.lastActualDate ?? ""));
+  if (product.forecastSource !== "model" || !product.forecastModelRunId
+    || product.forecastModelRunId !== status?.modelRunId || !originIsValid
+    || !product.lastActualDate || !hasFutureForecast
+    || metrics?.evaluation_source !== "chronological_validation"
+    || metrics.success_definition !== "absolute_percentage_error_at_most_tolerance"
+    || metrics.success_tolerance !== 0.05) return null;
 
-/** Approximate 95% interval; the serial adjustment has no exact coverage guarantee. */
-export function verifiedCoverageConfidenceInterval(
-  metrics: RangeHitMetrics | null | undefined,
-  minimumSamples = 20,
-): CoverageConfidenceInterval | null {
-  if (verifiedRangeHitRate(metrics, minimumSamples) == null) return null;
-  if (metrics?.evaluation_source !== "realized_vintages"
-      || metrics.sample_basis !== "unique_actual_dates"
-      || metrics.coverage_uncertainty_method !== "positive_serial_wilson_7d"
-      || metrics.coverage_uncertainty_approximate !== true
-      || metrics.coverage_uncertainty_validated !== true) return null;
-  const hits = metrics?.covered_count;
-  const total = metrics?.coverage_sample_count ?? metrics?.sample_count;
-  const effectiveTotal = metrics?.effective_sample_count;
-  if (!Number.isInteger(hits) || !Number.isInteger(total) || hits == null || total == null
-      || hits < 0 || total < 1 || hits > total
-      || effectiveTotal == null || !Number.isFinite(effectiveTotal)
-      || effectiveTotal < 1 || effectiveTotal > total) return null;
-  const observed = hits / total;
-  // Ensure the displayed rate and exact counts describe the same evidence.
-  if (Math.abs(observed - metrics!.interval_coverage!) > 1e-12) return null;
-  const z = 1.959963984540054;
-  const z2 = z * z;
-  const denominator = 1 + z2 / effectiveTotal;
-  const center = (observed + z2 / (2 * effectiveTotal)) / denominator;
-  const margin = z * Math.sqrt(observed * (1 - observed) / effectiveTotal
-    + z2 / (4 * effectiveTotal * effectiveTotal))
-    / denominator;
-  return { lower: Math.max(0, center - margin), upper: Math.min(1, center + margin),
-    confidenceLevel: 0.95, effectiveSampleCount: effectiveTotal,
-    method: "wilson_effective_sample", approximate: true };
+  const identity = [product.category, product.name, product.variant || "Standard",
+    product.origin || "Unknown", product.unit || "unknown"].join("||");
+  // Legacy run metrics can include an empty ID-keyed entry alongside the
+  // measured identity-keyed snapshot. Use the first valid matching metric.
+  const metric = [metrics.product_metrics?.[product.id], metrics.product_metrics?.[identity]]
+    .find(candidate => candidate?.evaluation_source === "chronological_validation"
+      && Number.isInteger(candidate.sample_count) && candidate.sample_count >= 20
+      && Number.isInteger(candidate.sample_origin_count) && candidate.sample_origin_count! >= 1
+      && candidate.prediction_success != null && Number.isFinite(candidate.prediction_success)
+      && candidate.prediction_success >= 0 && candidate.prediction_success <= 1);
+  if (!metric) return null;
+  const rawRate = metric.prediction_success!;
+  const sampleCount = metric.sample_count;
+  const originCount = metric.sample_origin_count!;
+
+  // Treat forecast origins as the effective evidence count because many
+  // target rows share overlapping forecast windows. A Beta prior centered on
+  // the model-wide validation hit rate pulls sparse 0%/100% samples inward.
+  const priorOrigins = 10;
+  const overallRate = metrics.prediction_success;
+  const productRates = Object.values(metrics.product_metrics ?? {})
+    .map(candidate => candidate.prediction_success)
+    .filter((rate): rate is number => rate != null && Number.isFinite(rate) && rate >= 0 && rate <= 1);
+  const priorRate = overallRate != null && Number.isFinite(overallRate)
+    && overallRate >= 0 && overallRate <= 1
+    ? overallRate
+    : productRates.length
+      ? productRates.reduce((sum, rate) => sum + rate, 0) / productRates.length
+      : rawRate;
+  const confidenceScore = ((rawRate * originCount) + (priorRate * priorOrigins))
+    / (originCount + priorOrigins) * 100;
+
+  const confidenceLevel = confidenceScore >= 90 ? "Very High"
+    : confidenceScore >= 80 ? "High"
+      : confidenceScore >= 70 ? "Moderate"
+        : confidenceScore >= 60 ? "Low" : "Very Low";
+  return {
+    confidence_score: confidenceScore,
+    confidence_level: confidenceLevel,
+    sample_count: sampleCount!,
+    sample_origin_count: originCount,
+  };
 }
 
 export function verifiedPredictionSuccess(metrics: ForecastQualityMetrics | null | undefined) {
   const value = metrics?.prediction_success;
-  return metrics?.success_definition === "absolute_percentage_error_at_most_tolerance"
+  return metrics?.evaluation_source === "chronological_validation"
+    && metrics.success_definition === "absolute_percentage_error_at_most_tolerance"
     && metrics.success_tolerance === 0.05 && (metrics.sample_count ?? 0) >= 30
     && value != null && Number.isFinite(value) && value >= 0 && value <= 1
+    ? value : null;
+}
+
+export function verifiedWithinTenAccuracy(metrics: ForecastQualityMetrics | null | undefined) {
+  const value = metrics?.within_10_accuracy_pct;
+  return metrics?.evaluation_source === "chronological_validation"
+    && metrics.within_10_definition === "absolute_percentage_error_at_most_tolerance"
+    && metrics.within_10_tolerance === 0.10
+    && metrics.metric_aggregation === "row_weighted_across_observed_product_date_step_targets"
+    && (metrics.within_10_sample_count ?? 0) >= 30
+    && value != null && Number.isFinite(value) && value >= 0 && value <= 100
     ? value : null;
 }
 
@@ -250,6 +387,7 @@ export interface ForecastStatus {
   rowCount: number;
   metrics: ForecastQualityMetrics | null;
   modelMetrics?: ForecastQualityMetrics | null;
+  historicalAccuracy?: HistoricalForecastAccuracy | null;
 }
 
 export function formatRelativeAge(timestamp: string | null | undefined, locale = "en", now = Date.now()) {
@@ -311,15 +449,81 @@ export interface NewsArticle {
   effectMagnitude?: string;
 }
 
+const PRICE_IMPACT_NEWS_EVENT_TYPES = new Set([
+  "supply_shock",
+  "demand_spike",
+  "policy_change",
+  "import_export",
+  "price_movement",
+  "weather",
+  "fuel_energy",
+]);
+
+function normalizeNewsEventType(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+/** Only surface news tied to an identified food product and market driver. */
+export function isPriceImpactNews(article: Pick<NewsArticle, "category" | "affectedProducts">): boolean {
+  const eventType = normalizeNewsEventType(article.category);
+  return PRICE_IMPACT_NEWS_EVENT_TYPES.has(eventType)
+    && Array.isArray(article.affectedProducts)
+    && article.affectedProducts.some(product => typeof product === "string" && product.trim().length > 0);
+}
+
+export function decodeNewsKeyword(keyword: string): string {
+  try {
+    return decodeURIComponent(keyword);
+  } catch {
+    return keyword;
+  }
+}
+
+function getNewsExcerpt(content: string | null | undefined): string {
+  if (!content) return "";
+  return content.length > 150 ? `${content.substring(0, 150).trimEnd()}...` : content;
+}
+
 export function formatNewsPublicationDate(
   publishedAt: string | null,
   publishedDate: string | null,
   precision: string | null,
+  sourceUrl?: string | null,
 ): string {
   const sourceDate = precision === "date" ? publishedDate
     : precision === "timestamp" ? publishedAt : null;
-  if (!sourceDate) return "Publication date unavailable";
-  const dateValue = precision === "date" ? `${publishedDate}T12:00:00Z` : sourceDate;
+  let dateValue: string | null = null;
+  if (sourceDate) {
+    const candidate = precision === "date" ? `${publishedDate}T12:00:00Z` : sourceDate;
+    const parsed = new Date(candidate);
+    if (Number.isFinite(parsed.getTime())) dateValue = candidate;
+  }
+
+  // The repository's source-date extractor treats YYYY/M/D URL path segments
+  // as publication-date evidence. Use the same source when row metadata is absent.
+  if (!dateValue && sourceUrl) {
+    try {
+      const parsedUrl = new URL(sourceUrl);
+      if (parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:") {
+        const match = parsedUrl.pathname.match(/\/(\d{4})\/(\d{1,2})\/(\d{1,2})(?:\/|$)/);
+        if (match) {
+          const year = match[1];
+          const month = match[2].padStart(2, "0");
+          const day = match[3].padStart(2, "0");
+          const dateOnly = `${year}-${month}-${day}`;
+          const candidate = `${dateOnly}T12:00:00Z`;
+          const parsed = new Date(candidate);
+          if (Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === dateOnly) {
+            dateValue = candidate;
+          }
+        }
+      }
+    } catch {
+      // Ignore malformed source URLs and keep the unavailable state.
+    }
+  }
+
+  if (!dateValue) return "Publication date unavailable";
   const parsed = new Date(dateValue);
   if (!Number.isFinite(parsed.getTime())) return "Publication date unavailable";
   return parsed.toLocaleDateString("en-US", {
@@ -355,7 +559,8 @@ const EDGE_FN_BASE = `${SUPABASE_URL}/functions/v1/foodcast`;
 const memoryCache: Record<string, { data: any; expiry: number }> = {};
 const pendingRequests = new Map<string, Promise<unknown>>();
 
-const CACHE_VERSION = "v7_forecast_cadence";
+// Invalidate payloads cached before weekly/monthly rows were published.
+const CACHE_VERSION = "v8_saved_period_forecasts";
 const LOCAL_CACHE_PREFIX = `foodcast_cache_${CACHE_VERSION}_`;
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour persistent cache
 
@@ -543,6 +748,17 @@ export async function fetchProducts(): Promise<Product[]> {
   return edgeFetch<Product[]>("products");
 }
 
+export async function fetchProductPriceHistory(product: Pick<Product, "name" | "variant" | "origin" | "category" | "unit">): Promise<ForecastDataPoint[]> {
+  const query = new URLSearchParams({
+    name: product.name,
+    variant: product.variant,
+    origin: product.origin,
+    category: product.category,
+    unit: product.unit,
+  });
+  return edgeFetch<ForecastDataPoint[]>(`product-history?${query.toString()}`);
+}
+
 // Comparison prices should reflect the current database/forecast state, not
 // the page's ISR payload or the one-hour browser cache.
 export async function fetchLiveProducts(): Promise<Product[]> {
@@ -608,7 +824,18 @@ export async function fetchTrendingInteractions(): Promise<Record<string, number
 
 export async function fetchNews(limit = 10): Promise<NewsArticle[]> {
   try {
-    return await edgeFetch<NewsArticle[]>(`news?limit=${limit}`);
+    // Fetch extra rows so older deployments that haven't filtered at the API
+    // still leave enough relevant articles after this client-side safety gate.
+    const articles = await edgeFetch<NewsArticle[]>(`news?limit=${Math.max(limit * 4, limit)}`);
+    return articles.map(article => ({
+      ...article,
+      excerpt: getNewsExcerpt(article.content),
+      date: !article.date || article.date === "Publication date unavailable"
+        ? formatNewsPublicationDate(null, null, "unknown", article.url)
+        : article.date,
+      // The edge response uses this image only when the source supplied none.
+      image: article.image === "/news/market.png" ? "" : article.image || "",
+    })).filter(isPriceImpactNews).slice(0, limit);
   } catch (e) {
     console.error("Error fetching news:", e);
     return [];
@@ -648,7 +875,9 @@ export async function fetchNewsCategories(): Promise<string[]> {
     
     // The Edge Function returns the raw DB keys (e.g. 'policy_change')
     // We filter out "All", format the rest, and prepend "All" again
-    const uniqueTypes = rawCategories.filter(c => c !== "All");
+    const uniqueTypes = rawCategories.filter(c =>
+      c !== "All" && PRICE_IMPACT_NEWS_EVENT_TYPES.has(normalizeNewsEventType(c))
+    );
     const labels = uniqueTypes.map(formatEventType).sort();
     return ["All", ...labels];
   } catch (e) {
@@ -671,48 +900,83 @@ export async function fetchPaginatedNews(
 ): Promise<{ data: NewsArticle[], total: number }> {
   try {
     const { supabase } = await import("../../lib/supabase");
-    let query = supabase.from("news_articles").select("id, title, title_tl, content, content_tl, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products", { count: "exact" });
+    const fetchRows = async (withPublicationMetadata: boolean) => {
+      let query = supabase.from("news_articles").select(
+        withPublicationMetadata
+          ? "id, title, title_tl, content, content_tl, event_type, published_at, published_date, publication_precision, image_url, url, source, sentiment_score, keywords, affected_products"
+          : "id, title, title_tl, content, content_tl, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products",
+        { count: "exact" }
+      );
 
-    if (search) {
-      query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%,source.ilike.%${search}%`);
-    }
-    if (category && category !== "All") {
-      query = query.eq("event_type", category);
-    }
-    if (dateFilter === "Today") {
-      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      query = query.gte("published_at", yesterday);
-    } else if (dateFilter === "Recent") {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      query = query.gte("published_at", thirtyDaysAgo.toISOString());
-    }
+      // The scraper records affected_products only when an article has a
+      // supported, concrete food-market impact. Hide unrelated legacy rows too.
+      query = query
+        .in("event_type", Array.from(PRICE_IMPACT_NEWS_EVENT_TYPES))
+        .not("affected_products", "is", null)
+        .neq("affected_products", "{}");
 
-    const { data, count, error } = await query
-      .order("published_at", { ascending: false })
-      .range(start, start + limit - 1);
+      if (search) {
+        query = query.or(`title.ilike.%${search}%,content.ilike.%${search}%,source.ilike.%${search}%`);
+      }
+      if (category && category !== "All") {
+        query = query.eq("event_type", category);
+      }
+      if (dateFilter === "Today") {
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        query = query.gte("published_at", yesterday);
+      } else if (dateFilter === "Recent") {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        query = query.gte("published_at", thirtyDaysAgo.toISOString());
+      }
+
+      return query.order("published_at", { ascending: false }).range(start, start + limit - 1);
+    };
+
+    let result = await fetchRows(true);
+    if (result.error?.code === "42703" && /published_date|publication_precision/.test(result.error.message)) {
+      result = await fetchRows(false);
+    }
+    const { data, count, error } = result;
 
     if (error) {
       console.error("Error fetching paginated news:", error);
       return { data: [], total: 0 };
     }
 
-    const articles = (data || []).map(article => ({
+    type NewsRow = {
+      id: string;
+      title: string;
+      title_tl: string | null;
+      content: string | null;
+      content_tl: string | null;
+      event_type: string | null;
+      published_at: string | null;
+      published_date?: string | null;
+      publication_precision?: string | null;
+      image_url: string | null;
+      url: string;
+      source: string;
+      sentiment_score: number | null;
+      keywords: string[] | null;
+      affected_products: string[] | null;
+    };
+    const articles = ((data || []) as unknown as NewsRow[]).map(article => ({
       id: article.id,
       title: article.title,
-      title_tl: article.title_tl,
-      excerpt: article.content ? (article.content.substring(0, 150) + "...") : "",
+      title_tl: article.title_tl || undefined,
+      excerpt: getNewsExcerpt(article.content),
       content: article.content || "",
       content_tl: article.content_tl || "",
       category: (article.event_type || "News").replace(/_/g, ' '),
-      date: formatNewsPublicationDate(article.published_at, null, null),
-      image: article.image_url || "/news/market.png",
-      url: article.url,
-      source: article.source,
-      sentimentScore: article.sentiment_score,
+      date: formatNewsPublicationDate(article.published_at ?? null, article.published_date ?? null, article.publication_precision ?? null, article.url),
+      image: article.image_url || "",
+      url: article.url || "",
+      source: article.source || "",
+      sentimentScore: article.sentiment_score ?? undefined,
       keywords: article.keywords || [],
       affectedProducts: article.affected_products || [],
-    }));
+    })).filter(isPriceImpactNews);
 
     return { data: articles, total: count || 0 };
   } catch (e) {

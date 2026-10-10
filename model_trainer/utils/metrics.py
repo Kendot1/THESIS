@@ -45,10 +45,20 @@ def compute_directional_accuracy(y_true, y_pred, anchors):
 
 def compute_all_metrics(y_true, y_pred, anchors=None):
     a, p = _aligned(y_true, y_pred)
+    percentage_rows = np.abs(a) >= 1e-8
+    percentage_errors = np.abs((a[percentage_rows] - p[percentage_rows])
+                               / a[percentage_rows])
+    within_10_count = int(np.count_nonzero(percentage_errors <= .10))
     result = {'mae': compute_mae(a,p), 'rmse': compute_rmse(a,p),
               'mape': compute_mape(a,p), 'r2': compute_r2(a,p), 'n': len(a),
               'prediction_success': float(np.mean(abs(a-p)/abs(a) <= SUCCESS_TOLERANCE)),
-              'success_tolerance': SUCCESS_TOLERANCE}
+              'success_tolerance': SUCCESS_TOLERANCE,
+              'within_10_count': within_10_count,
+              'within_10_accuracy_pct': (
+                  within_10_count * 100 / len(percentage_errors)
+                  if len(percentage_errors) else None),
+              'within_10_sample_count': int(len(percentage_errors)),
+              'within_10_excluded_near_zero': int(len(a) - len(percentage_errors))}
     if anchors is not None:
         result['directional_accuracy'] = compute_directional_accuracy(a,p,anchors)
     return result

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { fetchProducts, fetchNews, Product, NewsArticle, DashboardProduct, ForecastStatus } from "./data";
+import { fetchProducts, fetchNews, isPriceImpactNews, Product, NewsArticle, DashboardProduct, ForecastStatus } from "./data";
 
 const LOCAL_CACHE_PREFIX = "foodcast_cache_";
 
@@ -80,12 +80,14 @@ export function useClock(interval = 60_000) {
 }
 
 export function useNews(limit = 10, fallbackData?: NewsArticle[]) {
-  return useSWR<NewsArticle[]>(`supabase_news_${limit}`, () => fetchNews(limit), {
+  const cachedNews = fallbackData || getSyncCache<NewsArticle[]>(`news?limit=${limit}`);
+  const result = useSWR<NewsArticle[]>(`supabase_news_${limit}`, () => fetchNews(limit), {
     revalidateOnFocus: false,
     revalidateIfStale: false,
     dedupingInterval: 5 * 60 * 1000,
-    fallbackData: fallbackData || getSyncCache<NewsArticle[]>(`news?limit=${limit}`),
+    fallbackData: cachedNews?.filter(isPriceImpactNews),
   });
+  return { ...result, data: result.data?.filter(isPriceImpactNews) };
 }
 
 import { fetchTrendingInteractions } from "./data";

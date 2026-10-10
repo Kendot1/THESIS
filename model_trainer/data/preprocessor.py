@@ -26,6 +26,81 @@ def source_date(source):
 class DataPreprocessor:
     REQUIRED_COLUMNS = SERIES_KEY + ['report_date', 'price_index']
 
+    @staticmethod
+    def source_target_availability(clean, available_through):
+        """Apply the report-date availability assumption to observed labels."""
+        try:
+            cutoff = pd.Timestamp(available_through)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Availability cutoff must be an ISO timestamp") from exc
+        if cutoff.tzinfo is None:
+            raise ValueError("Availability cutoff must include a timezone")
+        cutoff = cutoff.tz_convert("UTC")
+        cutoff_date = cutoff.tz_convert("Asia/Manila").date()
+
+        observed = clean.get("is_observed", pd.Series(False, index=clean.index))
+        observed = observed.fillna(False).astype(bool)
+        total_observed = int(observed.sum())
+        dates = pd.to_datetime(clean.get(
+            "report_date", pd.Series(pd.NaT, index=clean.index)), errors="coerce")
+        in_date_scope = dates.dt.date <= cutoff_date
+        eligible = observed & in_date_scope
+        mask = eligible.rename("report_date_label_available")
+        audit = {
+            "status": "report_date_based",
+            "availability_assumption": "available_by_end_of_report_date_in_Asia/Manila",
+            "fit_availability_cutoff_utc": cutoff.isoformat(timespec="microseconds"),
+            "fit_report_date_cutoff_manila": cutoff_date.isoformat(),
+            "observed_training_labels": total_observed,
+            "labels_with_report_date": int((observed & dates.notna()).sum()),
+            "labels_available_by_fit_cutoff": int(eligible.sum()),
+            "labels_without_report_date": int((observed & dates.isna()).sum()),
+            "labels_after_fit_cutoff": int((observed & dates.notna() & ~in_date_scope).sum()),
+            "coverage": float(eligible.sum() / total_observed) if total_observed else None,
+        }
+        return mask, audit
+
+    @staticmethod
+    def source_input_view(clean, available_through):
+        """Rebuild causal inputs using report dates through the origin-day cutoff.
+
+        The returned frame keeps ``observed_price`` and ``is_observed`` as truth
+        labels. Only ``price_index`` is masked and forward-filled for features.
+        Prices are assumed to be available by the end of their report date.
+        """
+        required = {"report_date", "is_observed", "observed_price"}
+        if not required.issubset(clean.columns):
+            raise ValueError("As-of price inputs require report dates and observed labels")
+        try:
+            cutoff = pd.Timestamp(available_through)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Availability cutoff must be an ISO timestamp") from exc
+        if cutoff.tzinfo is None:
+            raise ValueError("Availability cutoff must include a timezone")
+        cutoff = cutoff.tz_convert("UTC")
+
+        view = clean.sort_values(SERIES_KEY + ["report_date"]).reset_index(drop=True).copy()
+        cutoff_date = cutoff.tz_convert("Asia/Manila").date()
+        report_dates = pd.to_datetime(view.report_date, errors="coerce")
+        view = view.loc[report_dates.dt.date <= cutoff_date].copy().reset_index(drop=True)
+        report_date_excluded = int(len(clean) - len(view))
+        observed = view.is_observed.fillna(False).astype(bool)
+        available = observed & pd.to_numeric(view.observed_price, errors="coerce").notna()
+
+        view["price_index"] = pd.to_numeric(view.observed_price, errors="coerce").where(available)
+        view["price_index"] = view.groupby(SERIES_KEY, sort=False)["price_index"].ffill(
+            limit=get_settings().max_fill_days)
+        audit = {
+            "report_date_as_of_utc": cutoff.isoformat(timespec="microseconds"),
+            "report_date_cutoff_manila": cutoff_date.isoformat(),
+            "rows_after_report_date_cutoff": report_date_excluded,
+            "observed_rows": int(observed.sum()),
+            "observations_available_by_cutoff": int(available.sum()),
+            "observed_rows_excluded": int(observed.sum() - available.sum()),
+            "input_price_rows_after_causal_fill": int(view.price_index.notna().sum()),
+        }
+        return view, audit
+
     def validate(self, df):
         missing = set(self.REQUIRED_COLUMNS) - set(df.columns)
         if missing:

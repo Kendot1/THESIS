@@ -7,7 +7,11 @@ Stage new bundles with `activate=False`, then evaluate them independently before
 requesting activation. Reading an existing legacy active bundle remains possible;
 this compatibility is not a retrospective certification of its accuracy.
 
-## Admission policy version 1
+## Admission policy version 2
+
+Policy version 1 evidence does not qualify under version 2. Existing prospective
+contracts must not be retagged or rewritten; the new checks apply to a newly
+selected model and its own forecasts frozen before their target dates.
 
 The policy is an operational threshold, not a statistical theorem. Record its
 version at selection, before final forecasts are frozen.
@@ -18,12 +22,13 @@ version at selection, before final forecasts are frozen.
 - Model creation precedes selection; selection precedes freeze; review follows
   final scoring. Every timestamp includes a timezone.
 - Matched validation forecasts finish before selection and the holdout. Recompute
-  all three errors against champion and persistence on identical rows. Require
-  strict aggregate improvement on each metric and improvement on all metrics at
-  at least two thirds of at least three validation origins.
+  Within-10 accuracy and MAE, RMSE, and MAPE against champion and persistence on
+  identical rows. Require strict aggregate improvement on all four metrics and
+  improvement on all four at at least two thirds of at least three origins.
 - A closed, fully reconciled final period with scores recomputed by
-  `frozen_holdout.score`. Require MAE <= 5, RMSE <= 5 and MAPE <= 5%, full declared
-  scope under the scorer's observed-label rules, and strict improvement over
+  `frozen_holdout.score`. Require Within-10 >= 90%, MAE <= PHP 5, RMSE <= PHP 5,
+  MAPE <= 5%, full declared scope under the scorer's observed-label rules, and
+  no Within-10 regression plus strict improvement on all three errors over
   matched persistence. The saved score report must reproduce exactly apart from
   the scoring clock field.
 - Identified reviewer attests to checking selection provenance, actual-source
@@ -49,7 +54,7 @@ Keep these files and their referenced data within one evidence directory:
 
 ```json
 {
-  "promotion_policy_version": 1,
+  "promotion_policy_version": 2,
   "model_run_id": "<exact bundle directory name>",
   "model_metadata_sha256": "<finalized metadata digest>",
   "selected_at": "<actual timezone-aware selection timestamp>",
@@ -71,7 +76,7 @@ Keep these files and their referenced data within one evidence directory:
 ```json
 {
   "schema_version": 1,
-  "promotion_policy_version": 1,
+  "promotion_policy_version": 2,
   "model_run_id": "<exact bundle directory name>",
   "reviewed_by": "<identified reviewer>",
   "reviewed_at": "<actual timezone-aware review timestamp>",

@@ -1,20 +1,27 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Search, Menu, X, ChevronDown, Globe } from "lucide-react";
+import { Menu, X, Globe } from "lucide-react";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 
 export default function Header() {
   const { language, setLanguage, t, isTransitioning } = useLanguage();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const pathname = usePathname();
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-
+  const normalizedPathname = pathname.replace(/\/$/, "").toLowerCase() || "/";
+  const isPredictSection = normalizedPathname === "/predict"
+    || normalizedPathname === "/marketdata"
+    || normalizedPathname.startsWith("/product/");
+  const isNewsSection = normalizedPathname === "/news"
+    || normalizedPathname.startsWith("/tags/");
+  const isActiveLink = (href: string) => {
+    if (href === "/Predict") return isPredictSection;
+    if (href === "/News") return isNewsSection;
+    return normalizedPathname === href.toLowerCase();
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 30);
@@ -24,38 +31,16 @@ export default function Header() {
 
   useEffect(() => {
     setMobileOpen(false);
-    setOpenDropdown(null);
   }, [pathname]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdown(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const links = [
     { href: "/", label: t("home") },
     { href: "/Predict", label: t("predict") },
-    { href: "/MarketData", label: t("marketData") },
     { href: "/News", label: t("news") },
-    {
-      label: t("more"),
-      dropdown: [
-        { href: "/Map", label: t("marketMap") },
-        { href: "/About", label: t("aboutProject") },
-        { href: "/Resources", label: t("resources") },
-      ]
-    },
+    { href: "/Map", label: t("marketMap") },
+    { href: "/About", label: t("about") },
+    { href: "/Resources", label: t("resources") },
   ];
-
-  const toggleDropdown = (label: string) => {
-    setOpenDropdown(openDropdown === label ? null : label);
-  };
 
   // --- Skeleton for language transition ---
   if (isTransitioning) {
@@ -105,64 +90,11 @@ export default function Header() {
           </Link>
 
           {/* RIGHT SIDE: Desktop Links + Mobile Toggle */}
-          <div className="flex items-center gap-6" ref={dropdownRef}>
+          <div className="flex items-center gap-6">
             {/* Desktop Nav */}
             <ul className="hidden md:flex items-center gap-4">
               {links.map((link) => {
-                const isActive =
-                  pathname === link.href ||
-                  (link.dropdown && link.dropdown.some(d => d.href === pathname)) ||
-                  (link.href === "/MarketData" && pathname.startsWith("/Product"));
-
-                const isDropdownOpen = openDropdown === link.label;
-
-                if (link.dropdown) {
-                  return (
-                    <li
-                      key={link.label}
-                      className="relative group/dropdown"
-                      onMouseEnter={() => setOpenDropdown(link.label)}
-                      onMouseLeave={() => setOpenDropdown(null)}
-                    >
-                      <button
-                        onClick={() => toggleDropdown(link.label)}
-                        className={`
-                          relative px-4 py-2 rounded-2xl text-sm font-medium flex items-center gap-1.5 
-                          transition-all duration-300
-                          ${isActive || isDropdownOpen ? "text-primary-800" : "text-gray-700 hover:text-primary-800"}
-                        `}
-                        aria-haspopup="true"
-                        aria-expanded={isDropdownOpen}
-                      >
-                        {link.label}
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-300 ${isDropdownOpen ? "rotate-180" : ""}`} />
-                        {(isActive || isDropdownOpen) && (
-                          <span className="absolute left-0 bottom-0 w-full h-[3px] bg-orange-dark scale-x-100 origin-left transition-transform duration-300" />
-                        )}
-                      </button>
-
-                      {/* Dropdown Menu */}
-                      <div
-                        className={`absolute top-full left-0 pt-3 w-48 transition-all duration-300 z-50
-                          ${isDropdownOpen ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 translate-y-2 pointer-events-none"}
-                        `}
-                      >
-                        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 py-2 overflow-hidden">
-                          {link.dropdown.map((sub) => (
-                            <Link
-                              key={sub.href}
-                              href={sub.href}
-                              className={`block px-5 py-2.5 text-sm font-medium transition-colors hover:bg-gray-50
-                                ${pathname === sub.href ? "text-primary-800 bg-primary-50/50" : "text-gray-600 hover:text-primary-800"}`}
-                            >
-                              {sub.label}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                }
+                const isActive = isActiveLink(link.href);
 
                 return (
                   <li key={link.href}>
@@ -241,33 +173,7 @@ export default function Header() {
           <div className="pt-4 pb-10 px-4">
             <ul className="flex flex-col gap-3 items-center justify-center">
               {links.map((link, i) => {
-                const isActive =
-                  pathname === link.href ||
-                  (link.dropdown && link.dropdown.some(d => d.href === pathname)) ||
-                  (link.href === "/MarketData" && pathname.startsWith("/Product"));
-
-                if (link.dropdown) {
-                  return (
-                    <li key={link.label} className="w-full max-w-[280px] bg-white/40 rounded-3xl p-2 border border-black/5">
-                      <div className="flex flex-col items-center">
-
-                        <div className="flex flex-col gap-2 w-full mt-1">
-                          {link.dropdown.map((sub) => (
-                            <Link
-                              key={sub.href}
-                              href={sub.href}
-                              onClick={() => setMobileOpen(false)}
-                              className={`px-5 py-3 rounded-2xl text-sm font-medium text-center transition-all duration-300
-                                ${pathname === sub.href ? "bg-primary-100/50 text-primary-900" : "text-gray-600 hover:bg-gray-50"}`}
-                            >
-                              {sub.label}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    </li>
-                  );
-                }
+                const isActive = isActiveLink(link.href);
 
                 return (
                   <li key={link.href} role="none" className="w-full max-w-[280px]">

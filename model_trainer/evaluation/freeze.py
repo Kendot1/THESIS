@@ -90,7 +90,7 @@ def freeze(output, through):
         "model_metadata_sha256": digest(run_dir / "metadata.json"),
         "model_bundle_sha256": bundle_hashes,
         "declared_series": identities,
-        "decision": "Retain incumbent: development replacements do not consistently improve all three metrics. No holdout outcome used for selection.",
+        "decision": "Retain incumbent: development replacements do not consistently improve Within-10 and all three error metrics. No holdout outcome used for selection.",
         "input_cutoff": through, "forecast_origin": issue_day.isoformat(),
         "max_fill_days": cfg.max_fill_days,
         "missing_history_policy": "Retain unsupported series in the contract as skipped; no invented price, fallback model, or coverage removal.",
@@ -123,16 +123,15 @@ def freeze(output, through):
         raise ValueError("Forecast output count changed")
     rows = []
     for series, path in zip(series_ids, paths):
-        if not all(len(values) == 30 for values in (path.dates, path.point, path.lower, path.upper)):
+        if not all(len(values) == 30 for values in (path.dates, path.point)):
             raise ValueError("Incomplete forecast path")
         for step in range(30):
             rows.append({"series": series, "origin": issue_day.isoformat(),
                          "target_date": pd.Timestamp(path.dates[step]).date().isoformat(),
                          "horizon": step + 1, "anchor": float(path.anchor),
-                         "prediction": float(path.point[step]),
-                         "lower_80": float(path.lower[step]), "upper_80": float(path.upper[step])})
+                         "prediction": float(path.point[step])})
     frame = pd.DataFrame(rows)
-    if not np.isfinite(frame[["anchor", "prediction", "lower_80", "upper_80"]]).all().all():
+    if not np.isfinite(frame[["anchor", "prediction"]]).all().all():
         raise ValueError("Nonfinite predictions")
     if any(digest(run_dir / name) != value for name, value in bundle_hashes.items()):
         raise ValueError("Model weights changed during forecasting")

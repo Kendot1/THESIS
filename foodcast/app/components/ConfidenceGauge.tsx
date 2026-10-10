@@ -97,7 +97,7 @@ export default function ConfidenceGauge({
             className={`font-black ${text} leading-none`}
             style={{ fontSize: isBadge ? size * 0.22 : size * 0.24 }}
           >
-            {hasData ? `${pct.toFixed(0)}%` : "—"}
+            {hasData ? `${pct.toFixed(1)}%` : "—"}
           </span>
         </div>
       </div>

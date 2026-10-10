@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Calendar, ArrowRight, Tag, X, ExternalLink, Clock } from "lucide-react";
 import { useLanguage } from "../lib/i18n/LanguageContext";
+import { getNewsTagKeywords } from "../lib/tags";
 
 interface NewsCardProps {
   id: string;
@@ -21,12 +22,14 @@ interface NewsCardProps {
   sentimentScore?: number;
   keywords?: string[];
   affectedProducts?: string[];
+  _compact?: boolean;
 }
 
-const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, source, content, content_tl, sentimentScore, keywords, affectedProducts }: NewsCardProps) => {
+const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, source, content, content_tl, sentimentScore, keywords, affectedProducts, _compact = false }: NewsCardProps) => {
   const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [failedImage, setFailedImage] = useState<string | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -54,65 +57,92 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
     }
   }, [isOpen, handleKeyDown]);
 
-  const displayTitle = language === "tl" && title_tl ? title_tl : title;
+  const displayTitle = (language === "tl" && title_tl ? title_tl : title) || t("titleUnavailable");
   const displayContent = language === "tl" && content_tl ? content_tl : content;
-  const displayExcerpt = language === "tl" && content_tl ? (content_tl.substring(0, 150) + "...") : excerpt;
+  const displayExcerpt = (language === "tl" && content_tl
+    ? content_tl.length > 150 ? `${content_tl.substring(0, 150).trimEnd()}...` : content_tl
+    : excerpt) || t("descriptionUnavailable");
 
   const fullContent = displayContent || displayExcerpt;
+  const hasImage = Boolean(image) && failedImage !== image;
+  const displayDate = !date || date === "Publication date unavailable" ? t("publicationDateUnavailable") : date;
+  const relatedKeywords = getNewsTagKeywords({ keywords });
 
   return (
     <>
       {/* Card */}
       <div
         onClick={() => setIsOpen(true)}
-        className="group bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm 
-        hover:shadow-xl transition-all duration-500 flex flex-col h-full cursor-pointer"
+        className={`group bg-white overflow-hidden cursor-pointer ${_compact
+          ? "flex h-full w-full flex-row-reverse items-center gap-3 px-4 py-3 transition-all duration-300"
+          : "rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500 flex flex-col h-full"
+          }`}
       >
         {/* Image Container */}
-        <div className="relative h-48 overflow-hidden">
-          <Image
-            src={image}
-            alt={displayTitle}
-            fill
-            className="object-cover transition-transform duration-700 group-hover:scale-110"
-          />
-          <div className="absolute top-4 left-4 flex gap-2">
-            <span className="px-3 py-1 bg-white/95 rounded-full text-[10px] font-bold text-primary-800 uppercase tracking-wider flex items-center gap-1.5 shadow-sm capitalize">
-              <Tag className="w-3 h-3" />
-              {t(category)}
-            </span>
-          </div>
+        <div className={`relative overflow-hidden bg-gray-100 shrink-0 ${_compact ? "w-16 h-16 rounded-lg" : "h-48"}`}>
+          {hasImage ? (
+            <Image
+              src={image}
+              alt={displayTitle}
+              fill
+              onError={() => setFailedImage(image)}
+              className="object-cover transition-transform duration-700 group-hover:scale-110"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-400">{t("imageUnavailable")}</div>
+          )}
         </div>
 
         {/* Content */}
-        <div className="p-6 flex flex-col flex-1">
-          <div className="flex items-center gap-2 text-gray-400 text-[10px] font-medium mb-3">
-            <Calendar className="w-3 h-3" />
-            {date}
+        <div className={`min-w-0 flex flex-col flex-1 ${_compact ? "py-0" : "p-6"}`}>
+          <div className={`flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-400 text-[10px] font-medium ${_compact ? "mb-1" : "mb-3"}`}>
+            <span className={`inline-flex max-w-full items-center gap-1 font-bold uppercase text-primary-800 ${_compact
+              ? "text-[9px] tracking-[0.12em]"
+              : "rounded-full bg-gray-50 px-2 py-0.5 tracking-wide"
+              }`}>
+              {!_compact && <Tag className="w-2.5 h-2.5 shrink-0" />}
+              <span className="truncate">{t(category)}</span>
+            </span>
+            {!_compact && (
+              <span className="inline-flex min-w-0 items-center gap-1">
+                <Calendar className="w-3 h-3 shrink-0" />
+                <span className="truncate">{displayDate}</span>
+              </span>
+            )}
           </div>
 
-          <h3 className="text-lg font-bold text-gray-900 mb-3 leading-tight group-hover:text-primary-800 transition-colors line-clamp-2">
+          <h3 className={`${_compact ? "text-[13px] mb-1" : "text-lg mb-3"} font-bold text-gray-900 leading-tight group-hover:text-primary-800 transition-colors line-clamp-2`}>
             {displayTitle}
           </h3>
 
-          <p className="text-gray-500 text-xs sm:text-sm mb-6 line-clamp-3 leading-relaxed">
-            {displayExcerpt}
-          </p>
+          {!_compact && (
+            <p className="text-gray-500 text-xs sm:text-sm mb-6 line-clamp-3 leading-relaxed">
+              {displayExcerpt}
+            </p>
+          )}
 
-          <div className="mt-auto flex items-center justify-between">
-            <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
-              {source || t("marketNews")}
-            </div>
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-2 text-xs font-bold text-primary-700 hover:text-primary-900 transition-colors group/link z-10"
-            >
-              {t("readMore")}
-              <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/link:translate-x-1" />
-            </a>
+          <div className={`mt-auto flex items-center justify-between ${_compact ? "gap-2 pt-1" : ""}`}>
+            {_compact ? (
+              <div className="min-w-0 truncate text-[9px] font-medium text-gray-400">
+                {source || t("marketNews")} · {displayDate}
+              </div>
+            ) : (
+              <>
+                <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
+                  {source || t("marketNews")}
+                </div>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center font-bold text-primary-700 hover:text-primary-900 transition-colors group/link z-10 gap-2 text-xs"
+                >
+                  {t("readMore")}
+                  <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover/link:translate-x-1" />
+                </a>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -133,29 +163,25 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
           >
             {/* Modal Header Image */}
             <div className="relative h-56 sm:h-64 flex-shrink-0 overflow-hidden">
-              <Image
-                src={image}
-                alt={displayTitle}
-                fill
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-
-              {/* Category & Date overlay */}
-              <div className="absolute bottom-5 left-6 right-6 flex items-center gap-3">
-                <span className="px-3 py-1.5 bg-black/40 rounded-full text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <Tag className="w-3 h-3" />
-                  {t(category)}
-                </span>
-                <span className="text-white/70 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
-                  <Clock className="w-3 h-3" />
-                  {date}
-                </span>
-              </div>
+              {hasImage ? (
+                <Image src={image} alt={displayTitle} fill onError={() => setFailedImage(image)} className="object-cover" />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-800 text-xs font-medium text-white">{t("imageUnavailable")}</div>
+              )}
             </div>
 
             {/* Modal Body */}
             <div className="p-6 sm:p-8 overflow-y-auto flex-1">
+              <div className="flex flex-wrap items-center gap-3 mb-3">
+                <span className="px-3 py-1 bg-gray-50 rounded-full text-[10px] font-bold text-primary-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Tag className="w-3 h-3" />
+                  {t(category)}
+                </span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Clock className="w-3 h-3" />
+                  {displayDate}
+                </span>
+              </div>
               <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-2 leading-tight" style={{ fontFamily: "var(--font-display)" }}>
                 {displayTitle}
               </h2>
@@ -174,7 +200,7 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
               </div>
 
               {/* Tags Section */}
-              {keywords && keywords.length > 0 && (() => {
+              {relatedKeywords.length > 0 && (() => {
                 const tagColors = [
                   "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
                   "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
@@ -192,8 +218,7 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
                       {t("relatedTags") || "Related Tags"}
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {keywords.map((rawKw, idx) => {
-                        const kw = decodeURIComponent(rawKw);
+                      {relatedKeywords.map((kw, idx) => {
                         return (
                           <Link
                             key={idx}

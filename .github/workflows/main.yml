@@ -17,6 +17,7 @@ jobs:
   scrape_da_prices:
     name: Scrape DA Historical Prices
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -30,6 +31,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: scraper/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -43,8 +45,8 @@ jobs:
     name: Scrape Market News
     runs-on: ubuntu-latest
     needs: scrape_da_prices
+    timeout-minutes: 60
     env:
-      CRAWL4_AI_BASE_DIRECTORY: ${{ runner.temp }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       GROQ_API_KEY_NEWS_SCRAPER: ${{ secrets.GROQ_API_KEY_NEWS_SCRAPER }}
@@ -58,21 +60,28 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: scraper/requirements.txt
 
       - name: Install dependencies
+        env:
+          CRAWL4_AI_BASE_DIRECTORY: ${{ runner.temp }}
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r scraper/requirements.txt
           crawl4ai-setup
 
       - name: Run News Scraper
+        env:
+          CRAWL4_AI_BASE_DIRECTORY: ${{ runner.temp }}
         run: python -m scraper.news_scraper
 
   train_model:
-    name: Daily Model Training
+    name: Train Candidate and Publish Forecasts
     runs-on: ubuntu-latest
-    needs: scrape_da_prices
-    timeout-minutes: 120
+    needs: [scrape_da_prices, scrape_news]
+    # News enriches training but is optional; only DA price scrape is required.
+    if: ${{ always() && needs.scrape_da_prices.result == 'success' }}
+    timeout-minutes: 360
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -81,6 +90,7 @@ jobs:
       CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
       CLOUDFLARE_R2_BUCKET_NAME: ${{ secrets.CLOUDFLARE_R2_BUCKET_NAME }}
       CLOUDFLARE_R2_PUBLIC_URL: ${{ secrets.CLOUDFLARE_R2_PUBLIC_URL }}
+      VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -90,6 +100,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: model_trainer/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -101,28 +112,47 @@ jobs:
         working-directory: model_trainer
         run: python main.py check
 
-      - name: Verify model pipeline
-        working-directory: model_trainer
-        run: python -m unittest discover -s tests -v
-
       - name: Restore active v2 model
         working-directory: model_trainer
         run: python -m utils.r2_sync download
 
-      - name: Train and evaluate candidate
-        working-directory: model_trainer
-        run: python main.py train --mode daily
+      - name: Set Manila report-date cutoff
+        id: cutoff
+        run: echo "date=$(TZ=Asia/Manila date +%F)" >> "$GITHUB_OUTPUT"
 
+      # Train a point-in-time candidate on the refreshed price history. Keep it
+      # staged until it has independent frozen-holdout evidence and review.
+      - name: Train and evaluate candidate
+        id: train_candidate
+        working-directory: model_trainer
+        shell: bash
+        run: |
+          set -o pipefail
+          python main.py train --mode full \
+            --through "${{ steps.cutoff.outputs.date }}" \
+            --report-date-as-of --no-activate \
+            --result-json candidate_training_result.json \
+            | tee candidate_training_output.log
+          run_id="$(python -c 'import json; print(json.load(open("candidate_training_result.json", encoding="utf-8"))["run_id"])')"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Archive trained candidate for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: foodcast-model-candidate-${{ steps.train_candidate.outputs.run_id }}
+          path: |
+            model_trainer/artifacts_v2/runs/${{ steps.train_candidate.outputs.run_id }}
+            model_trainer/candidate_training_result.json
+            model_trainer/candidate_training_output.log
+          if-no-files-found: error
+          retention-days: 30
+
+      # Publish with the reviewed active bundle. Candidate promotion remains
+      # behind the independent holdout gate in the model pipeline.
       - name: Publish forecasts and measured model capability
         working-directory: model_trainer
         run: python main.py predict --horizon monthly
 
-      - name: Persist active v2 model
-        working-directory: model_trainer
-        run: python -m utils.r2_sync upload
-
       - name: Trigger Vercel Rebuild
         if: env.VERCEL_DEPLOY_HOOK_URL != ''
         run: curl --fail --silent --show-error -X POST "$VERCEL_DEPLOY_HOOK_URL"
-        env:
-          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}

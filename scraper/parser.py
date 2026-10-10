@@ -10,7 +10,6 @@ YELLOW_TABLE_KEYWORDS = [
     "Retail Price of Selected Agri-fishery Commodities at NCR Markets",
     "Retail Price of Selected Agri-fishery Commodities"
 ]
-
 def parse_pdf(url):
     """
     Extract yellow table from PDF and send to AI parser for accurate extraction

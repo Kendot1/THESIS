@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowRightLeft,
-  Sparkles,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -35,7 +34,7 @@ const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
 import ProductCard from "../components/ProductCard";
 import ScrollReveal from "../components/ScrollReveal";
 import ConfidenceGauge from "../components/ConfidenceGauge";
-import { Product as ProductType, fetchNews, DEFAULT_PRODUCT_IMAGE, formatRelativeAge, formatScheduledDaRefreshAge, ForecastHorizon, productHorizonConfidence } from "../lib/data";
+import { Product as ProductType, ForecastDataPoint, fetchNews, fetchProductPriceHistory, DEFAULT_PRODUCT_IMAGE, formatRelativeAge, formatScheduledDaRefreshAge, ForecastHorizon, forecastHorizonPoints, productValidationReliability } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { useClock, useForecastStatus, useProducts, useNews } from "../lib/hooks";
 import { encryptId, decryptId } from "../../lib/idCipher";
@@ -217,7 +216,53 @@ export default function Product({
       .slice(0, 4);
   }, [product, variants, smartAlternatives, products]);
 
-  const [chartPeriod, setChartPeriod] = useState("Daily");
+  const [chartPeriod, setChartPeriod] = useState<ForecastHorizon>("daily");
+  const selectedHorizon = chartPeriod;
+  const [chartHistory, setChartHistory] = useState<{
+    productId: string;
+    points: ForecastDataPoint[];
+  } | null>(null);
+
+  useEffect(() => {
+    if (!product) return;
+
+    let cancelled = false;
+    const currentProductId = product.id;
+    fetchProductPriceHistory(product)
+      .then(points => {
+        if (!cancelled) setChartHistory({ productId: currentProductId, points });
+      })
+      .catch(error => {
+        if (!cancelled) console.error("Failed to fetch full product price history:", error);
+      });
+    return () => { cancelled = true; };
+  }, [product]);
+
+  const chartData = useMemo(() => {
+    if (!product) return [];
+    const historicalPoints = chartHistory?.productId === product.id ? chartHistory.points : [];
+    if (historicalPoints.length === 0) return product.forecastData;
+
+    const byPeriod = new Map<string, ForecastDataPoint>();
+    const keyFor = (point: ForecastDataPoint) => `${point.horizon ?? "daily"}:${point.date}`;
+    historicalPoints.forEach(point => byPeriod.set(keyFor(point), point));
+    product.forecastData.forEach(point => {
+      const key = keyFor(point);
+      const historyPoint = byPeriod.get(key);
+      byPeriod.set(key, {
+        ...(historyPoint ?? {}),
+        ...point,
+        actual: historyPoint?.actual ?? point.actual,
+        predicted: point.predicted ?? historyPoint?.predicted ?? null,
+      });
+    });
+
+    const horizonOrder: Record<ForecastHorizon, number> = { daily: 0, weekly: 1, monthly: 2 };
+    return [...byPeriod.values()].sort((left, right) =>
+      left.date.localeCompare(right.date)
+      || horizonOrder[left.horizon ?? "daily"] - horizonOrder[right.horizon ?? "daily"]);
+  }, [product, chartHistory]);
+
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isOriginDropdownOpen, setIsOriginDropdownOpen] = useState(false);
   const [forecastRange, setForecastRange] = useState<"3" | "7" | "month" | "all">("all");
@@ -244,6 +289,82 @@ export default function Product({
     }
     return forecasts;
   }, [product, forecastRange]);
+
+  const displayedForecasts = useMemo(() => {
+    if (!product) return [];
+    if (selectedHorizon !== "daily" && product.forecastSource !== "model") return [];
+
+    const forecasts = selectedHorizon === "daily"
+      ? filteredForecasts.map(forecast => ({
+        date: forecast.date,
+        predicted_price: forecast.predicted_price,
+        periodLabel: null as string | null,
+      }))
+      : forecastHorizonPoints(product.forecastData, product.forecastOriginDate, selectedHorizon)
+        .map(point => ({
+          date: point.date,
+          predicted_price: point.predicted!,
+          periodLabel: point.name.split(" · ")[0],
+        }));
+
+    forecasts.sort((left, right) => left.date.localeCompare(right.date));
+
+    // Compare each forecast with the latest earlier value at the same cadence.
+    // Actuals take precedence when an earlier predicted period has since been observed.
+    const valuesByDate = new Map<string, { date: string; actual: number | null; predicted: number | null }>();
+    const rememberValue = (date: string, actual: number | null, predicted: number | null) => {
+      if ((!Number.isFinite(actual) || actual == null) && (!Number.isFinite(predicted) || predicted == null)) return;
+      const existing = valuesByDate.get(date) ?? { date, actual: null, predicted: null };
+      if (actual != null && Number.isFinite(actual)) existing.actual = actual;
+      if (predicted != null && Number.isFinite(predicted)) existing.predicted = predicted;
+      valuesByDate.set(date, existing);
+    };
+    product.forecastData
+      .filter(point => point.horizon === selectedHorizon || (!point.horizon && selectedHorizon === "daily"))
+      .forEach(point => rememberValue(point.date, point.actual, point.predicted));
+    if (selectedHorizon === "daily" && product.lastActualDate) {
+      rememberValue(product.lastActualDate, product.currentPrice, null);
+    }
+    forecasts.forEach(forecast => rememberValue(forecast.date, null, forecast.predicted_price));
+    const periodValues = [...valuesByDate.values()].sort((left, right) => left.date.localeCompare(right.date));
+    const periodName = selectedHorizon === "daily" ? "day" : selectedHorizon === "weekly" ? "week" : "month";
+    const periodNameTl = selectedHorizon === "daily" ? "araw" : selectedHorizon === "weekly" ? "linggo" : "buwan";
+    let valueIndex = 0;
+    let previousValue: (typeof periodValues)[number] | null = null;
+
+    return forecasts.map(forecast => {
+      while (valueIndex < periodValues.length && periodValues[valueIndex].date < forecast.date) {
+        previousValue = periodValues[valueIndex];
+        valueIndex += 1;
+      }
+
+      const previousPrice = previousValue?.actual ?? previousValue?.predicted ?? null;
+      let reasoning: string;
+      if (previousPrice == null || !Number.isFinite(previousPrice) || previousPrice <= 0) {
+        reasoning = language === "tl"
+          ? "Wala pang naunang presyo para maikumpara rito."
+          : "There isn't an earlier price to compare with yet.";
+      } else {
+        const change = Number((forecast.predicted_price - previousPrice).toFixed(2));
+        const isRecordedValue = previousValue?.actual != null && Number.isFinite(previousValue.actual);
+        const previousDescription = language === "tl"
+          ? isRecordedValue ? "huling naitalang presyo" : `forecast para sa nakaraang ${periodNameTl}`
+          : isRecordedValue ? "last reported price" : `previous ${periodName}'s forecast`;
+
+        if (language === "tl") {
+          reasoning = change === 0
+            ? `Halos kapareho ito ng ${previousDescription} na ₱${previousPrice.toFixed(2)}.`
+            : `Mas ${change > 0 ? "mataas" : "mababa"} nang ₱${Math.abs(change).toFixed(2)} ang forecast na ito kumpara sa ${previousDescription} na ₱${previousPrice.toFixed(2)}.`;
+        } else {
+          reasoning = change === 0
+            ? `This is about the same as the ${previousDescription} of ₱${previousPrice.toFixed(2)}.`
+            : `This forecast is ₱${Math.abs(change).toFixed(2)} ${change > 0 ? "higher" : "lower"} than the ${previousDescription} of ₱${previousPrice.toFixed(2)}.`;
+        }
+      }
+
+      return { ...forecast, reasoning };
+    });
+  }, [product, selectedHorizon, filteredForecasts, language]);
 
   /* ─── Slider Logic (Predict style) ──────────── */
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -402,14 +523,42 @@ export default function Product({
     );
   }
 
-  const priceChange = product.predictedPrice - product.currentPrice;
   const combinedName = product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name;
-  const priceChangePercent =
-    ((priceChange) / product.currentPrice) * 100;
-  const isUp = priceChange >= 0;
+  const isUp = product.predictedPrice >= product.currentPrice;
   const hasModelForecast = product.forecastSource === "model";
-  const selectedHorizon = chartPeriod.toLowerCase() as ForecastHorizon;
-  const confidenceMetric = productHorizonConfidence(product, forecastStatus, selectedHorizon);
+  const horizonForecastPoints = forecastHorizonPoints(
+    product.forecastData,
+    product.forecastOriginDate,
+    selectedHorizon,
+  );
+  const weeklyForecastPoint = forecastHorizonPoints(
+    product.forecastData,
+    product.forecastOriginDate,
+    "weekly",
+  )[0];
+  const weeklyChangePercent = hasModelForecast
+    && Number.isFinite(product.currentPrice) && product.currentPrice > 0
+    && weeklyForecastPoint?.predicted != null && Number.isFinite(weeklyForecastPoint.predicted)
+    ? ((weeklyForecastPoint.predicted - product.currentPrice) / product.currentPrice) * 100
+    : null;
+  const weeklyChangeIsUp = weeklyChangePercent != null && weeklyChangePercent >= 0;
+  const firstDailyForecast = product.dailyForecast?.find(forecast =>
+    forecast.date > (product.lastActualDate ?? "")
+      && Number.isFinite(forecast.predicted_price)
+      && forecast.predicted_price > 0,
+  );
+  const outlookForecastPrice = selectedHorizon === "daily"
+    ? firstDailyForecast?.predicted_price ?? horizonForecastPoints[0]?.predicted ?? null
+    : horizonForecastPoints[0]?.predicted ?? null;
+  const outlookChangePercent = hasModelForecast
+    && Number.isFinite(product.currentPrice) && product.currentPrice > 0
+    && outlookForecastPrice != null && Number.isFinite(outlookForecastPrice)
+    ? ((outlookForecastPrice - product.currentPrice) / product.currentPrice) * 100
+    : null;
+  // Movements within one percent are presented as a stable outlook.
+  const outlookIsRising = outlookChangePercent != null && outlookChangePercent > 1;
+  const outlookIsFalling = outlookChangePercent != null && outlookChangePercent < -1;
+  const validationReliability = productValidationReliability(product, forecastStatus);
   const confidenceLevelKeys = {
     "Very High": "confidenceVeryHigh",
     High: "confidenceHigh",
@@ -418,12 +567,16 @@ export default function Product({
     "Very Low": "confidenceVeryLow",
     "Insufficient data": "confidenceInsufficientData",
   } as const;
-  const confidenceLabel = confidenceMetric
-    ? t(confidenceLevelKeys[confidenceMetric.confidence_level])
+  const confidenceScore = validationReliability?.confidence_score ?? null;
+  const confidenceLevel = validationReliability?.confidence_level ?? null;
+  const confidenceLabel = confidenceLevel
+    ? t(confidenceLevelKeys[confidenceLevel])
     : t("confidenceUnavailable");
   const dataUpdateAge = formatRelativeAge(forecastStatus?.generatedAt, language, now)
     ?? formatScheduledDaRefreshAge(language, now);
   const daProcessingStatus = `${forecastStatus?.generatedAt ? t("updatedPrefix") : t("scheduledRefresh")} ${dataUpdateAge}`;
+  const confidenceSublabel = validationReliability ? undefined : daProcessingStatus;
+  const confidenceTitle = confidenceScore != null ? t("confidenceBacktestTitle") : undefined;
 
   const sentimentIcon =
     product.sentiment === "Bullish" ? (
@@ -867,14 +1020,17 @@ export default function Product({
                         </p>
                       </div>
                       <div className="flex items-center p-1 bg-gray-50 rounded-xl border border-gray-100 w-fit">
-                        {["Daily", "Weekly", "Monthly"].map((period) => (
+                        {(["daily", "weekly", "monthly"] as const).map((period) => (
                           <button
                             key={period}
-                            onClick={() => setChartPeriod(period)}
+                            onClick={() => {
+                              setChartPeriod(period);
+                              setExpandedDate(null);
+                            }}
                             aria-pressed={chartPeriod === period}
                             className={`px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold rounded-lg transition-all ${chartPeriod === period ? "bg-white text-primary-800 shadow-sm border border-gray-100" : "text-gray-400 hover:text-gray-600"}`}
                           >
-                            {t(period.toLowerCase() as any)}
+                            {t(period)}
                           </button>
                         ))}
                       </div>
@@ -882,7 +1038,7 @@ export default function Product({
 
                     <div className="relative">
                       <ForecastChart
-                        data={product.forecastData}
+                        data={chartData}
                         showGrid
                         showLegend
                         productName={product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name}
@@ -925,13 +1081,14 @@ export default function Product({
                           </div>
                         ) : (
                           <ConfidenceGauge
-                            percentage={confidenceMetric?.confidence_score ?? null}
+                            percentage={confidenceScore}
                             size={56}
                             strokeWidth={4.5}
-                            label={confidenceMetric?.confidence_score != null
+                            label={confidenceScore != null
                               ? `${t("confidenceLevel")}: ${confidenceLabel}`
                               : confidenceLabel}
-                            sublabel={daProcessingStatus}
+                            sublabel={confidenceSublabel}
+                            title={confidenceTitle}
                             variant="badge"
                           />
                         )}
@@ -974,29 +1131,30 @@ export default function Product({
                         </div>
                       </div>
 
-                      {/* Daily Forecast */}
+                      {/* Selected-horizon forecast */}
                       <div className="flex flex-col h-full">
-                        {/* Interactive date range filters replacing static title */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pr-2 border-b border-gray-50 pb-4">
-                          <div className="flex items-center p-1 bg-gray-50 rounded-xl border border-gray-100 w-fit">
-                            {[
-                              { label: "3 Days", value: "3" },
-                              { label: "7 Days", value: "7" },
-                              { label: "This Month", value: "month" },
-                              { label: "All Time", value: "all" },
-                            ].map((item) => (
-                              <button
-                                key={item.value}
-                                onClick={() => setForecastRange(item.value as any)}
-                                className={`px-2.5 py-1.5 text-[10px] font-bold rounded-lg transition-all ${forecastRange === item.value
-                                  ? "bg-white text-primary-800 shadow-sm border border-gray-100"
-                                  : "text-gray-400 hover:text-gray-600"
-                                  }`}
-                              >
-                                {item.label}
-                              </button>
-                            ))}
-                          </div>
+                        <div className="relative h-[30px] pr-2 border-b border-gray-50">
+                          {selectedHorizon === "daily" && (
+                            <div className="absolute right-2 bottom-2 flex items-center p-1 bg-gray-50 rounded-xl border border-gray-100 w-fit">
+                              {[
+                                { label: "3 Days", value: "3" },
+                                { label: "7 Days", value: "7" },
+                                { label: "This Month", value: "month" },
+                                { label: "All Time", value: "all" },
+                              ].map((item) => (
+                                <button
+                                  key={item.value}
+                                  onClick={() => setForecastRange(item.value as "3" | "7" | "month" | "all")}
+                                  className={`px-3 py-1.5 leading-4 text-[10px] font-bold rounded-lg transition-all ${forecastRange === item.value
+                                    ? "bg-white text-primary-800 shadow-sm border border-gray-100"
+                                    : "text-gray-400 hover:text-gray-600"
+                                    }`}
+                                >
+                                  {item.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
 
                         {/* Collapsible dropdown button for mobile view only */}
@@ -1010,7 +1168,9 @@ export default function Product({
                                 <Calendar className="w-5 h-5" />
                               </div>
                               <span className="text-xs font-bold text-gray-900">
-                                {t("viewDailyForecast")}
+                                {selectedHorizon === "daily"
+                                  ? t("viewDailyForecast")
+                                  : `${t(selectedHorizon)} ${t("forecast")}`}
                               </span>
                             </div>
                             <ChevronDown
@@ -1022,28 +1182,36 @@ export default function Product({
 
                         {/* Scrollable list container - limited to 5 rows and scrollable on mobile, absolute on desktop */}
                         <div className={`flex-1 relative ${mobileForecastExpanded ? "block animate-in fade-in slide-in-from-top-4 duration-300" : "hidden md:block"} min-h-[300px] md:min-h-0`}>
-                          <div className="max-h-[300px] overflow-y-auto md:max-h-none md:absolute md:inset-0 space-y-3 scrollbar-hide pr-2">
-                            {filteredForecasts.map((forecast, i) => {
-                              const dateObj = new Date(forecast.date);
-                              const dateStr = dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-                              const isExpanded = expandedDate === forecast.date;
+                          <div key={`${selectedHorizon}-${forecastRange}`} className="max-h-[300px] overflow-y-auto md:max-h-none md:absolute md:inset-0 space-y-3 scrollbar-hide pr-2">
+                            {displayedForecasts.length === 0 ? (
+                              <p className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-xs text-gray-500">
+                                {t("forecastPeriodUnavailable")}
+                              </p>
+                            ) : displayedForecasts.map((forecast, i) => {
+                              const dateObj = new Date(`${forecast.date}T00:00:00Z`);
+                              const dateStr = forecast.periodLabel ?? dateObj.toLocaleDateString(
+                                language === "tl" ? "fil-PH" : "en-PH",
+                                { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" },
+                              );
+                              const canExpand = Boolean(forecast.reasoning);
+                              const isExpanded = canExpand && expandedDate === forecast.date;
                               return (
                                 <div
-                                  key={i}
-                                  onClick={() => setExpandedDate(isExpanded ? null : forecast.date)}
-                                  className={`group flex flex-col p-4 rounded-2xl border transition-colors cursor-pointer ${isExpanded ? "border-accent/40 bg-gray-50" : "border-gray-100 hover:border-accent/40 hover:bg-gray-50"}`}
+                                  key={`${selectedHorizon}-${forecast.date}-${i}`}
+                                  onClick={canExpand ? () => setExpandedDate(isExpanded ? null : forecast.date) : undefined}
+                                  className={`group flex flex-col p-4 rounded-2xl border transition-colors ${canExpand ? "cursor-pointer" : ""} ${isExpanded ? "border-accent/40 bg-gray-50" : "border-gray-100 hover:border-accent/40 hover:bg-gray-50"}`}
                                 >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <Calendar className={`w-3.5 h-3.5 ${isExpanded ? "text-accent" : "text-gray-400"}`} />
-                                      <span className={`text-xs font-bold ${isExpanded ? "text-gray-900" : "text-gray-700"}`}>{dateStr}</span>
+                                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                                    <div className="min-w-0 flex items-center gap-2">
+                                      <Calendar className={`w-3.5 h-3.5 shrink-0 ${isExpanded ? "text-accent" : "text-gray-400"}`} />
+                                      <span className={`min-w-0 break-words text-xs font-bold leading-snug ${isExpanded ? "text-gray-900" : "text-gray-700"}`}>{dateStr}</span>
                                     </div>
-                                    <span className="text-xs font-black text-gray-900 tabular-nums">
+                                    <span className="whitespace-nowrap text-right text-xs font-black text-gray-900 tabular-nums">
                                       ₱{forecast.predicted_price.toFixed(2)}
                                       {product.unit && <span className="text-[10px] text-gray-500 font-medium ml-0.5">/ {product.unit}</span>}
                                     </span>
                                   </div>
-                                  {isExpanded && (
+                                  {isExpanded && forecast.reasoning && (
                                     <div className="text-[10px] text-gray-500 leading-relaxed border-t border-gray-100/50 pt-3 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
                                       {forecast.reasoning}
                                     </div>
@@ -1075,13 +1243,25 @@ export default function Product({
                         border: "border-primary-100",
                       },
                       {
-                        label: t("volatility"),
-                        value: hasModelForecast ? `${isUp ? "+" : ""}${priceChangePercent.toFixed(1)}%` : "N/A",
-                        icon: isUp ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />,
-                        sub: hasModelForecast ? t("weeklyChange") : "MODEL FORECAST UNAVAILABLE",
-                        color: isUp ? "text-price-up" : "text-price-down",
-                        bg: isUp ? "bg-price-up/5" : "bg-price-down/5",
-                        border: isUp ? "border-price-up/20" : "border-price-down/20",
+                        label: t("weeklyChange"),
+                        value: weeklyChangePercent == null
+                          ? "N/A"
+                          : `${weeklyChangeIsUp ? "+" : ""}${weeklyChangePercent.toFixed(1)}%`,
+                        icon: weeklyChangePercent == null
+                          ? <Minus className="w-4 h-4" />
+                          : weeklyChangeIsUp
+                            ? <TrendingUp className="w-4 h-4" />
+                            : <TrendingDown className="w-4 h-4" />,
+                        sub: weeklyChangePercent == null ? t("forecastPeriodUnavailable") : t("forecast"),
+                        color: weeklyChangePercent == null
+                          ? "text-gray-500"
+                          : weeklyChangeIsUp ? "text-price-up" : "text-price-down",
+                        bg: weeklyChangePercent == null
+                          ? "bg-gray-50"
+                          : weeklyChangeIsUp ? "bg-price-up/5" : "bg-price-down/5",
+                        border: weeklyChangePercent == null
+                          ? "border-gray-200"
+                          : weeklyChangeIsUp ? "border-price-up/20" : "border-price-down/20",
                       },
                     ].map((stat) => (
                       <div
@@ -1104,15 +1284,20 @@ export default function Product({
                 </ScrollReveal>
                 <ScrollReveal delay={200}>
                   {(() => {
-                    const isBullish = product.sentiment === "Bullish";
-                    const isBearish = product.sentiment === "Bearish";
-                    const insight = !hasModelForecast
+                    const isBullish = outlookIsRising;
+                    const isBearish = outlookIsFalling;
+                    const periodLabel = t(selectedHorizon).toLowerCase();
+                    const message = outlookChangePercent == null
+                      ? t("forecastUnavailableInsight").replace("{period}", periodLabel)
+                      : t(isBullish ? "forecastHigherInsight" : isBearish ? "forecastLowerInsight" : "forecastStableInsight")
+                        .replace("{period}", periodLabel)
+                        .replace("{percent}", Math.abs(outlookChangePercent).toFixed(1));
+                    const insight = outlookChangePercent == null
                       ? {
-                        title: "Forecast unavailable",
-                        message: "No published model forecast is available for this series.",
-                        action: "noAction",
-                        recommendation: "Do not use the fallback estimate as a buy signal.",
-                        status: "Data check",
+                        title: t("forecastUnavailableTitle"),
+                        message,
+                        action: "forecastReviewAction",
+                        status: t("forecastDataCheck"),
                         statusBg: "bg-gray-100 text-gray-600",
                         pulseColor: "bg-gray-400",
                         glowColor: "from-gray-100 to-transparent",
@@ -1120,9 +1305,8 @@ export default function Product({
                       : isBullish
                       ? {
                         title: t("buyingOpportunity"),
-                        message: `${t("pricesRisingBy")} ${priceChangePercent.toFixed(1)}%. ${t("marketsTighter")}`,
+                        message,
                         action: "buyNow",
-                        recommendation: t("increaseStock"),
                         status: t("suggestedBuy"),
                         statusBg: "bg-price-up/10 text-price-up",
                         pulseColor: "bg-price-up",
@@ -1131,9 +1315,8 @@ export default function Product({
                       : isBearish
                         ? {
                           title: t("waitToPurchase"),
-                          message: `${t("pricesDroppingBy")} ${Math.abs(priceChangePercent).toFixed(1)}%.`,
+                          message,
                           action: "waitAction",
-                          recommendation: t("waitForDrop"),
                           status: t("holdOff"),
                           statusBg: "bg-price-down/10 text-price-down",
                           pulseColor: "bg-price-down",
@@ -1141,9 +1324,8 @@ export default function Product({
                         }
                         : {
                           title: t("stableMarket"),
-                          message: t("normalSeasonal"),
+                          message,
                           action: "noAction",
-                          recommendation: t("continueNormal"),
                           status: t("monitor"),
                           statusBg: "bg-gray-100 text-gray-600",
                           pulseColor: "bg-gray-400",
@@ -1172,7 +1354,7 @@ export default function Product({
                           </h3>
 
                           <p className="text-gray-600 text-sm leading-relaxed mb-6">
-                            {insight.message} <span className="font-bold text-gray-900">{insight.recommendation}</span>
+                            {insight.message}
                           </p>
 
                           <div className="w-full pt-6 border-t border-gray-100 flex flex-col gap-4">
@@ -1191,30 +1373,23 @@ export default function Product({
                 {/* Alternatives */}
                 {smartAlternatives.length > 0 && (
                   <ScrollReveal delay={400}>
-                    <div className="bg-primary-900 rounded-3xl p-6 shadow-xl relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-accent/20 rounded-full blur-2xl -mr-12 -mt-12" />
-
-                      <div className="relative flex items-center gap-3 mb-5">
-                        <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center text-accent">
-                          <Sparkles className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
-                            {t("smartAlternatives")}
-                          </h3>
-                          <p className="text-[10px] text-white/50 font-bold uppercase tracking-tighter">{t("betterValue")}</p>
-                        </div>
+                    <div className="rounded-3xl border border-primary-200 bg-primary-50/70 p-6 shadow-md shadow-primary-900/5">
+                      <div className="mb-5">
+                        <h3 className="text-sm font-bold text-primary-900" style={{ fontFamily: "var(--font-display)" }}>
+                          {t("smartAlternatives")}
+                        </h3>
+                        <p className="text-[10px] text-primary-700 font-bold uppercase tracking-tighter">{t("betterValue")}</p>
                       </div>
 
-                      <div className="relative space-y-2">
+                      <div className="space-y-2">
                         {smartAlternatives.map(a => (
                           <Link
                             key={a.id}
                             href={`/Product/${encryptId(a.id)}`}
-                            className="group flex items-center justify-between p-3.5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-accent/40 transition-all duration-300"
+                            className="group flex items-center justify-between p-3.5 rounded-2xl bg-white border border-gray-100 hover:bg-primary-50/50 hover:border-primary-200 transition-all duration-300"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-white/10 shrink-0 bg-white/5">
+                              <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-gray-100 shrink-0 bg-gray-50">
                                 <Image
                                   src={a.image || DEFAULT_PRODUCT_IMAGE}
                                   alt={a.name}
@@ -1232,13 +1407,13 @@ export default function Product({
                                 />
                               </div>
                               <div>
-                                <div className="text-xs font-bold text-white group-hover:text-accent transition-colors">
+                                <div className="text-xs font-bold text-gray-900 group-hover:text-primary-800 transition-colors">
                                   {a.variant && a.variant !== "Standard" ? `${a.name} (${a.variant})` : a.name}
                                 </div>
-                                <div className="text-[9px] text-white/40 font-black uppercase tracking-widest">₱{a.currentPrice.toFixed(2)}</div>
+                                <div className="text-[9px] text-gray-500 font-black uppercase tracking-widest">₱{a.currentPrice.toFixed(2)}</div>
                               </div>
                             </div>
-                            <ArrowRight className="w-3.5 h-3.5 text-white/30 group-hover:text-accent group-hover:translate-x-1 transition-all" />
+                            <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-primary-700 group-hover:translate-x-1 transition-all" />
                           </Link>
                         ))}
                       </div>

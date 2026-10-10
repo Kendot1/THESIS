@@ -1,4 +1,5 @@
 """The single forecast path used by calibration, test evaluation, and serving."""
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Optional
 
@@ -19,8 +20,6 @@ class ForecastPath:
     lstm: np.ndarray
     lgbm: np.ndarray
     point: np.ndarray
-    lower: np.ndarray
-    upper: np.ndarray
 
 
 class ForecastEngine:
@@ -44,7 +43,7 @@ class ForecastEngine:
         return self.forecast_many([(history, featured_history)], horizon)[0]
 
     def forecast_many(self, cases, horizon=30):
-        """Batch independent origins while retaining recursive horizon updates."""
+        """Batch independent origins and extend long forecasts in model-sized chunks."""
         prepared = []
         for case in cases:
             if isinstance(case, dict):
@@ -54,6 +53,8 @@ class ForecastEngine:
                 prepared.append(self._prepare(history, featured_history))
         if not prepared:
             return []
+        if horizon <= 0:
+            raise ValueError("Forecast horizon must be positive")
         market_states = {}
         for item in prepared:
             key = (item['origin'], item['category'])
@@ -65,45 +66,126 @@ class ForecastEngine:
                 market_states[key] = list(initial)
             item['market_key'] = key
             item['market_state'] = market_states[key]
-        sequences = np.concatenate([item["sequence"] for item in prepared])
-        anchors = np.asarray([item["anchor"] for item in prepared])
-        lstm_paths = self.lstm.predict_paths(sequences, anchors)[:, :horizon]
-        lgbm_paths = np.empty((len(prepared), horizon), dtype=float)
-        for step in range(1, horizon + 1):
-            rows = pd.concat([
-                item["state"].row(item["origin"] + pd.Timedelta(days=step),
-                                   item['market_state'])
-                for item in prepared
-            ], ignore_index=True)
-            if not np.isfinite(rows[FEATURE_COLUMNS].to_numpy(dtype=float)).all():
-                raise ValueError(f"Incomplete LightGBM features at horizon {step}")
-            predictions = self.lgbm.predict(rows[FEATURE_COLUMNS])
-            lgbm_paths[:, step - 1] = predictions
-            category_returns = {}
-            for item, prediction in zip(prepared, predictions):
-                previous = item['state'].prices[-1]
-                if np.isfinite(previous) and previous > 0:
-                    category_returns.setdefault(item['market_key'], []).append(
-                        float(prediction / previous - 1.0))
-                item["state"].append(prediction)
-            for key, values in category_returns.items():
-                market_states[key].append(float(np.median(values)))
+            initial_sequence = np.asarray(item['sequence'][0], dtype=float).copy()
+            scaled_indices = [self.lstm.feature_cols.index(column)
+                              for column in self.lstm.scaled_features
+                              if column in self.lstm.feature_cols]
+            initial_sequence[:, scaled_indices] *= float(item['anchor'])
+            item['lstm_feature_history'] = initial_sequence.tolist()
+        chunk_size = max(1, int(getattr(self.lstm, "horizon", horizon)))
+        if self.ensemble is not None and self.ensemble.weights is not None:
+            chunk_size = min(chunk_size, len(self.ensemble.weights))
+        if chunk_size <= 0:
+            raise ValueError("The trained models have no usable forecast steps")
+
+        accumulated_lstm = [[] for _ in prepared]
+        accumulated_lgbm = [[] for _ in prepared]
+        accumulated_point = [[] for _ in prepared]
+        for chunk_start in range(0, horizon, chunk_size):
+            chunk_length = min(chunk_size, horizon - chunk_start)
+            chunk_anchors = []
+            chunk_references = []
+            sequences = []
+            for item in prepared:
+                if chunk_start == 0:
+                    sequences.append(item["sequence"])
+                    chunk_anchors.append(float(item["anchor"]))
+                    chunk_references.append(float(item["moving_average7"]))
+                    continue
+
+                anchor = float(item["state"].prices[-1])
+                next_date = item["origin"] + pd.Timedelta(days=chunk_start + 1)
+                next_row = item["state"].row(next_date, item['market_state'])
+                next_features = next_row[self.lstm.feature_cols].to_numpy(dtype=float)[0]
+                prior = np.asarray(item['lstm_feature_history'], dtype=float)
+                history_count = max(0, self.lstm.seq_len - 1)
+                prior = prior[-history_count:] if history_count else prior[:0]
+                sequence = np.concatenate([prior, next_features[None, :]], axis=0)
+                if len(sequence) != self.lstm.seq_len:
+                    raise ValueError("Insufficient causal feature history for recursive forecast")
+                sequences.append(self.lstm._scale(sequence, anchor)[None].astype(np.float32))
+                chunk_anchors.append(anchor)
+                chunk_references.append(float(np.mean(item["state"].prices[-7:])))
+
+            anchors = np.asarray(chunk_anchors, dtype=float)
+            lstm_chunk = self.lstm.predict_paths(np.concatenate(sequences), anchors)[:, :chunk_length]
+            replay_states = [deepcopy(item['state']) for item in prepared]
+            replay_market_states = {
+                key: list(values) for key, values in market_states.items()
+            }
+            feature_histories = [list(item['lstm_feature_history']) for item in prepared]
+            lgbm_chunk = np.empty((len(prepared), chunk_length), dtype=float)
+            for offset in range(chunk_length):
+                step = chunk_start + offset + 1
+                rows = pd.concat([
+                    item["state"].row(item["origin"] + pd.Timedelta(days=step),
+                                      item['market_state'])
+                    for item in prepared
+                ], ignore_index=True)
+                if not np.isfinite(rows[FEATURE_COLUMNS].to_numpy(dtype=float)).all():
+                    raise ValueError(f"Incomplete LightGBM features at horizon {step}")
+                predictions = self.lgbm.predict(rows[FEATURE_COLUMNS])
+                lgbm_chunk[:, offset] = predictions
+                category_returns = {}
+                for item, prediction in zip(prepared, predictions):
+                    previous = item['state'].prices[-1]
+                    if np.isfinite(previous) and previous > 0:
+                        category_returns.setdefault(item['market_key'], []).append(
+                            float(prediction / previous - 1.0))
+                    item["state"].append(prediction)
+                for key, values in category_returns.items():
+                    market_states[key].append(float(np.median(values)))
+
+            point_chunk = []
+            for index, item in enumerate(prepared):
+                lstm_path, lgbm_path = lstm_chunk[index], lgbm_chunk[index]
+                point = (self.ensemble.predict(
+                    lstm_path, lgbm_path, chunk_anchors[index], item["category"],
+                    chunk_references[index], item["product"])
+                         if self.ensemble is not None else (lstm_path + lgbm_path) / 2)
+                point_chunk.append(point)
+                accumulated_lstm[index].extend(lstm_path.tolist())
+                accumulated_lgbm[index].extend(lgbm_path.tolist())
+                accumulated_point[index].extend(point.tolist())
+
+            # Advance causal feature states with emitted ensemble prices so the
+            # next model-sized chunk starts from the forecast users see.
+            for offset in range(chunk_length):
+                step = chunk_start + offset + 1
+                for index, item in enumerate(prepared):
+                    row = replay_states[index].row(
+                        item['origin'] + pd.Timedelta(days=step),
+                        replay_market_states[item['market_key']])
+                    if step > 1:
+                        feature_histories[index].append(
+                            row[self.lstm.feature_cols].to_numpy(dtype=float)[0].tolist())
+
+                category_returns = {}
+                for index, item in enumerate(prepared):
+                    prediction = point_chunk[index][offset]
+                    previous = replay_states[index].prices[-1]
+                    if np.isfinite(previous) and previous > 0:
+                        category_returns.setdefault(item['market_key'], []).append(
+                            float(prediction / previous - 1.0))
+                    replay_states[index].append(prediction)
+                for key, values in category_returns.items():
+                    replay_market_states[key].append(float(np.median(values)))
+
+            market_states = replay_market_states
+            for index, item in enumerate(prepared):
+                item['state'] = replay_states[index]
+                item['market_state'] = replay_market_states[item['market_key']]
+                item['lstm_feature_history'] = feature_histories[index]
+
         results = []
         for index, item in enumerate(prepared):
-            lstm_path, lgbm_path = lstm_paths[index], lgbm_paths[index]
-            point = (self.ensemble.predict(
-                lstm_path, lgbm_path, item["anchor"], item["category"],
-                item["moving_average7"], item["product"])
-                     if self.ensemble is not None else (lstm_path + lgbm_path) / 2)
-            if self.ensemble is not None:
-                lower, upper = self.ensemble.intervals(
-                    point, item["anchor"], category=item["category"])
-            else:
-                lower, upper = point.copy(), point.copy()
+            lstm_path = np.asarray(accumulated_lstm[index], dtype=float)
+            lgbm_path = np.asarray(accumulated_lgbm[index], dtype=float)
+            point = np.asarray(accumulated_point[index], dtype=float)
             dates = pd.date_range(item["origin"] + pd.Timedelta(days=1),
                                   periods=horizon).to_numpy()
             results.append(ForecastPath(dates, item["anchor"], lstm_path, lgbm_path,
-                                        point, lower, upper))
+                                        point))
         return results
 
     def _prepare(self, history, featured_history, market_history=None):

@@ -11,6 +11,8 @@ def insert_prices(rows):
     Normalizes product_variant so None, "", and "null" are all treated as None.
     """
     seen = set()
+    inserted = 0
+    failures = []
     for row in rows:
         # Normalize product_variant: treat empty string / "null" string as "Standard"
         variant = row.get("product_variant")
@@ -24,34 +26,33 @@ def insert_prices(rows):
         seen.add(key)
         try:
             # Use upsert to overwrite any copied/placeholder data with actual scraped data
-            supabase.table("food_prices").upsert(row, on_conflict="product_name,product_variant,origin,report_date").execute()
+            supabase.table("food_prices").upsert(
+                row, on_conflict="product_name,product_variant,origin,report_date").execute()
+            inserted += 1
         except Exception as e:
-            print(f"Failed to upsert row: {row} - {e}")
+            failures.append((key, e))
+    if failures:
+        preview = "; ".join(f"{key}: {error}" for key, error in failures[:3])
+        raise RuntimeError(
+            f"Failed to upsert {len(failures)} of {len(seen)} DA price rows: {preview}")
+    return inserted
 
 def get_last_date():
-    try:
-        response = supabase.table("food_prices").select("report_date").order("report_date", desc=True).limit(1).execute()
-        if response.data and len(response.data) > 0:
-            return response.data[0]["report_date"]
-        return None
-    except Exception as e:
-        print(f"Failed to fetch last date: {e}")
-        return None
+    response = supabase.table("food_prices").select("report_date").order("report_date", desc=True).limit(1).execute()
+    if response.data:
+        return response.data[0]["report_date"]
+    return None
 
 def get_processed_pdfs():
-    try:
-        processed = set()
-        page_size = 1000
-        start_idx = 0
-        while True:
-            response = supabase.table("food_prices").select("source_pdf").range(start_idx, start_idx + page_size - 1).execute()
-            if not response.data:
-                break
-            processed.update(row["source_pdf"] for row in response.data if row.get("source_pdf"))
-            if len(response.data) < page_size:
-                break
-            start_idx += page_size
-        return processed
-    except Exception as e:
-        print(f"Failed to fetch processed PDFs: {e}")
-        return set()
+    processed = set()
+    page_size = 1000
+    start_idx = 0
+    while True:
+        response = supabase.table("food_prices").select("source_pdf").range(start_idx, start_idx + page_size - 1).execute()
+        if not response.data:
+            break
+        processed.update(row["source_pdf"] for row in response.data if row.get("source_pdf"))
+        if len(response.data) < page_size:
+            break
+        start_idx += page_size
+    return processed

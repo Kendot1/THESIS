@@ -68,7 +68,7 @@ const DailyMoverCard = ({
     <Link
       href={`/Product/${encryptId(id)}`}
       className="daily-mover-card group relative flex flex-col rounded-2xl border border-gray-100
-        bg-white overflow-hidden transition-all duration-500 
+        bg-white overflow-hidden transition-all duration-500
         shadow-sm hover:shadow-xl hover:-translate-y-1
         focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 h-full"
     >
@@ -116,8 +116,14 @@ const DailyMoverCard = ({
           {isUp ? "+" : ""}{change.toFixed(2)}%
         </div>}
 
+        {unit && (
+          <span className="absolute bottom-3 right-3 max-w-20 truncate rounded-full bg-white/95 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-gray-700 shadow-sm">
+            {unit}
+          </span>
+        )}
+
         {/* Product name overlaid at bottom of image */}
-        <div className="absolute bottom-3 left-3 right-3">
+        <div className={`absolute bottom-3 left-3 ${unit ? "right-16" : "right-3"}`}>
           <h3
             className="font-bold text-white text-base sm:text-lg leading-tight truncate drop-shadow-sm"
             style={{ fontFamily: "var(--font-display)" }}
@@ -133,18 +139,16 @@ const DailyMoverCard = ({
         <div className="flex items-baseline justify-between gap-2 mb-3">
           <div>
             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">{t("dailyLastObserved")}</span>
-            <span className="text-2xl sm:text-3xl font-black text-gray-900 tabular-nums leading-none">
+            <span className="block whitespace-nowrap text-xl sm:text-2xl font-black text-gray-900 tabular-nums leading-none">
               ₱{currentPrice.toFixed(2)}
-              {unit && <span className="text-sm sm:text-base text-gray-500 ml-1 font-medium">/ {unit}</span>}
             </span>
 
           </div>
           <div className="text-right">
             <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block mb-0.5">{t("dailyNextForecast")}</span>
             {forecastDate ? <>
-            <span className={`text-lg sm:text-xl font-bold tabular-nums leading-none ${isUp ? 'text-price-up' : 'text-price-down'}`}>
+            <span className={`block whitespace-nowrap text-xl sm:text-2xl font-black tabular-nums leading-none ${isUp ? 'text-price-up' : 'text-price-down'}`}>
               ₱{predictedPrice.toFixed(2)}
-              {unit && <span className="text-xs sm:text-sm opacity-70 ml-1 font-medium">/ {unit}</span>}
             </span>
             </> : <span className="text-sm text-gray-500">{t("dailyForecastUnavailable")}</span>}
           </div>

@@ -2,12 +2,18 @@
 import { useRef, useEffect, useMemo, useCallback } from "react";
 import {
   createChart,
+  createSeriesMarkers,
   ColorType,
   LineStyle,
   CrosshairMode,
   AreaSeries,
   type IChartApi,
   type ISeriesApi,
+  type ISeriesPrimitive,
+  type ISeriesMarkersPluginApi,
+  type IPrimitivePaneRenderer,
+  type IPrimitivePaneView,
+  type SeriesAttachedParameter,
   type Time,
 } from "lightweight-charts";
 import { useLanguage } from "../lib/i18n/LanguageContext";
@@ -18,6 +24,9 @@ interface DataPoint {
   name: string;
   actual: number | null;
   predicted: number | null;
+  horizon?: ForecastHorizon;
+  confidence_score?: number | null;
+  confidence_level?: string | null;
 }
 
 interface ForecastChartProps {
@@ -36,6 +45,112 @@ function getSeriesValue(value: unknown): number | undefined {
   return typeof candidate === "number" ? candidate : undefined;
 }
 
+interface PriceLabelData {
+  actualPrice: number | null;
+  predictedPrice: number | null;
+  actualLabel: string;
+  predictedLabel: string;
+  predictedColor: string;
+}
+
+class ForecastPriceLabelsPrimitive implements ISeriesPrimitive<Time> {
+  private labels: PriceLabelData = {
+    actualPrice: null,
+    predictedPrice: null,
+    actualLabel: "Actual Price",
+    predictedLabel: "Predicted Price",
+    predictedColor: "#2E7D32",
+  };
+  private requestUpdate: () => void = () => {};
+  private readonly view: IPrimitivePaneView;
+  private readonly views: readonly IPrimitivePaneView[];
+
+  constructor(private readonly series: ISeriesApi<"Area">) {
+    const renderer: IPrimitivePaneRenderer = {
+      draw: target => target.useMediaCoordinateSpace(({ context, mediaSize }) => {
+        const actualY = this.labels.actualPrice == null
+          ? null
+          : this.series.priceToCoordinate(this.labels.actualPrice);
+        const predictedY = this.labels.predictedPrice == null
+          ? null
+          : this.series.priceToCoordinate(this.labels.predictedPrice);
+        const separateHorizontally = actualY != null && predictedY != null
+          && Math.abs(actualY - predictedY) < 18;
+
+        context.save();
+        context.font = "700 9px Inter, sans-serif";
+        context.textAlign = "left";
+        context.textBaseline = "middle";
+        if (actualY != null && actualY >= 0 && actualY <= mediaSize.height) {
+          this.drawLabel(context, mediaSize.width, this.labels.actualLabel, "#111827", actualY, 4);
+        }
+        if (predictedY != null && predictedY >= 0 && predictedY <= mediaSize.height) {
+          this.drawLabel(
+            context,
+            mediaSize.width,
+            this.labels.predictedLabel,
+            this.labels.predictedColor,
+            predictedY,
+            separateHorizontally ? 82 : 4,
+          );
+        }
+        context.restore();
+      }),
+    };
+    this.view = { zOrder: () => "top", renderer: () => renderer };
+    this.views = [this.view];
+  }
+
+  attached(param: SeriesAttachedParameter<Time>): void {
+    this.requestUpdate = param.requestUpdate;
+  }
+
+  detached(): void {
+    this.requestUpdate = () => {};
+  }
+
+  paneViews(): readonly IPrimitivePaneView[] {
+    return this.views;
+  }
+
+  setLabels(labels: PriceLabelData): void {
+    this.labels = labels;
+    this.requestUpdate();
+  }
+
+  private drawLabel(
+    context: CanvasRenderingContext2D,
+    paneWidth: number,
+    text: string,
+    color: string,
+    centerY: number,
+    preferredX: number,
+  ): void {
+    const paddingX = 6;
+    const height = 16;
+    const width = context.measureText(text).width + paddingX * 2;
+    const x = Math.max(2, Math.min(preferredX, paneWidth - width - 2));
+    const y = centerY - height / 2;
+    const radius = 3;
+
+    context.beginPath();
+    context.moveTo(x + radius, y);
+    context.lineTo(x + width - radius, y);
+    context.arcTo(x + width, y, x + width, y + radius, radius);
+    context.lineTo(x + width, y + height - radius);
+    context.arcTo(x + width, y + height, x + width - radius, y + height, radius);
+    context.lineTo(x + radius, y + height);
+    context.arcTo(x, y + height, x, y + height - radius, radius);
+    context.lineTo(x, y + radius);
+    context.arcTo(x, y, x + radius, y, radius);
+    context.closePath();
+    context.fillStyle = color;
+    context.fill();
+    context.fillStyle = "#fff";
+    context.fillText(text, x + paddingX, centerY);
+  }
+}
+
 const ForecastChart = ({
   data,
   height,
@@ -46,9 +161,13 @@ const ForecastChart = ({
 }: ForecastChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const tooltipConfidenceRef = useRef<Record<string, { score: number | null; level: string }>>({});
   const chartRef = useRef<IChartApi | null>(null);
   const actualSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
   const predictedSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
+  const predictedPriceLineRef = useRef<ReturnType<ISeriesApi<"Area">["createPriceLine"]> | null>(null);
+  const priceLabelsPrimitiveRef = useRef<ForecastPriceLabelsPrimitive | null>(null);
+  const predictedMarkersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const { t } = useLanguage();
   // Keep a ref to t so the chart creation effect doesn't need t as a dependency
   const tRef = useRef(t);
@@ -56,16 +175,42 @@ const ForecastChart = ({
     tRef.current = t;
   }, [t]);
 
+  useEffect(() => {
+    const selected = period.toLowerCase() as ForecastHorizon;
+    tooltipConfidenceRef.current = Object.fromEntries(data
+      .filter(point => (point.horizon === selected || (!point.horizon && selected === "daily"))
+        && point.predicted != null)
+      .map(point => [point.date, {
+        score: point.confidence_score != null && Number.isFinite(point.confidence_score)
+          && point.confidence_score >= 0 && point.confidence_score <= 100
+          ? point.confidence_score : null,
+        level: point.confidence_level ?? "Insufficient data",
+      }]));
+  }, [data, period]);
+
   // Build series data
   const { actualData, predictedData } = useMemo(() => {
-    const actuals = data.filter(point => point.actual != null && Number.isFinite(point.actual))
+    const selected = period.toLowerCase() as ForecastHorizon;
+    const horizonData = data.filter(point => point.horizon === selected
+      || (!point.horizon && selected === "daily"));
+    const actuals = horizonData.filter(point => point.actual != null && Number.isFinite(point.actual))
       .sort((left, right) => left.date.localeCompare(right.date))
       .map(point => ({ time: point.date as Time, value: point.actual! }));
     const predictions = forecastHorizonPoints(data, forecastOriginDate,
       period.toLowerCase() as ForecastHorizon)
       .map(point => ({ time: point.date as Time, value: point.predicted! }));
 
-    return { actualData: actuals, predictedData: predictions };
+    // Start the forecast line at the latest observed price. Without this
+    // shared anchor, the actual and forecast series render as disconnected
+    // segments even though they describe one continuous price timeline.
+    const latestActual = actuals[actuals.length - 1];
+    const firstPrediction = predictions[0];
+    const connectedPredictions = latestActual && firstPrediction
+      && String(latestActual.time) < String(firstPrediction.time)
+      ? [{ time: latestActual.time, value: latestActual.value }, ...predictions]
+      : predictions;
+
+    return { actualData: actuals, predictedData: connectedPredictions };
   }, [data, period, forecastOriginDate]);
 
   const forecastRising = useMemo(() => {
@@ -146,7 +291,7 @@ const ForecastChart = ({
       crosshairMarkerBorderColor: "#111827",
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
-      title: tRef.current("actualPrice"),
+      lastValueVisible: true,
     });
 
     // Keep actuals neutral; forecast color communicates direction.
@@ -158,19 +303,25 @@ const ForecastChart = ({
         : "rgba(46, 125, 50, 0.01)",
       lineWidth: 3,
       lineStyle: LineStyle.Dashed,
-      pointMarkersVisible: true,
-      pointMarkersRadius: 3,
+      // Use explicit markers below so the shared anchor can be shown only for
+      // weekly and monthly views.
+      pointMarkersVisible: false,
+      priceLineVisible: false,
       priceFormat: { type: "custom", formatter: (p: number) => `₱${p.toFixed(2)}` },
-      crosshairMarkerRadius: 5,
+      crosshairMarkerRadius: 1,
       crosshairMarkerBorderColor: forecastColor,
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
-      title: tRef.current("predictedPrice"),
+      lastValueVisible: false,
     });
 
     chartRef.current = chart;
     actualSeriesRef.current = actualSeries;
     predictedSeriesRef.current = predictedSeries;
+    const priceLabelsPrimitive = new ForecastPriceLabelsPrimitive(actualSeries);
+    actualSeries.attachPrimitive(priceLabelsPrimitive);
+    priceLabelsPrimitiveRef.current = priceLabelsPrimitive;
+    predictedMarkersRef.current = createSeriesMarkers(predictedSeries, []);
 
     // Tooltip logic
     chart.subscribeCrosshairMove((param) => {
@@ -206,7 +357,18 @@ const ForecastChart = ({
         const priceRow = actualValue !== undefined
           ? `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#111827"></span><b>${tRef.current("actualPrice")}:</b><strong>₱${actualValue.toFixed(2)}</strong></div>`
           : `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${forecastColor}"></span><b>${tRef.current("predictedPrice")}:</b><strong>₱${predictedValue!.toFixed(2)}</strong></div>`;
-        tooltip.innerHTML = `<div style="font-size:10px;font-weight:700;color:#9CA3AF;margin-bottom:4px">${formattedDate}</div>${priceRow}`;
+        const confidence = tooltipConfidenceRef.current[dateStr];
+        const confidenceLabels: Record<string, string> = {
+          "Very High": "confidenceVeryHigh", High: "confidenceHigh", Moderate: "confidenceModerate",
+          Low: "confidenceLow", "Very Low": "confidenceVeryLow",
+        };
+        const confidenceText = confidence?.score != null
+          ? `${confidence.score.toFixed(1)}% · ${tRef.current(confidenceLabels[confidence.level] ?? "confidenceUnavailable")}`
+          : "";
+        const confidenceRow = confidence?.score != null && predictedValue !== undefined
+          ? `<div style="margin-top:4px"><b>${tRef.current("confidence")}:</b> ${confidenceText}</div>`
+          : "";
+        tooltip.innerHTML = `<div style="font-size:10px;font-weight:700;color:#9CA3AF;margin-bottom:4px">${formattedDate}</div>${priceRow}${confidenceRow}`;
 
         // Position tooltip
         let left = param.point.x + 15;
@@ -235,22 +397,22 @@ const ForecastChart = ({
 
     return () => {
       resizeObserver.disconnect();
+      if (predictedPriceLineRef.current) {
+        predictedSeriesRef.current?.removePriceLine(predictedPriceLineRef.current);
+        predictedPriceLineRef.current = null;
+      }
+      if (priceLabelsPrimitiveRef.current) {
+        actualSeriesRef.current?.detachPrimitive(priceLabelsPrimitiveRef.current);
+        priceLabelsPrimitiveRef.current = null;
+      }
+      predictedMarkersRef.current?.detach();
       chart.remove();
       chartRef.current = null;
       actualSeriesRef.current = null;
       predictedSeriesRef.current = null;
+      predictedMarkersRef.current = null;
     };
   }, [showGrid, height, forecastColor, forecastFill, forecastRising]);
-
-  // Update series titles when language changes (without recreating the chart)
-  useEffect(() => {
-    if (actualSeriesRef.current) {
-      actualSeriesRef.current.applyOptions({ title: t("actualPrice") });
-    }
-    if (predictedSeriesRef.current) {
-      predictedSeriesRef.current.applyOptions({ title: t("predictedPrice") });
-    }
-  }, [t]);
 
   // All tabs keep actual daily dates; predictions follow the selected cadence.
   const applyRelevantRange = useCallback(() => {
@@ -274,8 +436,44 @@ const ForecastChart = ({
 
     actualSeriesRef.current.setData(actualData);
     predictedSeriesRef.current.setData(predictedData);
+    if (predictedPriceLineRef.current) {
+      predictedSeriesRef.current.removePriceLine(predictedPriceLineRef.current);
+      predictedPriceLineRef.current = null;
+    }
+    const latestActualTime = actualData[actualData.length - 1]?.time;
+    predictedMarkersRef.current?.setMarkers(predictedData
+      .map(point => ({
+        time: point.time,
+        position: "atPriceMiddle" as const,
+        price: point.value,
+        color: String(point.time) === String(latestActualTime) ? "#111827" : forecastColor,
+        shape: "circle" as const,
+        size: 0.4,
+      })));
+    const latestActual = actualData[actualData.length - 1];
+    const nextPrediction = predictedData.find(point => !latestActual
+      || String(point.time) > String(latestActual.time));
+    if (nextPrediction) {
+      predictedPriceLineRef.current = predictedSeriesRef.current.createPriceLine({
+        price: nextPrediction.value,
+        color: forecastColor,
+        lineWidth: 1,
+        lineStyle: LineStyle.Dotted,
+        axisLabelVisible: true,
+        axisLabelColor: forecastColor,
+        axisLabelTextColor: "#fff",
+        title: "",
+      });
+    }
+    priceLabelsPrimitiveRef.current?.setLabels({
+      actualPrice: latestActual?.value ?? null,
+      predictedPrice: nextPrediction?.value ?? null,
+      actualLabel: t("actualPrice"),
+      predictedLabel: t("predictedPrice"),
+      predictedColor: forecastColor,
+    });
     applyRelevantRange();
-  }, [actualData, predictedData, applyRelevantRange]);
+  }, [actualData, predictedData, forecastColor, period, applyRelevantRange, t]);
 
   return (
     <div>

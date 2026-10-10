@@ -6,18 +6,32 @@ import {
   productSeriesKey,
 } from "./dashboard.ts"
 import {
-  buildForecastData,
+  buildForecastSequenceData,
   addUtcDays,
   meanFirstWeek,
+  resolveForecastOrigin,
   selectFuturePredictions,
+  selectSavedPeriodPredictions,
 } from "./forecast.ts"
-import { realizedForecastQuality } from "./quality.ts"
+import type { SavedPeriodPrediction } from "./forecast.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 }
+// The product's daily forecast view exposes 30 future days. The publisher
+// keeps the full three-calendar-month path for weekly and monthly views.
+const PUBLISHED_DAILY_FORECAST_DAYS = 30
+const PRICE_IMPACT_NEWS_EVENT_TYPES = [
+  "supply_shock",
+  "demand_spike",
+  "policy_change",
+  "import_export",
+  "price_movement",
+  "weather",
+  "fuel_energy",
+]
 
 function getSupabase() {
   return createClient(
@@ -281,6 +295,38 @@ async function handleProducts() {
   return productsRequest;
 }
 
+// Product charts load the selected series on demand. The list endpoint keeps
+// its one-year window so catalog pages do not ship the entire price database.
+async function handleProductHistory(url: URL) {
+  const name = url.searchParams.get("name")?.trim();
+  if (!name) throw new Error("name is required");
+  const series = {
+    product_name: name,
+    product_variant: url.searchParams.get("variant") ?? "",
+    origin: url.searchParams.get("origin") ?? "",
+    product_category: url.searchParams.get("category") ?? "",
+    unit: url.searchParams.get("unit") ?? "unknown",
+  };
+  const supabase = getSupabase();
+  const rows = await fetchAllPaginated((start, end) => supabase.from("food_prices")
+    .select("product_name, product_category, product_variant, origin, price_index, report_date, unit")
+    .eq("product_name", name)
+    .order("report_date", { ascending: true })
+    .order("id", { ascending: true })
+    .range(start, end));
+  const seriesKey = productSeriesKey(series);
+  const historyRows = rows
+    .filter((row: any) => productSeriesKey(row) === seriesKey)
+    .map((row: any) => ({
+      report_date: String(row.report_date).split("T")[0],
+      price_index: Number(row.price_index),
+    }));
+  const lastActualDate = historyRows[historyRows.length - 1]?.report_date;
+  if (!lastActualDate) return [];
+
+  return buildForecastSequenceData(historyRows, [], lastActualDate);
+}
+
 async function loadProducts() {
   const supabase = getSupabase()
 
@@ -298,8 +344,8 @@ async function loadProducts() {
   const forecastRun = runResponse.data;
   // Read a single immutable vintage so a concurrent publication cannot mix models.
   const predRows = forecastRun ? await fetchAllPaginated((s, e) => supabase
-    .from("forecast_values").select("product_id, prediction_date, predicted_price")
-    .eq("run_id", forecastRun.id).order("product_id").order("prediction_date").range(s, e)) : [];
+    .from("forecast_values").select("product_id, prediction_date, predicted_price, forecast_horizon, forecast_origin_date, target_period_start, target_period_end, forecast_step, covered_days, period_days, confidence_score, confidence_level")
+    .eq("run_id", forecastRun.id).order("product_id").order("forecast_horizon").order("forecast_step").range(s, e)) : [];
 
   if (priceRows.length === 0) return [];
 
@@ -309,9 +355,16 @@ async function loadProducts() {
   }
 
   const predsByProductId = new Map<string, any[]>();
+  const confidenceEvidenceValidated = forecastRun?.metrics?.evaluation_source === "chronological_validation"
+    && forecastRun?.metrics?.confidence_evaluation_source === "chronological_validation";
   for (const pred of predRows) {
-    if (!predsByProductId.has(pred.product_id)) predsByProductId.set(pred.product_id, []);
-    predsByProductId.get(pred.product_id)!.push(pred);
+    const safePrediction = confidenceEvidenceValidated ? pred : {
+      ...pred,
+      confidence_score: null,
+      confidence_level: "Insufficient data",
+    };
+    if (!predsByProductId.has(safePrediction.product_id)) predsByProductId.set(safePrediction.product_id, []);
+    predsByProductId.get(safePrediction.product_id)!.push(safePrediction);
   }
 
   const pricesByKey = new Map<string, any[]>();
@@ -343,19 +396,24 @@ async function loadProducts() {
     const prevIdx = Math.max(0, rows.length - 8);
     const previousPrice = rows[prevIdx].price_index;
 
-    let allPredictions: any[] = [];
+    let allForecastRows: any[] = [];
     if (metaRow) {
-      allPredictions = predsByProductId.get(metaRow.id) || [];
+      allForecastRows = predsByProductId.get(metaRow.id) || [];
     }
 
     const lastActualDate = String(rows[rows.length - 1].report_date).split("T")[0];
     const savedProduct = forecastRun?.metrics?.forecast_products?.[metaRow?.id];
-    const freshModelPredictions = savedProduct?.source === "persistence_fallback" ? []
-      : selectFuturePredictions(allPredictions, lastActualDate);
-    const forecastSource = freshModelPredictions.length > 0 ? "model" : "trend_fallback";
-    const forecastDays = freshModelPredictions;
-    const firstSavedDate = allPredictions[0]?.prediction_date?.split("T")[0];
-    const forecastOriginDate = savedProduct?.origin_date ?? (firstSavedDate ? addUtcDays(firstSavedDate, -1) : null);
+    const dailyRows = allForecastRows.filter(row => !row.forecast_horizon || row.forecast_horizon === "daily");
+    const firstSavedDate = dailyRows[0]?.prediction_date?.split("T")[0];
+    const forecastOriginDate = resolveForecastOrigin(
+      lastActualDate,
+      savedProduct?.origin_date ?? (firstSavedDate ? addUtcDays(firstSavedDate, -1) : null),
+    );
+    const forecastDays = forecastOriginDate === lastActualDate
+      ? selectFuturePredictions(dailyRows, lastActualDate, PUBLISHED_DAILY_FORECAST_DAYS)
+      : selectFuturePredictions(dailyRows, forecastOriginDate, PUBLISHED_DAILY_FORECAST_DAYS);
+    const forecastSource = savedProduct?.source === "model" && forecastDays.length > 0
+      ? "model" : "trend_fallback";
     const predictedPrice = meanFirstWeek(forecastDays, currentPrice);
 
     const changePct = currentPrice === 0 ? 0 : ((predictedPrice - currentPrice) / currentPrice) * 100;
@@ -364,7 +422,23 @@ async function loadProducts() {
       : changePct > 1 ? "Bullish" : changePct < -1 ? "Bearish" : "Neutral";
     const sparklineData = rows.slice(-7).map((r: any) => ({ value: r.price_index }));
 
-    const forecastData = buildForecastData(rows, forecastDays);
+    const periodPredictions: SavedPeriodPrediction[] = selectSavedPeriodPredictions(
+      allForecastRows, forecastOriginDate, forecastDays.length > 0,
+    )
+      .map(row => ({
+        date: String(row.prediction_date).split("T")[0],
+        predicted_price: Number(row.predicted_price),
+        forecast_horizon: row.forecast_horizon,
+        target_period_start: String(row.target_period_start).split("T")[0],
+        target_period_end: String(row.target_period_end).split("T")[0],
+        forecast_step: Number(row.forecast_step),
+        covered_days: Number(row.covered_days),
+        period_days: Number(row.period_days),
+        confidence_score: row.confidence_score == null ? null : Number(row.confidence_score),
+        confidence_level: row.confidence_level,
+      }));
+    const forecastData = buildForecastSequenceData(rows, forecastDays,
+      forecastOriginDate, periodPredictions);
     const volume = `${(rows.length * 150).toLocaleString()} ${unit}`;
 
     const dailyForecast: any[] = [];
@@ -431,117 +505,46 @@ async function handleDashboardProducts() {
   });
 }
 
-let qualityCache: { key: string; expiresAt: number; metrics: ReturnType<typeof realizedForecastQuality> } | null = null
-let qualityRequest: { modelRunId: string; promise: Promise<ReturnType<typeof realizedForecastQuality>> } | null = null
-
-async function loadRealizedQuality(supabase: ReturnType<typeof getSupabase>, modelRunId: string) {
-  if (qualityCache?.key.startsWith(`${modelRunId}|`) && qualityCache.expiresAt > Date.now()) return qualityCache.metrics
-  const actualResponse = await supabase.from("food_prices").select("report_date")
-    .order("report_date", { ascending: false }).limit(1).maybeSingle()
-  if (actualResponse.error) throw actualResponse.error
-  const latestActual = actualResponse.data?.report_date
-  if (!latestActual) return null
-  const since = new Date(`${latestActual}T00:00:00Z`)
-  since.setUTCDate(since.getUTCDate() - 45)
-  const sinceDate = since.toISOString().slice(0, 10)
-  since.setUTCDate(since.getUTCDate() - 30)
-  // All relevant vintages from this model; repeated publications must not
-  // displace older evidence as they did under the eight-run limit.
-  const runs = await fetchAllPaginated((s, e) => supabase.from("forecast_runs")
-    .select("id, generated_at").eq("model_run_id", modelRunId)
-    .gte("generated_at", since.toISOString()).order("generated_at", { ascending: false })
-    .order("id").range(s, e))
-  if (!runs.length) return null
-  const cacheKey = `${modelRunId}|${latestActual}|${runs[0].id}`
-  const firstRunDate = runs[runs.length - 1].generated_at.slice(0, 10)
-  const evaluationStart = firstRunDate > sinceDate ? firstRunDate : sinceDate
-  const runIds = runs.map((run) => run.id)
-  const [forecasts, products, prices] = await Promise.all([
-    fetchAllPaginated((s, e) => supabase.from("forecast_values")
-      .select("run_id, product_id, prediction_date, predicted_price, lower_bound, upper_bound")
-      .in("run_id", runIds).gte("prediction_date", evaluationStart).lte("prediction_date", latestActual)
-      .order("prediction_date").order("run_id").order("product_id").range(s, e)),
-    fetchAllPaginated((s, e) => supabase.from("products")
-      .select("id, name, variant, origin, category, unit").order("id").range(s, e)),
-    fetchAllPaginated((s, e) => supabase.from("food_prices")
-      .select("product_name, product_category, product_variant, origin, unit, report_date, price_index, source_pdf")
-      .gte("report_date", evaluationStart).lte("report_date", latestActual)
-      .order("report_date").order("product_name").order("product_variant")
-      .order("origin").order("unit").order("source_pdf")
-      .order("price_index").range(s, e)),
-  ])
-  const metrics = realizedForecastQuality(runs, forecasts, products, prices)
-  qualityCache = { key: cacheKey, expiresAt: Date.now() + 60_000, metrics }
-  return metrics
-}
-
 async function handleForecastStatus() {
   const supabase = getSupabase()
-  let response = await supabase
-    .from("forecast_runs")
-    .select("model_run_id, generated_at, horizon, row_count, metrics")
+  const latest = (columns: string) => supabase.from("forecast_runs")
+    .select(columns)
     .order("generated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle()
+    .order("id", { ascending: false })
+    .limit(1).maybeSingle()
 
-  // Keep the timestamp endpoint usable during rollout before the additive
-  // metrics migration has been applied.
-  if (response.error && String(response.error.message).includes("metrics")) {
-    response = await supabase
-      .from("forecast_runs")
-      .select("model_run_id, generated_at, horizon, row_count")
-      .order("generated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
+  let response = await latest("model_run_id, generated_at, horizon, row_count, metrics")
+  if (response.error?.code === "42703" && /\bmetrics\b/.test(response.error.message)) {
+    response = await latest("model_run_id, generated_at, horizon, row_count")
   }
   if (response.error) throw response.error
   if (!response.data) return null
 
-  let metrics = response.data.metrics && typeof response.data.metrics === "object"
-    ? response.data.metrics
-    : null
-  const modelMetrics = metrics
-  try {
-    const modelRunId = response.data.model_run_id
-    if (!qualityRequest || qualityRequest.modelRunId !== modelRunId) {
-      const promise = loadRealizedQuality(supabase, modelRunId).finally(() => {
-        if (qualityRequest?.promise === promise) qualityRequest = null
-      })
-      qualityRequest = { modelRunId, promise }
-    }
-    const realizedMetrics = await qualityRequest.promise
-    if (realizedMetrics) {
-      // Score each observed product/date once. Prefer realized vintages to
-      // older holdout metrics for products with published forecasts.
-      metrics = {
-        processed_from: metrics?.processed_from,
-        processed_through: metrics?.processed_through,
-        processed_observed_rows: metrics?.processed_observed_rows,
-        processed_series_count: metrics?.processed_series_count,
-        ...realizedMetrics,
-      }
-    }
-  } catch (error) {
-    console.error("Unable to calculate realized forecast quality", error)
-  }
+  const run = response.data
+  const metrics = run.metrics && typeof run.metrics === "object" && !Array.isArray(run.metrics)
+    ? run.metrics : null
   return {
-    modelRunId: response.data.model_run_id,
-    generatedAt: response.data.generated_at,
-    horizon: response.data.horizon,
-    rowCount: response.data.row_count,
+    modelRunId: run.model_run_id,
+    generatedAt: run.generated_at,
+    horizon: run.horizon,
+    rowCount: run.row_count,
     metrics,
-    modelMetrics,
+    modelMetrics: metrics,
   }
 }
 
 // ── /news ────────────────────────────────────────────────
 async function handleNews(url: URL) {
   const supabase = getSupabase()
-  const limit = parseInt(url.searchParams.get("limit") || "10", 10);
+  const requestedLimit = parseInt(url.searchParams.get("limit") || "10", 10);
+  const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 10;
 
   let { data, error } = await supabase
     .from("news_articles")
     .select("id, title, title_tl, content, content_tl, event_type, published_at, published_date, publication_precision, image_url, url, source, sentiment_score, keywords, affected_products, time_validity_days, probability, effect_magnitude")
+    .in("event_type", PRICE_IMPACT_NEWS_EVENT_TYPES)
+    .not("affected_products", "is", null)
+    .neq("affected_products", "{}")
     .order("published_at", { ascending: false })
     .limit(limit);
 
@@ -550,13 +553,20 @@ async function handleNews(url: URL) {
   if (error?.code === "42703" && /published_date|publication_precision/.test(error.message)) {
     const legacy = await supabase.from("news_articles")
       .select("id, title, title_tl, content, content_tl, event_type, published_at, image_url, url, source, sentiment_score, keywords, affected_products, time_validity_days, probability, effect_magnitude")
+      .in("event_type", PRICE_IMPACT_NEWS_EVENT_TYPES)
+      .not("affected_products", "is", null)
+      .neq("affected_products", "{}")
       .order("published_at", { ascending: false }).limit(limit);
     data = legacy.data?.map(article => ({ ...article, published_date: null, publication_precision: "unknown" })) ?? null;
     error = legacy.error;
   }
   if (error) throw error;
 
-  return (data || []).map((article: any) => ({
+  return (data || []).filter((article: any) =>
+    Array.isArray(article.affected_products) && article.affected_products.some((product: unknown) =>
+      typeof product === "string" && product.trim().length > 0
+    )
+  ).map((article: any) => ({
     id: article.id,
     title: article.title,
     title_tl: article.title_tl,
@@ -628,6 +638,9 @@ serve(async (req) => {
       case "products":
         result = await handleProducts()
         break
+      case "product-history":
+        result = await handleProductHistory(url)
+        break
       case "news":
         result = await handleNews(url)
         break
@@ -649,6 +662,7 @@ serve(async (req) => {
           JSON.stringify({
             endpoints: [
               "/foodcast/products",
+              "/foodcast/product-history?name=...&variant=...&origin=...&category=...&unit=...",
               "/foodcast/dashboard-products",
               "/foodcast/forecast-status",
               "/foodcast/news",

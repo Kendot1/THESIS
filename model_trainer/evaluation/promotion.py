@@ -14,7 +14,8 @@ from .frozen_holdout import METRICS, PHILIPPINE_TIME, calendar_date, error_metri
 
 COMPONENTS = {"categorical_mappings.json", "lightgbm_model.txt", "lightgbm_meta.json",
               "lstm_model.pt", "lstm_meta.json", "ensemble.json"}
-POLICY_VERSION = 1
+POLICY_VERSION = 2
+VALIDATION_METRICS = ("within_10_accuracy_pct", *METRICS)
 
 
 def digest(path):
@@ -33,7 +34,7 @@ def read_json(path):
 
 
 def validation_comparison(path, holdout_start):
-    """Recompute matched original-price errors and stability across origins."""
+    """Recompute four matched metrics and stability across chronological origins."""
     with path.open(encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)
         required = {"series", "origin", "target_date", "actual", "prediction", "champion", "anchor"}
@@ -59,12 +60,21 @@ def validation_comparison(path, holdout_start):
 
     def better(block):
         candidate = error_metrics(block)
-        return all(all(candidate[k] < error_metrics(block, reference)[k] for k in METRICS)
-                   for reference in ("champion", "anchor"))
+        for reference in ("champion", "anchor"):
+            baseline = error_metrics(block, reference)
+            for key in VALIDATION_METRICS:
+                if candidate[key] is None or baseline[key] is None:
+                    return False
+                if key == "within_10_accuracy_pct":
+                    if candidate[key] <= baseline[key]:
+                        return False
+                elif candidate[key] >= baseline[key]:
+                    return False
+        return True
 
     wins = sum(better(block) for block in by_origin.values())
     if not better(rows) or wins < math.ceil(2 * len(by_origin) / 3):
-        raise ValueError("Candidate lacks stable matched improvement on all three metrics")
+        raise ValueError("Candidate lacks stable matched improvement on all four metrics")
     return {"origins": len(by_origin), "origins_improving_all_metrics": wins,
             "candidate": error_metrics(rows), "champion": error_metrics(rows, "champion"),
             "persistence": error_metrics(rows, "anchor")}
@@ -147,7 +157,10 @@ def verify_promotion_evidence(run_dir, evidence_dir, *, now=None):
         raise ValueError("Saved final report does not reproduce from sealed inputs")
     if not recomputed["target_met_for_full_declared_scope"]:
         raise ValueError("Final holdout fails the metric target or declared coverage")
-    if not all(recomputed["overall"][k] < recomputed["persistence_on_same_rows"][k] for k in METRICS):
+    persistence = recomputed["persistence_on_same_rows"]
+    if (recomputed["overall"]["within_10_accuracy_pct"]
+            < persistence["within_10_accuracy_pct"]
+            or not all(recomputed["overall"][k] < persistence[k] for k in METRICS)):
         raise ValueError("Final candidate does not improve on matched persistence")
     return {"review_sha256": digest(review_path), "model_metadata_sha256": metadata_hash,
             "contract_sha256": integrity["contract_sha256"],

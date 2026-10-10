@@ -1,7 +1,7 @@
 """
-News scraping pipeline — ABS-CBN focused.
-Crawls abs-cbn.com sections for articles, uses Groq/OpenAI LLM to
-strictly filter for food-price relevance and extract structured intelligence.
+News scraping pipeline for Philippine food-market intelligence.
+Discovers relevant stories from trusted local and international publishers,
+then requires article-level evidence before storing them.
 """
 
 import asyncio
@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
-from urllib.parse import urlparse, quote_plus
+from urllib.parse import urlparse, urljoin, quote_plus
 
 # Support both ``python -m scraper.news_scraper`` and the historical direct
 # script command without masking ImportErrors raised inside the helper itself.
@@ -55,7 +55,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 log = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────
-# ABS-CBN sections + Google News site-restricted search
+# Local section feeds plus targeted Google News searches across trusted sources
 # ──────────────────────────────────────────────
 ABSCBN_SECTIONS = [
     "https://www.abs-cbn.com/business",
@@ -65,21 +65,37 @@ ABSCBN_SECTIONS = [
     "https://www.abs-cbn.com/news/regions",
 ]
 
-# Google News queries restricted to abs-cbn.com (last 30 days)
+# Keep discovery queries tied to Philippine food markets. Indirect drivers such
+# as war, shipping, and fuel are included only when the query also names a food
+# commodity or food supply chain.
 GOOGLE_SEARCH_QUERIES = [
-    "abs-cbn.com Philippines rice palay bigas price supply",
-    "abs-cbn.com Philippines food commodity retail prices",
-    "abs-cbn.com Philippines vegetable prices onion garlic tomato",
-    "abs-cbn.com Philippines chicken pork beef egg prices",
-    "abs-cbn.com Philippines fish bangus tilapia galunggong prices",
-    "abs-cbn.com Philippines crop harvest production supply",
-    "abs-cbn.com Philippines typhoon flood drought crop damage harvest",
-    "abs-cbn.com Philippines agriculture fishery supply shortage",
-    "abs-cbn.com Philippines food import tariff rice sugar corn",
-    "abs-cbn.com Philippines food price cap hoarding smuggling",
-    "abs-cbn.com Philippines El Nino agriculture crops harvest",
-    "abs-cbn.com Philippines La Nina agriculture crops fisheries",
+    "Philippines rice palay bigas food commodity prices supply shortage",
+    "Philippines vegetable onion garlic tomato prices harvest supply",
+    "Philippines chicken pork beef egg fish prices supply catch",
+    "Philippines typhoon flood drought crop damage harvest food prices",
+    "Philippines El Nino La Nina crops fisheries food supply prices",
+    "Philippines rice sugar corn food import tariff export ban prices",
+    "Philippines war conflict blockade grain rice food imports supply prices",
+    "Philippines shipping disruption port closure food cargo rice imports prices",
+    "Philippines diesel gasoline fuel price hike farm fishing food transport costs",
+    "Philippines fuel price increase food distribution agriculture commodity prices",
+    "Philippines fertilizer animal feed costs farm production food prices",
+    "Philippines DA price monitoring rice meat fish vegetable commodity prices",
 ]
+
+SUPPORTED_NEWS_DOMAINS = (
+    "abs-cbn.com",
+    "gmanetwork.com",
+    "inquirer.net",
+    "philstar.com",
+    "mb.com.ph",
+    "businessworld-online.com",
+    "pna.gov.ph",
+    "da.gov.ph",
+    "doe.gov.ph",
+    "reuters.com",
+    "apnews.com",
+)
 
 # ──────────────────────────────────────────────
 # Keyword Pre-filter (to save LLM tokens)
@@ -93,6 +109,9 @@ AGRI_FOOD_TOPIC_TERMS = (
     "pork", "baboy", "beef", "baka", "egg", "itlog", "fish", "isda", "fishery", "fisheries",
     "fishing", "fisherfolk", "aquaculture", "bangus", "tilapia", "galunggong", "sugar", "asukal",
     "cooking oil", "potato", "carrot", "banana", "calamansi", "livestock", "poultry",
+    "food logistics", "food distribution", "food transport", "food imports", "food exports",
+    "food supply chain", "farm input", "farm inputs", "fertilizer", "fertiliser", "animal feed",
+    "fish feed", "cold storage", "grain shipment", "grain shipments", "food cargo",
 )
 
 MARKET_IMPACT_TERMS = (
@@ -104,18 +123,88 @@ MARKET_IMPACT_TERMS = (
     "catch", "harvest", "import", "imports", "export", "exports", "tariff", "quota", "price cap",
     "price ceiling", "hoarding", "smuggling", "stock", "stocks", "stockpile", "crop damage",
     "damaged crops", "destroyed crops", "farm damage", "fish kill", "bagyo", "drought", "flood",
-    "el nino", "la nina", "typhoon",
+    "el nino", "la nina", "typhoon", "fuel hike", "fuel price", "diesel", "gasoline",
+    "fertilizer costs", "feed costs", "shipping disruption", "port closure", "blockade",
+    "export ban", "trade restriction", "trade restrictions", "shipment disruption", "war",
+    "conflict", "freight cost", "transport cost",
 )
 
 SUPPORTED_PRODUCTS = (
-    "Rice", "Well Milled Rice", "Regular Milled Rice", "Chicken", "Pork", "Beef", "Egg",
-    "Bangus", "Tilapia", "Galunggong", "Red Onion", "White Onion", "Garlic", "Tomato",
-    "Cabbage", "Eggplant", "Squash", "String Beans", "Kangkong", "Pechay Tagalog", "Ampalaya",
-    "Siling Labuyo", "Ginger", "Potato", "Carrot", "Banana", "Calamansi", "Sugar", "Cooking Oil", "Corn",
+    "Avocado", "Baguio Beans", "Banana", "Beef", "Bell Pepper", "Bittergourd", "Broccoli",
+    "Cabbage", "Calamansi", "Carrot", "Cauliflower", "Celery", "Chayote", "Chicken",
+    "Chicken Egg", "Chili", "Coconut Oil", "Corn", "Corn Cracked", "Corn Grits", "Eggplant",
+    "Garlic", "Ginger", "Lettuce", "Mango", "Melon", "Milkfish", "Mung Beans", "Palm Oil",
+    "Papaya", "Pechay Baguio", "Pechay Tagalog", "Pomelo", "Pork", "Potato", "Red Onion",
+    "Rice", "Round Scad", "Salmon Head", "Sardines", "Squash", "Squid", "String Beans",
+    "Sugar", "Tilapia", "Tomato", "Watermelon", "White Onion", "Yellow Sweet Corn", "Alumahan",
+    "Kangkong",
 )
+PRODUCT_EVIDENCE_TERMS = {
+    "Rice": ("rice", "palay", "bigas"),
+    "Avocado": ("avocado",),
+    "Baguio Beans": ("baguio beans", "snap beans"),
+    "Banana": ("banana", "bananas", "saging"),
+    "Beef": ("beef", "cattle", "baka"),
+    "Bell Pepper": ("bell pepper", "capsicum"),
+    "Bittergourd": ("bitter gourd", "bitter melon", "ampalaya"),
+    "Broccoli": ("broccoli",),
+    "Cabbage": ("cabbage",),
+    "Calamansi": ("calamansi",),
+    "Carrot": ("carrot", "carrots"),
+    "Cauliflower": ("cauliflower",),
+    "Celery": ("celery",),
+    "Chayote": ("chayote",),
+    "Chicken": ("chicken", "poultry", "manok"),
+    "Chicken Egg": ("chicken egg", "egg", "eggs", "itlog"),
+    "Chili": ("chili", "chilli", "siling labuyo", "siling pangsigang"),
+    "Coconut Oil": ("coconut oil",),
+    "Corn": ("corn", "maize", "mais"),
+    "Corn Cracked": ("cracked corn", "corn feed", "feed-grade corn"),
+    "Corn Grits": ("corn grits",),
+    "Eggplant": ("eggplant", "talong"),
+    "Garlic": ("garlic", "bawang"),
+    "Ginger": ("ginger", "luya"),
+    "Lettuce": ("lettuce",),
+    "Mango": ("mango",),
+    "Melon": ("melon", "cantaloupe"),
+    "Milkfish": ("milkfish", "bangus"),
+    "Mung Beans": ("mung beans", "mungbean", "monggo"),
+    "Palm Oil": ("palm oil",),
+    "Papaya": ("papaya",),
+    "Pechay Baguio": ("pechay baguio", "baguio pechay"),
+    "Pechay Tagalog": ("pechay tagalog", "tagalog pechay", "pechay"),
+    "Pomelo": ("pomelo",),
+    "Pork": ("pork", "pig", "hog", "baboy"),
+    "Potato": ("potato", "potatoes", "patatas"),
+    "Red Onion": ("red onion", "onion", "sibuyas"),
+    "Round Scad": ("round scad", "galunggong"),
+    "Salmon Head": ("salmon head",),
+    "Sardines": ("sardines", "sardine"),
+    "Squash": ("squash", "kalabasa"),
+    "Squid": ("squid",),
+    "String Beans": ("string beans", "yardlong beans", "sitaw"),
+    "Sugar": ("sugar", "asukal"),
+    "Tilapia": ("tilapia",),
+    "Tomato": ("tomato", "tomatoes", "kamatis"),
+    "Watermelon": ("watermelon",),
+    "White Onion": ("white onion", "onion", "sibuyas"),
+    "Yellow Sweet Corn": ("sweet corn", "yellow corn", "corn cob"),
+    "Alumahan": ("alumahan", "indian mackerel"),
+    "Kangkong": ("kangkong", "water spinach"),
+}
+AGRI_FOOD_TOPIC_TERMS = tuple(dict.fromkeys(
+    (*AGRI_FOOD_TOPIC_TERMS, *(term for aliases in PRODUCT_EVIDENCE_TERMS.values() for term in aliases))
+))
 SUPPORTED_EVENT_TYPES = {
     "supply_shock", "demand_spike", "policy_change", "import_export", "price_movement", "weather", "fuel_energy",
 }
+EVIDENCE_IMPACT_TERMS = (
+    "price", "prices", "cost", "costs", "hike", "surge", "increase", "increased", "rise", "rose",
+    "higher", "decrease", "decline", "drop", "fell", "lower", "shortage", "scarcity", "supply",
+    "surplus", "production", "yield", "harvest", "crop damage", "destroyed", "damaged", "blocked",
+    "disruption", "disrupted", "ban", "halted", "stopped", "import", "imports", "export", "exports",
+    "tariff", "quota", "price cap", "hoarding", "smuggling", "pagtaas", "tumaas", "bumaba", "kakulangan",
+)
 
 # ──────────────────────────────────────────────
 # Strict LLM prompt — rejects anything not directly impacting food prices
@@ -124,23 +213,23 @@ LLM_SYSTEM_PROMPT = """You are a strict food-price intelligence filter for a Phi
 
 Your job: determine if a news article has a concrete, evidence-based connection to the prices, availability, or production of a Philippine agri-fishery food commodity.
 
-RELEVANT articles include:
+RELEVANT articles include only stories with a clearly stated effect on at least one named Philippine food commodity. Examples:
 - Direct price changes of food commodities (rice, vegetables, meat, fish, etc.)
 - Government price caps, tariffs, or import/export policies on food
 - Supply chain disruptions (typhoons destroying crops, floods, droughts, El Niño/La Niña)
 - Fuel or transport costs only when the article explicitly connects them to farming, fishing, food processing, or distribution of a named food commodity
-- Trade or geopolitical events only when the article identifies a concrete effect on Philippine food imports, exports, or commodity supply
+- War, conflict, blockade, shipping disruption, or trade restrictions only when the article identifies a concrete effect on Philippine food imports, exports, a named commodity's supply, or its price
 - Inflation reports only when they report food or named food-commodity prices
 - Smuggling or hoarding of food commodities
 - Harvest reports, crop yield data, planting season updates
 
 NOT RELEVANT (REJECT these):
-- General inflation, fuel/oil, currency, business, trade, war, weather, or political stories without a concrete Philippine food-commodity price, production, or supply impact
+- General inflation, fuel/oil (including LPG/cooking gas), currency, business, trade, war, weather, or political stories without a concrete Philippine food-commodity price, production, or supply impact
 - Wildlife, animal rescue, marine conservation, reef protection, and fishing enforcement stories with no reported food supply or price effect
 - Food safety incidents, recalls, nutrition programs, or food aid that do not report a commodity-market effect
 - Celebrity news, sports, entertainment, unrelated politics, and crime near farms
 
-Only mark an article relevant when its text supports at least one specific product from the supplied product list. Do not infer a product or market impact from a broad topic alone. Treat fuel as an indirect cause only; never list fuel as an affected food product.
+Only mark an article relevant when its text explicitly supports at least one specific product from the supplied product list. Do not infer a product or market impact from a broad topic alone. Treat fuel as an indirect cause only; never list fuel as an affected food product. A fuel price change by itself is not food-market news. A war or conflict mention by itself is not food-market news. Reject LPG/cooking-gas stories unless they also state a direct impact on a named raw food commodity.
 
 Respond with ONLY valid JSON, no markdown fences, no explanation.
 
@@ -151,7 +240,8 @@ If relevant:
   "relevant": true,
   "sentiment_score": <float -1.0 to 1.0. Negative = prices will INCREASE (bad for consumers). Positive = prices will DECREASE (good for consumers). 0 = neutral/stable>,
   "event_type": "<supply_shock | demand_spike | policy_change | import_export | price_movement | weather | fuel_energy>",
-  "affected_products": ["<from: Rice, Well Milled Rice, Regular Milled Rice, Chicken, Pork, Beef, Egg, Bangus, Tilapia, Galunggong, Red Onion, White Onion, Garlic, Tomato, Cabbage, Eggplant, Squash, String Beans, Kangkong, Pechay Tagalog, Ampalaya, Siling Labuyo, Ginger, Potato, Carrot, Banana, Calamansi, Sugar, Cooking Oil, Corn>"],
+  "affected_products": ["<exact product names from {SUPPORTED_PRODUCTS}>"],
+  "impact_evidence": "<an exact short quote from the article supporting the named commodity's price, production, or supply effect>",
   "keywords": ["<MAXIMUM 3 broad market drivers, e.g.: Fuel Hike, Weather Disturbance, Import Policy, Typhoon, Price Surge. Avoid specific nouns like 'Meralco' or 'Diesel'>"],
   "time_validity_days": <integer. How long will this event affect the market? e.g., 7 for a quick spike, 30 for a seasonal issue, 90 for El Nino>,
   "probability": <float 0.0 to 1.0. How likely is this to actually affect prices? e.g., 0.9 for a confirmed tariff hike, 0.4 for a rumored shortage>,
@@ -159,12 +249,14 @@ If relevant:
   "summary": "<1-2 sentence summary focused on the PRICE IMPACT in English>",
   "title_tl": "<Translate the article's title into natural Filipino, ensuring proper grammar and punctuation>",
   "summary_tl": "<Translate the 1-2 sentence summary into natural, conversational Filipino. PAY SPECIAL ATTENTION TO PUNCTUATION: ensure proper use of commas, periods, and quotation marks where appropriate to make the sentences read clearly.>"
-}"""
+}
+
+The impact_evidence must be copied verbatim from the provided title or article text, including the named food commodity and its stated price, production, or supply effect. Do not paraphrase or infer an indirect impact."""
 
 
 class NewsScraper:
     """
-    Scrapes ABS-CBN news via direct crawling + Google News discovery,
+    Scrapes relevant news via local feeds + targeted Google News discovery,
     uses LLM for strict relevance filtering and structured extraction,
     deduplicates, and stores to Supabase.
     """
@@ -180,25 +272,38 @@ class NewsScraper:
     # ------------------------------------------------------------------
     async def run_daily_scrape(self) -> Dict[str, int]:
         """Execute the full daily scraping pipeline."""
-        stats = {"discovered": 0, "new": 0, "relevant": 0, "stored": 0}
+        stats = {
+            "discovered": 0, "new": 0, "relevant": 0, "stored": 0,
+            "discovery_attempts": 0, "discovery_successes": 0,
+            "discovery_failures": 0, "processing_failures": 0,
+            "storage_failures": 0,
+        }
+        self._run_stats = stats
 
         try:
             from crawl4ai import AsyncWebCrawler
         except ImportError:
-            log.error("crawl4ai not installed. Run: pip install crawl4ai")
-            return stats
+            raise RuntimeError("crawl4ai is not installed; install scraper/requirements.txt")
 
         if not self._groq_key and not self._openai_key:
-            log.error("No LLM API key set. Add GROQ_API_KEY_NEWS_SCRAPER or OPENAI_API_KEY to .env")
-            return stats
+            raise RuntimeError(
+                "Missing news-analysis credentials: set GROQ_API_KEY_NEWS_SCRAPER "
+                "or OPENAI_API_KEY"
+            )
 
         llm_name = "Groq (gpt-oss-120b)" if self._groq_key else "OpenAI (gpt-4o-mini)"
-        log.info(f"=== NEWS SCRAPING PIPELINE (ABS-CBN) === LLM: {llm_name}")
+        log.info(f"=== NEWS SCRAPING PIPELINE (TRUSTED SOURCES) === LLM: {llm_name}")
 
         # Step 1: Discover article URLs
         article_urls = await self._discover_article_urls()
         stats["discovered"] = len(article_urls)
         log.info(f"Discovered {len(article_urls)} article URLs.")
+
+        if not stats["discovery_successes"]:
+            raise RuntimeError(
+                "News discovery could not read any source feeds or Google News pages; "
+                f"attempts={stats['discovery_attempts']} failures={stats['discovery_failures']}"
+            )
 
         if not article_urls:
             log.warning("No article URLs discovered — skipping.")
@@ -227,13 +332,28 @@ class NewsScraper:
                         stats["relevant"] += 1
                         if self._store_article(article):
                             stats["stored"] += 1
+                        else:
+                            stats["storage_failures"] += 1
                 except Exception as e:
+                    stats["processing_failures"] += 1
                     log.warning(f"  Error processing {url}: {e}")
+
+        if stats["storage_failures"]:
+            raise RuntimeError(
+                f"Failed to store {stats['storage_failures']} relevant news article(s)"
+            )
+        if stats["processing_failures"]:
+            raise RuntimeError(
+                f"News scraping had {stats['processing_failures']} article processing failure(s)"
+            )
+        if self._llm_exhausted:
+            raise RuntimeError("News scraping stopped because the LLM daily limit was exhausted")
 
         log.info(
             f"=== SCRAPE COMPLETE === "
             f"discovered={stats['discovered']} new={stats['new']} "
-            f"relevant={stats['relevant']} stored={stats['stored']}"
+            f"relevant={stats['relevant']} stored={stats['stored']} "
+            f"discovery_pages={stats['discovery_successes']}/{stats['discovery_attempts']}"
         )
         return stats
 
@@ -243,8 +363,8 @@ class NewsScraper:
     async def _discover_article_urls(self) -> List[str]:
         """
         Two-pronged discovery:
-        1. Crawl ABS-CBN section pages for today's articles
-        2. Search Google News for ABS-CBN food/price articles from last 30 days
+        1. Crawl ABS-CBN business and local news sections
+        2. Search Google News for targeted Philippine food-market stories from trusted publishers
         """
         urls = set()
 
@@ -252,42 +372,81 @@ class NewsScraper:
             from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 
             async with AsyncWebCrawler() as crawler:
-                config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
+                config = CrawlerRunConfig(
+                    cache_mode=CacheMode.BYPASS, page_timeout=30_000)
 
                 # Strategy 1: ABS-CBN section pages
                 for section_url in ABSCBN_SECTIONS:
+                    self._run_stats["discovery_attempts"] += 1
                     try:
-                        result = await crawler.arun(url=section_url, config=config)
+                        result = await self._crawl_with_retry(crawler, section_url, config)
                         if result and result.success:
+                            self._run_stats["discovery_successes"] += 1
                             for link_info in result.links.get("internal", []):
                                 href = link_info.get("href", "") if isinstance(link_info, dict) else str(link_info)
-                                if self._is_article_url(href):
-                                    urls.add(href)
+                                article_url = urljoin(section_url, href)
+                                if self._is_article_url(article_url):
+                                    urls.add(article_url)
+                        else:
+                            self._run_stats["discovery_failures"] += 1
+                            log.warning(f"Section scan returned no page: {section_url}")
                     except Exception as e:
-                        log.debug(f"Section scan failed {section_url}: {e}")
+                        self._run_stats["discovery_failures"] += 1
+                        log.warning(f"Section scan failed {section_url}: {e}")
 
-                # Strategy 2: Google News search for ABS-CBN articles
+                # Strategy 2: targeted Google News searches across trusted publishers
                 for query in GOOGLE_SEARCH_QUERIES:
                     search_url = (
                         f"https://news.google.com/search?"
                         f"q={quote_plus(query + ' when:30d')}&hl=en-PH&gl=PH"
                     )
+                    self._run_stats["discovery_attempts"] += 1
                     try:
-                        result = await crawler.arun(url=search_url, config=config)
+                        result = await self._crawl_with_retry(crawler, search_url, config)
                         if result and result.success:
+                            self._run_stats["discovery_successes"] += 1
                             # Google News uses ./read/ links that redirect to actual articles
                             for link_info in result.links.get("internal", []):
                                 href = link_info.get("href", "") if isinstance(link_info, dict) else str(link_info)
-                                if href.startswith("./read/") or href.startswith("./articles/"):
-                                    full_link = f"https://news.google.com{href[1:]}"
-                                    urls.add(full_link)
+                                candidate_url = urljoin(search_url, href)
+                                candidate = urlparse(candidate_url)
+                                if (
+                                    candidate.hostname == "news.google.com"
+                                    and (candidate.path.startswith("/read/") or candidate.path.startswith("/articles/"))
+                                ):
+                                    urls.add(candidate_url)
+                        else:
+                            self._run_stats["discovery_failures"] += 1
+                            log.warning("Google News search returned no page")
                     except Exception as e:
-                        log.debug(f"Google News search failed: {e}")
+                        self._run_stats["discovery_failures"] += 1
+                        log.warning(f"Google News search failed: {e}")
 
         except ImportError:
-            log.warning("crawl4ai not available.")
+            raise RuntimeError("crawl4ai is not installed")
 
         return list(urls)
+
+    @staticmethod
+    async def _crawl_with_retry(crawler, url: str, config):
+        """Retry transient browser/network failures once before reporting failure."""
+        last_error = "crawler returned no successful result"
+        for attempt in range(2):
+            try:
+                result = await crawler.arun(url=url, config=config)
+                if result and result.success:
+                    return result
+                last_error = getattr(result, "error_message", None) or last_error
+            except Exception as exc:
+                last_error = f"{type(exc).__name__}: {exc}"
+            if attempt == 0:
+                await asyncio.sleep(1)
+        raise RuntimeError(f"Could not crawl {url} after retry: {last_error}")
+
+    @staticmethod
+    def _is_supported_publisher(host: str) -> bool:
+        host = (host or "").lower().rstrip(".").removeprefix("www.")
+        return any(host == domain or host.endswith("." + domain) for domain in SUPPORTED_NEWS_DOMAINS)
 
     def _is_article_url(self, url: str) -> bool:
         """Check if a URL is a potentially food/price-relevant ABS-CBN article."""
@@ -319,33 +478,27 @@ class NewsScraper:
         """Filter out URLs already stored in the database."""
         new_urls = []
         for url in urls:
-            try:
-                resp = (
-                    self._client.table(self._table)
-                    .select("id")
-                    .eq("url", url)
-                    .limit(1)
-                    .execute()
-                )
-                if not resp.data:
-                    new_urls.append(url)
-            except Exception:
+            resp = (
+                self._client.table(self._table)
+                .select("id")
+                .eq("url", url)
+                .limit(1)
+                .execute()
+            )
+            if not resp.data:
                 new_urls.append(url)
         return new_urls
 
     def _check_content_hash(self, content_hash: str) -> bool:
         """Check if content hash already exists."""
-        try:
-            resp = (
-                self._client.table(self._table)
-                .select("id")
-                .eq("content_hash", content_hash)
-                .limit(1)
-                .execute()
-            )
-            return len(resp.data) > 0
-        except Exception:
-            return False
+        resp = (
+            self._client.table(self._table)
+            .select("id")
+            .eq("content_hash", content_hash)
+            .limit(1)
+            .execute()
+        )
+        return len(resp.data) > 0
 
     # ------------------------------------------------------------------
     # Article Processing
@@ -354,18 +507,18 @@ class NewsScraper:
         """Crawl a single article and run strict LLM analysis."""
         from crawl4ai import CacheMode, CrawlerRunConfig
 
-        config = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
-        result = await crawler.arun(url=url, config=config)
+        config = CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS, page_timeout=30_000)
+        result = await self._crawl_with_retry(crawler, url, config)
 
-        if not result or not result.success or not result.markdown:
-            log.warning(f"  ✗ SKIP (crawl failed): {url}")
-            return None
+        if not result.markdown:
+            raise RuntimeError(f"Article crawl returned no markdown: {url}")
 
-        # Google News discovery links must resolve to the requested publisher.
+        # Google News discovery links must resolve to a trusted publisher.
         resolved_url = result.url or url
         resolved_host = (urlparse(resolved_url).hostname or "").lower().removeprefix("www.")
-        if resolved_host != "abs-cbn.com":
-            log.info(f"  ✗ SKIP (unexpected publisher {resolved_host or 'unknown'}): {url}")
+        if not self._is_supported_publisher(resolved_host):
+            log.info(f"  ✗ SKIP (untrusted publisher {resolved_host or 'unknown'}): {url}")
             return None
 
         # Clean content — extract article body
@@ -433,11 +586,7 @@ class NewsScraper:
             
         title = re.sub(r'\s*\|\s*ABS-CBN.*$', '', title).strip()
 
-        # Extract source domain
-        parsed = urlparse(url)
-        source = parsed.netloc.replace("www.", "")
-        if "news.google.com" in source:
-            source = "abs-cbn.com (via Google News)"
+        source = resolved_host
 
         # ── Pre-Filter (Keyword Check) ──
         if not self._pre_filter_content(title, content):
@@ -451,7 +600,7 @@ class NewsScraper:
             log.warning(f"  ✗ SKIP (LLM call failed): {title[:60]}")
             return None
 
-        if not self._has_supported_market_evidence(llm_result):
+        if not self._has_supported_market_evidence(llm_result, title, content):
             log.info(f"  ✗ SKIP (no supported food-market evidence): {title[:60]}")
             return None
 
@@ -459,7 +608,8 @@ class NewsScraper:
             f"  ✓ RELEVANT: {title[:60]}... "
             f"sentiment={llm_result.get('sentiment_score', 0):.2f} "
             f"type={llm_result.get('event_type')} "
-            f"products={llm_result.get('affected_products', [])}"
+            f"products={llm_result.get('affected_products', [])} "
+            f"evidence={llm_result.get('impact_evidence', '')[:120]!r}"
         )
 
         return {
@@ -468,7 +618,7 @@ class NewsScraper:
             "content": llm_result.get("summary", content[:5000]),
             "content_tl": llm_result.get("summary_tl", ""),
             "source": source,
-            "url": url,
+            "url": resolved_url,
             "content_hash": content_hash,
             **publication,
             "created_at": datetime.now(timezone.utc).isoformat(),
@@ -568,8 +718,13 @@ class NewsScraper:
 
         return contains_any(AGRI_FOOD_TOPIC_TERMS) and contains_any(MARKET_IMPACT_TERMS)
 
-    def _has_supported_market_evidence(self, result: Dict[str, Any]) -> bool:
-        """Reject positive model labels without a supported product and event type."""
+    def _has_supported_market_evidence(
+        self,
+        result: Dict[str, Any],
+        title: str,
+        content: str,
+    ) -> bool:
+        """Require a verifiable article quote tied to a named supported product."""
         if not isinstance(result, dict) or result.get("relevant") is not True:
             return False
 
@@ -580,18 +735,72 @@ class NewsScraper:
         products = result.get("affected_products")
         if not isinstance(products, list):
             return False
+
+        evidence = result.get("impact_evidence")
+        if not isinstance(evidence, str):
+            return False
+        evidence = re.sub(r"\s+", " ", evidence).strip().strip("\"'")
+        if len(evidence) < 12:
+            return False
+
+        def normalize_text(value: str) -> str:
+            return re.sub(r"\s+", " ", value).strip().casefold()
+
+        article_text = normalize_text(f"{title} {content}")
+        normalized_evidence = normalize_text(evidence)
+        if normalized_evidence not in article_text:
+            return False
+        if not any(
+            re.search(r"(?<!\w)" + re.escape(term) + r"(?!\w)", normalized_evidence)
+            for term in EVIDENCE_IMPACT_TERMS
+        ):
+            return False
+        if event_type.strip().casefold() == "fuel_energy" and not any(
+            re.search(r"(?<!\w)" + re.escape(term) + r"(?!\w)", normalized_evidence)
+            for term in ("fuel", "diesel", "gasoline", "petrol", "kerosene", "lpg")
+        ):
+            return False
+
         canonical_products = {name.casefold(): name for name in SUPPORTED_PRODUCTS}
         matched = []
         for product in products:
             if isinstance(product, str):
                 canonical = canonical_products.get(product.strip().casefold())
-                if canonical and canonical not in matched:
+                product_terms = PRODUCT_EVIDENCE_TERMS.get(canonical, ()) if canonical else ()
+                if (
+                    canonical
+                    and canonical not in matched
+                    and any(
+                        re.search(r"(?<!\w)" + re.escape(term) + r"(?!\w)", normalized_evidence)
+                        for term in product_terms
+                    )
+                ):
                     matched.append(canonical)
         if not matched:
             return False
 
+        raw_keywords = result.get("keywords")
+        keywords = []
+        seen_keywords = set()
+        if isinstance(raw_keywords, list):
+            for keyword in raw_keywords:
+                if not isinstance(keyword, str):
+                    continue
+                keyword = re.sub(r"\s+", " ", keyword).strip()
+                if not keyword or re.search(r"\b(?:lpg|liquefied petroleum gas)\b", keyword, re.IGNORECASE):
+                    continue
+                normalized_keyword = keyword.casefold()
+                if normalized_keyword in seen_keywords:
+                    continue
+                seen_keywords.add(normalized_keyword)
+                keywords.append(keyword)
+                if len(keywords) == 3:
+                    break
+
         result["affected_products"] = matched
         result["event_type"] = event_type.strip().casefold()
+        result["impact_evidence"] = evidence
+        result["keywords"] = keywords
         return True
 
     # ------------------------------------------------------------------
@@ -606,6 +815,9 @@ class NewsScraper:
 
         truncated = content[:2500]
         user_prompt = f"TITLE: {title}\n\nARTICLE:\n{truncated}"
+        system_prompt = LLM_SYSTEM_PROMPT.replace(
+            "{SUPPORTED_PRODUCTS}", ", ".join(SUPPORTED_PRODUCTS)
+        )
 
         # Choose provider
         if self._groq_key:
@@ -629,7 +841,7 @@ class NewsScraper:
                         json={
                             "model": model,
                             "messages": [
-                                {"role": "system", "content": LLM_SYSTEM_PROMPT},
+                                {"role": "system", "content": system_prompt},
                                 {"role": "user", "content": user_prompt},
                             ],
                             "temperature": 0.0,
@@ -659,14 +871,26 @@ class NewsScraper:
                         log.warning(f"  LLM rate limited (429), retrying in 10s...")
                         await asyncio.sleep(10)
                         continue
+                if (status >= 500 or status == 408) and attempt < 2:
+                    log.warning(f"  LLM service error ({status}), retrying...")
+                    await asyncio.sleep(2 * (attempt + 1))
+                    continue
                 log.warning(f"  LLM API error ({status}): {e.response.text[:200]}")
-                return None
+                raise RuntimeError(f"News LLM request failed with HTTP {status}") from e
             except json.JSONDecodeError as e:
                 log.warning(f"  LLM returned invalid JSON: {e}")
-                return None
+                if attempt < 2:
+                    await asyncio.sleep(1)
+                    continue
+                raise RuntimeError("News LLM returned invalid JSON after retries") from e
             except Exception as e:
-                log.warning(f"  LLM analysis failed: {type(e).__name__}: {e}")
-                return None
+                if attempt < 2:
+                    log.warning(f"  LLM request failed ({type(e).__name__}), retrying: {e}")
+                    await asyncio.sleep(2 * (attempt + 1))
+                    continue
+                raise RuntimeError(
+                    f"News LLM analysis failed after retries: {type(e).__name__}: {e}"
+                ) from e
 
         return None
 
@@ -706,7 +930,7 @@ class NewsScraper:
             log.info(f"  ✓ Article and image URL saved to Supabase.")
             return True
         except Exception as e:
-            log.debug(f"Failed to store: {e}")
+            log.warning(f"Failed to store news article {article.get('url', '')}: {e}")
             return False
 
     def _verify_youtube_thumbnail(self, image_url: str) -> str:
@@ -728,4 +952,5 @@ class NewsScraper:
 if __name__ == '__main__':
     import asyncio
     scraper = NewsScraper()
-    asyncio.run(scraper.run_daily_scrape())
+    stats = asyncio.run(scraper.run_daily_scrape())
+    log.info("NEWS SCRAPE RESULT %s", json.dumps(stats, sort_keys=True))

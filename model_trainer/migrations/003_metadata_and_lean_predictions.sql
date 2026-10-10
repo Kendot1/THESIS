@@ -38,8 +38,6 @@ CREATE TABLE predictions (
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   prediction_date DATE NOT NULL,
   predicted_price DOUBLE PRECISION NOT NULL,
-  lower_bound DOUBLE PRECISION,
-  upper_bound DOUBLE PRECISION,
   CONSTRAINT unique_product_prediction UNIQUE (product_id, prediction_date)
 );
 

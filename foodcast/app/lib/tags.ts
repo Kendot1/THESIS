@@ -1,4 +1,35 @@
-import { NewsArticle } from "./data";
+import type { NewsArticle } from "./data";
+
+const LPG_MENTION = /\b(?:lpg|liquefied petroleum gas)\b/i;
+const MAX_NEWS_TAGS = 3;
+const MAX_PRODUCT_TAGS = 3;
+
+function decodeTagKeyword(keyword: string): string {
+  try {
+    return decodeURIComponent(keyword);
+  } catch {
+    return keyword;
+  }
+}
+
+/** Hide LPG-specific keywords while retaining other price-impact tags on the article. */
+export function getNewsTagKeywords(article: Pick<NewsArticle, "keywords">): string[] {
+  const seen = new Set<string>();
+
+  return (article.keywords || [])
+    .map(decodeTagKeyword)
+    .map(keyword => keyword.trim().replace(/\s+/g, " "))
+    .filter(keyword => {
+      if (!keyword || LPG_MENTION.test(keyword)) return false;
+
+      const normalized = keyword.toLowerCase();
+      if (seen.has(normalized)) return false;
+
+      seen.add(normalized);
+      return true;
+    })
+    .slice(0, MAX_NEWS_TAGS);
+}
 
 export function getInheritedTags(productName: string, allNews: NewsArticle[]): string[] {
   const tags = new Set<string>();
@@ -21,9 +52,10 @@ export function getInheritedTags(productName: string, allNews: NewsArticle[]): s
         }
       }
 
-      if (article.keywords) {
-        // Limit to 3 tags maximum per article to prevent UI clutter
-        article.keywords.slice(0, 3).forEach((kw) => tags.add(kw.toUpperCase())); // Normalize to uppercase to make filtering easier
+      const keywords = getNewsTagKeywords(article);
+      if (keywords.length > 0) {
+        // Keep each article's tag contribution compact and consistent.
+        keywords.forEach((kw) => tags.add(kw.toUpperCase())); // Normalize to uppercase to make filtering easier
       }
     }
   });
@@ -35,5 +67,5 @@ export function getInheritedTags(productName: string, allNews: NewsArticle[]): s
     finalTags = finalTags.filter((t) => t !== "YELLOW ALERT");
   }
 
-  return finalTags.slice(0, 5); // Return a maximum of 5 distinct tags per product
+  return finalTags.slice(0, MAX_PRODUCT_TAGS);
 }

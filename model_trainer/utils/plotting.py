@@ -207,8 +207,6 @@ def plot_predictions_vs_actuals(
     save_path: Union[str, Path],
     lstm_pred: np.ndarray = None,
     lgbm_pred: np.ndarray = None,
-    lower_bound: np.ndarray = None,
-    upper_bound: np.ndarray = None
 ):
     """
     Time-series line plot comparing actual vs forecast prices.
@@ -236,11 +234,6 @@ def plot_predictions_vs_actuals(
     # Hybrid Ensemble
     ax.plot(steps, y_pred, label="Hybrid Ensemble", color=COLORS["hybrid"],
             linewidth=2.5, marker="D", markersize=4, zorder=6)
-
-    # Confidence band
-    if lower_bound is not None and upper_bound is not None:
-        ax.fill_between(steps, lower_bound, upper_bound,
-                        color=COLORS["hybrid"], alpha=0.10, label="80% Confidence Band", zorder=1)
 
     ax.set_title(f"Predicted vs Actual: {product_name}", fontsize=14, fontweight="bold", pad=15)
     ax.set_xlabel("Forecast Step (Days)", fontsize=11, labelpad=10)

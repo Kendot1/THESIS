@@ -96,14 +96,22 @@ until the holdout closes; the CLI provides no date override.
 .\model_trainer\.venv\Scripts\python.exe -B model_trainer/evaluation/frozen_holdout.py score audits/target5_20261002/prospective_holdout_20261002.json path/to/actuals_manifest.json path/to/new_score_report.json
 ```
 
-Scores use distinct observed series/date outcomes in original price units;
-MAPE is a percentage. Invalid observed prices are errors rather than silently
-removed labels. The report includes matched persistence, interval coverage,
-counts and missing coverage, and breakdowns by series, product, category, unit,
-and horizon. A passing score on a subset is distinct from a passing result for
-the entire declared population. The report never activates a model.
+Scores use distinct observed series/date outcomes in original price units.
+Within-10 accuracy and MAPE use observed prices of at least 1e-8 PHP; zero and
+near-zero observations remain in MAE/RMSE and are explicitly counted as
+excluded from percentage metrics. Negative and nonfinite observed prices are
+errors rather than silently removed labels. The report includes Daily,
+publisher-rounded Weekly and Monthly forecasts, per-product and per-step
+breakdowns, matched persistence, partial-period counts, and missing coverage.
+A passing score on observed rows is distinct from a passing result for the
+entire declared population. The report never activates a model.
 
-All outputs are created exclusively and cannot overwrite a previous score.
+All outputs are created exclusively and cannot overwrite a previous score. The
+scorer also atomically reserves one attempt in `.contract.score-attempt.json`
+beside the contract after the close-time guard and before opening actuals. This
+blocks a second score even if it requests a different output filename. A failed
+or interrupted attempt remains reserved; reconcile and inspect that state rather
+than retrying under another filename.
 Do not tune or select models using the final holdout report.
 
 Synthetic integrity tests, which never open real holdout observations:

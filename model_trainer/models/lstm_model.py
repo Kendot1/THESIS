@@ -118,6 +118,7 @@ class LSTMModel:
         self.patience = cfg.lstm_patience
         self.feature_cols = list(LSTM_FEATURE_COLS)
         self.scaled_features = list(SCALED_PRICE_FEATURES)
+        self.training_configuration = None
         self.model: Optional[_LSTMNetwork] = None
 
     def fit_scalers(self, train: pd.DataFrame):
@@ -133,8 +134,14 @@ class LSTMModel:
         return values
 
     def build_sequences(self, featured: pd.DataFrame, target_start=None, target_end=None,
-                        stride=1):
-        """Build samples whose first target is the final feature-row date."""
+                        stride=1, anchor_column=None):
+        """Build samples whose first target is the final feature-row date.
+
+        ``anchor_column`` lets source-as-of training provide the price actually
+        available at that sample's origin. The default preserves legacy callers.
+        """
+        if anchor_column is not None and anchor_column not in featured.columns:
+            raise ValueError(f"Missing LSTM anchor column: {anchor_column}")
         x, y, anchors, keys, dates = [], [], [], [], []
         start = pd.Timestamp(target_start) if target_start is not None else None
         end = pd.Timestamp(target_end) if target_end is not None else None
@@ -150,7 +157,8 @@ class LSTMModel:
                 if i == 0:
                     continue
                 window = features[i - self.seq_len + 1:i + 1]
-                anchor = group.price_index.iloc[i - 1]
+                anchor = (group[anchor_column].iloc[i] if anchor_column is not None
+                          else group.price_index.iloc[i - 1])
                 if not np.isfinite(window).all() or not np.isfinite(anchor) or anchor <= 0:
                     continue
                 future = np.full(self.horizon, np.nan)
@@ -197,6 +205,21 @@ class LSTMModel:
         if not len(x_train) or not len(x_val):
             raise ValueError("Training and validation sequences are required")
         cfg = get_settings()
+        self.training_configuration = {
+            "optimizer": {"name": "AdamW", "learning_rate": float(self.lr),
+                          "weight_decay": 1e-5},
+            "scheduler": {"name": "ReduceLROnPlateau", "mode": "min",
+                          "factor": 0.5, "patience": 2, "min_learning_rate": 1e-5},
+            "loss": {"name": "Huber", "delta": 0.05},
+            "gradient_clip_norm": 1.0,
+            "max_epochs": int(self.epochs),
+            "batch_size": int(self.batch_size),
+            "early_stopping_patience": int(self.patience),
+            "training_sequence_stride": int(cfg.training_sequence_stride),
+            "random_seed": int(cfg.random_seed),
+            "selected_epoch": None,
+            "selected_validation_loss": None,
+        }
         torch.manual_seed(cfg.random_seed)
         np.random.seed(cfg.random_seed)
         if torch.cuda.is_available():
@@ -248,6 +271,8 @@ class LSTMModel:
                      epoch, self.epochs, train_loss, val_loss)
             if val_loss < best - 1e-7:
                 best, patience = val_loss, 0
+                self.training_configuration["selected_epoch"] = int(epoch)
+                self.training_configuration["selected_validation_loss"] = float(val_loss)
                 self.save()
             else:
                 patience += 1
@@ -285,6 +310,8 @@ class LSTMModel:
                 "hidden": self.hidden, "layers": self.layers, "dropout": self.dropout,
                 "scaled_features": self.scaled_features,
                 "scaling": "currency_features_divided_by_each_sample_anchor"}
+        if self.training_configuration is not None:
+            meta["training_configuration"] = self.training_configuration
         (self.path / "lstm_meta.json").write_text(json.dumps(meta), encoding="utf-8")
 
     def load(self):
@@ -311,6 +338,7 @@ class LSTMModel:
         if (meta["sequence_length"], meta["horizon"]) != (self.seq_len, self.horizon):
             raise ValueError("Incompatible LSTM sequence or horizon")
         self.hidden, self.layers, self.dropout = meta["hidden"], meta["layers"], meta["dropout"]
+        self.training_configuration = meta.get("training_configuration")
         self.model = _LSTMNetwork(len(self.feature_cols), self.hidden, self.layers,
                                   self.dropout, self.horizon).to(self.device)
         state = torch.load(self.path / "lstm_model.pt", map_location=self.device, weights_only=True)

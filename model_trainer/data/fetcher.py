@@ -14,7 +14,7 @@ from utils.logger import get_logger
 
 log = get_logger(__name__)
 
-# Cursor, series identity, observed price and source-date provenance. Keep the
+# Cursor, series identity, observed price, and report date. Keep the
 # projection aligned with DataPreprocessor and TrainingPipeline._fingerprint.
 PRICE_COLUMNS = (
     "id,product_category,product_name,product_variant,origin,unit,"
@@ -80,37 +80,27 @@ class DataFetcher:
         self, product_name: str, product_variant: Optional[str] = None, origin: Optional[str] = None, product_category: Optional[str] = None, limit: int = 365
     ) -> pd.DataFrame:
         """Fetch historical data for a specific product and variant."""
-        query = self._client.table(self._table).select(PRICE_COLUMNS).eq("product_name", product_name)
-        
+        query = self._client.table(self._table).select(PRICE_COLUMNS).eq(
+            "product_name", product_name)
         if product_variant:
             query = query.eq("product_variant", product_variant)
         else:
             query = query.is_("product_variant", "null")
-            
         if origin:
             query = query.eq("origin", origin)
-            
         if product_category:
             query = query.eq("product_category", product_category)
-            
-        resp = (
-            query
-            .order("report_date", desc=True)
-            .limit(limit)
-            .execute()
-        )
-        return pd.DataFrame(resp.data)
+        response = query.order("report_date", desc=True).limit(limit).execute()
+        return pd.DataFrame(response.data)
 
     def fetch_category_products(self, category: str) -> pd.DataFrame:
         """Fetch all products within a category."""
-        resp = (
-            self._client.table(self._table)
-            .select(PRICE_COLUMNS)
-            .eq("product_category", category)
-            .order("report_date", desc=True)
-            .execute()
-        )
-        return pd.DataFrame(resp.data)
+        response = (self._client.table(self._table)
+                    .select(PRICE_COLUMNS)
+                    .eq("product_category", category)
+                    .order("report_date", desc=True)
+                    .execute())
+        return pd.DataFrame(response.data)
 
     # ──────────────────────────────────────────────
     # Internals
@@ -158,16 +148,7 @@ class DataFetcher:
                 .limit(page_size)
             )
 
-            resp = None
-            for attempt in range(4):
-                try:
-                    resp = query.execute()
-                    break
-                except Exception:
-                    if attempt == 3:
-                        raise
-                    import time
-                    time.sleep(1.5 * (attempt + 1))
+            resp = query.execute()
             batch = resp.data or []
             all_rows.extend(batch)
 

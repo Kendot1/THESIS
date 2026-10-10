@@ -23,17 +23,46 @@ import Image from "next/image";
 import WaveDivider from "../components/WaveDivider";
 import ScrollReveal from "../components/ScrollReveal";
 import { useLanguage } from "../lib/i18n/LanguageContext";
+import { verifiedHistoricalAccuracy } from "../lib/data";
+import { useDashboardProducts, useForecastStatus } from "../lib/hooks";
 
 
 
 export default function AboutPage() {
-  const { t, isTransitioning } = useLanguage();
+  const { t, language, isTransitioning } = useLanguage();
+  const { data: products = [], error: productsError, isLoading: productsLoading } = useDashboardProducts([]);
+  const { data: forecastStatus } = useForecastStatus();
+  const numberFormat = new Intl.NumberFormat(language === "tl" ? "fil-PH" : "en-PH");
+  const accuracyBenchmark = verifiedHistoricalAccuracy(
+    forecastStatus?.historicalAccuracy,
+    forecastStatus?.modelRunId,
+  );
+  const forecastRows = forecastStatus?.rowCount;
 
   const stats = [
-    { value: "60+", label: t("productsTracked"), icon: <BarChart3 className="w-5 h-5" /> },
-    { value: "94.2%", label: t("modelAccuracy"), icon: <Target className="w-5 h-5" /> },
-    { value: "45K+", label: t("marketDataPoints"), icon: <Database className="w-5 h-5" /> },
-    { value: "Daily", label: t("automatedSyncs"), icon: <TrendingUp className="w-5 h-5" /> },
+    {
+      value: productsLoading || productsError ? "—" : numberFormat.format(products.length),
+      label: t("productsTracked"),
+      icon: <BarChart3 className="w-5 h-5" />,
+    },
+    {
+      value: accuracyBenchmark == null ? "—"
+        : `${(accuracyBenchmark.within_tolerance_count / accuracyBenchmark.sample_count * 100).toFixed(1)}%`,
+      label: t("modelAccuracy"),
+      icon: <Target className="w-5 h-5" />,
+    },
+    {
+      value: typeof forecastRows === "number" && Number.isFinite(forecastRows)
+        ? numberFormat.format(forecastRows)
+        : "—",
+      label: t("forecastPoints"),
+      icon: <Database className="w-5 h-5" />,
+    },
+    {
+      value: t("daily"),
+      label: t("automatedSyncs"),
+      icon: <TrendingUp className="w-5 h-5" />,
+    },
   ];
 
   const methodologySteps = [

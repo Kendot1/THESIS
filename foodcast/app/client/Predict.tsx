@@ -3,7 +3,7 @@ import { useState, useMemo, useRef, useEffect, Suspense, useDeferredValue } from
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Search, TrendingUp, Filter, X, ArrowRight, ChevronLeft, ChevronRight, ArrowRightLeft, Sparkles, AlertCircle, Bookmark, Share2, Grid, List, MoreHorizontal, Flame, ChevronDown } from "lucide-react";
+import { Search, TrendingUp, Filter, X, ArrowRight, ChevronLeft, ChevronRight, ArrowRightLeft, Sparkles, AlertCircle, Bookmark, Share2, Grid, List, MoreHorizontal, ChevronDown } from "lucide-react";
 import ProductCard from "../components/ProductCard";
 import dynamic from "next/dynamic";
 const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
@@ -520,7 +520,6 @@ function PredictContent({ initialProducts }: PredictProps) {
                     <span className="text-3xl sm:text-4xl font-black text-primary-900 leading-none">
                       {featuredForecast?.predicted != null ? `₱${featuredForecast.predicted.toFixed(2)}` : "—"}
                     </span>
-                    <span className="text-xs text-gray-500">{t("predictedPrice")} · {featuredForecast?.date ?? "—"}</span>
                   </div>
                 </div>
 
@@ -637,11 +636,8 @@ function PredictContent({ initialProducts }: PredictProps) {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <div className="text-[10px] font-bold text-gray-900">₱{p.currentPrice.toFixed(1)}</div>
-                        </div>
-                        <Flame className="w-3 h-3 text-orange fill-orange animate-bounce-subtle" />
+                      <div className="text-right">
+                        <div className="text-[10px] font-bold text-gray-900">₱{p.currentPrice.toFixed(1)}</div>
                       </div>
                     </Link>
                   ))}

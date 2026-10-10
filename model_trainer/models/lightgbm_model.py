@@ -17,6 +17,7 @@ class LightGBMModel:
         self._feature_names = list(FEATURE_COLUMNS)
         self._feature_version = FEATURE_VERSION
         self.target_mode = cfg.lgbm_target_mode
+        self.training_configuration = None
         if self.target_mode not in {"absolute", "relative"}:
             raise ValueError("FOODCAST_LGBM_TARGET_MODE must be 'absolute' or 'relative'")
 
@@ -50,6 +51,12 @@ class LightGBMModel:
         self._model = lgb.train(params, train, num_boost_round=rounds, valid_sets=[train,val],
             valid_names=['train','validation'], callbacks=[lgb.early_stopping(patience,first_metric_only=True),
                                                          lgb.log_evaluation(100)])
+        self.training_configuration = {
+            "parameters": dict(params),
+            "requested_boost_rounds": int(rounds),
+            "early_stopping_rounds": int(patience),
+            "best_iteration": int(self._model.best_iteration),
+        }
         self.save()
         return compute_all_metrics(y_val, self.predict(X_val))
 
@@ -73,9 +80,13 @@ class LightGBMModel:
         self.path.mkdir(parents=True,exist_ok=True)
         # Explicit bytes avoid platform newline translation of tree offsets.
         (self.path/'lightgbm_model.txt').write_bytes(self._model.model_to_string().encode('utf-8'))
-        (self.path/'lightgbm_meta.json').write_text(json.dumps(
-            {'feature_version': self._feature_version, 'features': self._feature_names,
-             'target_mode': self.target_mode}), encoding='utf-8')
+        meta = {'feature_version': self._feature_version,
+                'features': self._feature_names,
+                'target_mode': self.target_mode}
+        if self.training_configuration is not None:
+            meta['training_configuration'] = self.training_configuration
+        (self.path/'lightgbm_meta.json').write_text(
+            json.dumps(meta, indent=2), encoding='utf-8')
 
     def load(self):
         meta = json.loads((self.path/'lightgbm_meta.json').read_text(encoding='utf-8'))
@@ -87,6 +98,7 @@ class LightGBMModel:
         self._feature_names = list(meta['features'])
         self._feature_version = version
         self.target_mode = meta.get('target_mode', 'absolute')
+        self.training_configuration = meta.get('training_configuration')
         if self.target_mode not in {'absolute', 'relative'}:
             raise ValueError('Incompatible LightGBM target mode')
         self._model = lgb.Booster(model_str=(self.path/'lightgbm_model.txt').read_text(encoding='utf-8'))

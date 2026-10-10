@@ -62,8 +62,11 @@ class Settings:
         default_factory=lambda: int(os.getenv("FOODCAST_TRAINING_SEQUENCE_STRIDE", "1")))
     lgbm_target_mode: str = field(
         default_factory=lambda: os.getenv("FOODCAST_LGBM_TARGET_MODE", "relative").lower())
-    validation_size: float = 0.15
-    test_size: float = 0.15
+    # Keep six-month validation and test windows while assigning 86% of the
+    # chronological date range to fitting. Older 70/15/15 splits left roughly
+    # two years outside fitting on a seven-year dataset.
+    validation_size: float = 0.07
+    test_size: float = 0.07
 
     # ── Categories from the scraper schema ──
     product_categories: List[str] = field(default_factory=lambda: [

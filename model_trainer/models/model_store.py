@@ -13,6 +13,9 @@ REQUIRED_FILES = {
     "lstm_model.pt", "lstm_meta.json", "lstm_history.json", "ensemble.json",
     "validation_forecasts.csv", "test_forecasts.csv", "metadata.json",
 }
+OPTIONAL_RUNTIME_FILES = {"validation_forecasts.csv", "test_forecasts.csv"}
+OPTIONAL_BUNDLE_FILES = {"validation_paths.csv", "test_paths.csv"}
+HASHED_REQUIRED_FILES = REQUIRED_FILES - {"metadata.json"}
 
 
 class ModelStore:
@@ -36,7 +39,8 @@ class ModelStore:
                 digest.update(block)
         return digest.hexdigest()
 
-    def finalize(self, run_dir, metrics, split, data_fingerprint, activate=True):
+    def finalize(self, run_dir, metrics, split, data_fingerprint, activate=True,
+                 model_configuration=None):
         run_dir = Path(run_dir)
         metadata = {
             "schema_version": 2,
@@ -46,13 +50,16 @@ class ModelStore:
             "data_fingerprint": data_fingerprint,
             "metrics": metrics,
         }
+        if model_configuration is not None:
+            metadata["model_configuration"] = model_configuration
         (run_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         missing = REQUIRED_FILES - {p.name for p in run_dir.iterdir() if p.is_file()}
         if missing:
             raise ValueError(f"Incomplete model bundle: {sorted(missing)}")
+        present = {p.name for p in run_dir.iterdir() if p.is_file()}
         metadata["sha256"] = {
             name: self._digest(run_dir / name)
-            for name in sorted(REQUIRED_FILES - {"metadata.json"})
+            for name in sorted(HASHED_REQUIRED_FILES | (OPTIONAL_BUNDLE_FILES & present))
         }
         (run_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         if activate:
@@ -64,7 +71,10 @@ class ModelStore:
         if not path.is_dir():
             raise FileNotFoundError(run_id)
         metadata = json.loads((path / "metadata.json").read_text(encoding="utf-8"))
-        if metadata.get("run_id") != run_id or set(metadata.get("sha256", {})) != REQUIRED_FILES - {"metadata.json"}:
+        hashes = set(metadata.get("sha256", {}))
+        if (metadata.get("run_id") != run_id
+                or not HASHED_REQUIRED_FILES.issubset(hashes)
+                or hashes - HASHED_REQUIRED_FILES - OPTIONAL_BUNDLE_FILES):
             raise ValueError("Model bundle identity or required hashes are incomplete")
         for name, expected in metadata.get("sha256", {}).items():
             if self._digest(path / name) != expected:
@@ -89,12 +99,17 @@ class ModelStore:
         if not path.is_dir():
             raise FileNotFoundError(f"Active bundle is missing: {path}")
         metadata = json.loads((path / "metadata.json").read_text(encoding="utf-8"))
-        if metadata.get("run_id") != path.name or set(metadata.get("sha256", {})) != REQUIRED_FILES - {"metadata.json"}:
+        hashes = set(metadata.get("sha256", {}))
+        if (metadata.get("run_id") != path.name
+                or not HASHED_REQUIRED_FILES.issubset(hashes)
+                or hashes - HASHED_REQUIRED_FILES - OPTIONAL_BUNDLE_FILES):
             raise ValueError("Active bundle identity or required hashes are incomplete")
         evidence = data.get("promotion_evidence")
         if evidence and self._digest(path / "metadata.json") != evidence.get("model_metadata_sha256"):
             raise ValueError("Active model metadata changed after reviewed promotion")
         for name, expected in metadata.get("sha256", {}).items():
+            if name in OPTIONAL_RUNTIME_FILES and not (path / name).exists():
+                continue
             if self._digest(path / name) != expected:
                 raise ValueError(f"Active bundle hash mismatch in {name}")
         return path

@@ -1,6 +1,6 @@
 """Synthetic promotion evidence only; never reads production or holdout data."""
 import csv
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import json
 from pathlib import Path
 import sys
@@ -9,7 +9,9 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from evaluation.frozen_holdout import score
-from evaluation.promotion import COMPONENTS, digest, verify_promotion_evidence
+from evaluation.promotion import (
+    COMPONENTS, digest, validation_comparison, verify_promotion_evidence,
+)
 from models.model_store import ModelStore, REQUIRED_FILES
 
 
@@ -31,15 +33,15 @@ class PromotionEvidenceTests(unittest.TestCase):
         self.series = "Rice||Rice||Regular||Local||kg"
         self.now = datetime(2025, 2, 2, tzinfo=timezone.utc)
         self.forecasts = [dict(series=self.series, origin="2025-01-01", target_date=f"2025-01-{d:02}",
-            horizon=d-1, anchor=110, prediction=101, lower_80=95, upper_80=105) for d in range(2, 32)]
+            horizon=d-1, anchor=110, prediction=101) for d in range(2, 32)]
         self.actuals = [dict(series=self.series, target_date=f"2025-01-{d:02}", actual=100,
                              is_observed="true") for d in range(2, 32)]
         validation = [dict(series=self.series, origin=f"2024-{m:02}-01", target_date=f"2024-{m:02}-{d:02}",
-                           actual=100, prediction=101, champion=105, anchor=110)
+                           actual=100, prediction=101, champion=111, anchor=112)
                       for m in (9, 10, 11) for d in (5, 10)]
         self.csv("validation.csv", validation)
         self.selection = dict(model_run_id=self.run.name, model_metadata_sha256=digest(self.run / "metadata.json"),
-            promotion_policy_version=1,
+            promotion_policy_version=2,
             selected_at="2024-12-31T00:00:00+00:00", declared_series=[self.series],
             validation_forecasts_sha256=digest(self.evidence / "validation.csv"))
         self.write(self.evidence / "selection.json", self.selection)
@@ -58,7 +60,7 @@ class PromotionEvidenceTests(unittest.TestCase):
         self.write(self.evidence / "actuals.json", self.actual_manifest)
         self.rescore()
         self.review = dict(schema_version=1, model_run_id=self.run.name, reviewed_by="Synthetic test reviewer",
-            promotion_policy_version=1,
+            promotion_policy_version=2,
             reviewed_at="2025-02-02T00:00:00+00:00", selection_provenance_checked=True,
             actuals_provenance_checked=True, holdout_not_used_for_selection=True)
         self.refresh_review()
@@ -157,9 +159,26 @@ class PromotionEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "fails the metric"):
             self.verify()
 
+    def test_final_within_10_regression_vs_persistence_is_rejected(self):
+        for index, row in enumerate(self.forecasts):
+            row["anchor"] = 105
+            row["prediction"] = 111 if index < 3 else 100
+        self.csv("forecasts.csv", self.forecasts)
+        self.contract["forecast_sha256"] = digest(self.evidence / "forecasts.csv")
+        self.write(self.evidence / "contract.json", self.contract)
+        self.rescore()
+        self.refresh_review()
+        score_report = self.read(self.evidence / "score.json")
+        self.assertTrue(score_report["target_met_for_full_declared_scope"])
+        self.assertLess(
+            score_report["overall"]["within_10_accuracy_pct"],
+            score_report["persistence_on_same_rows"]["within_10_accuracy_pct"])
+        with self.assertRaisesRegex(ValueError, "does not improve on matched persistence"):
+            self.verify()
+
     def test_validation_regression_blocks_promotion(self):
         path = self.evidence / "validation.csv"
-        path.write_text(path.read_text().replace(",100,101,105,110", ",100,106,105,110"))
+        path.write_text(path.read_text().replace(",100,101,111,112", ",100,120,111,112"))
         self.selection["validation_forecasts_sha256"] = digest(path)
         self.write(self.evidence / "selection.json", self.selection)
         self.contract["selection_record_sha256"] = digest(self.evidence / "selection.json")
@@ -167,6 +186,21 @@ class PromotionEvidenceTests(unittest.TestCase):
         self.refresh_review()
         with self.assertRaisesRegex(ValueError, "stable matched"):
             self.verify()
+
+    def test_within_10_regression_blocks_validation_despite_lower_error_metrics(self):
+        rows = []
+        for month in (9, 10, 11):
+            origin = f"2024-{month:02}-01"
+            for offset, (prediction, champion, anchor) in enumerate((
+                    (100, 130, 140), (111, 100, 100), (111, 100, 100)), start=2):
+                rows.append(dict(
+                    series=self.series, origin=origin,
+                    target_date=f"2024-{month:02}-{offset:02}", actual=100,
+                    prediction=prediction, champion=champion, anchor=anchor))
+        path = self.evidence / "validation_within_10_regression.csv"
+        self.csv(path.name, rows)
+        with self.assertRaisesRegex(ValueError, "stable matched improvement on all four"):
+            validation_comparison(path, date(2025, 1, 2))
 
     def test_population_cannot_shrink_after_selection(self):
         self.selection["declared_series"].append("Fish||Fish||Standard||Local||kg")

@@ -31,15 +31,26 @@ def _read_data(path, through_date=None):
 def cmd_train(args):
     from pipeline.trainer import TrainingPipeline
     from data.fetcher import DataFetcher
+    source_as_of = bool(getattr(args, "report_date_as_of", False))
     if args.through and (args.resume or args.recalibrate):
         raise ValueError("--through is for new training runs; resume/recalibrate must retain their original data scope")
+    if source_as_of:
+        if args.resume or args.recalibrate:
+            raise ValueError("--report-date-as-of applies only to a new full training run")
+        if args.mode != "full":
+            raise ValueError("--report-date-as-of requires --mode full")
+        if not args.data and not args.through:
+            raise ValueError("--report-date-as-of requires an explicit --data snapshot or --through bound")
     raw = None
     if args.data:
         raw = _read_data(args.data, args.through)
     elif args.through:
         raw = DataFetcher().fetch_all(through_date=args.through)
     pipeline = TrainingPipeline()
-    if args.recalibrate:
+    if source_as_of:
+        metrics = pipeline.run_full_training(
+            raw, activate=not args.no_activate, source_as_of=True)
+    elif args.recalibrate:
         metrics = pipeline.recalibrate_candidate(
             args.recalibrate, activate=not args.no_activate)
     elif args.resume:
@@ -55,13 +66,16 @@ def cmd_train(args):
             metrics = pipeline.run_full_training(raw, activate=not args.no_activate)
         else:
             metrics = pipeline.run_daily()
-    print(json.dumps(metrics, indent=2))
+    result_json = json.dumps(metrics, indent=2)
+    if getattr(args, "result_json", None):
+        output = Path(args.result_json)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(result_json + "\n", encoding="utf-8")
+    print(result_json)
 
 
 def cmd_evaluate(_args):
     from models.model_store import ModelStore
-    from models.ensemble import EnsembleModel
-    from pipeline.trainer import TrainingPipeline
     from utils.metrics import compute_all_metrics
     store = ModelStore()
     path = store.active_path()
@@ -85,14 +99,10 @@ def cmd_evaluate(_args):
             model: compute_all_metrics(rows.actual.to_numpy(), rows[model].to_numpy())
             for model in ["ensemble", "persistence"]
         }
-    ensemble = EnsembleModel(path)
-    ensemble.load()
-    interval_metrics = TrainingPipeline._interval_metrics(ensemble, forecasts)
     print(json.dumps({"run_id": path.name, "split": metadata["split"],
                       "test_metrics": test_metrics,
                       "improvement_over_persistence_percent": improvements,
                       "key_horizons": by_horizon,
-                      "interval_coverage": interval_metrics,
                       "evaluation_scope": metadata["metrics"]["evaluation_scope"]},
                      indent=2))
 
@@ -107,7 +117,7 @@ def cmd_export_quality(args):
     from models.model_store import ModelStore
     from pipeline.prediction_writer import PredictionWriter
     path = ModelStore().active_path()
-    forecasts = pd.read_csv(path/'test_forecasts.csv', usecols=['series'])
+    forecasts = pd.read_csv(path/'validation_forecasts.csv', usecols=['series'])
     identities = {tuple(series.split('||')): series for series in forecasts.series.unique()}
     metrics = PredictionWriter._quality_metrics(path.name, identities)
     output = Path(args.output)
@@ -170,18 +180,13 @@ def cmd_preview(args):
                         for key, _ in metadata)
     for (key, series), forecast in zip(metadata, forecasts):
         try:
-            lower, upper = registry.engine.ensemble.intervals(
-                forecast.point, forecast.anchor, confidence=args.confidence, category=key[0])
             results.append({
                 "series": dict(zip(SERIES_KEY, key)),
                 "latest_observation": str(pd.Timestamp(series.report_date.max()).date()),
                 "anchor": round(float(forecast.anchor), 2),
-                "confidence": args.confidence,
                 "forecast": [{
                     "date": str(np.datetime_as_string(date, unit="D")),
                     "predicted_price": round(float(forecast.point[index]), 2),
-                    "lower_bound": round(float(lower[index]), 2),
-                    "upper_bound": round(float(upper[index]), 2),
                 } for index, date in enumerate(forecast.dates)],
             })
         except (ValueError, FileNotFoundError) as exc:
@@ -208,8 +213,12 @@ def main():
     train.add_argument("--data", help="Offline JSON or CSV snapshot")
     train.add_argument("--through", type=iso_report_date,
                        help="Inclusive report-date cutoff (YYYY-MM-DD), applied before preprocessing")
+    train.add_argument("--report-date-as-of", action="store_true",
+                       help="Rebuild training inputs using report dates through each Manila origin (new full runs only)")
     train.add_argument("--no-activate", action="store_true",
                        help="Keep the completed bundle as a candidate")
+    train.add_argument("--result-json",
+                       help="Write the candidate result JSON to this path")
     train.add_argument("--resume", help="Resume calibration for a fitted candidate run ID")
     train.add_argument("--recalibrate", help="Recalibrate a completed run from saved forecasts")
     train.set_defaults(func=cmd_train)
@@ -227,7 +236,6 @@ def main():
     preview = commands.add_parser("preview")
     preview.add_argument("--horizon", choices=["daily", "weekly", "monthly"],
                          default="weekly")
-    preview.add_argument("--confidence", type=float, choices=[.8, .9, .95], default=.95)
     preview.add_argument("--product", help="Case-insensitive product or series filter")
     preview.add_argument("--limit", type=int, default=5,
                          help="Maximum matching product series to display")

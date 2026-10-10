@@ -12,10 +12,14 @@ import json
 import math
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal, ROUND_HALF_EVEN
 from pathlib import Path
+from statistics import mean
 
 PHILIPPINE_TIME = timezone(timedelta(hours=8))
 METRICS = ("mae", "rmse", "mape")
+PERCENTAGE_ACTUAL_FLOOR = 1e-8
+WITHIN_10_TARGET_PERCENT = 90.0
 
 
 def digest(data):
@@ -39,7 +43,7 @@ def calendar_date(value):
 def finite_number(value):
     result = float(value)
     if not math.isfinite(result):
-        raise ValueError("Nonfinite price or interval")
+        raise ValueError("Nonfinite price")
     return result
 
 
@@ -81,8 +85,7 @@ def load_contract(path):
         raise ValueError("Frozen forecast SHA-256 mismatch")
     forecasts = {}
     by_series = defaultdict(set)
-    required = {"series", "origin", "target_date", "horizon", "anchor",
-                "prediction", "lower_80", "upper_80"}
+    required = {"series", "origin", "target_date", "horizon", "anchor", "prediction"}
     for row in csv_rows(forecast_bytes, required):
         series_parts(row["series"])
         target = calendar_date(row["target_date"])
@@ -93,13 +96,11 @@ def load_contract(path):
         key = (row["series"], target)
         if key in forecasts:
             raise ValueError("Duplicate frozen series/date forecast")
-        point, lower, upper, anchor = [finite_number(row[name]) for name in
-                                      ("prediction", "lower_80", "upper_80", "anchor")]
-        if anchor <= 0 or not 0 <= lower <= point <= upper:
-            raise ValueError("Invalid forecast anchor or interval ordering")
+        point, anchor = [finite_number(row[name]) for name in ("prediction", "anchor")]
+        if anchor <= 0 or point <= 0:
+            raise ValueError("Invalid forecast anchor or point prediction")
         forecasts[key] = {"series": row["series"], "target_date": target.isoformat(),
-                          "horizon": step, "prediction": point, "anchor": anchor,
-                          "lower_80": lower, "upper_80": upper}
+                          "horizon": step, "prediction": point, "anchor": anchor}
         by_series[row["series"]].add(step)
     if not forecasts or any(steps != set(range(1, horizon + 1)) for steps in by_series.values()):
         raise ValueError("Every frozen series must have the full forecast horizon")
@@ -126,24 +127,157 @@ def load_contract(path):
 
 def error_metrics(rows, column="prediction"):
     if not rows:
-        return {"n": 0, "mae": None, "rmse": None, "mape": None}
+        return {"n": 0, "percentage_n": 0, "excluded_near_zero": 0,
+                "within_10_count": 0, "within_10_accuracy_pct": None,
+                "mae": None, "rmse": None, "mape": None}
     errors = [abs(row[column] - row["actual"]) for row in rows]
+    percentage_rows = [row for row in rows
+                       if row["actual"] >= PERCENTAGE_ACTUAL_FLOOR]
+    percentage_errors = [abs(row[column] - row["actual"]) / row["actual"]
+                         for row in percentage_rows]
+    within_10_count = sum(error <= 0.10 for error in percentage_errors)
     metrics = {"n": len(rows), "mae": math.fsum(errors) / len(rows),
                "rmse": math.hypot(*errors) / math.sqrt(len(rows)),
-               "mape": math.fsum(err / row["actual"] * 100
-                                 for err, row in zip(errors, rows)) / len(rows)}
-    if any(not math.isfinite(metrics[key]) for key in METRICS):
+               "mape": (math.fsum(percentage_errors) * 100 / len(percentage_errors)
+                        if percentage_errors else None),
+               "percentage_n": len(percentage_rows),
+               "excluded_near_zero": len(rows) - len(percentage_rows),
+               "within_10_count": within_10_count,
+               "within_10_accuracy_pct": (
+                   within_10_count * 100 / len(percentage_rows) if percentage_rows else None)}
+    if any(metrics[key] is not None and not math.isfinite(metrics[key]) for key in METRICS):
         raise ValueError("Error metric overflow; reconcile price units and values")
     return metrics
 
 
 def summarize(rows):
-    report = error_metrics(rows)
-    report["range_hit_rate_80"] = (sum(row["lower_80"] <= row["actual"] <= row["upper_80"]
-                                       for row in rows) / len(rows)) if rows else None
-    report["mean_interval_width_80"] = (math.fsum(row["upper_80"] - row["lower_80"]
-                                                  for row in rows) / len(rows)) if rows else None
-    return report
+    return error_metrics(rows)
+
+
+def _period_bounds(target, horizon):
+    if horizon == "weekly":
+        start = target - timedelta(days=target.weekday())
+        return start, start + timedelta(days=6)
+    start = target.replace(day=1)
+    next_month = (start.replace(day=28) + timedelta(days=4)).replace(day=1)
+    return start, next_month - timedelta(days=1)
+
+
+def _round_price(value):
+    return float(Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_EVEN))
+
+
+def _mean_price(values):
+    values = [Decimal(str(value)) for value in values]
+    if not values:
+        raise ValueError("Cannot average an empty price period")
+    return float((sum(values, Decimal("0")) / len(values)).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_EVEN))
+
+
+def _timeframe_rows(forecasts, actuals):
+    """Build published Daily/Weekly/Monthly rows from each frozen 30-day path."""
+    result = {name: [] for name in ("daily", "weekly", "monthly")}
+    by_series = defaultdict(list)
+    for forecast in forecasts.values():
+        series = forecast["series"]
+        target = date.fromisoformat(forecast["target_date"])
+        actual = actuals.get((series, target))
+        result["daily"].append({
+            "series": series, "actual": actual,
+            "prediction": _round_price(forecast["prediction"]),
+            "anchor": _round_price(forecast["anchor"]),
+            "step": forecast["horizon"], "target_date": target.isoformat(),
+            "covered_days": 1, "observed_days": int(actual is not None),
+            "period_days": 1, "partial_period": False,
+        })
+        by_series[series].append((target, forecast))
+
+    for series, path in by_series.items():
+        path.sort(key=lambda pair: pair[0])
+        for timeframe in ("weekly", "monthly"):
+            periods = defaultdict(list)
+            for target, forecast in path:
+                bounds = _period_bounds(target, timeframe)
+                periods[bounds].append((target, forecast))
+            for step, ((start, end), period) in enumerate(sorted(periods.items()), start=1):
+                observed = [actuals[(series, target)] for target, _ in period
+                            if (series, target) in actuals]
+                covered_days = len(period)
+                period_days = (end - start).days + 1
+                published_daily = [_round_price(forecast["prediction"])
+                                   for _, forecast in period]
+                published_anchor = [_round_price(forecast["anchor"])
+                                    for _, forecast in period]
+                prediction = _mean_price(published_daily)
+                anchor = _mean_price(published_anchor)
+                result[timeframe].append({
+                    "series": series,
+                    "actual": mean(observed) if observed else None,
+                    "prediction": prediction, "anchor": anchor, "step": step,
+                    "target_date": max(target for target, _ in period).isoformat(),
+                    "target_period_start": start.isoformat(),
+                    "target_period_end": end.isoformat(),
+                    "covered_days": covered_days, "observed_days": len(observed),
+                    "period_days": period_days,
+                    "partial_period": (covered_days < period_days or
+                                       len(observed) < covered_days),
+                })
+    return result
+
+
+def _targets_met(metrics):
+    return (
+        metrics["within_10_accuracy_pct"] is not None
+        and metrics["within_10_accuracy_pct"] >= WITHIN_10_TARGET_PERCENT
+        and all(metrics[name] is not None and metrics[name] <= 5 for name in METRICS)
+    )
+
+
+def _timeframe_report(expected_rows):
+    scored = [row for row in expected_rows if row["actual"] is not None]
+    by_product, by_series, by_step = defaultdict(list), defaultdict(list), defaultdict(list)
+    by_series_step = defaultdict(lambda: defaultdict(list))
+    for row in scored:
+        category, product, _, _, _ = series_parts(row["series"])
+        by_product[f"{category}||{product}"].append(row)
+        by_series[row["series"]].append(row)
+        by_step[str(row["step"])].append(row)
+        by_series_step[row["series"]][str(row["step"])].append(row)
+    expected_series = {row["series"] for row in expected_rows}
+    scored_series = {row["series"] for row in scored}
+    covered_days = sum(row["covered_days"] for row in expected_rows)
+    observed_days = sum(row["observed_days"] for row in expected_rows)
+    calendar_days = sum(row["period_days"] for row in expected_rows)
+    return {
+        "overall": summarize(scored),
+        "persistence_on_same_rows": error_metrics(scored, "anchor"),
+        "product": {label: summarize(rows) for label, rows in sorted(by_product.items())},
+        "series": {label: summarize(rows) for label, rows in sorted(by_series.items())},
+        "forecast_step": {label: summarize(rows) for label, rows in sorted(by_step.items())},
+        "series_forecast_step": {
+            series: {step: summarize(rows) for step, rows in sorted(steps.items())}
+            for series, steps in sorted(by_series_step.items())},
+        "metric_target_met_on_scored_rows": _targets_met(summarize(scored)),
+        "coverage": {
+            "expected_forecast_periods": len(expected_rows),
+            "periods_with_observed_actual": len(scored),
+            "periods_without_observed_actual": len(expected_rows) - len(scored),
+            "forecast_period_coverage": len(scored) / len(expected_rows) if expected_rows else 0.0,
+            "forecast_series": len(expected_series),
+            "series_with_observed_outcomes": len(scored_series),
+            "series_without_observed_outcomes": sorted(expected_series - scored_series),
+            "partial_periods": sum(row["partial_period"] for row in expected_rows),
+            "mean_forecast_fraction_of_calendar_period": (
+                covered_days / calendar_days if calendar_days else 0.0),
+            "observed_label_coverage": observed_days / covered_days if covered_days else 0.0,
+        },
+        "target_definition": (
+            "Daily points use the frozen price for each date; Weekly is the Monday-Sunday "
+            "mean and Monthly is the calendar-month mean of centavo-rounded daily forecasts. "
+            "Period actuals average observed labels on the same forecast-covered dates."
+        ),
+    }
 
 
 def score(contract_path, actuals_manifest_path, *, now=None):
@@ -187,8 +321,8 @@ def score(contract_path, actuals_manifest_path, *, now=None):
         if flag not in {"true", "1"}:
             raise ValueError("is_observed must be true/false or 1/0")
         value = finite_number(row["actual"])
-        if value <= 0:
-            raise ValueError("Observed prices must be positive; invalid labels cannot silently disappear")
+        if value < 0:
+            raise ValueError("Observed prices must be nonnegative; invalid labels cannot silently disappear")
         actuals[key] = value
     declared_series = {key[0] for key in forecasts} | {item["series"] for item in contract["skipped_series"]}
     in_scope = {key: value for key, value in actuals.items() if key[0] in declared_series}
@@ -200,9 +334,15 @@ def score(contract_path, actuals_manifest_path, *, now=None):
     scored_series = {row["series"] for row in matched}
     unscored_series = sorted({key[0] for key in forecasts} - scored_series)
     overall = summarize(matched)
-    metric_pass = all(overall[key] <= 5 for key in METRICS)
+    timeframe_rows = _timeframe_rows(forecasts, in_scope)
+    timeframes = {name: _timeframe_report(rows) for name, rows in timeframe_rows.items()}
+    combined_published_rows = [row for rows in timeframe_rows.values()
+                               for row in rows if row["actual"] is not None]
+    metric_pass = all(report["metric_target_met_on_scored_rows"]
+                      for report in timeframes.values())
     full_scope = (integrity["forecast_series"] == integrity["total_input_series"]
-                  and not missing_forecasts and not unscored_series and not unknown)
+                  and not missing_forecasts and not unscored_series and not unknown
+                  and not unobserved_count and len(matched) == len(forecasts))
     groups = {name: defaultdict(list) for name in ("category", "product", "series", "unit", "horizon", "category_horizon")}
     for row in matched:
         category, product, _, _, unit = series_parts(row["series"])
@@ -218,17 +358,27 @@ def score(contract_path, actuals_manifest_path, *, now=None):
         "holdout_start": start.isoformat(), "holdout_end": end.isoformat(), "integrity": integrity,
         "actuals_manifest_sha256": digest(manifest_bytes), "actuals_sha256": digest(actual_bytes),
         "actuals_source": manifest["source"], "reconciled_through": manifest["reconciled_through"],
-        "overall": overall, "persistence_on_same_rows": error_metrics(matched, "anchor"),
-        "thresholds": {key: 5 for key in METRICS},
+        "overall": overall,
+        "overall_basis": "Daily frozen points across all 30 forecast steps.",
+        "published_outputs_overall": summarize(combined_published_rows),
+        "persistence_on_same_rows": error_metrics(matched, "anchor"),
+        "thresholds": {"within_10_accuracy_pct_min": WITHIN_10_TARGET_PERCENT,
+                       **{key: 5 for key in METRICS}},
         "metric_target_met_on_scored_rows": metric_pass,
+        "metric_target_met_by_timeframe": {
+            name: report["metric_target_met_on_scored_rows"]
+            for name, report in timeframes.items()},
         "full_declared_scope_observed": full_scope,
         "target_met_for_full_declared_scope": metric_pass and full_scope,
+        "timeframes": timeframes,
         "coverage": {
             "expected_forecast_rows": len(forecasts), "scored_rows": len(matched),
             "forecast_rows_with_observed_actual": len(matched) / len(forecasts),
             "observed_outcomes_in_declared_scope": len(in_scope),
             "observed_outcomes_with_forecasts": len(matched) / len(in_scope),
             "observed_outcomes_missing_forecasts": len(missing_forecasts),
+            "near_zero_observed_forecasts_excluded_from_percentage_metrics": sum(
+                row["actual"] < PERCENTAGE_ACTUAL_FLOOR for row in matched),
             "series_missing_forecasts": sorted({key[0] for key in missing_forecasts}),
             "forecast_series_without_observed_outcomes": unscored_series,
             "observed_series_outside_declared_scope": unknown,
@@ -236,12 +386,56 @@ def score(contract_path, actuals_manifest_path, *, now=None):
         },
         "groups": {name: {label: summarize(rows) for label, rows in sorted(blocks.items())}
                    for name, blocks in groups.items()},
-        "interpretation": "MAE/RMSE use original price units; MAPE is percent. Range hit rate is measured coverage, not a future probability.",
+        "interpretation": (
+            "Within-10 accuracy and MAPE exclude actual prices below 1e-8 PHP and report "
+            "that count; MAE/RMSE retain all observed nonnegative actuals. Weekly/monthly "
+            "metrics aggregate the frozen daily path using the publisher's rounding rules."
+        ),
         "promotion_decision": "Not determined: scores do not establish model-selection independence or sufficient scope by themselves.",
     }
 
 
-def main():
+def scoring_attempt_path(contract_path):
+    contract_path = Path(contract_path)
+    return contract_path.parent / f".{contract_path.stem}.score-attempt.json"
+
+
+def reserve_scoring_attempt(contract_path, *, now=None):
+    """Atomically reserve this contract's single scoring attempt before reading actuals."""
+    contract, _, integrity = load_contract(contract_path)
+    now = datetime.now(timezone.utc) if now is None else now
+    if now.tzinfo is None:
+        raise ValueError("Scoring clock must include a timezone")
+    if datetime.fromisoformat(contract["forecasts_frozen_at_utc"]) > now:
+        raise ValueError("Freeze timestamp is later than the scoring clock")
+    close = datetime.fromisoformat(integrity["period_closes_at"])
+    if now < close:
+        raise ValueError(f"Holdout still open until {close.isoformat()}; actuals were not opened")
+
+    attempt_path = scoring_attempt_path(contract_path)
+    attempt = {
+        "schema_version": 1,
+        "status": "reserved",
+        "contract_sha256": integrity["contract_sha256"],
+        "reserved_at_utc": now.astimezone(timezone.utc).isoformat(),
+    }
+    try:
+        # Exclusive creation is the cross-process, contract-level one-time gate.
+        with attempt_path.open("x", encoding="utf-8") as stream:
+            json.dump(attempt, stream, indent=2)
+    except FileExistsError as exc:
+        raise FileExistsError(
+            "A scoring attempt is already reserved for this contract; do not rescore "
+            "to another output path"
+        ) from exc
+    return attempt_path
+
+
+def _write_attempt_state(attempt_path, state):
+    attempt_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+
+def main(argv=None, *, now=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     inspect = commands.add_parser("inspect", help="Verify frozen forecasts without opening actuals")
@@ -250,18 +444,49 @@ def main():
     evaluate.add_argument("contract", type=Path)
     evaluate.add_argument("actuals_manifest", type=Path)
     evaluate.add_argument("output", type=Path)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if args.command == "inspect":
         _, _, integrity = load_contract(args.contract)
         print(json.dumps(integrity, indent=2))
         return
     if args.output.exists():
         raise FileExistsError("Evaluation output already exists; it cannot be overwritten")
-    result = score(args.contract, args.actuals_manifest)
-    with args.output.open("x", encoding="utf-8") as stream:
-        json.dump(result, stream, indent=2, allow_nan=False)
-    print(json.dumps({"report": str(args.output), "overall": result["overall"],
-                      "target_met_for_full_declared_scope": result["target_met_for_full_declared_scope"]}, indent=2))
+    if not args.output.parent.is_dir():
+        raise FileNotFoundError(f"Evaluation output directory does not exist: {args.output.parent}")
+    attempt_path = scoring_attempt_path(args.contract)
+    if args.output.resolve() == attempt_path.resolve():
+        raise ValueError("Evaluation output cannot replace the contract scoring-attempt marker")
+
+    scoring_clock = datetime.now(timezone.utc) if now is None else now
+    attempt_path = reserve_scoring_attempt(args.contract, now=scoring_clock)
+    try:
+        result = score(args.contract, args.actuals_manifest, now=scoring_clock)
+        with args.output.open("x", encoding="utf-8") as stream:
+            json.dump(result, stream, indent=2, allow_nan=False)
+    except Exception as exc:
+        _write_attempt_state(attempt_path, {
+            "schema_version": 1,
+            "status": "failed_closed",
+            "contract_sha256": load_contract(args.contract)[2]["contract_sha256"],
+            "reserved_at_utc": scoring_clock.astimezone(timezone.utc).isoformat(),
+            "failure_type": type(exc).__name__,
+        })
+        raise
+    _write_attempt_state(attempt_path, {
+        "schema_version": 1,
+        "status": "completed",
+        "contract_sha256": digest(Path(args.contract).read_bytes()),
+        "reserved_at_utc": scoring_clock.astimezone(timezone.utc).isoformat(),
+        "output_path": str(args.output),
+        "output_sha256": digest(args.output.read_bytes()),
+    })
+    print(json.dumps({
+        "report": str(args.output),
+        "published_outputs_overall": result["published_outputs_overall"],
+        "by_timeframe": {name: report["overall"]
+                         for name, report in result["timeframes"].items()},
+        "target_met_for_full_declared_scope": result["target_met_for_full_declared_scope"],
+    }, indent=2))
 
 
 if __name__ == "__main__":

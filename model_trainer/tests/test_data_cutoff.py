@@ -21,6 +21,11 @@ class PriceCutoffTests(unittest.TestCase):
         fetcher._table = 'food_prices'
         return fetcher
 
+    def test_price_projection_uses_existing_report_date(self):
+        self.assertEqual(PRICE_COLUMNS, (
+            "id,product_category,product_name,product_variant,origin,unit,"
+            "report_date,price_index,source_pdf"))
+
     def test_bounds_and_projection_apply_to_every_cursor_page(self):
         fetcher = self.fetcher()
         pages = []
@@ -89,6 +94,34 @@ class PriceCutoffTests(unittest.TestCase):
                     self.assertIs(call.args[0], frame)
                 self.assertFalse(call.kwargs['activate'])
                 pipeline.return_value.run_daily.assert_not_called()
+
+    def test_report_date_asof_cli_requests_full_training(self):
+        frame = pd.DataFrame({'report_date': ['2025-09-12'], 'price_index': [41]})
+        args = SimpleNamespace(through='2025-09-12', data=None, mode='full',
+                               resume=None, recalibrate=None, no_activate=True,
+                               report_date_as_of=True)
+        with patch('data.fetcher.DataFetcher') as fetch, \
+                patch('pipeline.trainer.TrainingPipeline') as pipeline, \
+                contextlib.redirect_stdout(io.StringIO()):
+            fetch.return_value.fetch_all.return_value = frame
+            pipeline.return_value.run_full_training.return_value = {}
+            cmd_train(args)
+
+        fetch.return_value.fetch_all.assert_called_once_with(
+            through_date='2025-09-12')
+        pipeline.return_value.run_full_training.assert_called_once_with(
+            frame, activate=False, source_as_of=True)
+
+    def test_report_date_asof_cli_requires_bounded_input(self):
+        args = SimpleNamespace(through=None, data=None, mode='full',
+                               resume=None, recalibrate=None, no_activate=True,
+                               report_date_as_of=True)
+        with patch('data.fetcher.DataFetcher') as fetch, \
+                patch('pipeline.trainer.TrainingPipeline') as pipeline, \
+                self.assertRaisesRegex(ValueError, 'explicit --data snapshot or --through bound'):
+            cmd_train(args)
+        fetch.assert_not_called()
+        pipeline.assert_not_called()
 
     def test_cutoff_cannot_relabel_a_resumed_or_recalibrated_run(self):
         for option in ('resume', 'recalibrate'):

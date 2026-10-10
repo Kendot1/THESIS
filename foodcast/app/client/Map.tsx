@@ -32,6 +32,7 @@ export default function MapClient({ marketStats, initialMarkets }: MapProps) {
   const [isLocating, setIsLocating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
+  const [hoveredMarketId, setHoveredMarketId] = useState<string | null>(null);
   const [markets, setMarkets] = useState<(MarketLocation & { distance?: number })[]>(initialMarkets);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false); // Mobile drawer state
 
@@ -124,6 +125,12 @@ export default function MapClient({ marketStats, initialMarkets }: MapProps) {
     }
   };
 
+  const handleMarketHover = (id: string | null) => {
+    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+      setHoveredMarketId(id);
+    }
+  };
+
   if (isTransitioning) {
     return (
       <div className="h-[calc(100vh-72px)] mt-[72px] w-screen bg-surface flex flex-col overflow-hidden">
@@ -210,7 +217,9 @@ export default function MapClient({ marketStats, initialMarkets }: MapProps) {
             marketStats={marketStats}
             userLocation={userLoc}
             selectedMarketId={selectedMarketId}
+            hoveredMarketId={hoveredMarketId}
             onMarketSelect={setSelectedMarketId}
+            onMarketHover={handleMarketHover}
           />
 
           {/* Floating "Find My Location" Button on the Map */}
@@ -314,6 +323,8 @@ export default function MapClient({ marketStats, initialMarkets }: MapProps) {
                 <button
                   key={market.id}
                   onClick={() => handleMarketClick(market.id)}
+                  onMouseEnter={() => handleMarketHover(market.id)}
+                  onMouseLeave={() => handleMarketHover(null)}
                   className={`w-full text-left p-4 rounded-2xl transition-all duration-300 border relative overflow-hidden group ${isSelected
                       ? "bg-primary-50 border-primary-200 shadow-sm"
                       : "bg-white border-gray-100 hover:border-primary-100 hover:bg-primary-50/50"

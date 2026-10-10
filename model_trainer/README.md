@@ -7,18 +7,11 @@ price ranges. Validation first blends those models, then learns how strongly eac
 horizon and product category should move away from the persistence forecast.
 When the latest price is an extreme departure from its trailing seven-day mean,
 a validation-calibrated reversion rule prevents that single regime jump from
-anchoring the entire 30-day path. Empirical uncertainty bands support 80%, 90%,
-and 95% confidence levels; the existing forecast response remains 80% by default.
-The last third of validation origins is reserved for interval calibration.
-Base-model early stopping and ensemble fitting use only the earlier validation
-period; overlapping target dates are purged at the boundary. Category/horizon
-bands require 100 calibration residuals per group, otherwise they use global
-horizon bands. Persistence fallbacks have their own residual bands. The finite
-sample rank correction follows [split-conformal calibration](https://statgrades.berkeley.edu/~ryantibs/statlearn-s24/lectures/conformal.pdf),
-but these dependent time-series residuals do not provide a guaranteed coverage
-probability. Evaluate measured coverage, average width, interval score (lower is
-better), and category coverage together. Recalibrated legacy bundles explicitly
-record that their base models already used validation for early stopping.
+anchoring the entire 30-day path. Serving publishes point predictions only.
+Product confidence is a historical validation accuracy score, shown only when
+its validation provenance is verified; it is not a probability for an individual
+forecast. Base-model early stopping and ensemble fitting use chronological
+validation data, with overlapping target dates purged at the boundary.
 
 Two-way chronological validation can also admit conservative product/horizon
 specialists using the LSTM, persistence, or seven-day mean only when all three
@@ -31,10 +24,11 @@ remain on their natural scales. Existing bundles retain their original input
 contract. Training and recalibration currently stage candidates without automatic
 activation: the internal chronological test has been repeatedly inspected during
 development. Relative error improvements on that split are diagnostics only.
-Production promotion requires independently verified final-holdout MAE <= 5,
-RMSE <= 5, and MAPE <= 5%, stable validation improvement, and explicit product
-coverage. The standalone [frozen holdout scorer](evaluation/README.md) verifies
-sealed forecasts and reports realized errors; it does not itself activate models.
+Production promotion requires independently verified final-holdout Within-10
+accuracy >= 90%, MAE/RMSE <= PHP 5, MAPE <= 5%, stable improvement on all four
+metrics, and explicit product coverage. The standalone
+[frozen holdout scorer](evaluation/README.md) verifies sealed forecasts and
+reports realized errors; it does not itself activate models.
 
 The pipeline enforces one causal contract from training through serving:
 
@@ -44,6 +38,11 @@ The pipeline enforces one causal contract from training through serving:
 - lag, rolling, indicator, and trend features use data available before the
   target date;
 - train, validation, and retrospective test partitions are chronological;
+- the current 86/7/7 date split reserves about six months each for validation
+  and retrospective testing while using the earlier 86% for fitting;
+- training metadata audits fetched rows against their source-PDF dates, so
+  forward-copied gap-fill rows are visible in counts but never treated as new
+  observed-price labels;
 - LightGBM early stopping and ensemble weights use validation only;
 - new LightGBM bundles predict relative price movement; legacy absolute-price
   bundles remain loadable;
@@ -70,19 +69,20 @@ Apply supabase/migrations/202609250002_unit_aware_dashboard_summary.sql and
 redeploy the `foodcast` Edge function so dashboard prices join predictions by
 the same category/product/variant/origin/unit identity used by the model.
 Apply supabase/migrations/202610010002_forecast_run_quality_metrics.sql and
-redeploy the Edge function to publish frozen-holdout quality metrics with each
-forecast run. The dashboard refreshes those metrics and the actual forecast
+redeploy the Edge function to publish validation quality metrics with each
+forecast run. Apply supabase/migrations/202610090001_multi_period_point_forecasts.sql
+before publishing the daily path and saved calendar-week/calendar-month point
+forecasts. The dashboard refreshes those metrics and the actual forecast
 publication age every minute; it does not display a fabricated live accuracy.
 
-Prediction success now means a point forecast within 5% of the observed price;
-range coverage is reported separately. Each product/date is counted once using
-its latest forecast published before that Philippine calendar date. Copied,
-conflicting, and invalid observations are excluded. Realized metrics use the
-current model's vintages and a 45-day observation window, including all relevant
-runs rather than an arbitrary eight-run limit. All error metrics and their sample
-counts come from the same evaluation population. The headline **Prediction
-Success** uses `modelMetrics`, the current model's historical holdout capability,
-while `metrics` holds recent realized results when available. A version-matched
+Prediction success means a point forecast within 5% of the observed price.
+The status endpoint reads evaluation metadata persisted with the latest forecast
+run. Both `metrics` and `modelMetrics` contain that saved evaluation, including
+its source and sample count. Page requests never score live outcomes: doing so
+would scan historical tables and could consume reserved holdout dates. Calculate
+new performance metadata only in the evaluation pipeline with its declared data
+scope. The headline **Prediction Success** uses historical chronological
+validation capability, not a claim of current live accuracy. A version-matched
 snapshot generated with `export-quality` supports the existing model during the
 database migration; it is never used for a different model ID. The website requires
 30 observations before showing a point-success rate and never substitutes range
@@ -116,14 +116,14 @@ listed above is required before running the updated GitHub daily workflow.
     # Refit only the validation blend from a completed run's saved forecasts.
     python main.py train --recalibrate <run_id> --no-activate
 
-    # Print frozen-test errors plus observed 80%, 90%, and 95% interval coverage.
+    # Print retrospective test point-error metrics for diagnosis only.
     python main.py evaluate
 
     # Preview current forecasts locally without resolving product IDs or publishing.
-    python main.py preview --horizon weekly --confidence 0.95 --product Corn
+    python main.py preview --horizon weekly --product Corn
 
     # Preview from a reproducible offline snapshot instead of Supabase history.
-    python main.py preview --horizon weekly --confidence 0.95 --product Corn --data ../audits/model_trainer_2026-09-18/food_prices_snapshot.json
+    python main.py preview --horizon weekly --product Corn --data ../audits/model_trainer_2026-09-18/food_prices_snapshot.json
 
     # Generate and atomically publish a complete forecast vintage.
     python main.py predict --horizon monthly
@@ -156,7 +156,10 @@ Bundles live under artifacts_v2/runs/<run_id>/. The active pointer is
 artifacts_v2/manifest.json; legacy artifacts under artifacts/ are never loaded
 by v2.
 
-Fresh GitHub runners restore the serving bundle from R2 before training. A
+Fresh GitHub runners restore the serving bundle from R2 before publication. The
+daily workflow performs inference only; unrestricted daily training/evaluation
+would consume reserved prospective holdout outcomes. Run new candidate training
+separately with an explicitly reviewed development cutoff. A
 completed training candidate does not create an active pointer: promotion still
 requires independent reviewed evidence. If R2 has no `model_artifacts_v2/manifest.json`,
 restore the existing production champion from a machine with its intact active
@@ -164,7 +167,7 @@ bundle by running `python -m utils.r2_sync upload` from `model_trainer`. This
 uploads the bundle first and its active pointer last. Then run
 `python -m utils.r2_sync download` and `python main.py predict --horizon monthly`
 on the runner. The restore command fails immediately if the remote pointer is
-missing, so a daily run does not waste training before discovering that it cannot
+missing, so a daily run fails before attempting publication when it cannot
 serve forecasts. Retain the incumbent when a retrained candidate is not promoted.
 
 External observation vintages can be checked with

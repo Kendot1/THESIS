@@ -1,11 +1,8 @@
-"""Validation-calibrated model blend and empirical relative-error bands."""
+"""Validation-calibrated point-forecast model blend."""
 import json
 from pathlib import Path
 import numpy as np
 from config.settings import get_settings
-
-INTERVAL_LEVELS = (.8, .9, .95)
-
 
 class EnsembleModel:
     def __init__(self, artifact_dir=None):
@@ -17,10 +14,6 @@ class EnsembleModel:
         self.anomaly_strength = 0.0
         self.anomaly_decay = 1.0
         self.specialist_blends = {}
-        self.widths = None
-        self.interval_widths = {}
-        self.category_interval_widths = {}
-        self.fallback_interval_widths = {}
         self.calibration = {'scope': 'legacy_in_sample'}
 
     def fit(self, frame, horizon, calibration_frame=None):
@@ -60,7 +53,6 @@ class EnsembleModel:
                     + np.mean(np.abs(error/a))/denominators[2]
                 )
             trust = float(candidates[int(np.argmin(scores))])
-            prediction = anchor + trust*(base-anchor)
             weights.append(global_weight)
             trust_weights.append(trust)
         self.weights = np.array(weights)
@@ -75,71 +67,15 @@ class EnsembleModel:
         specialist_frame = frame.copy()
         specialist_frame['ensemble'] = final
         self.specialist_blends = self._fit_stable_specialists(specialist_frame)
-        self.calibrate_intervals(frame if calibration_frame is None else calibration_frame,
-                                 horizon, independent=calibration_frame is not None)
-        self.save()
-        return self
-
-    @staticmethod
-    def _error_quantile(errors, level):
-        # Finite-sample rank correction. Time-series dependence means nominal
-        # coverage is a target, not an exchangeability-based guarantee.
-        errors = np.sort(np.asarray(errors, dtype=float))
-        if not len(errors) or not np.isfinite(errors).all():
-            raise ValueError('Calibration requires finite observed errors')
-        rank = min(len(errors), int(np.ceil((len(errors)+1)*level)))
-        return float(errors[rank-1])
-
-    def calibrate_intervals(self, frame, horizon, independent=False):
-        point = self.predict_rows(
-            frame.lstm.to_numpy(), frame.lgbm.to_numpy(), frame.horizon.to_numpy(),
-            frame.anchor.to_numpy(), frame.series.to_numpy() if 'series' in frame else None,
-            frame.moving_average7.to_numpy() if 'moving_average7' in frame else None)
-        anchors = frame.anchor.to_numpy(dtype=float)
-        actual = frame.actual.to_numpy(dtype=float)
-        if (anchors <= 0).any() or not np.isfinite(anchors).all():
-            raise ValueError('Calibration requires positive finite anchors')
-        relative_error = np.abs(actual-point)/anchors
-        fallback_error = np.abs(actual-anchors)/anchors
-        horizon_values = frame.horizon.to_numpy(dtype=int)
-        self.interval_widths, self.category_interval_widths = {}, {}
-        self.fallback_interval_widths = {}
-        for level in INTERVAL_LEVELS:
-            widths, fallback_widths = [], []
-            for h in range(1, horizon+1):
-                errors = relative_error[horizon_values == h]
-                if not len(errors):
-                    errors = relative_error
-                widths.append(self._error_quantile(errors, level))
-                fallback = fallback_error[horizon_values == h]
-                fallback_widths.append(self._error_quantile(
-                    fallback if len(fallback) else fallback_error, level))
-            self.interval_widths[str(level)] = np.asarray(widths)
-            self.fallback_interval_widths[str(level)] = np.asarray(fallback_widths)
-        # Pool nearby horizons within each category to avoid unstable quantiles
-        # for sparse product series, falling back to the global horizon band.
-        if 'series' in frame:
-            categories = frame.series.astype(str).str.split('||', regex=False).str[0]
-            bins = self._horizon_bins(horizon_values)
-            target_bins = self._horizon_bins(np.arange(1, horizon+1))
-            for category in sorted(categories.unique()):
-                calibrated = {key: value.copy() for key, value in self.interval_widths.items()}
-                for horizon_bin in np.unique(target_bins):
-                    mask = (categories.to_numpy() == category) & (bins == horizon_bin)
-                    if mask.sum() < 100:
-                        continue
-                    for level in INTERVAL_LEVELS:
-                        calibrated[str(level)][target_bins == horizon_bin] = self._error_quantile(
-                            relative_error[mask], level)
-                self.category_interval_widths[str(category)] = calibrated
-        self.widths = self.interval_widths[str(INTERVAL_LEVELS[0])]
+        evidence = frame if calibration_frame is None else calibration_frame
         self.calibration = {
-            'scope': 'held_out_from_ensemble_fit' if independent else 'in_sample_diagnostic',
-            'sample_count': len(frame), 'minimum_category_bin_samples': 100,
-            'start': str(frame.date.min()) if 'date' in frame else None,
-            'end': str(frame.date.max()) if 'date' in frame else None,
-            'coverage_guarantee': False,
+            'scope': 'held_out_from_ensemble_fit' if calibration_frame is not None else 'legacy_in_sample',
+            'sample_count': len(evidence),
+            'start': str(evidence.date.min()) if 'date' in evidence else None,
+            'end': str(evidence.date.max()) if 'date' in evidence else None,
+            'purpose': 'product_confidence_reliability',
         }
+        self.save()
         return self
 
     def _fit_category_trust(self, frame, candidates):
@@ -257,20 +193,29 @@ class EnsembleModel:
 
         def choose(rows):
             baseline = self._error_triplet(rows, rows.ensemble)
+            if not np.isfinite(baseline).all() or (baseline <= 1e-12).any():
+                # A zero baseline error cannot be strictly improved by any blend.
+                return (1.0, None, 0.0)
             best = (1.0, None, 0.0)
             for name in alternatives:
                 for weight in np.linspace(.05, .5, 10):
                     prediction = (1-weight)*rows.ensemble+weight*rows[name]
-                    score = float(np.mean(self._error_triplet(rows, prediction)/baseline))
+                    ratios = self._error_triplet(rows, prediction)/baseline
+                    if not np.isfinite(ratios).all():
+                        continue
+                    score = float(np.mean(ratios))
                     if score < best[0]:
                         best = (score, name, float(weight))
             return best
 
         def stable(rows, name, weight):
             baseline = self._error_triplet(rows, rows.ensemble)
+            if not np.isfinite(baseline).all() or (baseline <= 1e-12).any():
+                return False
             prediction = (1-weight)*rows.ensemble+weight*rows[name]
             ratios = self._error_triplet(rows, prediction)/baseline
-            return bool((ratios < 1).all() and ratios.mean() <= .9975)
+            return bool(np.isfinite(ratios).all() and (ratios < 1).all()
+                        and ratios.mean() <= .9975)
 
         result = {}
         for key in sorted(set(early_groups.groups) & set(late_groups.groups)):
@@ -375,52 +320,11 @@ class EnsembleModel:
                                                  + weight*source)
         return horizon_prediction
 
-    def _widths_for(self, confidence):
-        key = str(float(confidence))
-        if key not in self.interval_widths:
-            supported = ", ".join(sorted(self.interval_widths))
-            raise ValueError(f'Unsupported confidence level {confidence}; choose {supported}')
-        return self.interval_widths[key]
-
-    def intervals(self, point, anchor, confidence=.8, category=None, fallback=False):
-        series = None if category is None else np.repeat(str(category), len(point))
-        return self.intervals_rows(point, np.full(len(point), anchor),
-                                   np.arange(1, len(point)+1), confidence, series, fallback)
-
-    def intervals_rows(self, point, anchor, horizons, confidence=.8, series=None, fallback=False):
-        indices = np.asarray(horizons, dtype=int) - 1
-        base = self._widths_for(confidence)
-        point, anchor = np.asarray(point, dtype=float), np.asarray(anchor, dtype=float)
-        if (point.ndim != 1 or point.shape != indices.shape or anchor.shape != point.shape
-                or (indices < 0).any() or (indices >= len(base)).any()
-                or not np.isfinite(point).all() or not np.isfinite(anchor).all()
-                or (anchor <= 0).any() or (point <= 0).any()
-                or not np.array_equal(np.asarray(horizons), indices+1)):
-            raise ValueError('Invalid interval inputs')
-        key = str(float(confidence))
-        relative = (self.fallback_interval_widths.get(key, base) if fallback else base)[indices].copy()
-        if series is not None and not fallback:
-            if np.asarray(series).shape != point.shape:
-                raise ValueError('Invalid interval series identities')
-            for i, identity in enumerate(series):
-                category = str(identity).split('||', 1)[0]
-                widths = self.category_interval_widths.get(category, {}).get(key)
-                if widths is not None:
-                    relative[i] = widths[indices[i]]
-        width = relative * anchor
-        return np.maximum(.01, point-width), point+width
-
     def save(self):
         self.path.mkdir(parents=True,exist_ok=True)
         (self.path/'ensemble.json').write_text(json.dumps({
             'objective':'validation_equal_mae_rmse_mape_with_persistence_shrinkage',
-            'interval':'heldout_category_horizon_relative_absolute_error',
             'calibration':self.calibration,
-            'category_interval_widths':{
-                category:{key:value.tolist() for key,value in levels.items()}
-                for category,levels in self.category_interval_widths.items()},
-            'fallback_interval_widths':{
-                key:value.tolist() for key,value in self.fallback_interval_widths.items()},
             'weights':self.weights.tolist(),
             'trust_weights':self.trust_weights.tolist(),
             'category_trust_weights':{
@@ -431,9 +335,7 @@ class EnsembleModel:
                 'log_ratio_threshold':self.anomaly_threshold,
                 'strength':self.anomaly_strength,
                 'decay':self.anomaly_decay},
-            'interval_widths':{
-                key:value.tolist() for key,value in self.interval_widths.items()},
-            'widths':self.widths.tolist()}),encoding='utf-8')
+            }),encoding='utf-8')
 
     def load(self):
         data = json.loads((self.path/'ensemble.json').read_text(encoding='utf-8'))
@@ -449,35 +351,14 @@ class EnsembleModel:
         self.anomaly_threshold = float(anomaly.get('log_ratio_threshold', 1e9))
         self.anomaly_strength = float(anomaly.get('strength', 0.0))
         self.anomaly_decay = float(anomaly.get('decay', 1.0))
-        self.widths = np.asarray(data['widths'],dtype=float)
-        saved_widths = data.get('interval_widths')
-        self.interval_widths = ({key:np.asarray(value,dtype=float)
-                                 for key,value in saved_widths.items()}
-                                if saved_widths else {'0.8':self.widths})
-        self.interval_widths.setdefault('0.8', self.widths)
         self.calibration = data.get('calibration', {'scope':'legacy_in_sample'})
-        self.category_interval_widths = {
-            category:{key:np.asarray(value, dtype=float) for key,value in levels.items()}
-            for category,levels in data.get('category_interval_widths', {}).items()}
-        self.fallback_interval_widths = {
-            key:np.asarray(value, dtype=float)
-            for key,value in data.get('fallback_interval_widths', {}).items()}
-        additional = list(self.fallback_interval_widths.values()) + [
-            value for levels in self.category_interval_widths.values() for value in levels.values()]
-        if any(len(value) != len(self.weights) or not np.isfinite(value).all()
-               or (value < 0).any() for value in additional):
-            raise ValueError('Invalid category or fallback interval widths')
         if not (len(self.trust_weights) == len(self.weights)
                 and np.isfinite(self.weights).all()
                 and np.isfinite(self.trust_weights).all()
-                and np.isfinite(self.widths).all()
-                and ((self.weights>=0)&(self.weights<=1)).all() and (self.widths>=0).all()):
+                and ((self.weights>=0)&(self.weights<=1)).all()):
             raise ValueError('Invalid ensemble state')
         if not ((self.trust_weights>=0)&(self.trust_weights<=1)).all():
             raise ValueError('Invalid ensemble trust weights')
-        if any(len(value) != len(self.weights) or not np.isfinite(value).all()
-               or (value < 0).any() for value in self.interval_widths.values()):
-            raise ValueError('Invalid interval widths')
         if any(len(value) != len(self.weights)
                or not np.isfinite(value).all()
                or not ((value>=0)&(value<=1)).all()

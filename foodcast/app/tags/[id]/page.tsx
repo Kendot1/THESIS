@@ -1,6 +1,6 @@
 import TagClientView from "../../client/TagClientView";
-import { fetchProducts, fetchNews } from "../../lib/data";
-import { getInheritedTags } from "../../lib/tags";
+import { decodeNewsKeyword, fetchProducts, fetchNews } from "../../lib/data";
+import { getInheritedTags, getNewsTagKeywords } from "../../lib/tags";
 
 export const dynamic = 'force-static';
 export const revalidate = 3600;
@@ -10,7 +10,7 @@ export async function generateStaticParams() {
   const tags = new Set<string>();
   
   newsList.forEach((article) => {
-    article.keywords?.forEach((kw) => tags.add(decodeURIComponent(kw)));
+    getNewsTagKeywords(article).forEach((kw) => tags.add(kw));
   });
 
   return Array.from(tags).map((tag) => ({
@@ -20,7 +20,7 @@ export async function generateStaticParams() {
 
 export default async function TagPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const tag = decodeURIComponent(id);
+  const tag = decodeNewsKeyword(id);
   const tagUpper = tag.trim().toUpperCase();
   
   const [products, newsList] = await Promise.all([
@@ -29,8 +29,8 @@ export default async function TagPage({ params }: { params: Promise<{ id: string
   ]);
 
   // Compute related news
-  const relatedNews = newsList.filter((n) => 
-    n.keywords?.some((k) => decodeURIComponent(k).trim().toUpperCase() === tagUpper)
+  const relatedNews = newsList.filter((n) =>
+    getNewsTagKeywords(n).some((keyword) => keyword.trim().toUpperCase() === tagUpper)
   );
 
   // Compute grouped products
@@ -38,7 +38,7 @@ export default async function TagPage({ params }: { params: Promise<{ id: string
   products.forEach((p) => {
     if (productsWithThisTag.has(p.name)) return;
     const tags = getInheritedTags(p.name, newsList);
-    if (tags.some((t) => decodeURIComponent(t).toUpperCase() === tagUpper)) {
+    if (tags.some((t) => decodeNewsKeyword(t).toUpperCase() === tagUpper)) {
       productsWithThisTag.add(p.name);
     }
   });

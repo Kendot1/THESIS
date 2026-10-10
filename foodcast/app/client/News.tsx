@@ -8,6 +8,7 @@ import ScrollReveal from "../components/ScrollReveal";
 import Image from "next/image";
 import { Search, Filter, Calendar, Newspaper, ArrowLeft, TrendingUp, Clock, Tag, ExternalLink, ChevronDown } from "lucide-react";
 import { fetchPaginatedNews, toEventTypeKey, NewsArticle } from "../lib/data";
+import { getNewsTagKeywords } from "../lib/tags";
 import Link from "next/link";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 
@@ -19,6 +20,7 @@ interface NewsProps {
 
 export default function News({ initialNews, initialTotal, initialCategories }: NewsProps) {
   const [news, setNews] = useState<NewsArticle[]>(initialNews);
+  const [failedFeaturedImage, setFailedFeaturedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [isFeaturedOpen, setIsFeaturedOpen] = useState(false);
@@ -199,9 +201,14 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
 
             {/* Featured Article - Only show if no filters active */}
             {!searchQuery && selectedCategory === "All" && dateFilter === "All" && featuredArticle && (() => {
-              const displayTitle = language === "tl" && featuredArticle.title_tl ? featuredArticle.title_tl : featuredArticle.title;
-              const displayContent = language === "tl" && featuredArticle.content_tl ? featuredArticle.content_tl : (featuredArticle.content || featuredArticle.excerpt);
-              const displayExcerpt = language === "tl" && featuredArticle.content_tl ? (featuredArticle.content_tl.substring(0, 150) + "...") : featuredArticle.excerpt;
+              const displayTitle = (language === "tl" && featuredArticle.title_tl ? featuredArticle.title_tl : featuredArticle.title) || t("titleUnavailable");
+              const displayContent = (language === "tl" && featuredArticle.content_tl ? featuredArticle.content_tl : (featuredArticle.content || featuredArticle.excerpt)) || t("descriptionUnavailable");
+              const displayExcerpt = ((language === "tl" && featuredArticle.content_tl
+                ? featuredArticle.content_tl.length > 150 ? `${featuredArticle.content_tl.substring(0, 150).trimEnd()}...` : featuredArticle.content_tl
+                : featuredArticle.excerpt) || t("descriptionUnavailable"));
+              const hasFeaturedImage = Boolean(featuredArticle.image) && failedFeaturedImage !== featuredArticle.image;
+              const displayDate = !featuredArticle.date || featuredArticle.date === "Publication date unavailable" ? t("publicationDateUnavailable") : featuredArticle.date;
+              const relatedKeywords = getNewsTagKeywords(featuredArticle);
 
               return (
                 <ScrollReveal delay={200}>
@@ -209,19 +216,18 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                     onClick={() => setIsFeaturedOpen(true)}
                     className="group relative bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 flex flex-col lg:flex-row transition-all duration-500 hover:shadow-accent/10 cursor-pointer"
                   >
-                    <div className="relative lg:w-1/2 h-[200px] lg:h-auto overflow-hidden">
-                      <Image
-                        src={featuredArticle.image}
-                        alt={displayTitle}
-                        fill
-                        className="object-cover transition-transform duration-1000 group-hover:scale-105"
-                      />
+                    <div className="relative lg:w-1/2 h-[200px] lg:h-auto overflow-hidden bg-gray-100">
+                      {hasFeaturedImage ? (
+                        <Image src={featuredArticle.image} alt={displayTitle} fill onError={() => setFailedFeaturedImage(featuredArticle.image)} className="object-cover transition-transform duration-1000 group-hover:scale-105" />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-400">{t("imageUnavailable")}</div>
+                      )}
                     </div>
                     <div className="lg:w-1/2 p-4 md:p-8 flex flex-col justify-center">
                       <div className="flex items-center gap-4 mb-6">
                         <span className="px-3 py-1 bg-primary-900 text-white text-[10px] font-bold rounded-lg uppercase tracking-wider">{t(featuredArticle.category)}</span>
                         <span className="text-gray-400 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
-                          <Clock className="w-3 h-3" /> {featuredArticle.date}
+                          <Clock className="w-3 h-3" /> {displayDate}
                         </span>
                       </div>
                       <h2 className="text-2xl md:text-4xl font-black text-gray-900 mb-6 leading-tight group-hover:text-primary-800 transition-colors">
@@ -256,14 +262,13 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                         onClick={(e) => e.stopPropagation()}
                         className="relative z-10 bg-white rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-modal-in flex flex-col"
                       >
-                        <div className="relative h-56 sm:h-64 flex-shrink-0 overflow-hidden">
-                          <Image
-                            src={featuredArticle.image}
-                            alt={displayTitle}
-                            fill
-                            className="object-cover"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                        <div className="relative h-56 sm:h-64 flex-shrink-0 overflow-hidden bg-gray-100">
+                          {hasFeaturedImage ? (
+                            <Image src={featuredArticle.image} alt={displayTitle} fill onError={() => setFailedFeaturedImage(featuredArticle.image)} className="object-cover" />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-800 text-xs font-medium text-white">{t("imageUnavailable")}</div>
+                          )}
+                          {hasFeaturedImage && <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />}
                           <div className="absolute bottom-5 left-6 right-6 flex items-center gap-3">
                             <span className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                               <Tag className="w-3 h-3" />
@@ -271,7 +276,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                             </span>
                             <span className="text-white/70 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
                               <Clock className="w-3 h-3" />
-                              {featuredArticle.date}
+                              {displayDate}
                             </span>
                           </div>
                         </div>
@@ -289,7 +294,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                           </div>
 
                           {/* Tags Section */}
-                          {featuredArticle.keywords && featuredArticle.keywords.length > 0 && (() => {
+                          {relatedKeywords.length > 0 && (() => {
                             const tagColors = [
                               "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
                               "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
@@ -307,8 +312,7 @@ export default function News({ initialNews, initialTotal, initialCategories }: N
                                   {t("relatedTags") || "Related Tags"}
                                 </h4>
                                 <div className="flex flex-wrap gap-2">
-                                  {featuredArticle.keywords.map((rawKw, idx) => {
-                                    const kw = decodeURIComponent(rawKw);
+                                  {relatedKeywords.map((kw, idx) => {
                                     return (
                                       <Link
                                         key={idx}

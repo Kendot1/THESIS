@@ -3,16 +3,21 @@ import Link from "next/link";
 import Image from "next/image";
 import { Home, Search, Table2, Info, Mail, MapPin, TrendingUp, BarChart3 } from "lucide-react";
 import GrassField from "./GrassField";
-import { formatRelativeAge, verifiedPredictionSuccess } from "../lib/data";
-import { useClock, useForecastStatus } from "../lib/hooks";
+import { verifiedHistoricalAccuracy } from "../lib/data";
+import { useForecastStatus } from "../lib/hooks";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { usePathname } from "next/navigation";
 
 const Footer = () => {
-  const { t, language, isTransitioning } = useLanguage();
+  const { t, isTransitioning } = useLanguage();
   const { data: forecastStatus } = useForecastStatus();
-  const predictionSuccess = verifiedPredictionSuccess(forecastStatus?.modelMetrics);
-  const now = useClock();
+  const accuracyBenchmark = verifiedHistoricalAccuracy(
+    forecastStatus?.historicalAccuracy,
+    forecastStatus?.modelRunId,
+  );
+  const predictionSuccess = accuracyBenchmark
+    ? accuracyBenchmark.within_tolerance_count / accuracyBenchmark.sample_count
+    : null;
   const currentYear = new Date().getFullYear();
   const pathname = usePathname();
 
@@ -103,7 +108,7 @@ const Footer = () => {
             <div className="md:col-span-1">
               <div className="inline-flex items-center justify-center p-3 bg-white/80 rounded-2xl mb-6 backdrop-blur-sm
                 transition-all duration-300">
-                <Image src="/FoodcastLogo.svg" alt="FOODCAST" width={130} height={60} />
+                <Image src="/FoodcastLogo.svg" alt="FOODCAST" width={200} height={60} />
               </div>
               <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs mb-6">
                 {t("footerDesc")}
@@ -119,22 +124,7 @@ const Footer = () => {
                         ? `${(predictionSuccess * 100).toFixed(1)}%`
                         : "—"}
                     </div>
-                    <div className="text-white/60 text-[10px]" title={t("predictionSuccessExplanation")}>{t("predictionSuccess")}</div>
-                    <div className="text-white/40 text-[9px]">
-                      {forecastStatus?.modelMetrics
-                        ? t("modelEvaluation")
-                        : t("rangeHistoryUnavailable")}
-                    </div>
-                    {forecastStatus?.generatedAt && (
-                      <div className="text-white/40 text-[9px]">
-                        {formatRelativeAge(forecastStatus.generatedAt, language, now)}
-                      </div>
-                    )}
-                    <div className="text-white/40 text-[9px]">
-                      {forecastStatus?.metrics?.processed_through
-                        ? `${t("processedThroughShort")} ${forecastStatus.metrics.processed_through}`
-                        : t("dailyDaRefreshShort")}
-                    </div>
+                    <div className="text-white/60 text-[10px]">{t("predictionSuccess")}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

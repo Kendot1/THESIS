@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, Circle } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { MarketLocation, getNearestMarkets } from "../lib/markets";
@@ -18,6 +18,8 @@ const MAP_STYLES = [
   { id: 'dark_matter', name: 'Dark Matter', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap &copy; CARTO' },
   { id: 'esri_street', name: 'Esri Street', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012' }
 ];
+
+const FALLBACK_MARKET_IMAGE = "/news/market.png";
 
 // Fix Leaflet's default icon path issues in Next.js
 const customMarkerIcon = new L.Icon({
@@ -114,16 +116,20 @@ interface MarketMapProps {
   marketStats: Record<string, { count: number; avgChange: number }>;
   userLocation: { lat: number; lng: number } | null;
   selectedMarketId: string | null;
+  hoveredMarketId: string | null;
   onMarketSelect: (id: string) => void;
+  onMarketHover: (id: string | null) => void;
 }
 
 
 
-export default function MarketMap({ markets, marketStats, userLocation, selectedMarketId, onMarketSelect }: MarketMapProps) {
+export default function MarketMap({ markets, marketStats, userLocation, selectedMarketId, hoveredMarketId, onMarketSelect, onMarketHover }: MarketMapProps) {
   const { t, language } = useLanguage();
   const router = useRouter();
   const [mapStyleId, setMapStyleId] = useState('standard');
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
+  const [failedImageIds, setFailedImageIds] = useState<Set<string>>(() => new Set());
+  const [fallbackImageIds, setFallbackImageIds] = useState<Set<string>>(() => new Set());
   const activeStyle = MAP_STYLES.find(s => s.id === mapStyleId) || MAP_STYLES[0];
 
   // NCR Bounds to restrict panning
@@ -226,26 +232,47 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
           // Determine states for icon coloring
           const isNearest = userLocation !== null && index === 0;
           const isSelected = market.id === selectedMarketId;
+          const isHovered = market.id === hoveredMarketId;
+          const hasImage = Boolean(market.image) && !failedImageIds.has(market.id);
+          const useFallbackImage = fallbackImageIds.has(market.id);
 
           return (
             <Marker
               key={market.id}
               position={[market.lat, market.lng]}
-              icon={getMarkerIcon(isNearest, isSelected)}
+              icon={getMarkerIcon(isNearest, isSelected || isHovered)}
+              riseOnHover
               eventHandlers={{
                 click: () => onMarketSelect(market.id),
+                mouseover: () => onMarketHover(market.id),
+                mouseout: () => onMarketHover(null),
               }}
             >
+              <Tooltip direction="top" offset={[0, -34]} opacity={1}>
+                {market.name}
+              </Tooltip>
               <Popup className="market-popup">
                 <div className="w-full flex flex-col">
                   {/* Image Header - Edge to Edge */}
                   <div className="w-full h-32 relative bg-gray-100 shrink-0">
-                    <img
-                      src={market.image || "https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=2070&auto=format&fit=crop"}
-                      alt={market.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+                    {hasImage ? (
+                      <img
+                        src={useFallbackImage ? FALLBACK_MARKET_IMAGE : market.image}
+                        alt={useFallbackImage ? "Representative wet market scene" : market.name}
+                        referrerPolicy="no-referrer"
+                        onError={() => {
+                          if (!useFallbackImage) {
+                            setFallbackImageIds(current => new Set(current).add(market.id));
+                          } else {
+                            setFailedImageIds(current => new Set(current).add(market.id));
+                          }
+                        }}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-400">{t("imageUnavailable")}</div>
+                    )}
+                    {hasImage && <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />}
 
                     {/* Badge */}
                     <div className="absolute top-3 left-3 text-white">
@@ -256,9 +283,9 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
 
                     {/* Title inside image for dynamic feel */}
                     <div className="absolute bottom-3 left-4 right-4">
-                      <h3 className="font-black text-lg text-white leading-tight mb-0.5 drop-shadow-md">{market.name}</h3>
-                      <p className="text-[9px] text-white/80 font-medium leading-snug flex items-start gap-1 drop-shadow-sm">
-                        <MapPin className="w-3 h-3 shrink-0 text-white/60" />
+                      <h3 className={`font-black text-lg leading-tight mb-0.5 ${hasImage ? "text-white drop-shadow-md" : "text-gray-700"}`}>{market.name}</h3>
+                      <p className={`text-[9px] font-medium leading-snug flex items-start gap-1 ${hasImage ? "text-white/80 drop-shadow-sm" : "text-gray-500"}`}>
+                        <MapPin className={`w-3 h-3 shrink-0 ${hasImage ? "text-white/60" : "text-gray-400"}`} />
                         <span className="truncate">{market.address}</span>
                       </p>
                     </div>

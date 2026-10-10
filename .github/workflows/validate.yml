@@ -52,4 +52,4 @@ jobs:
         working-directory: foodcast
         run: pnpm exec tsc --noEmit --incremental false
       - name: Test forecast quality and capability display
-        run: node --experimental-strip-types --test foodcast/tests/dashboard.test.mjs supabase/functions/foodcast/quality.test.mjs foodcast/app/lib/model-quality.test.mjs
+        run: node --experimental-strip-types --test foodcast/tests/dashboard.test.mjs foodcast/tests/forecast-workflow.test.mjs supabase/functions/foodcast/quality.test.mjs supabase/functions/foodcast/status.test.mjs supabase/functions/foodcast/forecast.test.mjs foodcast/app/lib/model-quality.test.mjs foodcast/app/lib/forecast-horizons.test.mjs

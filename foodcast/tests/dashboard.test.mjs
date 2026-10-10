@@ -41,10 +41,27 @@ function edgeHandler(resolveQuery) {
     'https://esm.sh/@supabase/supabase-js@2.42.0': { createClient: () => client },
     './dashboard.ts': loadModule('../supabase/functions/foodcast/dashboard.ts'),
     './forecast.ts': loadModule('../supabase/functions/foodcast/forecast.ts'),
-    './quality.ts': {},
+    './status.ts': loadModule('../supabase/functions/foodcast/status.ts'),
   });
   return handler;
 }
+
+test('forecast status route serves saved metrics without reading observed prices', async () => {
+  const tables = [];
+  const metrics = { evaluation_source: 'chronological_validation', sample_count: 100 };
+  const handler = edgeHandler(query => {
+    tables.push(query.table);
+    assert.equal(query.table, 'forecast_runs');
+    return { data: { model_run_id: 'saved-model', generated_at: '2026-10-09',
+      horizon: 30, row_count: 3961, metrics }, error: null };
+  });
+  const response = await handler(new Request('https://example.test/forecast-status'));
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.metrics, metrics);
+  assert.deepEqual(body.modelMetrics, metrics);
+  assert.deepEqual(tables, ['forecast_runs']);
+});
 
 test('product endpoint supplies immutable forecast origin and model required by horizon chart', async () => {
   const queries = [];
@@ -143,19 +160,19 @@ test('summary API caches successful responses and exposes failures for SWR retry
 test('forecast selection excludes expired dates and returns point prices without intervals', () => {
   const { selectFuturePredictions } = loadModule('../supabase/functions/foodcast/forecast.ts');
   const selected = selectFuturePredictions([
-    { prediction_date: '2026-09-23', predicted_price: 90, lower_bound: 80, upper_bound: 100 },
-    { prediction_date: '2026-09-24', predicted_price: 91, lower_bound: 80, upper_bound: 100 },
-    { prediction_date: '2026-09-27', predicted_price: 95, lower_bound: 97, upper_bound: 92 },
-    { prediction_date: '2026-09-25T00:00:00Z', predicted_price: 93, lower_bound: 88, upper_bound: 98 },
-    { prediction_date: '2026-09-25', predicted_price: 94, lower_bound: 89, upper_bound: 99 },
+    { prediction_date: '2026-09-23', predicted_price: 90 },
+    { prediction_date: '2026-09-24', predicted_price: 91 },
+    { prediction_date: '2026-09-27', predicted_price: 95 },
+    { prediction_date: '2026-09-25T00:00:00Z', predicted_price: 93 },
+    { prediction_date: '2026-09-25', predicted_price: 94 },
     { prediction_date: 'invalid', predicted_price: 100 },
-    { prediction_date: '2026-09-26', predicted_price: 94.5, lower_bound: 90, upper_bound: 98 },
+    { prediction_date: '2026-09-26', predicted_price: 94.5 },
   ], '2026-09-24');
 
   assert.deepEqual(JSON.parse(JSON.stringify(selected)), [
-    { date: '2026-09-25', predicted_price: 94 },
-    { date: '2026-09-26', predicted_price: 94.5 },
-    { date: '2026-09-27', predicted_price: 95 },
+    { date: '2026-09-25', predicted_price: 94, confidence_score: null, confidence_level: 'Insufficient data' },
+    { date: '2026-09-26', predicted_price: 94.5, confidence_score: null, confidence_level: 'Insufficient data' },
+    { date: '2026-09-27', predicted_price: 95, confidence_score: null, confidence_level: 'Insufficient data' },
   ]);
 });
 
@@ -176,7 +193,7 @@ test('forecast chart data never marks one date as both actual and predicted', ()
   ];
   const predictions = selectFuturePredictions([
     { prediction_date: '2026-09-24', predicted_price: 101 },
-    { prediction_date: '2026-09-25', predicted_price: 103, lower_bound: 98, upper_bound: 108 },
+    { prediction_date: '2026-09-25', predicted_price: 103 },
   ], '2026-09-24');
   const chart = buildForecastData(history, predictions);
 
@@ -217,7 +234,7 @@ test('dashboard summary does not turn a missing model into a trading signal', ()
 test('edge and SQL paths enforce the same future-only forecast boundary', () => {
   const edgeSource = fs.readFileSync(fileURLToPath(new URL('../../supabase/functions/foodcast/index.ts', import.meta.url)), 'utf8');
   const sqlSource = fs.readFileSync(fileURLToPath(new URL('../../supabase/migrations/202609250002_unit_aware_dashboard_summary.sql', import.meta.url)), 'utf8');
-  assert.match(edgeSource, /selectFuturePredictions\(allPredictions, lastActualDate\)/);
+  assert.match(edgeSource, /selectFuturePredictions\(dailyRows, lastActualDate\)/);
   assert.doesNotMatch(edgeSource, /entry\.predicted = entry\.actual/);
   assert.match(sqlSource, /prediction_date > \(r\.last_row->>'report_date'\)::date/);
   assert.match(sqlSource, /min\(p\.prediction_date\) = \(r\.last_row->>'report_date'\)::date \+ 1/);
