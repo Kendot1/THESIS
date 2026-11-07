@@ -13,6 +13,7 @@ import uuid
 import mimetypes
 import os
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
@@ -367,6 +368,19 @@ class NewsScraper:
         2. Search Google News for targeted Philippine food-market stories from trusted publishers
         """
         urls = set()
+        # Publisher RSS carries direct article URLs; Google News /read/ pages
+        # are not guaranteed HTTP redirects and must not be treated as articles.
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+            for feed in ("https://www.da.gov.ph/feed/", "https://www.philstar.com/rss/business"):
+                self._run_stats["discovery_attempts"] += 1
+                try:
+                    response = await client.get(feed)
+                    response.raise_for_status()
+                    urls.update(self._publisher_feed_urls(response.text))
+                    self._run_stats["discovery_successes"] += 1
+                except Exception as exc:
+                    self._run_stats["discovery_failures"] += 1
+                    log.warning("Publisher feed failed %s: %s", feed, exc)
 
         try:
             from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
@@ -442,6 +456,26 @@ class NewsScraper:
             if attempt == 0:
                 await asyncio.sleep(1)
         raise RuntimeError(f"Could not crawl {url} after retry: {last_error}")
+
+    @staticmethod
+    def _publisher_feed_urls(xml_text: str) -> set[str]:
+        """Extract direct supported-publisher article links from RSS/Atom."""
+        urls: set[str] = set()
+        try:
+            root = ET.fromstring(xml_text)
+        except ET.ParseError:
+            return urls
+        for element in root.iter():
+            if element.tag.rsplit("}", 1)[-1] not in {"link", "guid"}:
+                continue
+            value = (element.get("href") or element.text or "").strip()
+            if not value or not value.startswith(("http://", "https://")):
+                continue
+            host = (urlparse(value).hostname or "").lower().removeprefix("www.")
+            if host and NewsScraper._is_supported_publisher(host):
+                urls.add(value.split("#", 1)[0])
+        return urls
+
 
     @staticmethod
     def _is_supported_publisher(host: str) -> bool:
