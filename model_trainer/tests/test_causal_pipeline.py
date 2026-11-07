@@ -310,7 +310,7 @@ class CausalPipelineTests(unittest.TestCase):
                          "available_by_end_of_report_date_in_Asia/Manila")
 
     def test_report_date_training_filters_labels_and_threads_asof_anchors(self):
-        dates = pd.date_range("2025-01-01", periods=600)
+        dates = pd.date_range("2025-01-01", periods=1600)
         raw = panel(days=len(dates))
 
         pipeline = TrainingPipeline.__new__(TrainingPipeline)
@@ -903,7 +903,7 @@ class CausalPipelineTests(unittest.TestCase):
         cfg = get_settings()
         saved = {name: getattr(cfg, name) for name in [
             "lstm_hidden_size", "lstm_num_layers", "lstm_epochs",
-            "lstm_batch_size", "lstm_patience", "evaluation_stride"]}
+            "lstm_batch_size", "lstm_patience", "evaluation_stride", "monthly_horizon"]}
         saved_params = dict(cfg.lgbm_params)
         try:
             cfg.lstm_hidden_size = 8
@@ -912,10 +912,11 @@ class CausalPipelineTests(unittest.TestCase):
             cfg.lstm_batch_size = 32
             cfg.lstm_patience = 2
             cfg.evaluation_stride = 30
+            cfg.monthly_horizon = 30  # Synthetic fixture, not the 90-day production horizon.
             cfg.lgbm_params.update({"n_estimators": 12,
                                     "early_stopping_rounds": 3,
                                     "learning_rate": .1, "num_threads": 1})
-            raw = panel(660).drop(columns="observed_price")
+            raw = panel(1600).drop(columns="observed_price")
             with tempfile.TemporaryDirectory() as tmp:
                 pipeline = TrainingPipeline(Path(tmp))
                 # Even a successful internal comparison cannot substitute for
