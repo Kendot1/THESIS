@@ -24,12 +24,12 @@ class TestPredictionWriterPeriods(unittest.TestCase):
         origin = np.datetime64("2026-09-27", "D")
         dates = origin + np.arange(1, 31).astype("timedelta64[D]")
         points = np.arange(101, 131, dtype=float)
-        product_metrics = {"confidence_by_horizon": {
-            "daily": {"evidence_status": "validated", "confidence_score": 83.0,
-                      "confidence_level": "High"},
-            "weekly": {"evidence_status": "validated", "confidence_score": 76.0,
-                       "confidence_level": "Moderate"},
-            "monthly": {"evidence_status": "insufficient_data"},
+        product_metrics = {"confidence_by_step": {
+            "daily": {str(step): {"evidence_status": "validated", "confidence_score": 83.0,
+                      "confidence_level": "High", "evaluation_source": "chronological_validation"} for step in range(1, 31)},
+            "weekly": {str(step): {"evidence_status": "validated", "confidence_score": 76.0,
+                       "confidence_level": "Moderate", "evaluation_source": "chronological_validation"} for step in range(1, 6)},
+            "monthly": {"1": {"evidence_status": "insufficient_data"}},
         }}
 
         rows = PredictionWriter._rows("product-1", dates, points, origin, product_metrics)

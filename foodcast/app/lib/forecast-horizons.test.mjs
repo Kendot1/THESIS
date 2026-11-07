@@ -4,7 +4,7 @@ import { forecastTargetDate, forecastHorizonPoints, productHorizonConfidence } f
 
 const productId = 'f186c4cf-7f6d-4c51-babf-310596270988';
 const origin = '2026-09-27';
-const dailyPoints = Array.from({ length: 30 }, (_, index) => ({
+const dailyPoints = Array.from({ length: 14 }, (_, index) => ({
   date: new Date(Date.parse(origin + 'T00:00:00Z') + (index + 1) * 86400000).toISOString().slice(0, 10),
   name: '', actual: null, predicted: 50 + index, horizon: 'daily', forecast_step: index + 1,
 }));
@@ -29,7 +29,7 @@ function status(changes = {}) {
 test('calendar leads are valid dates, while chart periods come from explicit backend points', () => {
   assert.equal(forecastTargetDate(origin, 'daily'), '2026-09-28');
   assert.equal(forecastTargetDate(origin, 'weekly'), '2026-10-04');
-  assert.equal(forecastTargetDate(origin, 'monthly'), '2026-10-27');
+  assert.equal(forecastTargetDate(origin, 'monthly'), '2026-10-31');
   assert.deepEqual(forecastHorizonPoints([...data].reverse(), origin, 'weekly'), [weeklyPoint]);
   assert.deepEqual(forecastHorizonPoints(data, origin, 'monthly'), [monthlyPoint]);
   assert.deepEqual(forecastHorizonPoints(data, origin, 'daily'), dailyPoints);

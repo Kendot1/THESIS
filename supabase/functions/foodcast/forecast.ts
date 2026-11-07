@@ -302,7 +302,7 @@ export function buildForecastSequenceData(
     ordered.forEach((period) => {
       result.push({
         date: period.date,
-        name: periodLabel(horizon, period.target_period_start, period.target_period_end),
+        name: `${periodLabel(horizon, period.target_period_start, period.target_period_end)} · ${period.covered_days < period.period_days ? "partial " : ""}(${period.covered_days}/${period.period_days} forecast days)`,
         actual: null,
         predicted: roundPrice(period.predicted_price),
         horizon,

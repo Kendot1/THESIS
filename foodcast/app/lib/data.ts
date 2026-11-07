@@ -174,7 +174,13 @@ export function forecastTargetDate(origin: string | undefined, horizon: Forecast
   if (!origin || !/^\d{4}-\d{2}-\d{2}$/.test(origin)) return null;
   const timestamp = Date.parse(`${origin}T00:00:00Z`);
   if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString().slice(0, 10) !== origin) return null;
-  return new Date(timestamp + FORECAST_HORIZON_DAYS[horizon] * 86400000).toISOString().slice(0, 10);
+  if (horizon === "daily") return new Date(timestamp + 86400000).toISOString().slice(0, 10);
+  const value = new Date(timestamp);
+  if (horizon === "weekly") {
+    value.setUTCDate(value.getUTCDate() + (7 - (value.getUTCDay() + 6) % 7) + 6);
+    return value.toISOString().slice(0, 10);
+  }
+  return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth() + 2, 0)).toISOString().slice(0, 10);
 }
 
 /** Use saved period prices, filling missing periods from the same daily model path. */
@@ -189,7 +195,13 @@ export function forecastHorizonPoints(data: ForecastDataPoint[], origin: string 
       && point.predicted != null && Number.isFinite(point.predicted) && point.predicted > 0;
     })
     .sort((left, right) => left.date.localeCompare(right.date));
-  if (horizon === "daily") return points;
+  // Only persisted period rows establish weekly/monthly targets. A daily
+  // trajectory is not an independently published calendar-period forecast.
+  return points.filter(point => point.forecast_step == null
+    || point.forecast_step <= (horizon === "daily" ? 14 : horizon === "weekly" ? 4 : 1));
+}
+
+/* Historical daily-derived aggregation, deliberately not used by the UI.
 
   // Older published vintages can have the daily path without saved calendar
   // period rows. Fill only missing weeks/months from those same model prices.
@@ -256,7 +268,7 @@ export function forecastHorizonPoints(data: ForecastDataPoint[], origin: string 
   )).toISOString().slice(0, 10);
   const withinPublishedHorizon = combined.filter(point => point.date <= horizonEnd);
   return horizon === "weekly" ? withinPublishedHorizon.slice(0, 12) : withinPublishedHorizon;
-}
+*/
 
 /** Display only backend evidence tied to this product, horizon, and forecast model. */
 export function productHorizonConfidence(product: Product, status: ForecastStatus | null | undefined,

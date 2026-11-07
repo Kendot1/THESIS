@@ -8,9 +8,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "model_trainer"))
-sys.path.insert(0, str(ROOT / "audits" / "confidence_20261010"))
-
-import evaluate_holdout_confidence as evaluator
+from evaluation import holdout_confidence as evaluator
 
 
 class HoldoutConfidenceTests(unittest.TestCase):

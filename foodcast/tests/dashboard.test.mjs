@@ -29,6 +29,7 @@ function edgeHandler(resolveQuery) {
     const query = {
       select(columns) { state.columns = columns; return this; },
       order() { return this; }, gte() { return this; }, limit() { return this; },
+      in() { return this; }, not() { return this; }, neq() { return this; },
       eq(key, value) { state.filters[key] = value; return this; },
       range() { return Promise.resolve(resolveQuery(state)); },
       maybeSingle() { return Promise.resolve(resolveQuery(state)); },
@@ -91,7 +92,7 @@ test('product endpoint supplies immutable forecast origin and model required by 
 test('news remains readable before the additive provenance migration is installed', async () => {
   const handler = edgeHandler(query => query.columns.includes('publication_precision')
     ? { data: null, error: { code: '42703', message: 'column news_articles.published_date does not exist' } }
-    : { data: [{ id: 'article', title: 'Price report', content: 'Report', published_at: '2026-10-01T00:00:00Z' }], error: null });
+    : { data: [{ id: 'article', title: 'Price report', content: 'Report', event_type: 'price_movement', affected_products: ['Rice'], published_at: '2026-10-01T00:00:00Z' }], error: null });
   const response = await handler(new Request('https://example.test/news'));
   assert.equal(response.status, 200);
   const [article] = await response.json();
@@ -234,7 +235,7 @@ test('dashboard summary does not turn a missing model into a trading signal', ()
 test('edge and SQL paths enforce the same future-only forecast boundary', () => {
   const edgeSource = fs.readFileSync(fileURLToPath(new URL('../../supabase/functions/foodcast/index.ts', import.meta.url)), 'utf8');
   const sqlSource = fs.readFileSync(fileURLToPath(new URL('../../supabase/migrations/202609250002_unit_aware_dashboard_summary.sql', import.meta.url)), 'utf8');
-  assert.match(edgeSource, /selectFuturePredictions\(dailyRows, lastActualDate\)/);
+  assert.match(edgeSource, /selectFuturePredictions\(dailyRows,\s*(?:lastActualDate|forecastOriginDate),\s*PUBLISHED_DAILY_FORECAST_DAYS\)/);
   assert.doesNotMatch(edgeSource, /entry\.predicted = entry\.actual/);
   assert.match(sqlSource, /prediction_date > \(r\.last_row->>'report_date'\)::date/);
   assert.match(sqlSource, /min\(p\.prediction_date\) = \(r\.last_row->>'report_date'\)::date \+ 1/);

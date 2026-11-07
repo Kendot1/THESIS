@@ -137,13 +137,10 @@ export function withModelCapability(status: ForecastStatus | null, snapshot: Cap
       // The live status can report a null aggregate score for this same run.
       // Use the evaluated snapshot score only when the model run IDs match.
       prediction_success: baseMetrics?.prediction_success ?? snapshotMetrics.prediction_success,
-      within_10_tolerance: snapshotMetrics.within_10_tolerance,
-      within_10_definition: snapshotMetrics.within_10_definition,
-      within_10_accuracy_pct: snapshotMetrics.within_10_accuracy_pct,
-      within_10_count: snapshotMetrics.within_10_count,
-      within_10_sample_count: snapshotMetrics.within_10_sample_count,
-      metric_aggregation: snapshotMetrics.metric_aggregation,
-      training_through: snapshotMetrics.training_through,
+      ...Object.fromEntries(Object.entries(snapshotMetrics).filter(([key, value]) =>
+        value !== undefined && ['within_10_tolerance', 'within_10_definition',
+          'within_10_accuracy_pct', 'within_10_count', 'within_10_sample_count',
+          'metric_aggregation', 'training_through'].includes(key))),
       product_metrics,
     };
   }
