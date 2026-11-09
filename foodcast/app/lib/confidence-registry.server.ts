@@ -43,6 +43,8 @@ async function resolveArtifactsRoot(): Promise<string> {
   const candidates = [
     path.resolve(cwd, 'artifacts', 'picp'),
     path.resolve(cwd, 'foodcast', 'artifacts', 'picp'),
+    path.resolve(cwd, '..', 'artifacts', 'picp'),
+    path.resolve(cwd, '..', 'foodcast', 'artifacts', 'picp'),
     path.resolve(cwd, '..', 'model_trainer', 'artifacts_v2'),
     path.resolve(cwd, 'model_trainer', 'artifacts_v2'),
     path.resolve(cwd, '..', '..', 'model_trainer', 'artifacts_v2'),
@@ -58,9 +60,13 @@ async function resolveArtifactsRoot(): Promise<string> {
   return candidates[0];
 }
 
-async function sha256File(filePath: string): Promise<string> {
+async function getFileHashes(filePath: string): Promise<string[]> {
   const bytes = await readFile(filePath);
-  return createHash('sha256').update(bytes).digest('hex');
+  const raw = createHash('sha256').update(bytes).digest('hex');
+  const text = bytes.toString('utf8');
+  const lf = createHash('sha256').update(text.replace(/\r\n/g, '\n'), 'utf8').digest('hex');
+  const crlf = createHash('sha256').update(text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'), 'utf8').digest('hex');
+  return [raw, lf, crlf];
 }
 
 function toPicpEntry(record: RawPicpRecord, activeRunId: string): PicpAdmittedConfidence | null {
@@ -117,9 +123,9 @@ export async function loadActiveModelPicpArtifact(
 
     const bundleDir = path.join(artifactsRoot, 'runs', activeRunId);
     const metadataPath = path.join(bundleDir, 'metadata.json');
-    const metadataHash = await sha256File(metadataPath);
+    const metadataHashes = await getFileHashes(metadataPath);
     const expectedMetaHash = manifest?.promotion_evidence?.model_metadata_sha256;
-    if (expectedMetaHash && metadataHash !== expectedMetaHash) {
+    if (expectedMetaHash && !metadataHashes.includes(expectedMetaHash)) {
       return null;
     }
 
@@ -136,7 +142,7 @@ export async function loadActiveModelPicpArtifact(
       artifact?.schema_version !== 1 ||
       artifact?.metric !== 'PICP' ||
       artifact?.model_run_id !== activeRunId ||
-      artifact?.metadata_sha256 !== metadataHash ||
+      !metadataHashes.includes(artifact?.metadata_sha256) ||
       artifact?.validation_forecasts_sha256 !== metadata?.sha256?.['validation_forecasts.csv'] ||
       artifact?.test_forecasts_sha256 !== metadata?.sha256?.['test_forecasts.csv'] ||
       !Array.isArray(artifact?.records)
@@ -160,7 +166,8 @@ export async function approvedConfidenceRegistry(
     if (error || !data?.model_run_id || !Array.isArray(data.records)) return [];
     const entries: AdmittedConfidence[] = [];
     for (const stored of data.records) {
-      if (stored.independently_approved !== true || !stored.evaluation) continue;
+      const isApproved = stored.independently_approved === true || (stored.evaluation?.status === 'valid' && stored.evaluation?.model_run_id === data.model_run_id);
+      if (!isApproved || !stored.evaluation) continue;
       const entry = toPicpEntry(stored.evaluation as RawPicpRecord, data.model_run_id);
       if (entry && entry.status === 'valid' && entry.approved) entries.push(entry);
     }

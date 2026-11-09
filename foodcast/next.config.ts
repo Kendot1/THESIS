@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   outputFileTracingIncludes: {
     '/api/forecast/confidence': ['./artifacts/picp/**/*'],
+    '/*': ['./artifacts/accuracy/saved_predictions.csv'],
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "recharts", "@base-ui/react"],

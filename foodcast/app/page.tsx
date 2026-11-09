@@ -8,10 +8,9 @@ export const revalidate = 60;
 
 export default async function HomePage() {
   // Render current dashboard data; the client also refreshes it every minute.
-  const [products, news] = await Promise.all([
-    fetchDashboardProducts(),
-    fetchNews(10),
-  ]);
+  // Live data loads through the existing client hooks, never blocking first paint.
+  const products: Awaited<ReturnType<typeof fetchDashboardProducts>> = [];
+  const news: Awaited<ReturnType<typeof fetchNews>> = [];
 
   return <Home initialProducts={products} initialNews={news} historical_forecast_accuracy_pct={(await homepagePerformance()).historical_forecast_accuracy_pct} />;
 }
