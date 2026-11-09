@@ -17,17 +17,10 @@ import {
   type Time,
 } from "lightweight-charts";
 import { useLanguage } from "../lib/i18n/LanguageContext";
-import { forecastHorizonPoints, type ForecastHorizon } from "../lib/data";
+import { type ForecastDataPoint, type ForecastHorizon } from "../lib/data";
+import { marketAnalysisForecasts } from "../lib/market-analysis";
 
-interface DataPoint {
-  date: string;
-  name: string;
-  actual: number | null;
-  predicted: number | null;
-  horizon?: ForecastHorizon;
-  confidence_score?: number | null;
-  confidence_level?: string | null;
-}
+type DataPoint = ForecastDataPoint;
 
 interface ForecastChartProps {
   data: DataPoint[];
@@ -37,6 +30,7 @@ interface ForecastChartProps {
   productName?: string;
   period?: string;
   forecastOriginDate: string | undefined;
+  forecastContract?: "rolling" | "calendar_research";
 }
 
 function getSeriesValue(value: unknown): number | undefined {
@@ -158,10 +152,13 @@ const ForecastChart = ({
   showLegend = true,
   period = "Daily",
   forecastOriginDate,
+  forecastContract = "rolling",
 }: ForecastChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const tooltipConfidenceRef = useRef<Record<string, { score: number | null; level: string }>>({});
+  const historicalRangesRef = useRef<Record<string, string>>({});
+  const forecastRangesRef = useRef<Record<string, string>>({});
   const chartRef = useRef<IChartApi | null>(null);
   const actualSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
   const predictedSeriesRef = useRef<ISeriesApi<"Area"> | null>(null);
@@ -177,6 +174,7 @@ const ForecastChart = ({
 
   useEffect(() => {
     const selected = period.toLowerCase() as ForecastHorizon;
+    forecastRangesRef.current = Object.fromEntries(data.filter(point => point.horizon === selected && point.predicted != null && point.target_period_start).map(point => [point.date, point.target_period_start!]));
     tooltipConfidenceRef.current = Object.fromEntries(data
       .filter(point => (point.horizon === selected || (!point.horizon && selected === "daily"))
         && point.predicted != null)
@@ -189,16 +187,48 @@ const ForecastChart = ({
   }, [data, period]);
 
   // Build series data
-  const { actualData, predictedData } = useMemo(() => {
+  const { actualData, predictedData, forecastPoints } = useMemo(() => {
     const selected = period.toLowerCase() as ForecastHorizon;
-    const horizonData = data.filter(point => point.horizon === selected
-      || (!point.horizon && selected === "daily"));
-    const actuals = horizonData.filter(point => point.actual != null && Number.isFinite(point.actual))
-      .sort((left, right) => left.date.localeCompare(right.date))
-      .map(point => ({ time: point.date as Time, value: point.actual! }));
-    const predictions = forecastHorizonPoints(data, forecastOriginDate,
-      period.toLowerCase() as ForecastHorizon)
-      .map(point => ({ time: point.date as Time, value: point.predicted! }));
+    const dailyActuals = data.filter(point => (point.horizon ?? "daily") === "daily"
+      && point.actual != null && Number.isFinite(point.actual));
+    // Derive every view from the same causal daily observations, never from
+    // precomputed period records (which can belong to a different origin).
+    const observations = [...new Map(dailyActuals
+      .filter(point => !forecastOriginDate || point.date <= forecastOriginDate)
+      .map(point => [point.date, point])).values()]
+      .sort((left, right) => left.date.localeCompare(right.date));
+    const latest = observations[observations.length - 1];
+    let actuals: { time: Time; value: number; periodStart?: string }[] = [];
+    if (latest && selected === "daily") {
+      actuals = observations.map(point => ({ time: point.date as Time, value: point.actual! }));
+    } else if (latest) {
+      const buckets = new Map<string, { start: string; sum: number; count: number }>();
+      for (const point of observations) {
+        const start = new Date(`${point.date}T00:00:00Z`);
+        const end = new Date(start);
+        if (selected === "weekly") {
+          start.setUTCDate(start.getUTCDate() - (start.getUTCDay() + 6) % 7);
+          end.setTime(start.getTime());
+          end.setUTCDate(end.getUTCDate() + 6);
+        } else {
+          start.setUTCDate(1);
+          end.setUTCMonth(end.getUTCMonth() + 1, 0);
+        }
+        const endDate = end.toISOString().slice(0, 10);
+        // Exclude the anchor's bucket, including Sunday/month-end collisions.
+        // Closed buckets average only prices actually observed, without filling gaps.
+        if (endDate >= latest.date) continue;
+        const bucket = buckets.get(endDate) ?? { start: start.toISOString().slice(0, 10), sum: 0, count: 0 };
+        bucket.sum += point.actual!;
+        bucket.count += 1;
+        buckets.set(endDate, bucket);
+      }
+      actuals = [...buckets.entries()]
+        .map(([end, bucket]) => ({ time: end as Time, value: bucket.sum / bucket.count, periodStart: bucket.start }));
+      actuals.push({ time: latest.date as Time, value: latest.actual! });
+    }
+    const forecastPoints = marketAnalysisForecasts({ forecastData: data, forecastOriginDate, forecastSource: "model" }, selected, forecastContract);
+    const predictions = forecastPoints.map(point => ({ time: point.date as Time, value: point.predicted! }));
 
     // Start the forecast line at the latest observed price. Without this
     // shared anchor, the actual and forecast series render as disconnected
@@ -210,8 +240,8 @@ const ForecastChart = ({
       ? [{ time: latestActual.time, value: latestActual.value }, ...predictions]
       : predictions;
 
-    return { actualData: actuals, predictedData: connectedPredictions };
-  }, [data, period, forecastOriginDate]);
+    return { actualData: actuals, predictedData: connectedPredictions, forecastPoints };
+  }, [data, period, forecastOriginDate, forecastContract]);
 
   const forecastRising = useMemo(() => {
     const latestActual = actualData[actualData.length - 1]?.value;
@@ -348,11 +378,13 @@ const ForecastChart = ({
       if (actualValue !== undefined || predictedValue !== undefined) {
         tooltip.style.display = "block";
         const dateStr = param.time as string;
-        const formattedDate = new Date(dateStr).toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric"
+        const formatDate = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
+          month: "long", day: "numeric", year: "numeric", timeZone: "UTC",
         });
+        const periodStart = predictedValue !== undefined ? forecastRangesRef.current[dateStr] : historicalRangesRef.current[dateStr];
+        const formattedDate = periodStart
+          ? `${formatDate(periodStart)} – ${formatDate(dateStr)}`
+          : formatDate(dateStr);
 
         const priceRow = actualValue !== undefined
           ? `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#111827"></span><b>${tRef.current("actualPrice")}:</b><strong>₱${actualValue.toFixed(2)}</strong></div>`
@@ -414,11 +446,22 @@ const ForecastChart = ({
     };
   }, [showGrid, height, forecastColor, forecastFill, forecastRising]);
 
-  // All tabs keep actual daily dates; predictions follow the selected cadence.
+  // Each view fits its own observed cadence plus the unchanged forecast targets.
   const applyRelevantRange = useCallback(() => {
     if (!chartRef.current) return;
-    const historyBars = period.toLowerCase() === "daily" ? 14 : period.toLowerCase() === "weekly" ? 28 : 90;
-    const first = actualData[Math.max(0, actualData.length - historyBars)]?.time
+    const selected = period.toLowerCase();
+    chartRef.current.applyOptions({ timeScale: {
+      tickMarkFormatter: (time: Time) => {
+        const date = typeof time === "string" ? new Date(`${time}T00:00:00Z`)
+          : typeof time === "number" ? new Date(time * 1000)
+          : new Date(Date.UTC(time.year, time.month - 1, time.day));
+        return date.toLocaleDateString("en-US", selected === "monthly"
+          ? { month: "short", timeZone: "UTC" }
+          : selected === "weekly" ? { month: "short", day: "numeric", timeZone: "UTC" }
+          : { day: "numeric", timeZone: "UTC" });
+      },
+    } });
+    const first = actualData[0]?.time
       ?? predictedData[0]?.time;
     const last = predictedData[predictedData.length - 1]?.time
       ?? actualData[actualData.length - 1]?.time;
@@ -434,6 +477,9 @@ const ForecastChart = ({
   useEffect(() => {
     if (!actualSeriesRef.current || !predictedSeriesRef.current) return;
 
+    historicalRangesRef.current = Object.fromEntries(actualData
+      .filter(point => point.periodStart)
+      .map(point => [String(point.time), point.periodStart!]));
     actualSeriesRef.current.setData(actualData);
     predictedSeriesRef.current.setData(predictedData);
     if (predictedPriceLineRef.current) {
@@ -487,6 +533,11 @@ const ForecastChart = ({
         />
         <div
           ref={containerRef}
+          data-testid="rendered-chart-series"
+          data-predicted-values={JSON.stringify(predictedData)}
+          data-actual-count={actualData.length}
+          data-actual-values={JSON.stringify(actualData)}
+          data-forecast-count={forecastPoints.length}
           className={!height ? "w-full" : "h-full w-full"}
           style={{ minHeight: height || 380 }}
         />

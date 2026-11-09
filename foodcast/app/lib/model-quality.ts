@@ -132,18 +132,34 @@ export function withModelCapability(status: ForecastStatus | null, snapshot: Cap
         confidence_by_step: snapshotProduct.confidence_by_step,
       };
     }
+    const snapshotOptional: Partial<ForecastQualityMetrics> = {};
+    if (snapshotMetrics.within_10_tolerance !== undefined) {
+      snapshotOptional.within_10_tolerance = snapshotMetrics.within_10_tolerance;
+    }
+    if (snapshotMetrics.within_10_definition !== undefined) {
+      snapshotOptional.within_10_definition = snapshotMetrics.within_10_definition;
+    }
+    if (snapshotMetrics.within_10_accuracy_pct !== undefined) {
+      snapshotOptional.within_10_accuracy_pct = snapshotMetrics.within_10_accuracy_pct;
+    }
+    if (snapshotMetrics.within_10_count !== undefined) {
+      snapshotOptional.within_10_count = snapshotMetrics.within_10_count;
+    }
+    if (snapshotMetrics.within_10_sample_count !== undefined) {
+      snapshotOptional.within_10_sample_count = snapshotMetrics.within_10_sample_count;
+    }
+    if (snapshotMetrics.metric_aggregation !== undefined) {
+      snapshotOptional.metric_aggregation = snapshotMetrics.metric_aggregation;
+    }
+    if (snapshotMetrics.training_through !== undefined) {
+      snapshotOptional.training_through = snapshotMetrics.training_through;
+    }
     modelMetrics = {
       ...(baseMetrics ?? snapshotMetrics),
       // The live status can report a null aggregate score for this same run.
       // Use the evaluated snapshot score only when the model run IDs match.
       prediction_success: baseMetrics?.prediction_success ?? snapshotMetrics.prediction_success,
-      within_10_tolerance: snapshotMetrics.within_10_tolerance,
-      within_10_definition: snapshotMetrics.within_10_definition,
-      within_10_accuracy_pct: snapshotMetrics.within_10_accuracy_pct,
-      within_10_count: snapshotMetrics.within_10_count,
-      within_10_sample_count: snapshotMetrics.within_10_sample_count,
-      metric_aggregation: snapshotMetrics.metric_aggregation,
-      training_through: snapshotMetrics.training_through,
+      ...snapshotOptional,
       product_metrics,
     };
   }

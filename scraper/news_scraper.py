@@ -31,7 +31,7 @@ else:
     from .publication_time import publication_metadata
 
 import httpx
-from supabase import create_client, Client
+# Database dependencies are loaded only for an explicitly non-dry run.
 
 
 # Force UTF-8 encoding for Windows console (prevents UnicodeEncodeError when printing emojis)
@@ -41,8 +41,7 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+# Do not read local credential files on import or during dry-run execution.
 # Crawl4AI stores its robots SQLite database under this base directory. Use a
 # workspace temp path by default so sandboxed Windows runs do not depend on the
 # user profile being writable; honor an explicit local or runner override.
@@ -84,19 +83,9 @@ GOOGLE_SEARCH_QUERIES = [
     "Philippines DA price monitoring rice meat fish vegetable commodity prices",
 ]
 
-SUPPORTED_NEWS_DOMAINS = (
-    "abs-cbn.com",
-    "gmanetwork.com",
-    "inquirer.net",
-    "philstar.com",
-    "mb.com.ph",
-    "businessworld-online.com",
-    "pna.gov.ph",
-    "da.gov.ph",
-    "doe.gov.ph",
-    "reuters.com",
-    "apnews.com",
-)
+RSS_FEEDS = ()  # Legacy RSS collector retained for replay tests only.
+
+SUPPORTED_NEWS_DOMAINS = ("abs-cbn.com",)
 
 # ──────────────────────────────────────────────
 # Keyword Pre-filter (to save LLM tokens)
@@ -177,7 +166,7 @@ PRODUCT_EVIDENCE_TERMS = {
     "Pomelo": ("pomelo",),
     "Pork": ("pork", "pig", "hog", "baboy"),
     "Potato": ("potato", "potatoes", "patatas"),
-    "Red Onion": ("red onion", "onion", "sibuyas"),
+    "Red Onion": ("red onion", "red onions", "pulang sibuyas"),
     "Round Scad": ("round scad", "galunggong"),
     "Salmon Head": ("salmon head",),
     "Sardines": ("sardines", "sardine"),
@@ -188,7 +177,7 @@ PRODUCT_EVIDENCE_TERMS = {
     "Tilapia": ("tilapia",),
     "Tomato": ("tomato", "tomatoes", "kamatis"),
     "Watermelon": ("watermelon",),
-    "White Onion": ("white onion", "onion", "sibuyas"),
+    "White Onion": ("white onion", "white onions", "puting sibuyas"),
     "Yellow Sweet Corn": ("sweet corn", "yellow corn", "corn cob"),
     "Alumahan": ("alumahan", "indian mackerel"),
     "Kangkong": ("kangkong", "water spinach"),
@@ -210,49 +199,7 @@ EVIDENCE_IMPACT_TERMS = (
 # ──────────────────────────────────────────────
 # Strict LLM prompt — rejects anything not directly impacting food prices
 # ──────────────────────────────────────────────
-LLM_SYSTEM_PROMPT = """You are a strict food-price intelligence filter for a Philippine food price forecasting system.
-
-Your job: determine if a news article has a concrete, evidence-based connection to the prices, availability, or production of a Philippine agri-fishery food commodity.
-
-RELEVANT articles include only stories with a clearly stated effect on at least one named Philippine food commodity. Examples:
-- Direct price changes of food commodities (rice, vegetables, meat, fish, etc.)
-- Government price caps, tariffs, or import/export policies on food
-- Supply chain disruptions (typhoons destroying crops, floods, droughts, El Niño/La Niña)
-- Fuel or transport costs only when the article explicitly connects them to farming, fishing, food processing, or distribution of a named food commodity
-- War, conflict, blockade, shipping disruption, or trade restrictions only when the article identifies a concrete effect on Philippine food imports, exports, a named commodity's supply, or its price
-- Inflation reports only when they report food or named food-commodity prices
-- Smuggling or hoarding of food commodities
-- Harvest reports, crop yield data, planting season updates
-
-NOT RELEVANT (REJECT these):
-- General inflation, fuel/oil (including LPG/cooking gas), currency, business, trade, war, weather, or political stories without a concrete Philippine food-commodity price, production, or supply impact
-- Wildlife, animal rescue, marine conservation, reef protection, and fishing enforcement stories with no reported food supply or price effect
-- Food safety incidents, recalls, nutrition programs, or food aid that do not report a commodity-market effect
-- Celebrity news, sports, entertainment, unrelated politics, and crime near farms
-
-Only mark an article relevant when its text explicitly supports at least one specific product from the supplied product list. Do not infer a product or market impact from a broad topic alone. Treat fuel as an indirect cause only; never list fuel as an affected food product. A fuel price change by itself is not food-market news. A war or conflict mention by itself is not food-market news. Reject LPG/cooking-gas stories unless they also state a direct impact on a named raw food commodity.
-
-Respond with ONLY valid JSON, no markdown fences, no explanation.
-
-If NOT relevant: {"relevant": false}
-
-If relevant:
-{
-  "relevant": true,
-  "sentiment_score": <float -1.0 to 1.0. Negative = prices will INCREASE (bad for consumers). Positive = prices will DECREASE (good for consumers). 0 = neutral/stable>,
-  "event_type": "<supply_shock | demand_spike | policy_change | import_export | price_movement | weather | fuel_energy>",
-  "affected_products": ["<exact product names from {SUPPORTED_PRODUCTS}>"],
-  "impact_evidence": "<an exact short quote from the article supporting the named commodity's price, production, or supply effect>",
-  "keywords": ["<MAXIMUM 3 broad market drivers, e.g.: Fuel Hike, Weather Disturbance, Import Policy, Typhoon, Price Surge. Avoid specific nouns like 'Meralco' or 'Diesel'>"],
-  "time_validity_days": <integer. How long will this event affect the market? e.g., 7 for a quick spike, 30 for a seasonal issue, 90 for El Nino>,
-  "probability": <float 0.0 to 1.0. How likely is this to actually affect prices? e.g., 0.9 for a confirmed tariff hike, 0.4 for a rumored shortage>,
-  "effect_magnitude": "<low | medium | high. How strong is the expected price impact?>",
-  "summary": "<1-2 sentence summary focused on the PRICE IMPACT in English>",
-  "title_tl": "<Translate the article's title into natural Filipino, ensuring proper grammar and punctuation>",
-  "summary_tl": "<Translate the 1-2 sentence summary into natural, conversational Filipino. PAY SPECIAL ATTENTION TO PUNCTUATION: ensure proper use of commas, periods, and quotation marks where appropriate to make the sentences read clearly.>"
-}
-
-The impact_evidence must be copied verbatim from the provided title or article text, including the named food commodity and its stated price, production, or supply effect. Do not paraphrase or infer an indirect impact."""
+# Ingestion and backfill use news_context.CONTEXT_PROMPT.
 
 
 class NewsScraper:
@@ -262,17 +209,90 @@ class NewsScraper:
     deduplicates, and stores to Supabase.
     """
 
-    def __init__(self):
-        self._client: Client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+    def __init__(self, *, dry_run=False, max_articles=20, provider=None,
+                 start_date=None, end_date=None):
+        from datetime import date
+        if bool(start_date) != bool(end_date):
+            raise ValueError('start_date and end_date must be supplied together')
+        self.start_date = date.fromisoformat(start_date) if start_date else None
+        self.end_date = date.fromisoformat(end_date) if end_date else None
+        if self.start_date and self.start_date > self.end_date:
+            raise ValueError('start_date must not exceed end_date')
+        if self.start_date and not dry_run:
+            raise ValueError('Backfill is local dry-run only')
+        self.exclusions = []
+        if not 1 <= max_articles <= 100:
+            raise ValueError("max_articles must be between 1 and 100")
+        self.dry_run = dry_run
+        self.provider = provider or "june"
+        if self.provider not in {"june", "rss"}:
+            raise ValueError("provider must be june or rss")
+        if not dry_run and self.provider != "june":
+            raise ValueError("RSS is a dry-run fallback only")
+        self.max_articles = max_articles
+        self.articles = []
+        self.provenance = []
+        self._client = None
+        if not dry_run:
+            expected = "https://zhwhnnxbodzrklhgsurn.supabase.co"
+            if os.environ.get("SUPABASE_URL", "").rstrip("/") != expected:
+                raise ValueError("News writes restricted to exact TEST project zhwhnnxbodzrklhgsurn")
+            from supabase import create_client
+            self._client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
         self._table = "news_articles"
-        self._groq_key = os.environ.get("GROQ_API_KEY_NEWS_SCRAPER", "")
-        self._openai_key = os.environ.get("OPENAI_API_KEY", "")
+        self._groq_key = ""
+        self._openai_key = ""
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+    def _publication_exclusion(self, publication):
+        """Range uses publisher timing in Manila, never URL or crawl date."""
+        if not self.start_date:
+            return None
+        from datetime import date, timedelta
+        if publication.get('publication_source', 'unknown') in {'unknown', 'url_date'}:
+            return 'unknown_publication'
+        try:
+            if publication.get('published_at'):
+                stamp = datetime.fromisoformat(publication['published_at'].replace('Z', '+00:00'))
+                if stamp.tzinfo is None:
+                    return 'unknown_publication_timezone'
+                day = stamp.astimezone(timezone(timedelta(hours=8))).date()
+            else:
+                day = date.fromisoformat(publication['published_date'])
+        except (ValueError, TypeError, KeyError):
+            return 'invalid_publication'
+        return None if self.start_date <= day <= self.end_date else 'publication_outside_range'
+
+    def _candidate_in_range(self, url):
+        from datetime import date
+        match = re.search(r'/(\d{4})/(\d{1,2})/(\d{1,2})/', url)
+        if not match or not self.start_date:
+            return True
+        try:
+            day = date(*map(int, match.groups()))
+        except ValueError:
+            return False
+        return self.start_date <= day <= self.end_date
+
+    def _backfill_search_queries(self):
+        from datetime import timedelta
+        queries = []
+        start = self.start_date
+        while start <= self.end_date:
+            end = min(start + timedelta(days=6), self.end_date)
+            for terms in ('rice palay bigas prices supply', 'vegetable onion fish pork chicken agriculture prices supply'):
+                queries.append(f'site:abs-cbn.com {terms} after:{start - timedelta(days=1)} before:{end + timedelta(days=1)}')
+            start = end + timedelta(days=1)
+        return queries
+
     async def run_daily_scrape(self) -> Dict[str, int]:
         """Execute the full daily scraping pipeline."""
+        if self.provider == "rss":
+            raise RuntimeError("RSS fallback archived only; new acquisitions must be ABS-CBN June crawler")
+        self._groq_key = "" if self.dry_run else os.environ.get("GROQ_API_KEY_NEWS_SCRAPER", "")
+        self._openai_key = "" if self.dry_run else os.environ.get("OPENAI_API_KEY", "")
         stats = {
             "discovered": 0, "new": 0, "relevant": 0, "stored": 0,
             "discovery_attempts": 0, "discovery_successes": 0,
@@ -286,7 +306,7 @@ class NewsScraper:
         except ImportError:
             raise RuntimeError("crawl4ai is not installed; install scraper/requirements.txt")
 
-        if not self._groq_key and not self._openai_key:
+        if not self.dry_run and not self._groq_key and not self._openai_key:
             raise RuntimeError(
                 "Missing news-analysis credentials: set GROQ_API_KEY_NEWS_SCRAPER "
                 "or OPENAI_API_KEY"
@@ -307,11 +327,10 @@ class NewsScraper:
             )
 
         if not article_urls:
-            log.warning("No article URLs discovered — skipping.")
-            return stats
+            raise RuntimeError("No ABS-CBN article URLs discovered; source access/discovery failed")
 
         # Step 2: Filter already-processed URLs
-        new_urls = self._filter_existing_urls(article_urls)
+        new_urls = article_urls if self.dry_run else self._filter_existing_urls(article_urls)
         stats["new"] = len(new_urls)
         log.info(f"{len(new_urls)} new URLs to process.")
 
@@ -322,7 +341,7 @@ class NewsScraper:
         # Step 3: Crawl, analyze with LLM, store relevant ones
         self._llm_exhausted = False
         async with AsyncWebCrawler() as crawler:
-            for i, url in enumerate(new_urls):
+            for i, url in enumerate(new_urls[:self.max_articles]):
                 if self._llm_exhausted:
                     log.warning(f"LLM daily limit exhausted — skipping remaining {len(new_urls) - i} articles.")
                     break
@@ -331,6 +350,9 @@ class NewsScraper:
                     article = await self._process_article(crawler, url)
                     if article:
                         stats["relevant"] += 1
+                        self.articles.append(article)
+                        if self.dry_run:
+                            continue
                         if self._store_article(article):
                             stats["stored"] += 1
                         else:
@@ -368,20 +390,6 @@ class NewsScraper:
         2. Search Google News for targeted Philippine food-market stories from trusted publishers
         """
         urls = set()
-        # Publisher RSS carries direct article URLs; Google News /read/ pages
-        # are not guaranteed HTTP redirects and must not be treated as articles.
-        async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
-            for feed in ("https://www.da.gov.ph/feed/", "https://www.philstar.com/rss/business"):
-                self._run_stats["discovery_attempts"] += 1
-                try:
-                    response = await client.get(feed)
-                    response.raise_for_status()
-                    urls.update(self._publisher_feed_urls(response.text))
-                    self._run_stats["discovery_successes"] += 1
-                except Exception as exc:
-                    self._run_stats["discovery_failures"] += 1
-                    log.warning("Publisher feed failed %s: %s", feed, exc)
-
         try:
             from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 
@@ -409,7 +417,7 @@ class NewsScraper:
                         log.warning(f"Section scan failed {section_url}: {e}")
 
                 # Strategy 2: targeted Google News searches across trusted publishers
-                for query in GOOGLE_SEARCH_QUERIES:
+                for query in ["site:abs-cbn.com " + q for q in GOOGLE_SEARCH_QUERIES]:
                     search_url = (
                         f"https://news.google.com/search?"
                         f"q={quote_plus(query + ' when:30d')}&hl=en-PH&gl=PH"
@@ -439,7 +447,7 @@ class NewsScraper:
         except ImportError:
             raise RuntimeError("crawl4ai is not installed")
 
-        return list(urls)
+        return sorted(urls, key=lambda u: ("news.google.com" in u, u), reverse=False)
 
     @staticmethod
     async def _crawl_with_retry(crawler, url: str, config):
@@ -456,6 +464,153 @@ class NewsScraper:
             if attempt == 0:
                 await asyncio.sleep(1)
         raise RuntimeError(f"Could not crawl {url} after retry: {last_error}")
+
+    @staticmethod
+    def _has_philippine_scope(title: str, content: str) -> bool:
+        return bool(re.search(r'\b(philippines?|filipinos?|manila|phl|nfa|palay|department of agriculture)\b',
+                              title + ' ' + content, re.I))
+
+    def _deterministic_evidence(self, title: str, content: str) -> Optional[Dict]:
+        """Classify only verbatim commodity/market evidence in one sentence."""
+        for quote in [title, *re.split(r'(?<=[.!?])\s+|\n+', content)]:
+            if not self._pre_filter_content("", quote):
+                continue
+            text = quote.casefold()
+            products = [product for product, aliases in PRODUCT_EVIDENCE_TERMS.items()
+                        if any(re.search(r'(?<!\w)' + re.escape(term) + r'(?!\w)', text)
+                               for term in aliases)]
+            result = {"relevant": True, "event_type": "price_movement",
+                      "affected_products": products, "impact_evidence": quote,
+                      "keywords": []}
+            if re.search(r'\b(imports?|exports?|tariffs?|quota)\b', text):
+                result['event_type'] = 'import_export'
+            elif not re.search(r'\b(prices?|costs?|presyo)\b', text):
+                result['event_type'] = 'supply_shock'
+            if self._has_supported_market_evidence(result, title, content):
+                return result
+        return None
+
+    async def _run_rss_dry_run(self) -> Dict[str, int]:
+        """Bounded credential-free collection; never creates or uses a DB client.
+
+        Content is a source excerpt, NOT a generated summary. Unknown analytical
+        fields remain null; provenance is separate from insertion candidates.
+        """
+        from bs4 import BeautifulSoup
+        self.articles, self.provenance = [], []
+        stats = {"discovered": 0, "relevant": 0, "collected": 0, "stored": 0,
+                 "discovery_attempts": 0, "discovery_successes": 0,
+                 "discovery_failures": 0, "processing_failures": 0}
+        seen = set()
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True,
+                                     headers={"User-Agent": "FOODCAST-news-audit/1.0"}) as client:
+            for feed in RSS_FEEDS:
+                if len(self.articles) >= self.max_articles:
+                    break
+                stats['discovery_attempts'] += 1
+                try:
+                    response = await client.get(feed)
+                    response.raise_for_status()
+                    items = self.feed_items(response.text)
+                    stats['discovery_successes'] += 1
+                except (httpx.HTTPError, ET.ParseError) as exc:
+                    stats['discovery_failures'] += 1
+                    log.warning('Feed unavailable: %s (%s)', feed, type(exc).__name__)
+                    continue
+                for item in items[:60]:
+                    if len(self.articles) >= self.max_articles:
+                        break
+                    if item['url'] in seen:
+                        continue
+                    seen.add(item['url'])
+                    stats['discovered'] += 1
+                    try:
+                        response = await client.get(item['url'])
+                        response.raise_for_status()
+                        url = str(response.url)
+                        host = urlparse(url).hostname or ''
+                        if not self._is_supported_publisher(host):
+                            continue
+                        soup = BeautifulSoup(response.text, 'html.parser')
+                        body = soup.select_one('.entry-content, .td-post-content, .article__content, .article-content, .article-body, [itemprop="articleBody"], article')
+                        paragraphs = []
+                        if body:
+                            for node in body.select('script,style,nav,aside,footer,.related-posts'):
+                                node.decompose()
+                            paragraphs = [p.get_text(' ', strip=True) for p in body.select('p')]
+                        content = '\n'.join(p for p in paragraphs if p)
+                        # Some feeds provide the complete article; descriptions
+                        # remain valid source excerpts even behind publisher walls.
+                        if not content:
+                            content = item['description']
+                        evidence = self._deterministic_evidence(item['title'], content)
+                        if not evidence or not content or not self._has_philippine_scope(item['title'], content):
+                            continue
+                        publication = publication_metadata(None, response.text, url)
+                        if publication['publication_precision'] == 'unknown' or publication['publication_source'] == 'url_date':
+                            publication = item['publication']
+                        row = {"title": item['title'][:500], "content": content,
+                               "source": host.removeprefix('www.'), "url": url,
+                               "content_hash": hashlib.sha256(content.encode('utf-8')).hexdigest(),
+                               **publication, "created_at": datetime.now(timezone.utc).isoformat(),
+                               "sentiment_score": None, "keywords": evidence['keywords'],
+                               "affected_products": evidence['affected_products'],
+                               "event_type": evidence['event_type'], "image_url": None,
+                               "title_tl": None, "content_tl": None,
+                               "time_validity_days": None, "probability": None, "effect_magnitude": None}
+                        image = soup.select_one('meta[property="og:image"]')
+                        if image:
+                            row['image_url'] = image.get('content') or None
+                        self.articles.append(row)
+                        self.provenance.append({"url": url, "feed_url": feed,
+                            "feed_title": item['title'], "feed_published_raw": item['publication_raw'],
+                            "feed_publication": item['publication'],
+                            "content_origin": 'article_paragraphs' if paragraphs else 'rss_description',
+                            "impact_evidence": evidence['impact_evidence'],
+                            "analysis_method": 'deterministic_verbatim_evidence',
+                            "article_http_status": response.status_code})
+                    except (httpx.HTTPError, ValueError) as exc:
+                        stats['processing_failures'] += 1
+                        log.warning('Article unavailable: %s (%s)', item['url'], type(exc).__name__)
+        stats['relevant'] = stats['collected'] = len(self.articles)
+        if not self.articles:
+            raise RuntimeError('No evidenced food-market articles collected; no database writes attempted')
+        return stats
+
+    def feed_items(self, xml_text: str) -> List[Dict[str, Any]]:
+        """Read only RSS/Atom entries, never channel navigation or Google wrappers."""
+        from bs4 import BeautifulSoup
+        from urllib.parse import parse_qsl, urlencode, urlunsplit
+
+        root = ET.fromstring(xml_text)
+        items, seen = [], set()
+        for entry in root.iter():
+            if entry.tag.rsplit("}", 1)[-1] not in {"item", "entry"}:
+                continue
+            fields = {}
+            for child in entry:
+                name = child.tag.rsplit("}", 1)[-1]
+                value = child.text or ""
+                if name == "link":
+                    value = child.get("href") or value
+                fields.setdefault(name, value)
+            url = fields.get("link", "").strip()
+            parts = urlparse(url)
+            if parts.scheme not in {"https", "http"} or not self._is_supported_publisher(parts.hostname):
+                continue
+            query = urlencode([(k, v) for k, v in parse_qsl(parts.query)
+                               if not k.startswith("utm_") and k not in {"fbclid", "gclid"}])
+            url = urlunsplit((parts.scheme, parts.netloc, parts.path, query, ""))
+            title = BeautifulSoup(fields.get("title", ""), "html.parser").get_text(" ", strip=True)
+            description = BeautifulSoup(fields.get("description", fields.get("summary", "")), "html.parser").get_text(" ", strip=True)
+            if url in seen or not self._pre_filter_content(title, description):
+                continue
+            seen.add(url)
+            raw = fields.get("pubDate", fields.get("published", ""))
+            items.append({"url": url, "title": title, "description": description,
+                          "publication_raw": raw,
+                          "publication": publication_metadata({"published_at": raw}, None, url)})
+        return items
 
     @staticmethod
     def _publisher_feed_urls(xml_text: str) -> set[str]:
@@ -480,14 +635,14 @@ class NewsScraper:
     @staticmethod
     def _is_supported_publisher(host: str) -> bool:
         host = (host or "").lower().rstrip(".").removeprefix("www.")
-        return any(host == domain or host.endswith("." + domain) for domain in SUPPORTED_NEWS_DOMAINS)
+        return host == "abs-cbn.com" or host.endswith(".abs-cbn.com")
 
     def _is_article_url(self, url: str) -> bool:
         """Check if a URL is a potentially food/price-relevant ABS-CBN article."""
         if not url:
             return False
         host = (urlparse(url).hostname or "").lower().removeprefix("www.")
-        if host != "abs-cbn.com":
+        if urlparse(url).scheme not in {"https", "http"} or not self._is_supported_publisher(host):
             return False
         if not re.search(r'/\d{4}/\d{1,2}/\d{1,2}/', url):
             return False
@@ -551,25 +706,47 @@ class NewsScraper:
         # Google News discovery links must resolve to a trusted publisher.
         resolved_url = result.url or url
         resolved_host = (urlparse(resolved_url).hostname or "").lower().removeprefix("www.")
-        if not self._is_supported_publisher(resolved_host):
+        if urlparse(resolved_url).scheme not in {"http", "https"} or not self._is_supported_publisher(resolved_host):
             log.info(f"  ✗ SKIP (untrusted publisher {resolved_host or 'unknown'}): {url}")
             return None
 
         # Clean content — extract article body
         content = self._clean_content(result.markdown)
         if len(content) < 200:
-            log.info(f"  ✗ SKIP (content too short: {len(content)} chars): {url[-60:]}")
-            return None
+            raise RuntimeError(f"Article body too short ({len(content)} chars): {url}")
 
         # Content hash dedup
-        content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
-        if self._check_content_hash(content_hash):
+        source_content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        content_hash = source_content_hash
+        if (not self.dry_run and self._check_content_hash(source_content_hash)) or any(
+            a["content_hash"] == source_content_hash or a["url"] == resolved_url for a in self.articles
+        ):
             log.info(f"  ✗ SKIP (duplicate content hash): {url[-60:]}")
             return None
 
         # Extract title and image
         title = ""
         publication = publication_metadata(result.metadata, result.html, result.url or url)
+        if self.start_date and publication['publication_source'] in {'unknown', 'url_date'}:
+            # Visible Published text is publisher evidence; URL dates are not.
+            visible = re.search(r'Published\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4})(?:\s+(\d{1,2}:\d{2}\s*[AP]M)\s+PHT)?', result.markdown)
+            if visible:
+                try:
+                    from datetime import timedelta
+                    stamp = datetime.strptime(visible.group(1).replace(',', ''), '%B %d %Y')
+                    if visible.group(2):
+                        clock = datetime.strptime(visible.group(2), '%I:%M %p')
+                        stamp = stamp.replace(hour=clock.hour, minute=clock.minute, tzinfo=timezone(timedelta(hours=8)))
+                    publication = {'published_at': stamp.isoformat() if visible.group(2) else None,
+                        'published_date': stamp.date().isoformat(),
+                        'publication_precision': 'timestamp' if visible.group(2) else 'date',
+                        'publication_source': 'publisher_visible_published'}
+                except ValueError:
+                    pass
+        reason = self._publication_exclusion(publication)
+        if reason:
+            self.exclusions.append({'url': resolved_url, 'reason': reason, 'publication': publication})
+            return None
 
         image_url = ""
         if result.metadata:
@@ -627,16 +804,39 @@ class NewsScraper:
             log.info(f"  ✗ SKIP (no food-market topic and impact): {title[:60]}")
             return None
 
-        # ── LLM Analysis (strict filter) ──
+        # Dry runs exercise June extraction without invoking credentials or LLMs.
+        if self.dry_run:
+            evidence = self._deterministic_evidence(title, content)
+            if not evidence or not self._has_philippine_scope(title, content):
+                return None
+            self.provenance.append({"url": resolved_url, "discovery_url": url,
+                "content_origin": "june_crawler_cleaned_body",
+                "impact_evidence": evidence["impact_evidence"],
+                "analysis_method": "deterministic_verbatim_evidence"})
+            return {"title": title[:500], "content": content,
+                "source": source, "url": resolved_url, "content_hash": content_hash,
+                **publication, "created_at": datetime.now(timezone.utc).isoformat(),
+                "title_tl": None, "content_tl": None, "sentiment_score": None,
+                "keywords": evidence["keywords"], "affected_products": evidence["affected_products"],
+                "event_type": evidence["event_type"], "image_url": image_url,
+                "time_validity_days": None, "probability": None, "effect_magnitude": None}
+
+        # June Groq/OpenAI bilingual enrichment with stricter evidence safeguards.
         llm_result = await self._analyze_with_llm(title, content)
 
         if not llm_result:
-            log.warning(f"  ✗ SKIP (LLM call failed): {title[:60]}")
-            return None
+            raise RuntimeError(f"LLM returned no analysis: {title[:60]}")
 
+        from scraper.news_context import validate_context
+        if llm_result.get('relevant') and validate_context(llm_result, title, content):
+            raise RuntimeError('LLM context failed strict validation')
         if not self._has_supported_market_evidence(llm_result, title, content):
             log.info(f"  ✗ SKIP (no supported food-market evidence): {title[:60]}")
             return None
+        from scraper.news_context import validate_context
+        context_errors = validate_context(llm_result, title, content)
+        if context_errors:
+            raise RuntimeError('LLM context failed validation: ' + ', '.join(context_errors))
 
         log.info(
             f"  ✓ RELEVANT: {title[:60]}... "
@@ -646,24 +846,26 @@ class NewsScraper:
             f"evidence={llm_result.get('impact_evidence', '')[:120]!r}"
         )
 
+        self.provenance.append({'url': resolved_url, 'source_content_sha256': source_content_hash,
+            'analysis_provenance': self._context_provenance})
         return {
             "title": title[:500],
             "title_tl": llm_result.get("title_tl", "")[:500],
-            "content": llm_result.get("summary", content[:5000]),
-            "content_tl": llm_result.get("summary_tl", ""),
+            "content": llm_result["summary"],
+            "content_tl": llm_result["summary_tl"],
             "source": source,
             "url": resolved_url,
-            "content_hash": content_hash,
+            "content_hash": source_content_hash,
             **publication,
             "created_at": datetime.now(timezone.utc).isoformat(),
-            "sentiment_score": llm_result.get("sentiment_score", 0.0),
+            "sentiment_score": llm_result.get("sentiment_score"),
             "keywords": llm_result.get("keywords", []),
             "affected_products": llm_result.get("affected_products", []),
             "event_type": llm_result.get("event_type", "general"),
             "image_url": image_url,
-            "time_validity_days": llm_result.get("time_validity_days", 7),
-            "probability": llm_result.get("probability", 1.0),
-            "effect_magnitude": llm_result.get("effect_magnitude", "medium"),
+            "time_validity_days": llm_result.get("time_validity_days"),
+            "probability": llm_result.get("probability"),
+            "effect_magnitude": llm_result.get("effect_magnitude"),
         }
 
     # ------------------------------------------------------------------
@@ -681,7 +883,7 @@ class NewsScraper:
         body_end = len(lines)
 
         for i, line in enumerate(lines):
-            stripped = line.strip()
+            stripped = re.sub(r'^[#*_\s]+|[*_\s]+$', '', line)
             # ABS-CBN pattern: "Published April 27, 2026 02:55 PM PHT"
             if body_start is None and re.match(
                 r'Published\s+\w+\s+\d{1,2},?\s+\d{4}', stripped
@@ -731,8 +933,8 @@ class NewsScraper:
         content = "\n".join(article_lines)
 
         # Remove markdown artifacts
-        content = re.sub(r'\[([^\]]*)\]\([^\)]*\)', r'\1', content)
         content = re.sub(r'!\[.*?\]\(.*?\)', '', content)
+        content = re.sub(r'\[([^\]]*)\]\([^\)]*\)', r'\1', content)
         content = re.sub(r'#{1,6}\s*', '', content)
         content = re.sub(r'\n{3,}', '\n\n', content)
         content = re.sub(r'[*_~`]{1,3}', '', content)
@@ -840,100 +1042,30 @@ class NewsScraper:
     # ------------------------------------------------------------------
     # LLM Analysis
     # ------------------------------------------------------------------
-    async def _analyze_with_llm(self, title: str, content: str) -> Optional[Dict]:
-        """Send article to LLM for strict relevance check and extraction."""
-        import httpx
-
-        # Rate limit: Groq free tier = 30 req/min
-        await asyncio.sleep(2)
-
-        truncated = content[:2500]
-        user_prompt = f"TITLE: {title}\n\nARTICLE:\n{truncated}"
-        system_prompt = LLM_SYSTEM_PROMPT.replace(
-            "{SUPPORTED_PRODUCTS}", ", ".join(SUPPORTED_PRODUCTS)
-        )
-
-        # Choose provider
-        if self._groq_key:
-            api_url = "https://api.groq.com/openai/v1/chat/completions"
-            api_key = self._groq_key
-            model = "openai/gpt-oss-120b"
-        else:
-            api_url = "https://api.openai.com/v1/chat/completions"
-            api_key = self._openai_key
-            model = "gpt-4o-mini"
-
-        for attempt in range(3):
-            try:
-                async with httpx.AsyncClient(timeout=30.0) as client:
-                    resp = await client.post(
-                        api_url,
-                        headers={
-                            "Authorization": f"Bearer {api_key}",
-                            "Content-Type": "application/json",
-                        },
-                        json={
-                            "model": model,
-                            "messages": [
-                                {"role": "system", "content": system_prompt},
-                                {"role": "user", "content": user_prompt},
-                            ],
-                            "temperature": 0.0,
-                            "max_tokens": 800,
-                        },
-                    )
-                    resp.raise_for_status()
-                    data = resp.json()
-
-                    raw = data["choices"][0]["message"]["content"].strip()
-
-                    # Clean potential markdown fences
-                    if raw.startswith("```"):
-                        raw = re.sub(r'^```(?:json)?\s*', '', raw)
-                        raw = re.sub(r'\s*```$', '', raw)
-
-                    return json.loads(raw)
-
-            except httpx.HTTPStatusError as e:
-                status = e.response.status_code
-                if status == 429:
-                    if "tokens per day" in e.response.text or "TPD" in e.response.text:
-                        log.warning(f"  LLM daily token limit exhausted. Stopping.")
-                        self._llm_exhausted = True
-                        return None
-                    if attempt < 2:
-                        log.warning(f"  LLM rate limited (429), retrying in 10s...")
-                        await asyncio.sleep(10)
-                        continue
-                if (status >= 500 or status == 408) and attempt < 2:
-                    log.warning(f"  LLM service error ({status}), retrying...")
-                    await asyncio.sleep(2 * (attempt + 1))
-                    continue
-                log.warning(f"  LLM API error ({status}): {e.response.text[:200]}")
-                raise RuntimeError(f"News LLM request failed with HTTP {status}") from e
-            except json.JSONDecodeError as e:
-                log.warning(f"  LLM returned invalid JSON: {e}")
-                if attempt < 2:
-                    await asyncio.sleep(1)
-                    continue
-                raise RuntimeError("News LLM returned invalid JSON after retries") from e
-            except Exception as e:
-                if attempt < 2:
-                    log.warning(f"  LLM request failed ({type(e).__name__}), retrying: {e}")
-                    await asyncio.sleep(2 * (attempt + 1))
-                    continue
-                raise RuntimeError(
-                    f"News LLM analysis failed after retries: {type(e).__name__}: {e}"
-                ) from e
-
-        return None
+    async def _analyze_with_llm(self, title: str, content: str, *, contextualize=True) -> Optional[Dict]:
+        """Shared full-body bilingual contract for ingestion and backfill."""
+        from scraper.news_context import request_context
+        result, provenance = await request_context(
+            title, content, self._groq_key, self._openai_key, SUPPORTED_PRODUCTS)
+        self._context_provenance = {**provenance,
+            'impact_analysis': result.get('impact_analysis') if isinstance(result, dict) else None}
+        if isinstance(result, dict):
+            result['relevant'] = not bool(result.get('error')) and result.get('relevant', True) is True
+        return result
 
     # ------------------------------------------------------------------
     # Storage
     # ------------------------------------------------------------------
     def _store_article(self, article: Dict[str, Any]) -> bool:
         """Store a processed article in Supabase."""
+        if self.dry_run:
+            return False
         try:
+            from scraper.news_context import validate_impact_fields, IMPACT_FIELDS
+            if validate_impact_fields(article):
+                raise ValueError('Invalid or missing impact estimates in storage payload')
+            if not self._filter_existing_urls([article['url']]) or self._check_content_hash(article['content_hash']):
+                return True  # Existing exact URL/hash: no duplicate insert.
             resp = self._client.table(self._table).insert({
                 "title": article["title"],
                 "title_tl": article.get("title_tl", ""),
@@ -952,16 +1084,21 @@ class NewsScraper:
                 "affected_products": article["affected_products"],
                 "event_type": article["event_type"],
                 "image_url": article.get("image_url", ""),
-                "time_validity_days": article.get("time_validity_days", 7),
-                "probability": article.get("probability", 1.0),
-                "effect_magnitude": article.get("effect_magnitude", "medium"),
+                "time_validity_days": article.get("time_validity_days"),
+                "probability": article.get("probability"),
+                "effect_magnitude": article.get("effect_magnitude"),
             }).execute()
             
             if not resp.data:
                 log.warning("No data returned from article insert.")
                 return False
             
-            log.info(f"  ✓ Article and image URL saved to Supabase.")
+            verified = (self._client.table(self._table).select('id,url,content_hash,' + ','.join(IMPACT_FIELDS))
+                        .eq('url', article['url']).limit(1).execute())
+            if (not verified.data or verified.data[0].get('content_hash') != article['content_hash']
+                    or any(verified.data[0].get(field) != article[field] for field in IMPACT_FIELDS)):
+                raise RuntimeError('News insert read-back mismatch')
+            log.info("Article saved and exact URL/content hash/impact estimates read back.")
             return True
         except Exception as e:
             log.warning(f"Failed to store news article {article.get('url', '')}: {e}")
@@ -983,8 +1120,53 @@ class NewsScraper:
 
 
 
-if __name__ == '__main__':
-    import asyncio
-    scraper = NewsScraper()
+def main(argv=None) -> int:
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument('--dry-run', action='store_true', help='Collect locally; no database or LLM access')
+    mode.add_argument('--write-db', action='store_true', help='Explicitly use configured database and LLM pipeline')
+    parser.add_argument('--provider', choices=('june', 'rss'), default='june',
+                        help='June ABS-CBN crawler (default); RSS dry-run fallback')
+    parser.add_argument('--max-articles', type=int, default=20)
+    parser.add_argument('--output', type=Path)
+    parser.add_argument('--start-date', help='Inclusive publication date YYYY-MM-DD; dry-run only')
+    parser.add_argument('--end-date', help='Inclusive publication date YYYY-MM-DD in Manila')
+    parser.add_argument('--batch-dir', type=Path)
+    parser.add_argument('--discovery-file', type=Path, help='Saved search-tool discovery results; still crawls real June bodies')
+    parser.add_argument('--max-candidates', type=int, default=200)
+    parser.add_argument('--runtime-seconds', type=int, default=850)
+    args = parser.parse_args(argv)
+    if not 1 <= args.max_articles <= 100:
+        parser.error('--max-articles must be between 1 and 100')
+    try:
+        scraper = NewsScraper(dry_run=args.dry_run, max_articles=args.max_articles, provider=args.provider,
+                              start_date=args.start_date, end_date=args.end_date)
+        if not 1 <= args.max_candidates <= 200 or not 1 <= args.runtime_seconds <= 900:
+            raise ValueError('max-candidates must be 1..200 and runtime-seconds 1..900')
+    except ValueError as exc:
+        parser.error(str(exc))
+    if args.start_date:
+        from scraper.news_backfill import run_backfill
+        directory = args.batch_dir or (args.output.parent if args.output else Path('audits/news_backfill'))
+        result = asyncio.run(run_backfill(scraper, directory, args.max_candidates, args.runtime_seconds, args.discovery_file))
+        if args.output and args.output != directory / 'final.json':
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
+        print('NEWS BACKFILL RESULT ' + json.dumps({k:result[k] for k in ('stats','min_date','max_date','days_with_articles','date_histogram')},sort_keys=True))
+        return 0 if result['articles'] else 1
     stats = asyncio.run(scraper.run_daily_scrape())
-    log.info("NEWS SCRAPE RESULT %s", json.dumps(stats, sort_keys=True))
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps({"schema_version": 1, "dry_run": args.dry_run,
+            "stats": stats, "articles": scraper.articles, "provenance": scraper.provenance},
+            ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    for article in scraper.articles:
+        print(json.dumps({k: article[k] for k in ('title', 'url', 'published_at', 'published_date',
+                         'publication_precision', 'publication_source')}, ensure_ascii=False))
+    print('NEWS SCRAPE RESULT ' + json.dumps(stats, sort_keys=True))
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

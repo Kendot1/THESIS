@@ -1,3 +1,6 @@
+import { rollingPeriods } from './rolling-periods';
+import { localNewsEnabled, isAbsCbnArticle } from './news-source';
+
 export const DEFAULT_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&q=80&w=800";
 
 // ─── Types ─────────────────────────────────────────────────
@@ -15,6 +18,11 @@ export interface ForecastDataPoint {
   period_days?: number;
   confidence_score?: number | null;
   confidence_level?: string | null;
+  lower_bound?: number | null;
+  upper_bound?: number | null;
+  interval_level?: number | null;
+  interval_width?: number | null;
+  interval_reliability?: string | null;
 }
 
 export interface Product {
@@ -38,6 +46,7 @@ export interface Product {
     predicted_price: number;
     reasoning: string;
   }[];
+  confidence_pct?: number | null;
   forecastSource?: "model" | "trend_fallback";
   forecastOriginDate?: string;
   forecastModelRunId?: string;
@@ -52,6 +61,14 @@ export interface ForecastQualityMetrics {
   prediction_success: number | null;
   success_tolerance?: number | null;
   success_definition?: string;
+  within_5_php_tolerance?: number | null;
+  within_5_php_count?: number | null;
+  within_5_php_sample_count?: number | null;
+  within_5_php_accuracy_pct?: number | null;
+  within_5_percent_count?: number | null;
+  within_5_percent_sample_count?: number | null;
+  within_5_percent_accuracy_pct?: number | null;
+  within_5_percent_excluded_zero_or_near_zero?: number | null;
   within_10_tolerance?: number | null;
   within_10_definition?: string;
   within_10_accuracy_pct?: number | null;
@@ -70,6 +87,12 @@ export interface ForecastQualityMetrics {
     sample_basis?: string;
     mape?: number | null;
     prediction_success?: number | null;
+    within_5_php_count?: number | null;
+    within_5_php_sample_count?: number | null;
+    within_5_php_accuracy_pct?: number | null;
+    within_5_percent_count?: number | null;
+    within_5_percent_sample_count?: number | null;
+    within_5_percent_accuracy_pct?: number | null;
     evaluation_source?: string;
     confidence_by_horizon?: Partial<Record<ForecastHorizon, ForecastConfidenceMetric>>;
     confidence_by_step?: Partial<Record<ForecastHorizon, Record<number, ForecastStepConfidenceMetric>>>;
@@ -78,6 +101,12 @@ export interface ForecastQualityMetrics {
       rmse: number | null;
       mape: number | null;
       prediction_success?: number | null;
+      within_5_php_count?: number | null;
+      within_5_php_sample_count?: number | null;
+      within_5_php_accuracy_pct?: number | null;
+      within_5_percent_count?: number | null;
+      within_5_percent_sample_count?: number | null;
+      within_5_percent_accuracy_pct?: number | null;
       sample_count: number;
       horizon_min_days?: number;
       horizon_max_days?: number;
@@ -167,95 +196,33 @@ export function verifiedHistoricalAccuracy(
 }
 
 export const FORECAST_HORIZON_DAYS = { daily: 1, weekly: 7, monthly: 30 } as const;
-const PUBLISHED_FORECAST_MONTHS = 3;
+export const FORECAST_HORIZON_STEPS = { daily: 14, weekly: 4, monthly: 1 } as const;
 
-/** Calendar lead time is measured from the saved backend vintage, never row position. */
+/** First end date from the shared, issue-origin-relative rolling contract. */
 export function forecastTargetDate(origin: string | undefined, horizon: ForecastHorizon): string | null {
-  if (!origin || !/^\d{4}-\d{2}-\d{2}$/.test(origin)) return null;
-  const timestamp = Date.parse(`${origin}T00:00:00Z`);
-  if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString().slice(0, 10) !== origin) return null;
-  return new Date(timestamp + FORECAST_HORIZON_DAYS[horizon] * 86400000).toISOString().slice(0, 10);
+  if (!origin) return null;
+  try { return rollingPeriods(origin)[horizon][0].target_end; } catch { return null; }
 }
 
-/** Use saved period prices, filling missing periods from the same daily model path. */
+/** Select only exact saved ranges; never relabel calendar forecasts as rolling. */
 export function forecastHorizonPoints(data: ForecastDataPoint[], origin: string | undefined, horizon: ForecastHorizon) {
-  if (!forecastTargetDate(origin, "daily")) return [];
-  const points = data.filter(point => {
-    const timestamp = Date.parse(`${point.date}T00:00:00Z`);
-    const lead = (timestamp - Date.parse(`${origin}T00:00:00Z`)) / 86400000;
-    const legacyDaily = !point.horizon && horizon === "daily";
-    return (point.horizon === horizon || legacyDaily) && Number.isInteger(lead) && lead > 0
-      && new Date(timestamp).toISOString().slice(0, 10) === point.date
-      && point.predicted != null && Number.isFinite(point.predicted) && point.predicted > 0;
-    })
-    .sort((left, right) => left.date.localeCompare(right.date));
-  if (horizon === "daily") return points;
-
-  // Older published vintages can have the daily path without saved calendar
-  // period rows. Fill only missing weeks/months from those same model prices.
-  const periods = new Map<string, ForecastDataPoint>();
-  for (const point of points) periods.set(point.target_period_start ?? point.date, point);
-  const dailyForecasts = data.filter(point => {
-    const timestamp = Date.parse(`${point.date}T00:00:00Z`);
-    const lead = (timestamp - Date.parse(`${origin}T00:00:00Z`)) / 86400000;
-    return (point.horizon === "daily" || !point.horizon)
-      && Number.isInteger(lead) && lead > 0
-      && new Date(timestamp).toISOString().slice(0, 10) === point.date
-      && point.predicted != null && Number.isFinite(point.predicted) && point.predicted > 0;
-  }).sort((left, right) => left.date.localeCompare(right.date));
-  const grouped = new Map<string, { start: string; end: string; values: number[]; lastDate: string }>();
-  for (const point of dailyForecasts) {
-    const date = new Date(`${point.date}T00:00:00Z`);
-    let start: Date;
-    let end: Date;
-    if (horizon === "weekly") {
-      start = new Date(date);
-      start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
-      end = new Date(start);
-      end.setUTCDate(end.getUTCDate() + 6);
-    } else {
-      start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-      end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
-    }
-    const startDate = start.toISOString().slice(0, 10);
-    const endDate = end.toISOString().slice(0, 10);
-    const group = grouped.get(startDate) ?? { start: startDate, end: endDate, values: [], lastDate: point.date };
-    group.values.push(point.predicted!);
-    group.lastDate = point.date;
-    grouped.set(startDate, group);
+  if (!origin || !forecastTargetDate(origin, horizon)) return [];
+  const selected: ForecastDataPoint[] = [];
+  for (const period of rollingPeriods(origin)[horizon]) {
+    const { target_start: start, target_end: end, lead: step, period_days: days } = period;
+    const matches = data.filter(point =>
+      (point.horizon === horizon || (!point.horizon && horizon === "daily"))
+      && point.date === end
+      && point.predicted != null && Number.isFinite(point.predicted) && point.predicted > 0
+      && (point.forecast_step == null || point.forecast_step === step)
+      && (point.target_period_start === start || (horizon === "daily" && point.target_period_start == null))
+      && (point.target_period_end === end || (horizon === "daily" && point.target_period_end == null))
+      && (point.covered_days == null || point.covered_days === days)
+      && (point.period_days == null || point.period_days === days));
+    if (matches.length !== 1) return [];
+    selected.push(matches[0]);
   }
-  const labelDate = (value: string, options: Intl.DateTimeFormatOptions) =>
-    new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", { ...options, timeZone: "UTC" });
-  const derived = [...grouped.values()].sort((left, right) => left.start.localeCompare(right.start));
-  derived.forEach((period, index) => {
-    if (periods.has(period.start)) return;
-    const name = horizon === "weekly"
-      ? `Week ${labelDate(period.start, { month: "short", day: "numeric" })}–${labelDate(period.end, { month: "short", day: "numeric" })}`
-      : labelDate(period.start, { month: "long", year: "numeric" });
-    periods.set(period.start, {
-      date: period.lastDate,
-      name,
-      actual: null,
-      predicted: period.values.reduce((sum, value) => sum + value, 0) / period.values.length,
-      horizon,
-      target_period_start: period.start,
-      target_period_end: period.end,
-      forecast_step: index + 1,
-      covered_days: period.values.length,
-      period_days: Math.round((Date.parse(`${period.end}T00:00:00Z`) - Date.parse(`${period.start}T00:00:00Z`)) / 86400000) + 1,
-      confidence_score: null,
-      confidence_level: "Insufficient data",
-    });
-  });
-  const combined = [...periods.values()].sort((left, right) => left.date.localeCompare(right.date));
-  const originDate = new Date(`${origin}T00:00:00Z`);
-  const horizonEnd = new Date(Date.UTC(
-    originDate.getUTCFullYear(),
-    originDate.getUTCMonth() + PUBLISHED_FORECAST_MONTHS + 1,
-    0,
-  )).toISOString().slice(0, 10);
-  const withinPublishedHorizon = combined.filter(point => point.date <= horizonEnd);
-  return horizon === "weekly" ? withinPublishedHorizon.slice(0, 12) : withinPublishedHorizon;
+  return selected;
 }
 
 /** Display only backend evidence tied to this product, horizon, and forecast model. */
@@ -466,9 +433,9 @@ function normalizeNewsEventType(value: string): string {
 }
 
 /** Only surface news tied to an identified food product and market driver. */
-export function isPriceImpactNews(article: Pick<NewsArticle, "category" | "affectedProducts">): boolean {
+export function isPriceImpactNews(article: Pick<NewsArticle, "category" | "affectedProducts"> & { url?: string }): boolean {
   const eventType = normalizeNewsEventType(article.category);
-  return PRICE_IMPACT_NEWS_EVENT_TYPES.has(eventType)
+  return isAbsCbnArticle(article) && PRICE_IMPACT_NEWS_EVENT_TYPES.has(eventType)
     && Array.isArray(article.affectedProducts)
     && article.affectedProducts.some(product => typeof product === "string" && product.trim().length > 0);
 }
@@ -529,7 +496,7 @@ export function formatNewsPublicationDate(
   const parsed = new Date(dateValue);
   if (!Number.isFinite(parsed.getTime())) return "Publication date unavailable";
   return parsed.toLocaleDateString("en-US", {
-    year: "numeric", month: "short", day: "numeric", timeZone: "UTC",
+    year: "numeric", month: "short", day: "numeric", timeZone: "Asia/Manila",
   });
 }
 
@@ -550,6 +517,44 @@ export function toDashboardProduct(product: Product): DashboardProduct {
     predictedPrice: nextDay?.predicted_price ?? currentPrice,
     forecastDate: nextDay?.date ?? null,
     forecastSource: nextDay ? product.forecastSource : "trend_fallback" };
+}
+
+// ─── Display rule: show only products with a saved model prediction ─────
+// Display filter only. Trend-fallback, persistence-only and empty-forecast
+// series are hidden from every page; metrics, DB rows and models are untouched.
+const isFinitePositive = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value) && value > 0;
+
+/** True when the product carries a saved model forecast with at least one
+ * finite positive daily predicted price dated after its forecast origin. */
+export function hasModelPrediction(product: Partial<Product> | null | undefined): boolean {
+  if (!product || product.forecastSource !== "model") return false;
+  const origin = product.forecastOriginDate || product.lastActualDate;
+  if (!origin || !/^\d{4}-\d{2}-\d{2}$/.test(origin)) return false;
+  const daily = Array.isArray(product.dailyForecast) && product.dailyForecast.some(row =>
+    typeof row?.date === "string" && row.date > origin && isFinitePositive(row.predicted_price));
+  if (daily) return true;
+  return Array.isArray(product.forecastData) && product.forecastData.some(point =>
+    (point?.horizon == null || point.horizon === "daily")
+    && typeof point.date === "string" && point.date > origin && isFinitePositive(point.predicted));
+}
+
+/** Dashboard summaries have no forecast arrays; use their dated next-day model price. */
+export function hasDashboardModelPrediction(product: Partial<DashboardProduct> | null | undefined): boolean {
+  return Boolean(product) && product!.forecastSource === "model"
+    && typeof product!.forecastDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(product!.forecastDate)
+    && (!product!.lastActualDate || product!.forecastDate > product!.lastActualDate)
+    && isFinitePositive(product!.predictedPrice);
+}
+
+/** Shared filter for full product payloads (apply before stripping forecast arrays). */
+export function filterDisplayableProducts<T extends Partial<Product>>(products: T[] | null | undefined): T[] {
+  return Array.isArray(products) ? products.filter(hasModelPrediction) : [];
+}
+
+/** Shared filter for dashboard summary payloads. */
+export function filterDisplayableDashboardProducts<T extends Partial<DashboardProduct>>(products: T[] | null | undefined): T[] {
+  return Array.isArray(products) ? products.filter(hasDashboardModelPrediction) : [];
 }
 
 // ─── Supabase Edge Function Base URL ───────────────────────
@@ -747,7 +752,8 @@ async function edgeFetch<T>(path: string): Promise<T> {
 export async function fetchProducts(): Promise<Product[]> {
   // A failed refresh must not replace existing rows with an empty list. SWR
   // retains its previous data on rejection; ISR retains the last good page.
-  return edgeFetch<Product[]>("products");
+  return filterDisplayableProducts(await edgeFetch<Product[]>("products"))
+    .map(product => ({ ...product, confidence_pct: null }));
 }
 
 export async function fetchProductPriceHistory(product: Pick<Product, "name" | "variant" | "origin" | "category" | "unit">): Promise<ForecastDataPoint[]> {
@@ -764,7 +770,8 @@ export async function fetchProductPriceHistory(product: Pick<Product, "name" | "
 // Comparison prices should reflect the current database/forecast state, not
 // the page's ISR payload or the one-hour browser cache.
 export async function fetchLiveProducts(): Promise<Product[]> {
-  return fetchFromNetwork<Product[]>("products", 3, true);
+  return filterDisplayableProducts(await fetchFromNetwork<Product[]>("products", 3, true))
+    .map(product => ({ ...product, confidence_pct: null }));
 }
 
 export async function fetchDashboardProducts(): Promise<DashboardProduct[]> {
@@ -775,7 +782,7 @@ export async function fetchDashboardProducts(): Promise<DashboardProduct[]> {
     // Older Edge deployments answer unknown paths with their status object.
     // Never pass that object into Home, which expects an iterable product list.
     if (Array.isArray(data) && data.every(product =>
-      product && Object.hasOwn(product, "forecastDate"))) return data as DashboardProduct[];
+      product && Object.hasOwn(product, "forecastDate"))) return filterDisplayableDashboardProducts(data as DashboardProduct[]);
     console.warn("Dashboard summary has no dated daily forecast; using live product details");
   } catch (e) {
     console.error("Error fetching dashboard products:", e);
@@ -783,7 +790,7 @@ export async function fetchDashboardProducts(): Promise<DashboardProduct[]> {
   try {
     // Never resurrect a cached weekly average as a live daily forecast when
     // the summary endpoint times out or an older Edge deployment is serving.
-    return (await fetchLiveProducts()).map(toDashboardProduct);
+    return filterDisplayableDashboardProducts((await fetchLiveProducts()).map(toDashboardProduct));
   } catch (e) {
     console.error("Error fetching live dashboard fallback:", e);
     return [];
@@ -824,20 +831,25 @@ export async function fetchTrendingInteractions(): Promise<Record<string, number
   }
 }
 
+// News alone may read the explicitly authorized local test source. A 404 means
+// this server did not opt in; failures from an enabled bridge must not mix DBs.
+async function localNewsRows(start: number, limit: number, search = '', category = 'All', dateFilter = 'All') {
+  if (process.env.NODE_ENV !== 'development') return null;
+  const query = new URLSearchParams({ start: String(start), limit: String(limit), search, category, dateFilter });
+  if (typeof window === 'undefined') {
+    if (!localNewsEnabled(process.env)) return null;
+    return nativeServerFetch(`http://127.0.0.1:${process.env.PORT || '3000'}/api/local-news?${query}`, {});
+  }
+  const response = await fetch(`/api/local-news?${query}`, { cache: 'no-store' });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error('Local news unavailable');
+  return response.json();
+}
+
 export async function fetchNews(limit = 10): Promise<NewsArticle[]> {
   try {
-    // Fetch extra rows so older deployments that haven't filtered at the API
-    // still leave enough relevant articles after this client-side safety gate.
-    const articles = await edgeFetch<NewsArticle[]>(`news?limit=${Math.max(limit * 4, limit)}`);
-    return articles.map(article => ({
-      ...article,
-      excerpt: getNewsExcerpt(article.content),
-      date: !article.date || article.date === "Publication date unavailable"
-        ? formatNewsPublicationDate(null, null, "unknown", article.url)
-        : article.date,
-      // The edge response uses this image only when the source supplied none.
-      image: article.image === "/news/market.png" ? "" : article.image || "",
-    })).filter(isPriceImpactNews).slice(0, limit);
+    // Use the same source, mapping, and filters as /News (no one-hour empty cache).
+    return (await fetchPaginatedUniqueNews(0, limit)).data;
   } catch (e) {
     console.error("Error fetching news:", e);
     return [];
@@ -872,7 +884,8 @@ export function toEventTypeKey(label: string): string {
 /** Fetch all unique news event_type values from the Edge function, returned as pretty labels. */
 export async function fetchNewsCategories(): Promise<string[]> {
   try {
-    const rawCategories = await edgeFetch<string[]>('categories?type=news');
+    const articles = (await fetchPaginatedNews(0, 1000)).data;
+    const rawCategories = [...new Set(articles.map(article => normalizeNewsEventType(article.category)))];
     if (!rawCategories || rawCategories.length === 0) return ["All"];
     
     // The Edge Function returns the raw DB keys (e.g. 'policy_change')
@@ -935,7 +948,7 @@ export async function fetchPaginatedNews(
       return query.order("published_at", { ascending: false }).range(start, start + limit - 1);
     };
 
-    let result = await fetchRows(true);
+    let result = await localNewsRows(start, limit, search, category, dateFilter) ?? await fetchRows(true);
     if (result.error?.code === "42703" && /published_date|publication_precision/.test(result.error.message)) {
       result = await fetchRows(false);
     }

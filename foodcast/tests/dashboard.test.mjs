@@ -29,7 +29,9 @@ function edgeHandler(resolveQuery) {
     const query = {
       select(columns) { state.columns = columns; return this; },
       order() { return this; }, gte() { return this; }, limit() { return this; },
+      in() { return this; }, neq() { return this; },
       eq(key, value) { state.filters[key] = value; return this; },
+      not() { return this; },
       range() { return Promise.resolve(resolveQuery(state)); },
       maybeSingle() { return Promise.resolve(resolveQuery(state)); },
       then(resolve, reject) { return Promise.resolve(resolveQuery(state)).then(resolve, reject); },
@@ -63,6 +65,22 @@ test('forecast status route serves saved metrics without reading observed prices
   assert.deepEqual(tables, ['forecast_runs']);
 });
 
+test('forecast accuracy metric is the validated within-five-percent rate', () => {
+  const { verifiedPredictionSuccess } = loadModule('app/lib/data.ts');
+  const metrics = {
+    evaluation_source: 'chronological_validation',
+    success_definition: 'absolute_percentage_error_at_most_tolerance',
+    success_tolerance: 0.05,
+    sample_count: 100,
+    prediction_success: 0.6980154930803377,
+    within_10_accuracy_pct: 83.24049090434329,
+  };
+
+  assert.equal(verifiedPredictionSuccess(metrics), metrics.prediction_success);
+  assert.equal(verifiedPredictionSuccess({ ...metrics, success_tolerance: 0.1 }), null);
+  assert.equal(verifiedPredictionSuccess({ ...metrics, sample_count: 29 }), null);
+});
+
 test('product endpoint supplies immutable forecast origin and model required by horizon chart', async () => {
   const queries = [];
   const handler = edgeHandler(query => {
@@ -91,7 +109,8 @@ test('product endpoint supplies immutable forecast origin and model required by 
 test('news remains readable before the additive provenance migration is installed', async () => {
   const handler = edgeHandler(query => query.columns.includes('publication_precision')
     ? { data: null, error: { code: '42703', message: 'column news_articles.published_date does not exist' } }
-    : { data: [{ id: 'article', title: 'Price report', content: 'Report', published_at: '2026-10-01T00:00:00Z' }], error: null });
+    : { data: [{ id: 'article', title: 'Price report', content: 'Report', event_type: 'price_movement',
+      affected_products: ['Tomato'], published_at: '2026-10-01T00:00:00Z' }], error: null });
   const response = await handler(new Request('https://example.test/news'));
   assert.equal(response.status, 200);
   const [article] = await response.json();
@@ -234,7 +253,7 @@ test('dashboard summary does not turn a missing model into a trading signal', ()
 test('edge and SQL paths enforce the same future-only forecast boundary', () => {
   const edgeSource = fs.readFileSync(fileURLToPath(new URL('../../supabase/functions/foodcast/index.ts', import.meta.url)), 'utf8');
   const sqlSource = fs.readFileSync(fileURLToPath(new URL('../../supabase/migrations/202609250002_unit_aware_dashboard_summary.sql', import.meta.url)), 'utf8');
-  assert.match(edgeSource, /selectFuturePredictions\(dailyRows, lastActualDate\)/);
+  assert.match(edgeSource, /selectFuturePredictions\(dailyRows,\s*(?:lastActualDate|forecastOriginDate)/);
   assert.doesNotMatch(edgeSource, /entry\.predicted = entry\.actual/);
   assert.match(sqlSource, /prediction_date > \(r\.last_row->>'report_date'\)::date/);
   assert.match(sqlSource, /min\(p\.prediction_date\) = \(r\.last_row->>'report_date'\)::date \+ 1/);

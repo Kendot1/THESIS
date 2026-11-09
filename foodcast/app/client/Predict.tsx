@@ -10,11 +10,13 @@ const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
   ssr: false,
 });
 import ScrollReveal from "../components/ScrollReveal";
-import { Product, fetchCategories, DEFAULT_PRODUCT_IMAGE, forecastHorizonPoints, type ForecastHorizon } from "../lib/data";
+import { Product, fetchCategories, fetchProductPriceHistory, DEFAULT_PRODUCT_IMAGE, forecastHorizonPoints, type ForecastHorizon, type ForecastDataPoint } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { encryptId } from "../../lib/idCipher";
 import { useProducts, useTrendingInteractions, useNews } from "../lib/hooks";
 import { getInheritedTags } from "../lib/tags";
+import { researchChartPoints } from "../lib/local-model";
+import type { StagingForecast } from "../research-model-test/staging";
 
 interface PredictProps {
   initialProducts: Product[];
@@ -177,11 +179,95 @@ function PredictContent({ initialProducts }: PredictProps) {
 
   /* ─── Layout Data Prep ────────────────────── */
   const featuredProduct: Product | null = featuredItems[featuredIndex] || products[0] || null;
-  const featuredForecast = featuredProduct?.forecastSource === "model"
-    ? forecastHorizonPoints(featuredProduct.forecastData, featuredProduct.forecastOriginDate, featuredHorizon)[0]
+  const currentAverageEnabled = process.env.NODE_ENV === "development"
+    && (process.env.NEXT_PUBLIC_FOODCAST_LOCAL_MODEL === "current-hybrid"
+      || process.env.NEXT_PUBLIC_FOODCAST_LOCAL_MODEL === "rolling-research");
+  const useCurrentAverage = currentAverageEnabled;
+  const [catalogResearch, setCatalogResearch] = useState<Record<string, { origin: string; predictions: StagingForecast[] }>>({});
+  const activeCatalogResearch = useCurrentAverage ? catalogResearch : {};
+  useEffect(() => {
+    if (!useCurrentAverage) return;
+    let cancelled = false;
+    fetch('/api/local-research?catalog=1&vintage=daily-average', { cache: 'no-store' })
+      .then(async response => {
+        const result = await response.json();
+        if (!response.ok || !Array.isArray(result.items)) throw new Error('Catalog unavailable');
+        const items: Record<string, { origin: string; predictions: StagingForecast[] }> = {};
+        for (const item of result.items) {
+          if (!item.product?.id || !/^\d{4}-\d{2}-\d{2}$/.test(item.forecast_origin)
+            || !Array.isArray(item.predictions) || item.predictions.some((row: StagingForecast) => row.forecast_origin !== item.forecast_origin)) throw new Error('Invalid catalog contract');
+          items[item.product.id] = { origin: item.forecast_origin, predictions: item.predictions };
+        }
+        if (!cancelled) setCatalogResearch(items);
+      }).catch(() => { if (!cancelled) setCatalogResearch({}); });
+    return () => { cancelled = true; };
+  }, [useCurrentAverage]);
+  const featuredProductId = featuredProduct?.id;
+  const [featuredHistory, setFeaturedHistory] = useState<{ productId: string; points: ForecastDataPoint[] } | null>(null);
+  useEffect(() => {
+    if (!featuredProduct) return;
+    let cancelled = false;
+    const productId = featuredProduct.id;
+    fetchProductPriceHistory(featuredProduct)
+      .then(points => { if (!cancelled) setFeaturedHistory({ productId, points }); })
+      .catch(() => { if (!cancelled) setFeaturedHistory(null); });
+    return () => { cancelled = true; };
+  }, [featuredProduct]);
+  const featuredFullData = useMemo(() => {
+    const saved = featuredProduct?.forecastData ?? [];
+    const history = featuredHistory?.productId === featuredProductId ? featuredHistory?.points ?? [] : [];
+    const byPeriod = new Map<string, ForecastDataPoint>();
+    history.filter(point => (point.horizon ?? "daily") === "daily" && point.actual != null && Number.isFinite(point.actual))
+      .forEach(point => byPeriod.set(`daily:${point.date}`, { ...point, predicted: null }));
+    saved.forEach(point => {
+      const key = `${point.horizon ?? "daily"}:${point.date}`;
+      const observed = byPeriod.get(key);
+      byPeriod.set(key, { ...point, actual: observed?.actual ?? point.actual });
+    });
+    return [...byPeriod.values()].sort((a, b) => a.date.localeCompare(b.date));
+  }, [featuredProduct, featuredProductId, featuredHistory]);
+  const [featuredResearch, setFeaturedResearch] = useState<{
+    productId: string; origin: string; predictions: StagingForecast[];
+  } | null>(null);
+  useEffect(() => {
+    if (!useCurrentAverage || !featuredProductId) return;
+    let cancelled = false;
+    const productId = featuredProductId;
+    setFeaturedResearch(null);
+    fetch(`/api/local-research?productId=${encodeURIComponent(productId)}&vintage=daily-average`, { cache: "no-store" })
+      .then(async response => {
+        const result = await response.json();
+        if (!response.ok || result.product?.id !== productId || !Array.isArray(result.predictions)
+          || !/^\d{4}-\d{2}-\d{2}$/.test(result.forecast_origin)
+          || result.predictions.some((row: StagingForecast) => row.forecast_origin !== result.forecast_origin)) {
+          throw new Error("Current daily-model average unavailable");
+        }
+        if (!cancelled) setFeaturedResearch({ productId, origin: result.forecast_origin, predictions: result.predictions });
+      })
+      .catch(() => { if (!cancelled) setFeaturedResearch(null); });
+    return () => { cancelled = true; };
+  }, [useCurrentAverage, featuredProductId]);
+  const selectedResearch = featuredResearch?.productId === featuredProductId ? featuredResearch : null;
+  const featuredChartOrigin = useCurrentAverage ? selectedResearch?.origin
+    : featuredProduct?.forecastSource === "model" ? featuredProduct.forecastOriginDate : undefined;
+  const featuredChartData = useCurrentAverage
+    ? [
+      ...featuredFullData
+        .filter(point => (point.horizon ?? "daily") === "daily" && point.actual != null && Number.isFinite(point.actual))
+        .map(point => ({ ...point, predicted: null })),
+      ...researchChartPoints(selectedResearch?.predictions ?? []),
+    ]
+    : featuredFullData;
+  const featuredForecast = useCurrentAverage || featuredProduct?.forecastSource === "model"
+    ? forecastHorizonPoints(featuredChartData, featuredChartOrigin, featuredHorizon)[0]
     : undefined;
-  const featuredChange = featuredForecast?.predicted != null && featuredProduct?.currentPrice
-    ? (featuredForecast.predicted - featuredProduct.currentPrice) / featuredProduct.currentPrice * 100 : null;
+  const featuredObservedAnchor = featuredChartData
+    .filter(point => (point.horizon ?? 'daily') === 'daily' && point.actual != null
+      && Number.isFinite(point.actual) && (!featuredChartOrigin || point.date <= featuredChartOrigin))
+    .sort((a, b) => a.date.localeCompare(b.date)).at(-1)?.actual;
+  const featuredComparisonPrice = useCurrentAverage ? featuredObservedAnchor : featuredProduct?.currentPrice;
+  const featuredChange = featuredForecast?.predicted != null && featuredComparisonPrice
+    ? (featuredForecast.predicted - featuredComparisonPrice) / featuredComparisonPrice * 100 : null;
 
 
 
@@ -245,7 +331,7 @@ function PredictContent({ initialProducts }: PredictProps) {
         origin: string;
         image: string;
         currentPrice: number;
-        predictedPrice: number;
+        predictedPrice: number | null;
       }[];
     }>();
 
@@ -265,11 +351,13 @@ function PredictContent({ initialProducts }: PredictProps) {
         origin: p.origin,
         image: p.image,
         currentPrice: p.currentPrice,
-        predictedPrice: p.predictedPrice
+        predictedPrice: useCurrentAverage
+          ? forecastHorizonPoints(researchChartPoints(activeCatalogResearch[p.id]?.predictions ?? []), activeCatalogResearch[p.id]?.origin, featuredHorizon)[0]?.predicted ?? null
+          : p.predictedPrice
       });
     });
     return Array.from(groupedMap.values());
-  }, [filtered]);
+  }, [filtered, useCurrentAverage, catalogResearch, featuredHorizon]);
 
   useEffect(() => {
     setVisibleProductCount(INITIAL_VISIBLE_PRODUCTS);
@@ -525,7 +613,7 @@ function PredictContent({ initialProducts }: PredictProps) {
                       {featuredChange >= 0 ? '▲' : '▼'} {Math.abs(featuredChange).toFixed(1)}%
                     </div>}
                     <span className="text-3xl sm:text-4xl font-black text-primary-900 leading-none">
-                      {featuredForecast?.predicted != null ? `₱${featuredForecast.predicted.toFixed(2)}` : "—"}
+                      {featuredForecast?.predicted != null ? `₱${featuredForecast.predicted.toFixed(2)}` : "N/A"}
                     </span>
                   </div>
                 </div>
@@ -542,8 +630,8 @@ function PredictContent({ initialProducts }: PredictProps) {
                     ))}
                   </div>
                   <ForecastChart
-                    data={featuredProduct.forecastData}
-                    forecastOriginDate={featuredProduct.forecastSource === "model" ? featuredProduct.forecastOriginDate : undefined}
+                    data={featuredChartData}
+                    forecastOriginDate={featuredChartOrigin}
                     period={featuredHorizon}
                     showGrid={true}
                     showLegend={true}
