@@ -188,7 +188,7 @@ export default function ProductComparison({ products, open, onClose }: ProductCo
           </div>
 
           {!first || !second ? (
-            <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 text-center">
+            <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 text-center">
               <Scale className="mb-3 h-8 w-8 text-primary-600" />
               <p className="font-bold text-gray-800">Select two different products</p>
               <p className="mt-1 max-w-md text-xs leading-5 text-gray-500">The comparison will show their price history, forecast movement, and price difference.</p>
@@ -201,27 +201,37 @@ export default function ProductComparison({ products, open, onClose }: ProductCo
                 </div>
               )}
 
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 {[first, second].map((product, index) => {
                   const change = percentChange(product);
                   const rising = change >= 0;
                   return (
-                    <article key={product.id} className="rounded-2xl border border-gray-100 bg-gray-50/70 p-5">
+                    <article key={product.id} className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 sm:p-5">
                       <div className="mb-4 flex items-start justify-between gap-3">
                         <div>
                           <p className="text-base font-black text-gray-900">{product.name}</p>
-                          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">{productLabel(product).replace(`${product.name} (`, "").replace(/\)$/, "")}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5" aria-label="Product details">
+                            {[
+                              product.variant && product.variant !== "Standard" ? product.variant : null,
+                              product.origin || null,
+                              product.unit || null,
+                            ].filter(Boolean).map((detail, detailIndex) => (
+                              <span key={`${detailIndex}-${detail}`} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium leading-none text-gray-600">
+                                {detail}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                         <span className="h-3 w-3 rounded-full" style={{ backgroundColor: COLORS[index] }} aria-hidden="true" />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
                           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Current</p>
-                          <p className="mt-1 text-xl font-black text-gray-900">{formatCurrency(product.currentPrice)} <span className="text-xs font-semibold text-gray-400">/ {product.unit}</span></p>
+                          <p className="mt-1 text-xl font-black text-gray-900">{formatCurrency(product.currentPrice)}</p>
                         </div>
                         <div>
                           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Predicted</p>
-                          <p className="mt-1 text-xl font-black" style={{ color: COLORS[index] }}>{formatCurrency(product.predictedPrice)} <span className="text-xs font-semibold text-gray-400">/ {product.unit}</span></p>
+                          <p className="mt-1 text-xl font-black" style={{ color: COLORS[index] }}>{formatCurrency(product.predictedPrice)}</p>
                         </div>
                       </div>
                       <div className={`mt-4 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${rising ? "bg-price-up/10 text-price-up" : "bg-price-down/10 text-price-down"}`}>
@@ -233,7 +243,7 @@ export default function ProductComparison({ products, open, onClose }: ProductCo
                 })}
               </div>
 
-              <div className="rounded-2xl border border-gray-100 p-4 sm:p-6">
+              <div className="rounded-2xl border border-gray-100 p-4 sm:p-5">
                 <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
                   <div>
                     <h3 className="font-black text-gray-900">Price comparison</h3>
@@ -243,7 +253,7 @@ export default function ProductComparison({ products, open, onClose }: ProductCo
                     <p className="text-xs font-bold text-gray-600">Current gap: {formatCurrency(currentDifference)}</p>
                   )}
                 </div>
-                <div className="h-72 w-full">
+                <div className="h-60 w-full sm:h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
                       <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" vertical={false} />

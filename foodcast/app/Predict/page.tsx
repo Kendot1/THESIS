@@ -6,7 +6,9 @@ export const dynamic = 'force-static';
 
 export default async function PredictPage() {
   // Fetch products data on the server during SSG/ISR
-  const products = await fetchProducts();
+  const products = await fetchProducts().catch(() => undefined);
+  // Keep the build available during an upstream outage; SWR loads data on mount.
+  if (!products) return <Predict />;
 
   // Strip heavy forecast arrays from products that aren't featured
   // This reduces the initial HTML payload size drastically

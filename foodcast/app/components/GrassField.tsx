@@ -38,6 +38,8 @@ const VIEW_W = 1440;
 const VIEW_H = 300;
 const BASE_Y = VIEW_H; // blades grow upward from bottom
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
 function generateBlade(i: number, seedOffset: number, total: number): Blade {
   const r0 = rand(i + seedOffset);
   const r1 = rand(i + seedOffset + 1111);
@@ -46,24 +48,24 @@ function generateBlade(i: number, seedOffset: number, total: number): Blade {
   const r4 = rand(i + seedOffset + 4444);
 
   return {
-    x: (i / total) * VIEW_W + (r0 - 0.5) * 18,
-    height: 35 + r1 * 120,
-    curve: (r2 - 0.5) * 40,
-    width: 1 + r3 * 3,
+    x: round2((i / total) * VIEW_W + (r0 - 0.5) * 18),
+    height: round2(35 + r1 * 120),
+    curve: round2((r2 - 0.5) * 40),
+    width: round2(1 + r3 * 3),
     color: PALETTE[Math.floor(r4 * PALETTE.length)],
-    delay: r0 * 8,
-    dur: 4 + r1 * 8,
+    delay: round2(r0 * 8),
+    dur: round2(4 + r1 * 8),
   };
 }
 
 /** Cubic bezier path from (x, baseY) curving up to the tip */
 function bladePath(b: Blade): string {
-  const tipX = b.x + b.curve;
-  const tipY = BASE_Y - b.height;
-  const cp1X = b.x + b.curve * 0.3;
-  const cp1Y = BASE_Y - b.height * 0.4;
-  const cp2X = b.x + b.curve * 0.7;
-  const cp2Y = BASE_Y - b.height * 0.8;
+  const tipX = round2(b.x + b.curve);
+  const tipY = round2(BASE_Y - b.height);
+  const cp1X = round2(b.x + b.curve * 0.3);
+  const cp1Y = round2(BASE_Y - b.height * 0.4);
+  const cp2X = round2(b.x + b.curve * 0.7);
+  const cp2Y = round2(BASE_Y - b.height * 0.8);
   return `M${b.x},${BASE_Y} C${cp1X},${cp1Y} ${cp2X},${cp2Y} ${tipX},${tipY}`;
 }
 
@@ -85,8 +87,8 @@ const GrassField = () => {
         const b = generateBlade(i, li * 7000, count);
         blades.push({
           ...b,
-          height: b.height * hScale,
-          width: b.width * wScale,
+          height: round2(b.height * hScale),
+          width: round2(b.width * wScale),
           color: tint ?? b.color,
         });
       }
@@ -102,12 +104,12 @@ const GrassField = () => {
       const r3 = rand(i + 9400);
       const colors = ["#FFF9C4", "#FFFFFF", "#F8BBD0", "#CE93D8", "#FFD54F"];
       return {
-        cx: 40 + r * (VIEW_W - 80),
-        cy: VIEW_H - 30 - r2 * 60,
-        r: 2.5 + r * 3,
+        cx: round2(40 + r * (VIEW_W - 80)),
+        cy: round2(VIEW_H - 30 - r2 * 60),
+        r: round2(2.5 + r * 3),
         fill: colors[Math.floor(r3 * colors.length)],
-        delay: r2 * 6,
-        dur: 5 + r * 5,
+        delay: round2(r2 * 6),
+        dur: round2(5 + r * 5),
       };
     }),
     []);
@@ -171,7 +173,7 @@ const GrassField = () => {
             />
             {/* tiny glow dot in center */}
             <circle
-              cx={f.cx} cy={f.cy} r={f.r * 0.3}
+              cx={f.cx} cy={f.cy} r={round2(f.r * 0.3)}
               fill="#FFD54F" opacity={0.4}
             />
           </g>

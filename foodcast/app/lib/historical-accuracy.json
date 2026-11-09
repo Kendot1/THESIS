@@ -1,0 +1,13 @@
+{
+  "historical_forecast_accuracy_pct": 96.86282069074626,
+  "evaluation_horizon": "daily",
+  "contract_id": "historical_archived_daily14_leads1_to7",
+  "model_id": "20261001T025925Z_0661960a:incumbent_served",
+  "evidence": "historical_saved_predictions_not_deployment_verification",
+  "input_hashes": {
+    "audits\\accuracy_goal_20261021\\defense_improvement_batch\\daily7\\saved_predictions.csv": "451a5aaae58adf29e3fe30726bdbc36c5244e3fd43001621c2a35237dabd4a31",
+    "audits\\accuracy_goal_20261021\\defense_improvement_batch\\weekly4\\saved_predictions.csv": "4fb92e3c4ba3220c98abcaf5a3e94e688ed359a9e8ed0a24be3c233c1ab53452",
+    "audits\\accuracy_goal_20261021\\defense_improvement_batch\\saved_predictions.csv": "0705d49048d657088ab5c693725e0102f6e4ce44fba98d372859a8ab53f4f512"
+  },
+  "evaluated_predictions": 6127
+}

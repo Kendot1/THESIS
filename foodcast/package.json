@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "dotenv -e ../.env -- next dev --turbo",
+    "dev": "dotenv -e ../.env -- next dev --webpack",
     "build": "dotenv -e ../.env -- next build",
     "start": "dotenv -e ../.env -- next start",
     "lint": "eslint"

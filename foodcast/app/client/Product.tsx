@@ -1,6 +1,10 @@
 "use client";
 import { use, useMemo, useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import ForecastConfidenceBadge from "../components/ForecastConfidenceBadge";
+import { ROLLING_CONTRACT } from "../lib/rolling-periods";
+import { rollingPeriodLabel } from "../lib/rolling-periods";
+import { forecastExplanation } from "../lib/forecast-explanation";
 import Image from "next/image";
 import {
   ArrowLeft,
@@ -39,6 +43,9 @@ import { useLanguage } from "../lib/i18n/LanguageContext";
 import { useClock, useForecastStatus, useProducts, useNews } from "../lib/hooks";
 import { encryptId, decryptId } from "../../lib/idCipher";
 import { getInheritedTags } from "../lib/tags";
+import { marketAnalysisForecasts } from "../lib/market-analysis";
+import type { StagingForecast } from "../research-model-test/staging";
+import { selectLocalResearch, researchChartPoints } from "../lib/local-model";
 
 // Helper to find logically related products based on culinary usage
 function getRelatedProducts(current: ProductType, allProducts: ProductType[]): ProductType[] {
@@ -103,9 +110,11 @@ function getRelatedProducts(current: ProductType, allProducts: ProductType[]): P
 export default function Product({
   params,
   initialProducts,
+  historicalPreview,
 }: {
   params: Promise<{ id: string }>;
   initialProducts?: ProductType[];
+  historicalPreview?: ProductType;
 }) {
   const { id: encryptedId } = use(params);
   const id = decryptId(encryptedId);
@@ -114,15 +123,19 @@ export default function Product({
   const { data: newsList = [] } = useNews(10);
   const { data: forecastStatus } = useForecastStatus();
   const now = useClock();
-  const product = useMemo(() => products.find((p) => p.id === id) || null, [products, id]);
+  const product = useMemo(() => historicalPreview ?? products.find((p) => p.id === id) ?? null, [historicalPreview, products, id]);
 
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [aiReasoning, setAiReasoning] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Fetch AI Reasoning manually on button click to save tokens
+  const activeAnalysis = useRef(0);
   const generateAnalysis = async () => {
-    if (!product) return;
+    if (!product || historicalPreview || researchMode) return;
+    const analysisPrice = displayedForecasts[0]?.predicted_price;
+    if (analysisPrice == null || !Number.isFinite(analysisPrice)) return;
+    const selection = ++activeAnalysis.current;
     setIsAnalyzing(true);
     try {
       const news = await fetchNews(3); // Get 3 latest news
@@ -134,15 +147,15 @@ export default function Product({
         body: JSON.stringify({
           productName: product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name,
           currentPrice: product.currentPrice,
-          predictedPrice: product.predictedPrice,
-          newsContext: newsContext || "No recent news available.",
+          predictedPrice: analysisPrice,
+          newsContext: `Forecast horizon: ${chartPeriod}; origin: ${dailyAverageMode ? researchOrigin : product.forecastOriginDate ?? product.lastActualDate}; target: ${displayedForecasts[0]?.periodLabel ?? displayedForecasts[0]?.date}.\n${newsContext || "No recent news available."}`,
           language: language,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.reasoning) {
+        if (data.reasoning && selection === activeAnalysis.current) {
           setAiReasoning(data.reasoning);
         }
       } else {
@@ -157,7 +170,7 @@ export default function Product({
 
   // Track daily user interaction for trending algorithm
   useEffect(() => {
-    if (!product) return;
+    if (!product || historicalPreview || (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_FOODCAST_LOCAL_MODEL != null)) return;
 
     try {
       // Create a unique key per product per day
@@ -224,7 +237,7 @@ export default function Product({
   } | null>(null);
 
   useEffect(() => {
-    if (!product) return;
+    if (!product || historicalPreview) return;
 
     let cancelled = false;
     const currentProductId = product.id;
@@ -265,47 +278,91 @@ export default function Product({
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isOriginDropdownOpen, setIsOriginDropdownOpen] = useState(false);
-  const [forecastRange, setForecastRange] = useState<"3" | "7" | "month" | "all">("all");
-  const [mobileForecastExpanded, setMobileForecastExpanded] = useState(false);
+  // Both visible controls select the same forecast contract.
+  const analysisHorizon = chartPeriod;
+  const setAnalysisHorizon = setChartPeriod;
+  const rollingResearch = process.env.NODE_ENV === "development" && (process.env.NEXT_PUBLIC_FOODCAST_LOCAL_MODEL === "rolling-research" || process.env.NEXT_PUBLIC_FOODCAST_LOCAL_MODEL === "current-hybrid");
+  const researchModelKey = rollingResearch ? "rolling-research" : "calendar-research";
+  const localResearchEnabled = process.env.NODE_ENV === "development"
+    && !historicalPreview && (rollingResearch || process.env.NEXT_PUBLIC_FOODCAST_LOCAL_MODEL === "calendar-research");
+  const [researchMode, setResearchMode] = useState(localResearchEnabled && !rollingResearch);
+  const dailyAverageMode = rollingResearch && !researchMode;
+  const researchName = researchMode ? (rollingResearch ? "Rolling June fixed 50/50 hybrid" : "Calendar hybrid") : "Daily model average";
+  const freshHybrid = dailyAverageMode;
+  const useExperimental = researchMode || freshHybrid;
 
-  const filteredForecasts = useMemo(() => {
-    if (!product || !product.dailyForecast) return [];
-    const forecasts = product.dailyForecast;
-    if (forecastRange === "3") {
-      return forecasts.slice(0, 3);
+  const [researchResult, setResearchResult] = useState<{ productId: string; vintage: string; predictions: StagingForecast[]; forecast_origin?: string; model_origin?: string; model_run?: string; contract?: string; source?: string; error?: string } | null>(null);
+  const researchOrigin = dailyAverageMode ? researchResult?.forecast_origin : rollingResearch ? "2025-11-28" : "2026-01-01";
+  useEffect(() => {
+    const syncSelection = () => setResearchMode(selectLocalResearch(localResearchEnabled, window.location.search, researchModelKey));
+    syncSelection();
+    window.addEventListener("popstate", syncSelection);
+    return () => window.removeEventListener("popstate", syncSelection);
+  }, [localResearchEnabled, encryptedId]);
+  useEffect(() => { activeAnalysis.current += 1; setIsAnalyzing(false); setAiReasoning(null); setExpandedDate(null); }, [id, researchMode, chartPeriod]);
+  // Carry an explicit selector choice through every product link, including cards.
+  const preserveModelNavigation = (event: React.MouseEvent<HTMLElement>) => {
+    if (!localResearchEnabled) return;
+    const link = (event.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
+    if (!link) return;
+    const url = new URL(link.href, window.location.href);
+    if (url.origin !== window.location.origin || !url.pathname.startsWith('/Product/')) return;
+    url.searchParams.set('model', researchMode ? researchModelKey : 'incumbent');
+    link.href = url.toString();
+    if (!event.metaKey && !event.ctrlKey && !event.shiftKey && event.button === 0) {
+      event.preventDefault();
+      window.location.assign(url.toString());
     }
-    if (forecastRange === "7") {
-      return forecasts.slice(0, 7);
-    }
-    if (forecastRange === "month") {
-      if (forecasts.length === 0) return [];
-      const firstDate = new Date(forecasts[0].date);
-      const currentYear = firstDate.getFullYear();
-      const currentMonth = firstDate.getMonth();
-      return forecasts.filter((f) => {
-        const d = new Date(f.date);
-        return d.getFullYear() === currentYear && d.getMonth() === currentMonth;
-      });
-    }
-    return forecasts;
-  }, [product, forecastRange]);
+  };
+  const researchRows = researchResult?.productId === product?.id && researchResult?.vintage === (dailyAverageMode ? "fresh" : "historical") ? researchResult?.predictions ?? [] : [];
+  // Keep recorded daily observations on every tab, not historical period means.
+  // The chart excludes observations after the forecast origin.
+  const selectedChartData = useExperimental
+    ? [
+      ...(freshHybrid ? chartData
+        .filter(point => (point.horizon ?? "daily") === "daily" && point.actual != null && Number.isFinite(point.actual))
+        .map(point => ({ ...point, predicted: null })) : []),
+      ...researchChartPoints(researchRows),
+    ]
+    : chartData;
+  const researchObservedAnchor = selectedChartData
+    .filter(point => (point.horizon ?? 'daily') === 'daily' && point.actual != null
+      && Number.isFinite(point.actual) && researchOrigin && point.date <= researchOrigin)
+    .sort((a, b) => a.date.localeCompare(b.date)).at(-1)?.actual ?? null;
+  useEffect(() => {
+    if ((!useExperimental && !dailyAverageMode) || !product) return;
+    let cancelled = false;
+    const productId = product.id;
+    fetch(`/api/local-research?productId=${encodeURIComponent(productId)}${dailyAverageMode ? "&vintage=daily-average" : "&vintage=historical"}`, { cache: "no-store" })
+      .then(async response => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Research unavailable");
+        if (!cancelled) setResearchResult({ productId, vintage: dailyAverageMode ? "fresh" : "historical", predictions: result.predictions, forecast_origin: result.forecast_origin, model_origin:result.model_origin, model_run:result.model_run, contract:result.contract, source:result.source, error: result.unavailable_reason });
+      })
+      .catch(() => { if (!cancelled) setResearchResult({ productId, vintage: dailyAverageMode ? "fresh" : "historical", predictions: [], error: "Research unavailable; no incumbent substitution" }); });
+    return () => { cancelled = true; };
+  }, [researchMode, freshHybrid, useExperimental, product]);
+  const [mobileForecastExpanded, setMobileForecastExpanded] = useState(false);
 
   const displayedForecasts = useMemo(() => {
     if (!product) return [];
-    if (selectedHorizon !== "daily" && product.forecastSource !== "model") return [];
-
-    const forecasts = selectedHorizon === "daily"
-      ? filteredForecasts.map(forecast => ({
-        date: forecast.date,
-        predicted_price: forecast.predicted_price,
-        periodLabel: null as string | null,
-      }))
-      : forecastHorizonPoints(product.forecastData, product.forecastOriginDate, selectedHorizon)
-        .map(point => ({
-          date: point.date,
-          predicted_price: point.predicted!,
-          periodLabel: point.name.split(" · ")[0],
+    if (useExperimental) {
+      if (researchResult?.productId !== product.id || researchResult.vintage !== (dailyAverageMode ? "fresh" : "historical")) return [];
+      return researchResult.predictions.filter(row => row.horizon === analysisHorizon)
+        .sort((a, b) => a.lead - b.lead).map((row, index, rows) => ({
+          date: row.target_end,
+          predicted_price: row.unavailable ? null : row.prediction,
+          periodLabel: rollingPeriodLabel(row.target_start, row.target_end, analysisHorizon, language),
+          reasoning: forecastExplanation(row.unavailable ? null : row.prediction, index === 0 ? (dailyAverageMode ? researchObservedAnchor : null) : (rows[index - 1].unavailable ? null : rows[index - 1].prediction), analysisHorizon, index === 0, row.target_start, row.target_end, dailyAverageMode, language),
         }));
+    }
+    if (historicalPreview) return analysisHorizon === 'daily' ? historicalPreview.dailyForecast.map(row => ({...row, periodLabel: row.date})) : [];
+    const forecasts = marketAnalysisForecasts(product, analysisHorizon)
+      .map(point => ({
+        date: point.date,
+        predicted_price: point.predicted!,
+        periodLabel: point.target_period_start && point.target_period_end ? rollingPeriodLabel(point.target_period_start, point.target_period_end, analysisHorizon, language) : null,
+      }));
 
     forecasts.sort((left, right) => left.date.localeCompare(right.date));
 
@@ -320,15 +377,15 @@ export default function Product({
       valuesByDate.set(date, existing);
     };
     product.forecastData
-      .filter(point => point.horizon === selectedHorizon || (!point.horizon && selectedHorizon === "daily"))
+      .filter(point => point.horizon === analysisHorizon || (!point.horizon && analysisHorizon === "daily"))
       .forEach(point => rememberValue(point.date, point.actual, point.predicted));
-    if (selectedHorizon === "daily" && product.lastActualDate) {
+    if (analysisHorizon === "daily" && product.lastActualDate) {
       rememberValue(product.lastActualDate, product.currentPrice, null);
     }
     forecasts.forEach(forecast => rememberValue(forecast.date, null, forecast.predicted_price));
     const periodValues = [...valuesByDate.values()].sort((left, right) => left.date.localeCompare(right.date));
-    const periodName = selectedHorizon === "daily" ? "day" : selectedHorizon === "weekly" ? "week" : "month";
-    const periodNameTl = selectedHorizon === "daily" ? "araw" : selectedHorizon === "weekly" ? "linggo" : "buwan";
+    const periodName = analysisHorizon === "daily" ? "day" : analysisHorizon === "weekly" ? "week" : "month";
+    const periodNameTl = analysisHorizon === "daily" ? "araw" : analysisHorizon === "weekly" ? "linggo" : "buwan";
     let valueIndex = 0;
     let previousValue: (typeof periodValues)[number] | null = null;
 
@@ -364,7 +421,7 @@ export default function Product({
 
       return { ...forecast, reasoning };
     });
-  }, [product, selectedHorizon, filteredForecasts, language]);
+  }, [product, analysisHorizon, language, researchMode, freshHybrid, useExperimental, researchResult, researchObservedAnchor]);
 
   /* ─── Slider Logic (Predict style) ──────────── */
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -526,17 +583,12 @@ export default function Product({
   const combinedName = product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name;
   const isUp = product.predictedPrice >= product.currentPrice;
   const hasModelForecast = product.forecastSource === "model";
-  const horizonForecastPoints = forecastHorizonPoints(
-    product.forecastData,
-    product.forecastOriginDate,
-    selectedHorizon,
-  );
-  const weeklyForecastPoint = forecastHorizonPoints(
-    product.forecastData,
-    product.forecastOriginDate,
+  const horizonForecastPoints = marketAnalysisForecasts(product, selectedHorizon);
+  const weeklyForecastPoint = dailyAverageMode ? researchChartPoints(researchRows).find(row => row.horizon === 'weekly') : marketAnalysisForecasts(
+    product,
     "weekly",
   )[0];
-  const weeklyChangePercent = hasModelForecast
+  const weeklyChangePercent = !researchMode && hasModelForecast
     && Number.isFinite(product.currentPrice) && product.currentPrice > 0
     && weeklyForecastPoint?.predicted != null && Number.isFinite(weeklyForecastPoint.predicted)
     ? ((weeklyForecastPoint.predicted - product.currentPrice) / product.currentPrice) * 100
@@ -547,10 +599,10 @@ export default function Product({
       && Number.isFinite(forecast.predicted_price)
       && forecast.predicted_price > 0,
   );
-  const outlookForecastPrice = selectedHorizon === "daily"
+  const outlookForecastPrice = dailyAverageMode ? displayedForecasts[0]?.predicted_price ?? null : selectedHorizon === "daily"
     ? firstDailyForecast?.predicted_price ?? horizonForecastPoints[0]?.predicted ?? null
     : horizonForecastPoints[0]?.predicted ?? null;
-  const outlookChangePercent = hasModelForecast
+  const outlookChangePercent = !researchMode && hasModelForecast
     && Number.isFinite(product.currentPrice) && product.currentPrice > 0
     && outlookForecastPrice != null && Number.isFinite(outlookForecastPrice)
     ? ((outlookForecastPrice - product.currentPrice) / product.currentPrice) * 100
@@ -558,25 +610,9 @@ export default function Product({
   // Movements within one percent are presented as a stable outlook.
   const outlookIsRising = outlookChangePercent != null && outlookChangePercent > 1;
   const outlookIsFalling = outlookChangePercent != null && outlookChangePercent < -1;
-  const validationReliability = productValidationReliability(product, forecastStatus);
-  const confidenceLevelKeys = {
-    "Very High": "confidenceVeryHigh",
-    High: "confidenceHigh",
-    Moderate: "confidenceModerate",
-    Low: "confidenceLow",
-    "Very Low": "confidenceVeryLow",
-    "Insufficient data": "confidenceInsufficientData",
-  } as const;
-  const confidenceScore = validationReliability?.confidence_score ?? null;
-  const confidenceLevel = validationReliability?.confidence_level ?? null;
-  const confidenceLabel = confidenceLevel
-    ? t(confidenceLevelKeys[confidenceLevel])
-    : t("confidenceUnavailable");
-  const dataUpdateAge = formatRelativeAge(forecastStatus?.generatedAt, language, now)
-    ?? formatScheduledDaRefreshAge(language, now);
-  const daProcessingStatus = `${forecastStatus?.generatedAt ? t("updatedPrefix") : t("scheduledRefresh")} ${dataUpdateAge}`;
-  const confidenceSublabel = validationReliability ? undefined : daProcessingStatus;
-  const confidenceTitle = confidenceScore != null ? t("confidenceBacktestTitle") : undefined;
+  // No admitted chronological calibrator for this exact forecast; never use
+  // product validation hit rates or historical relative accuracy as confidence.
+
 
   const sentimentIcon =
     product.sentiment === "Bullish" ? (
@@ -614,7 +650,7 @@ export default function Product({
   return (
     <>
 
-      <main id="main-content" className="relative pt-20 min-h-screen bg-surface overflow-hidden">
+      <main id="main-content" onClickCapture={preserveModelNavigation} className="relative pt-20 min-h-screen bg-surface overflow-hidden">
         {/* ─── Page Top Design ────────────────────────── */}
         <div className="absolute top-0 left-0 right-0 h-[500px] pointer-events-none overflow-hidden" aria-hidden="true">
           {/* Subtle Color Wash */}
@@ -649,14 +685,16 @@ export default function Product({
             {/* ─── Product Header ──────────────────────────── */}
             {/* ─── Product Header ──────────────────────────── */}
             <ScrollReveal delay={200} className="relative z-40">
-              <div className="relative bg-gradient-to-br from-primary-800 to-primary-900 mb-6 sm:mb-8 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-2xl border border-white/10 overflow-hidden">
+              <div className="relative bg-gradient-to-br from-primary-800 to-primary-900 mb-6 sm:mb-8 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-2xl border border-white/10">
                 {/* Background Atmospheric Effects */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-accent/20 rounded-full blur-[80px] -mr-20 -mt-20 pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-[60px] -ml-10 -mb-10 pointer-events-none" />
+                <div className="absolute inset-0 rounded-2xl sm:rounded-3xl overflow-hidden pointer-events-none" aria-hidden="true">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-accent/20 rounded-full blur-[80px] -mr-20 -mt-20 pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-[60px] -ml-10 -mb-10 pointer-events-none" />
+                </div>
 
                 <div className="relative space-y-4 sm:space-y-6">
                   {/* Top Row: Image + Details */}
-                  <div className="flex flex-row gap-4 sm:gap-6 lg:gap-8 items-center sm:items-start">
+                  <div className="relative z-30 flex flex-row gap-4 sm:gap-6 lg:gap-8 items-center sm:items-start">
                     {/* 1. Image */}
                     <div className="shrink-0 relative w-20 h-20 sm:w-28 sm:h-28 lg:w-36 lg:h-36 rounded-xl sm:rounded-2xl bg-white overflow-hidden shadow-xl border-[3px] sm:border-4 border-white/20 transform hover:scale-105 transition-transform duration-500">
                       <Image
@@ -796,7 +834,7 @@ export default function Product({
                   </div>
 
                   {/* Selectors - Mobile only (Full width row) */}
-                  <div className="flex sm:hidden flex-row gap-2 w-full pt-1">
+                  <div className="relative z-30 flex sm:hidden flex-row gap-2 w-full pt-1">
                     {/* Origin */}
                     <div className="relative flex-1">
                       <button
@@ -891,7 +929,7 @@ export default function Product({
                   </div>
 
                   {/* Description - Full width bottom */}
-                  <div className="mt-2 sm:mt-4 pt-3 sm:pt-4 border-t border-white/10">
+                  <div className="relative z-10 mt-2 sm:mt-4 pt-3 sm:pt-4 border-t border-white/10">
                     {(() => {
                       try {
                         const desc = typeof product.description === "string"
@@ -1003,7 +1041,7 @@ export default function Product({
             {/* ─── Main Content Layout (Dashboard Style) ──────── */}
             <div className="grid lg:grid-cols-12 gap-8 items-start">
               {/* Left Column: Forecast & Core Stats */}
-              <div className="lg:col-span-8 space-y-8">
+              <div className="min-w-0 lg:col-span-8 space-y-8">
                 {/* Price Forecast Chart */}
                 <ScrollReveal>
                   <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow">
@@ -1019,7 +1057,7 @@ export default function Product({
                           {t("marketPriceForecastDesc")}
                         </p>
                       </div>
-                      <div className="flex items-center p-1 bg-gray-50 rounded-xl border border-gray-100 w-fit">
+                      <div aria-label="Chart forecast horizon" className="flex items-center p-1 bg-gray-50 rounded-xl border border-gray-100 w-fit">
                         {(["daily", "weekly", "monthly"] as const).map((period) => (
                           <button
                             key={period}
@@ -1036,14 +1074,16 @@ export default function Product({
                       </div>
                     </div>
 
-                    <div className="relative">
+                    <div className="relative" data-testid="forecast-chart-series" data-horizon={chartPeriod}
+                      data-values={JSON.stringify(useExperimental ? displayedForecasts.map(row => ({ start: row.periodLabel, value: row.predicted_price })) : null)}>
                       <ForecastChart
-                        data={chartData}
+                        data={selectedChartData}
+                        forecastContract={researchMode && !rollingResearch ? "calendar_research" : "rolling"}
                         showGrid
                         showLegend
                         productName={product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name}
                         period={chartPeriod}
-                        forecastOriginDate={hasModelForecast ? product.forecastOriginDate : undefined}
+                        forecastOriginDate={useExperimental ? researchOrigin : hasModelForecast ? product.forecastOriginDate : undefined}
                       />
                     </div>
                   </div>
@@ -1072,26 +1112,15 @@ export default function Product({
                         </div>
                       </div>
                       <div className="flex min-w-0 flex-col items-end max-w-full sm:max-w-[55%]">
-                        {product.forecastSource !== "model" ? (
-                          <div className="flex items-center gap-1.5 px-3 py-1 bg-accent/10 border border-accent/20 rounded-full">
-                            <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-accent animate-pulse" />
-                            <span className="text-[10px] font-bold text-accent uppercase tracking-wider whitespace-nowrap">
-                              {t("fallbackEstimate")}
-                            </span>
-                          </div>
-                        ) : (
-                          <ConfidenceGauge
-                            percentage={confidenceScore}
-                            size={56}
-                            strokeWidth={4.5}
-                            label={confidenceScore != null
-                              ? `${t("confidenceLevel")}: ${confidenceLabel}`
-                              : confidenceLabel}
-                            sublabel={confidenceSublabel}
-                            title={confidenceTitle}
-                            variant="badge"
-                          />
-                        )}
+                        <ForecastConfidenceBadge historicalPicp context={{commodityId:product.id,category:product.category,name:product.name,variant:product.variant,origin:product.origin,unit:product.unit,
+                          modelId:dailyAverageMode && researchResult?.productId===product.id ? researchResult.model_run??'' : useExperimental ? '' : product.forecastModelRunId??'',
+                          route:dailyAverageMode ? 'model' : useExperimental ? 'unverified_research' : product.forecastSource??'',
+                          contractId:dailyAverageMode ? researchResult?.contract??ROLLING_CONTRACT : ROLLING_CONTRACT,horizon:chartPeriod,lead:1,
+                          targetStart:researchRows.filter(r=>r.horizon===chartPeriod).sort((a,b)=>a.lead-b.lead)[0]?.target_start??(!useExperimental ? (marketAnalysisForecasts(product,chartPeriod)[0]?.target_period_start ?? marketAnalysisForecasts(product,chartPeriod)[0]?.date ?? '') : ''),targetEnd:researchRows.filter(r=>r.horizon===chartPeriod).sort((a,b)=>a.lead-b.lead)[0]?.target_end??(!useExperimental ? (marketAnalysisForecasts(product,chartPeriod)[0]?.target_period_end ?? marketAnalysisForecasts(product,chartPeriod)[0]?.date ?? '') : ''),targetStatistic:chartPeriod==='daily'?'daily_price':chartPeriod==='weekly'?'rolling_7day_mean':'rolling_30day_mean',
+                          forecastOrigin:dailyAverageMode && researchResult?.productId===product.id ? researchResult.forecast_origin??'' : product.forecastOriginDate??'',
+                          modelOrigin:dailyAverageMode && researchResult?.productId===product.id ? researchResult.model_origin??'' : (!useExperimental ? (product.lastActualDate ?? product.forecastOriginDate ?? '') : ''),
+                          leadStart:dailyAverageMode && researchResult?.productId===product.id && researchResult.forecast_origin && researchResult.model_origin ? Math.round((Date.parse(researchResult.forecast_origin)-Date.parse(researchResult.model_origin))/86400000)+1 : 1,
+                          leadEnd:dailyAverageMode && researchResult?.productId===product.id && researchResult.forecast_origin && researchResult.model_origin ? Math.round((Date.parse(researchResult.forecast_origin)-Date.parse(researchResult.model_origin))/86400000)+(chartPeriod==='daily'?1:chartPeriod==='weekly'?7:30) : chartPeriod==='daily'?1:chartPeriod==='weekly'?7:30}} />
                       </div>
                     </div>
 
@@ -1115,8 +1144,8 @@ export default function Product({
                             <div className="flex flex-col h-full gap-4 relative min-h-[120px]">
                               <p className="text-sm text-gray-600 leading-relaxed text-justify">
                                 {t("aiFallbackIntro")} <span className="font-bold">{product.variant && product.variant !== "Standard" ? `${t(product.name)} (${product.variant})` : t(product.name)}</span> {t("showsA")}
-                                <span className="font-bold">{isUp ? t("strongUpward") : t("moderateDownward")}</span> {t("trend")}
-                                {isUp ? t("supplyConstraints") : t("inflowHarvests")}
+                                <span className="font-bold">{(outlookForecastPrice ?? product.predictedPrice) >= product.currentPrice ? t("strongUpward") : t("moderateDownward")}</span> {t("trend")}
+                                {(outlookForecastPrice ?? product.predictedPrice) >= product.currentPrice ? t("supplyConstraints") : t("inflowHarvests")}
                               </p>
 
                               <button
@@ -1134,27 +1163,24 @@ export default function Product({
                       {/* Selected-horizon forecast */}
                       <div className="flex flex-col h-full">
                         <div className="relative h-[30px] pr-2 border-b border-gray-50">
-                          {selectedHorizon === "daily" && (
-                            <div className="absolute right-2 bottom-2 flex items-center p-1 bg-gray-50 rounded-xl border border-gray-100 w-fit">
-                              {[
-                                { label: "3 Days", value: "3" },
-                                { label: "7 Days", value: "7" },
-                                { label: "This Month", value: "month" },
-                                { label: "All Time", value: "all" },
-                              ].map((item) => (
-                                <button
-                                  key={item.value}
-                                  onClick={() => setForecastRange(item.value as "3" | "7" | "month" | "all")}
-                                  className={`px-3 py-1.5 leading-4 text-[10px] font-bold rounded-lg transition-all ${forecastRange === item.value
-                                    ? "bg-white text-primary-800 shadow-sm border border-gray-100"
-                                    : "text-gray-400 hover:text-gray-600"
-                                    }`}
-                                >
-                                  {item.label}
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                          <div role="group" aria-label="Analysis forecast horizon" className="absolute right-2 bottom-2 flex items-center p-1 bg-gray-50 rounded-xl border border-gray-100 w-fit">
+                            {(["daily", "weekly", "monthly"] as const).map((period) => (
+                              <button
+                                key={period}
+                                onClick={() => {
+                                  setAnalysisHorizon(period);
+                                  setExpandedDate(null);
+                                }}
+                                aria-pressed={analysisHorizon === period}
+                                className={`px-3 py-1.5 leading-4 text-[10px] font-bold rounded-lg transition-all focus-visible:outline-2 focus-visible:outline-accent ${analysisHorizon === period
+                                  ? "bg-white text-primary-800 shadow-sm border border-gray-100"
+                                  : "text-gray-400 hover:text-gray-600"
+                                  }`}
+                              >
+                                {t(period)}
+                              </button>
+                            ))}
+                          </div>
                         </div>
 
                         {/* Collapsible dropdown button for mobile view only */}
@@ -1168,9 +1194,9 @@ export default function Product({
                                 <Calendar className="w-5 h-5" />
                               </div>
                               <span className="text-xs font-bold text-gray-900">
-                                {selectedHorizon === "daily"
+                                {analysisHorizon === "daily"
                                   ? t("viewDailyForecast")
-                                  : `${t(selectedHorizon)} ${t("forecast")}`}
+                                  : `${t(analysisHorizon)} ${t("forecast")}`}
                               </span>
                             </div>
                             <ChevronDown
@@ -1182,7 +1208,7 @@ export default function Product({
 
                         {/* Scrollable list container - limited to 5 rows and scrollable on mobile, absolute on desktop */}
                         <div className={`flex-1 relative ${mobileForecastExpanded ? "block animate-in fade-in slide-in-from-top-4 duration-300" : "hidden md:block"} min-h-[300px] md:min-h-0`}>
-                          <div key={`${selectedHorizon}-${forecastRange}`} className="max-h-[300px] overflow-y-auto md:max-h-none md:absolute md:inset-0 space-y-3 scrollbar-hide pr-2">
+                          <div key={analysisHorizon} aria-live="polite" className="max-h-[300px] overflow-y-auto md:max-h-none md:absolute md:inset-0 space-y-3 scrollbar-hide pr-2">
                             {displayedForecasts.length === 0 ? (
                               <p className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-xs text-gray-500">
                                 {t("forecastPeriodUnavailable")}
@@ -1197,7 +1223,7 @@ export default function Product({
                               const isExpanded = canExpand && expandedDate === forecast.date;
                               return (
                                 <div
-                                  key={`${selectedHorizon}-${forecast.date}-${i}`}
+                                  data-testid="forecast-analysis-row" key={`${analysisHorizon}-${forecast.date}-${i}`}
                                   onClick={canExpand ? () => setExpandedDate(isExpanded ? null : forecast.date) : undefined}
                                   className={`group flex flex-col p-4 rounded-2xl border transition-colors ${canExpand ? "cursor-pointer" : ""} ${isExpanded ? "border-accent/40 bg-gray-50" : "border-gray-100 hover:border-accent/40 hover:bg-gray-50"}`}
                                 >
@@ -1207,7 +1233,7 @@ export default function Product({
                                       <span className={`min-w-0 break-words text-xs font-bold leading-snug ${isExpanded ? "text-gray-900" : "text-gray-700"}`}>{dateStr}</span>
                                     </div>
                                     <span className="whitespace-nowrap text-right text-xs font-black text-gray-900 tabular-nums">
-                                      ₱{forecast.predicted_price.toFixed(2)}
+                                      {forecast.predicted_price == null ? "Unavailable" : `₱${forecast.predicted_price.toFixed(2)}`}
                                       {product.unit && <span className="text-[10px] text-gray-500 font-medium ml-0.5">/ {product.unit}</span>}
                                     </span>
                                   </div>
@@ -1252,7 +1278,7 @@ export default function Product({
                           : weeklyChangeIsUp
                             ? <TrendingUp className="w-4 h-4" />
                             : <TrendingDown className="w-4 h-4" />,
-                        sub: weeklyChangePercent == null ? t("forecastPeriodUnavailable") : t("forecast"),
+                        sub: t("forecast"),
                         color: weeklyChangePercent == null
                           ? "text-gray-500"
                           : weeklyChangeIsUp ? "text-price-up" : "text-price-down",
@@ -1266,7 +1292,7 @@ export default function Product({
                     ].map((stat) => (
                       <div
                         key={stat.label}
-                        className={`rounded-2xl border ${stat.border} p-5 shadow-sm transition-all hover:shadow-md ${stat.bg}`}
+                        className={`flex h-full min-w-0 flex-col rounded-2xl border ${stat.border} p-5 shadow-sm transition-all hover:shadow-md ${stat.bg}`}
                       >
                         <div className="flex items-center gap-2 text-gray-500 mb-3">
                           <span className="p-1.5 rounded-lg bg-white shadow-sm">{stat.icon}</span>
@@ -1274,10 +1300,10 @@ export default function Product({
                             {stat.label}
                           </span>
                         </div>
-                        <div className={`text-xl sm:text-2xl font-black ${stat.color}`}>
+                        <div className={`min-h-[4rem] break-words text-xl sm:text-2xl font-black ${stat.color}`}>
                           {stat.value}
                         </div>
-                        <div className="text-[10px] font-bold text-gray-400 mt-1 uppercase tracking-tight opacity-70">{stat.sub}</div>
+                        <div className="mt-auto pt-1 text-[10px] font-bold uppercase tracking-tight leading-4 text-gray-400 opacity-70">{stat.sub}</div>
                       </div>
                     ))}
                   </div>

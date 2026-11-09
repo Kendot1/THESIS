@@ -102,7 +102,7 @@ interface ProductVariant {
   origin?: string;
   image?: string;
   currentPrice: number;
-  predictedPrice: number;
+  predictedPrice: number | null;
 }
 
 interface ProductCardProps {
@@ -153,6 +153,7 @@ const ProductCard = ({
 
   const selectedVariant = variants.find(v => v.id === selectedVariantId) || variants[0];
   const { currentPrice, predictedPrice, variant, origin, id } = selectedVariant;
+  const hasPrediction = typeof predictedPrice === "number" && Number.isFinite(predictedPrice);
 
   const currentOrigin = origin || "Local";
   const uniqueOrigins = Array.from(new Set(variants.map(v => v.origin || "Local")));
@@ -169,7 +170,7 @@ const ProductCard = ({
   };
 
   const { t } = useLanguage();
-  const change = currentPrice === 0 ? 0 : ((predictedPrice - currentPrice) / currentPrice) * 100;
+  const change = !hasPrediction || currentPrice === 0 ? 0 : ((predictedPrice - currentPrice) / currentPrice) * 100;
   const isUp = change >= 0;
 
   return (
@@ -370,7 +371,7 @@ const ProductCard = ({
           </div>
           <div className="flex items-center justify-between gap-1 w-full min-w-0">
             <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase font-bold tracking-wider shrink-0">{t("predicted")}</span>
-            <span className={`text-[12px] sm:text-[14px] font-black truncate ${isUp ? "text-price-up" : "text-price-down"}`}>₱{predictedPrice.toFixed(1)}{unit ? `/${unit}` : ''}</span>
+            <span className={`text-[12px] sm:text-[14px] font-black truncate ${isUp ? "text-price-up" : "text-price-down"}`}>{hasPrediction ? `₱${predictedPrice.toFixed(1)}${unit ? `/${unit}` : ''}` : "N/A"}</span>
           </div>
         </div>
 

@@ -1,17 +1,16 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { Home, Search, Table2, Info, Mail, MapPin, TrendingUp, BarChart3 } from "lucide-react";
+import { Home, Search, Table2, Info, Mail, MapPin, TrendingUp, BarChart3, Newspaper, BookOpen } from "lucide-react";
 import GrassField from "./GrassField";
-import { verifiedWithinTenAccuracy } from "../lib/data";
-import { useForecastStatus } from "../lib/hooks";
+import { useHistoricalAccuracy } from "../lib/use-historical-accuracy";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { usePathname } from "next/navigation";
 
 const Footer = () => {
   const { t, isTransitioning } = useLanguage();
-  const { data: forecastStatus } = useForecastStatus();
-  const accuracyPercent = verifiedWithinTenAccuracy(forecastStatus?.modelMetrics);
+  const historicalAccuracy = useHistoricalAccuracy();
+  const accuracyPercent = historicalAccuracy;
   const currentYear = new Date().getFullYear();
   const pathname = usePathname();
 
@@ -80,9 +79,10 @@ const Footer = () => {
   const navLinks = [
     { href: "/", label: t("home"), icon: <Home className="w-4 h-4" /> },
     { href: "/Predict", label: t("predict"), icon: <TrendingUp className="w-4 h-4" /> },
-    { href: "/MarketData", label: t("marketData"), icon: <Table2 className="w-4 h-4" /> },
-    { href: "/Resources", label: t("resources"), icon: <Mail className="w-4 h-4" /> },
+    { href: "/News", label: t("news"), icon: <Newspaper className="w-4 h-4" /> },
+    { href: "/Map", label: t("marketMap"), icon: <MapPin className="w-4 h-4" /> },
     { href: "/About", label: t("about"), icon: <Info className="w-4 h-4" /> },
+    { href: "/Resources", label: t("resources"), icon: <BookOpen className="w-4 h-4" /> },
   ];
 
   return (
@@ -115,10 +115,10 @@ const Footer = () => {
                   <div>
                     <div className="text-white/80 text-xs font-semibold">
                       {accuracyPercent != null
-                        ? `${accuracyPercent.toFixed(1)}%`
+                        ? `${accuracyPercent.toFixed(2)}%`
                         : "—"}
                     </div>
-                    <div className="text-white/60 text-[10px]">{t("predictionSuccess")}</div>
+                    <div className="text-white/60 text-[10px]" title="Historical Daily-7 · 100 − MAPE; not current deployed accuracy">Forecast Accuracy</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

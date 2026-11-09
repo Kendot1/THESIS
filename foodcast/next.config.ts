@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Isolate only the dedicated local rolling preview; normal dev/build unchanged.
+  distDir: process.env.FOODCAST_LOCAL_RESEARCH === "rolling-research" ? ".next-rolling-research" : ".next",
   reactCompiler: true,
+  outputFileTracingIncludes: {
+    '/api/forecast/confidence': ['./artifacts/picp/**/*'],
+  },
   experimental: {
     optimizePackageImports: ["lucide-react", "recharts", "@base-ui/react"],
   },
