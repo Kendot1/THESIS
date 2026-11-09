@@ -618,7 +618,7 @@ async function nativeServerFetch(url: string, headers: Record<string, string>, t
   });
 }
 
-async function fetchFromNetwork<T>(path: string, retries = 3, bypassCache = false): Promise<T> {
+async function fetchFromNetwork<T>(path: string, retries = 3, bypassCache = false, timeoutMs = 15_000): Promise<T> {
   const isServer = typeof window === 'undefined';
   let fs: any, pathModule: any;
   let cacheFilePath = '';
@@ -664,15 +664,21 @@ async function fetchFromNetwork<T>(path: string, retries = 3, bypassCache = fals
 
       if (isServer) {
         // Use native Node.js HTTP — bypasses Next.js fetch cache entirely (no 2MB limit)
-        data = await nativeServerFetch(url, requestHeaders);
+        data = await nativeServerFetch(url, requestHeaders, timeoutMs);
       } else {
-        // Client-side: use normal fetch
-        const res = await fetch(url, { headers: requestHeaders, cache: 'no-store' });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: res.statusText }));
-          throw new Error(err.error || `Edge function error: ${res.status}`);
+        // Client-side: use normal fetch with timeout
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const res = await fetch(url, { headers: requestHeaders, cache: 'no-store', signal: controller.signal });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(err.error || `Edge function error: ${res.status}`);
+          }
+          data = await res.json();
+        } finally {
+          clearTimeout(timer);
         }
-        data = await res.json();
       }
       
       // Write to file cache (server only)
@@ -791,21 +797,27 @@ export async function fetchLiveProducts(): Promise<Product[]> {
 
 export async function fetchDashboardProducts(): Promise<DashboardProduct[]> {
   try {
-    // Dashboard prices are live operational data; do not reuse build, disk, or
-    // browser caches after a new forecast vintage is published.
-    const data = await fetchFromNetwork<unknown>("dashboard-products", 3, true);
-    // Older Edge deployments answer unknown paths with their status object.
-    // Never pass that object into Home, which expects an iterable product list.
+    const cached = memoryCache["dashboard-products"];
+    if (cached && cached.expiry > Date.now()) return cached.data;
+    const data = await fetchFromNetwork<unknown>("dashboard-products", 1, true, 2_500);
     if (Array.isArray(data) && data.every(product =>
-      product && Object.hasOwn(product, "forecastDate"))) return filterDisplayableDashboardProducts(data as DashboardProduct[]);
-    console.warn("Dashboard summary has no dated daily forecast; using live product details");
+      product && Object.hasOwn(product, "forecastDate"))) {
+      const res = filterDisplayableDashboardProducts(data as DashboardProduct[]);
+      if (res.length > 0) {
+        memoryCache["dashboard-products"] = { data: res, expiry: Date.now() + 60_000 };
+        return res;
+      }
+    }
   } catch (e) {
-    console.error("Error fetching dashboard products:", e);
+    // Fast fallthrough to live product map when dashboard summary times out
   }
   try {
-    // Never resurrect a cached weekly average as a live daily forecast when
-    // the summary endpoint times out or an older Edge deployment is serving.
-    return filterDisplayableDashboardProducts((await fetchLiveProducts()).map(toDashboardProduct));
+    const products = await fetchProducts();
+    const res = filterDisplayableDashboardProducts(products.map(toDashboardProduct));
+    if (res.length > 0) {
+      memoryCache["dashboard-products"] = { data: res, expiry: Date.now() + 60_000 };
+    }
+    return res;
   } catch (e) {
     console.error("Error fetching live dashboard fallback:", e);
     return [];
