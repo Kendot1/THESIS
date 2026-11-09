@@ -1,8 +1,8 @@
 import { fetchPaginatedUniqueNews, fetchNewsCategories, INITIAL_UNIQUE_NEWS_COUNT } from "../lib/data";
 import News from "../client/News";
 
-export const revalidate = 3600; // ISR revalidation (1 hour)
-export const dynamic = 'force-static';
+export const revalidate = 0;
+export const dynamic = 'force-dynamic';
 
 export default async function NewsPage() {
   // Fetch initial data on the server during SSG/ISR

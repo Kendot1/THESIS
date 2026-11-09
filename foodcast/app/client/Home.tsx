@@ -15,7 +15,7 @@ import WaveDivider from "../components/WaveDivider";
 import DailyMoverCard from "../components/DailyMoverCard";
 import NewsCard from "../components/NewsCard";
 import ScrollReveal from "../components/ScrollReveal";
-import { DEFAULT_PRODUCT_IMAGE, DashboardProduct, NewsArticle, formatRelativeAge, verifiedWithinTenAccuracy } from "../lib/data";
+import { DEFAULT_PRODUCT_IMAGE, DashboardProduct, NewsArticle, formatRelativeAge } from "../lib/data";
 import { useClock, useDashboardProducts, useForecastStatus, useNews } from "../lib/hooks";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { encryptId } from "../../lib/idCipher";
@@ -23,13 +23,14 @@ import { encryptId } from "../../lib/idCipher";
 interface HomeProps {
   initialProducts: DashboardProduct[];
   initialNews: NewsArticle[];
+  historical_forecast_accuracy_pct: number | null;
 }
 
-export default function Home({ initialProducts, initialNews }: HomeProps) {
+export default function Home({ initialProducts, initialNews, historical_forecast_accuracy_pct }: HomeProps) {
   const { data: products = [] } = useDashboardProducts(initialProducts);
   const { data: newsList = [] } = useNews(10, initialNews);
   const { data: forecastStatus } = useForecastStatus();
-  const predictionSuccess = verifiedWithinTenAccuracy(forecastStatus?.modelMetrics);
+  const predictionSuccess = historical_forecast_accuracy_pct;
   const now = useClock();
   const router = useRouter();
   const { t, language, isTransitioning } = useLanguage();
@@ -386,12 +387,12 @@ export default function Home({ initialProducts, initialNews }: HomeProps) {
                     },
                     {
                       value: predictionSuccess != null
-                        ? `${predictionSuccess.toFixed(1)}%`
-                        : "—",
-                      label: t("modelAccuracy"),
+                        ? `${predictionSuccess.toFixed(2)}%`
+                        : "N/A",
+                      label: "Forecast Accuracy",
                       detail: undefined,
                       period: undefined,
-                      title: t("predictionSuccessExplanation"),
+                      title: "Historical Daily-7 reference; not a future guarantee or deployment verification",
                     },
                     {
                       value: formatRelativeAge(forecastStatus?.generatedAt, language, now)

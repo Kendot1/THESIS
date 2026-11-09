@@ -23,7 +23,8 @@ import Image from "next/image";
 import WaveDivider from "../components/WaveDivider";
 import ScrollReveal from "../components/ScrollReveal";
 import { useLanguage } from "../lib/i18n/LanguageContext";
-import { verifiedWithinTenAccuracy, type DashboardProduct, type ForecastStatus } from "../lib/data";
+import { type DashboardProduct, type ForecastStatus } from "../lib/data";
+import { useHistoricalAccuracy } from "../lib/use-historical-accuracy";
 import { useDashboardProducts, useForecastStatus } from "../lib/hooks";
 
 
@@ -39,7 +40,7 @@ export default function AboutPage({
   const { data: products = [], error: productsError, isLoading: productsLoading } = useDashboardProducts(initialProducts);
   const { data: forecastStatus } = useForecastStatus(initialForecastStatus);
   const numberFormat = new Intl.NumberFormat(language === "tl" ? "fil-PH" : "en-PH");
-  const accuracy = verifiedWithinTenAccuracy(forecastStatus?.modelMetrics);
+  const accuracy = useHistoricalAccuracy();
   const forecastRows = forecastStatus?.rowCount;
 
   const stats = [
@@ -51,8 +52,8 @@ export default function AboutPage({
       icon: <BarChart3 className="w-5 h-5" />,
     },
     {
-      value: accuracy == null ? "—" : `${accuracy.toFixed(1)}%`,
-      label: t("modelAccuracy"),
+      value: accuracy == null ? "—" : `${accuracy.toFixed(2)}%`,
+      label: "Forecast Accuracy",
       icon: <Target className="w-5 h-5" />,
     },
     {

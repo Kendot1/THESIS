@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import ts from 'typescript';
+import {renderToStaticMarkup} from 'react-dom/server';
+const require=createRequire(import.meta.url);
+const transpile=s=>ts.transpile(s,{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true,target:ts.ScriptTarget.ES2022});
+const helpers={};
+import {loadTs} from './load-ts.mjs';
+const widget=loadTs('../app/components/ConfidenceWidget.tsx');
+test('null confidence has no percentage, bar value or certainty category',()=>{const html=renderToStaticMarkup(widget.default({value:null}));assert.ok(html.includes('Insufficient data'));assert.ok(!/\d+\.\d%/.test(html));assert.ok(!html.includes('aria-valuenow'));for(const word of ['HIGH','MODERATE','LOW'])assert.ok(!html.includes(word));});
+const report=JSON.parse(readFileSync('../audits/product_accuracy_v1/historical_indicator_v1/SUPPORT.json','utf8'));
+test('actual 100 percent hit-frequency evidence is not shown as confidence',()=>{const c=report.cells.find(x=>x.series==='Fish||Tilapia||Standard||Local||kg'&&x.horizon==='daily'&&x.lead==='1'&&x.route==='model');assert.equal(c.pct,100);const e=loadTs('../app/components/HistoricalIndicator.tsx',{'./ConfidenceWidget':widget});const html=renderToStaticMarkup(e.default({product:{category:'Fish',name:'Tilapia',variant:'Standard',origin:'Local',unit:'kg',forecastSource:'model',forecastModelRunId:c.model_run_id},horizon:'daily'}));assert.ok(html.includes('Insufficient data'));assert.ok(!html.includes('100.0%'));assert.ok(!html.includes('24/24'));});

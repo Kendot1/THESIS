@@ -11,7 +11,7 @@ export const metadata = {
 };
 
 export default async function MapPage() {
-  const products = await fetchProducts();
+  const products = await fetchProducts().catch(() => []);
   
   // Use ALL known NCR markets — no dynamic geocoding of unknown origins
   const markets: MarketLocation[] = [...ncrMarkets];

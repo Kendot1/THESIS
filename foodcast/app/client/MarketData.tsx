@@ -18,7 +18,7 @@ import { useProducts } from "../lib/hooks";
 type SortKey = "name" | "category" | "origin" | "currentPrice" | "predictedPrice" | "change" | "volume";
 type SortDir = "asc" | "desc";
 
-export default function MarketData({ initialProducts }: { initialProducts: Product[] }) {
+export default function MarketData({ initialProducts }: { initialProducts?: Product[] }) {
   const { t, isTransitioning } = useLanguage();
   const { data: products = [], isLoading } = useProducts(initialProducts);
 

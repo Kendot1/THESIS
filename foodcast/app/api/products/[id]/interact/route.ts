@@ -5,6 +5,9 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (process.env.NODE_ENV === "development" && process.env.FOODCAST_LOCAL_READ_ONLY === "1") {
+    return NextResponse.json({ skipped: "Local read-only preview" });
+  }
   try {
     const { id: productId } = await params;
     

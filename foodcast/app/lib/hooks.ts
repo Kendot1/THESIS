@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { fetchProducts, fetchNews, isPriceImpactNews, Product, NewsArticle, DashboardProduct, ForecastStatus } from "./data";
+import { fetchProducts, fetchNews, filterDisplayableProducts, isPriceImpactNews, Product, NewsArticle, DashboardProduct, ForecastStatus } from "./data";
 
 const LOCAL_CACHE_PREFIX = "foodcast_cache_";
 
@@ -22,6 +22,10 @@ function getSyncCache<T>(key: string): T | undefined {
   return undefined;
 }
 
+function displayableCache(cached: Product[] | undefined) {
+  return cached ? filterDisplayableProducts(cached) : undefined;
+}
+
 export function useProducts(fallbackData?: Product[]) {
   return useSWR<Product[]>("supabase_products_v6_horizons", fetchProducts, {
     revalidateOnFocus: false,
@@ -30,7 +34,9 @@ export function useProducts(fallbackData?: Product[]) {
     // chart arrays. Hydrate with the versioned full-product cache on mount.
     revalidateOnMount: true,
     dedupingInterval: 5 * 60 * 1000, // 5 min dedup
-    fallbackData: fallbackData || getSyncCache<Product[]>("products"),
+    // Server fallbacks come from fetchProducts (already filtered before heavy
+    // arrays are stripped). Raw browser caches must pass the same display rule.
+    fallbackData: fallbackData || displayableCache(getSyncCache<Product[]>("products")),
   });
 }
 
@@ -83,9 +89,11 @@ export function useClock(interval = 60_000) {
 export function useNews(limit = 10, fallbackData?: NewsArticle[]) {
   const cachedNews = fallbackData || getSyncCache<NewsArticle[]>(`news?limit=${limit}`);
   const result = useSWR<NewsArticle[]>(`supabase_news_${limit}`, () => fetchNews(limit), {
-    revalidateOnFocus: false,
-    revalidateIfStale: false,
-    dedupingInterval: 5 * 60 * 1000,
+    revalidateOnFocus: true,
+    revalidateOnMount: true,
+    refreshInterval: 60_000,
+    revalidateIfStale: true,
+    dedupingInterval: 10_000,
     fallbackData: cachedNews?.filter(isPriceImpactNews),
   });
   return { ...result, data: result.data?.filter(isPriceImpactNews) };

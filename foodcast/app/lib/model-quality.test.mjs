@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { withModelCapability } from './model-quality.ts';
-import { formatNewsPublicationDate } from './data.ts';
+import { loadTs } from '../../tests/load-ts.mjs';
+const { formatNewsPublicationDate } = loadTs('../app/lib/data.ts');
 
 const capability = { evaluation_source: 'chronological_validation',
   success_definition: 'absolute_percentage_error_at_most_tolerance', prediction_success: .74 };

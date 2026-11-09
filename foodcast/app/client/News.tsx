@@ -53,7 +53,6 @@ export default function News({ initialNews, initialTotal, initialOffset, initial
   const [isDateOpen, setIsDateOpen] = useState(false);
   const categoryRef = useRef<HTMLDivElement>(null);
   const dateRef = useRef<HTMLDivElement>(null);
-  const isInitialMount = useRef(true);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -71,30 +70,23 @@ export default function News({ initialNews, initialTotal, initialOffset, initial
     ? news
     : news.slice(1);
 
-  // Filter changes
+  // Revalidate on mount/focus and cancel stale searches rather than preserving
+  // a previously empty server snapshot or letting older requests win a race.
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      // If initial server data was empty (e.g. SSG without env), fetch on mount
-      if (initialNews.length === 0) {
-        setLoading(true);
-        fetchPaginatedUniqueNews(0, INITIAL_UNIQUE_NEWS_COUNT, "", "All", "All").then(({ data, total, rawCount }) => {
-          setNews(mergeUniqueNews([], data));
-          setTotalRecords(total);
-          setNextOffset(rawCount);
-          setLoading(false);
-        });
-      }
-      return;
-    }
-    setLoading(true);
-    const dbCategory = selectedCategory === "All" ? "All" : toEventTypeKey(selectedCategory);
-    fetchPaginatedUniqueNews(0, 10, searchQuery, dbCategory, dateFilter).then(({ data, total, rawCount }) => {
+    let active = true;
+    const refresh = async () => {
+      setLoading(true);
+      const dbCategory = selectedCategory === "All" ? "All" : toEventTypeKey(selectedCategory);
+      const { data, total, rawCount } = await fetchPaginatedUniqueNews(0, INITIAL_UNIQUE_NEWS_COUNT, searchQuery, dbCategory, dateFilter);
+      if (!active) return;
       setNews(mergeUniqueNews([], data));
       setTotalRecords(total);
       setNextOffset(rawCount);
       setLoading(false);
-    });
+    };
+    void refresh();
+    window.addEventListener('focus', refresh);
+    return () => { active = false; window.removeEventListener('focus', refresh); };
   }, [searchQuery, selectedCategory, dateFilter]);
 
   const handleLoadMore = async () => {
