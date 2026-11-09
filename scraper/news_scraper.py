@@ -1057,7 +1057,11 @@ class NewsScraper:
     # Storage
     # ------------------------------------------------------------------
     def _store_article(self, article: Dict[str, Any]) -> bool:
-        """Store a processed article in Supabase."""
+        """Store only an ABS-CBN article, including at the final write boundary."""
+        parsed_url = urlparse(str(article.get("url", "")))
+        if parsed_url.scheme not in {"https", "http"} or not self._is_supported_publisher(parsed_url.hostname):
+            log.warning("Rejected news storage: publisher is not ABS-CBN")
+            return False
         if self.dry_run:
             return False
         try:

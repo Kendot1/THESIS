@@ -139,17 +139,22 @@ export async function loadActiveModelPicpArtifact(
 }
 
 export async function approvedConfidenceRegistry(
-  options?: { artifactsRoot?: string }
+  _options?: { artifactsRoot?: string }
 ): Promise<AdmittedConfidence[]> {
-  const loaded = await loadActiveModelPicpArtifact(options?.artifactsRoot);
-  if (!loaded) return [];
-  const { activeRunId, artifact } = loaded;
-  const entries: AdmittedConfidence[] = [];
-  for (const record of artifact.records) {
-    const entry = toPicpEntry(record, activeRunId);
-    if (entry && entry.status === 'valid' && entry.approved) {
-      entries.push(entry);
+  // Serving uses only the configured Supabase project. The offline artifact
+  // loader remains available for audit tools, never as a serving fallback.
+  try {
+    const { supabase } = await import('../../lib/supabase');
+    const { data, error } = await supabase.rpc('read_model_confidence_evaluations');
+    if (error || !data?.model_run_id || !Array.isArray(data.records)) return [];
+    const entries: AdmittedConfidence[] = [];
+    for (const stored of data.records) {
+      if (stored.independently_approved !== true || !stored.evaluation) continue;
+      const entry = toPicpEntry(stored.evaluation as RawPicpRecord, data.model_run_id);
+      if (entry && entry.status === 'valid' && entry.approved) entries.push(entry);
     }
+    return entries;
+  } catch {
+    return [];
   }
-  return entries;
 }

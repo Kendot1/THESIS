@@ -1,12 +1,10 @@
 import { fetchProducts } from "../../lib/data";
-import { encryptId, decryptId } from "../../../lib/idCipher";
+import { decryptId } from "../../../lib/idCipher";
 import Product from "../../client/Product";
 
 export async function generateStaticParams() {
-  const products = await fetchProducts();
-  return products.map((p) => ({
-    id: encryptId(p.id),
-  }));
+  // Generate each product on first visit, then retain the hourly ISR cache.
+  return [];
 }
 
 export const dynamic = 'force-static';

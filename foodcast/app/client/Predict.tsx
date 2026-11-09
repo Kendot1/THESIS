@@ -16,10 +16,11 @@ import { encryptId } from "../../lib/idCipher";
 import { useProducts, useTrendingInteractions, useNews } from "../lib/hooks";
 import { getInheritedTags } from "../lib/tags";
 import { researchChartPoints } from "../lib/local-model";
+import { marketAnalysisForecasts } from "../lib/market-analysis";
 import type { StagingForecast } from "../research-model-test/staging";
 
 interface PredictProps {
-  initialProducts: Product[];
+  initialProducts?: Product[];
 }
 
 const INITIAL_VISIBLE_PRODUCTS = 4;
@@ -259,7 +260,11 @@ function PredictContent({ initialProducts }: PredictProps) {
     ]
     : featuredFullData;
   const featuredForecast = useCurrentAverage || featuredProduct?.forecastSource === "model"
-    ? forecastHorizonPoints(featuredChartData, featuredChartOrigin, featuredHorizon)[0]
+    ? marketAnalysisForecasts({
+      forecastData: featuredChartData,
+      forecastOriginDate: featuredChartOrigin,
+      forecastSource: "model",
+    }, featuredHorizon)[0]
     : undefined;
   const featuredObservedAnchor = featuredChartData
     .filter(point => (point.horizon ?? 'daily') === 'daily' && point.actual != null

@@ -567,15 +567,26 @@ const memoryCache: Record<string, { data: any; expiry: number }> = {};
 const pendingRequests = new Map<string, Promise<unknown>>();
 
 // Invalidate payloads cached before weekly/monthly rows were published.
-const CACHE_VERSION = "v8_saved_period_forecasts";
+const CACHE_VERSION = "v9_preserved_forecast_vintage";
 const LOCAL_CACHE_PREFIX = `foodcast_cache_${CACHE_VERSION}_`;
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour persistent cache
 
+// Server-side dynamic loader for Node.js built-ins so client bundlers (Turbopack/Webpack)
+// never attempt to resolve 'fs', 'path', 'http', or 'https' in browser bundles.
+function getServerBuiltin<T = any>(moduleName: string): T {
+  const proc = typeof process !== "undefined" ? (process as any) : null;
+  if (proc && typeof proc.getBuiltinModule === "function") {
+    return proc.getBuiltinModule(moduleName) as T;
+  }
+  const dynamicRequire = (0, eval)("require") as NodeRequire;
+  return dynamicRequire(moduleName) as T;
+}
+
 // Server-side raw HTTP request that bypasses Next.js's patched fetch()
 // This avoids the "items over 2MB can not be cached" warning entirely.
-async function nativeServerFetch(url: string, headers: Record<string, string>): Promise<any> {
-  const https = require('https');
-  const http = require('http');
+async function nativeServerFetch(url: string, headers: Record<string, string>, timeoutMs = 15_000): Promise<any> {
+  const https = getServerBuiltin('https');
+  const http = getServerBuiltin('http');
 
   return new Promise((resolve, reject) => {
     const mod = url.startsWith('https') ? https : http;
@@ -601,6 +612,8 @@ async function nativeServerFetch(url: string, headers: Record<string, string>): 
         }
       });
     });
+    const deadline = setTimeout(() => req.destroy(new Error('Upstream request deadline exceeded')), timeoutMs);
+    req.on('close', () => clearTimeout(deadline));
     req.on('error', reject);
     req.end();
   });
@@ -613,8 +626,8 @@ async function fetchFromNetwork<T>(path: string, retries = 3, bypassCache = fals
   
   if (isServer && !bypassCache) {
     try {
-      fs = require('fs');
-      pathModule = require('path');
+      fs = getServerBuiltin('fs');
+      pathModule = getServerBuiltin('path');
       const cacheDir = pathModule.join(process.cwd(), '.next', 'custom-cache');
       if (!fs.existsSync(cacheDir)) {
         fs.mkdirSync(cacheDir, { recursive: true });
@@ -677,13 +690,16 @@ async function fetchFromNetwork<T>(path: string, retries = 3, bypassCache = fals
         memoryCache[path] = { data, expiry: now + 60 * 60 * 1000 };
       }
       
-      // Update localStorage (client only)
+      // Update localStorage (client only, skip payloads > 2MB to avoid QuotaExceededError)
       if (!bypassCache && !isServer) {
         try {
-          localStorage.setItem(LOCAL_CACHE_PREFIX + path, JSON.stringify({
+          const serialized = JSON.stringify({
             data,
             expiry: now + CACHE_TTL
-          }));
+          });
+          if (serialized.length <= 2_000_000) {
+            localStorage.setItem(LOCAL_CACHE_PREFIX + path, serialized);
+          }
         } catch (e) {
           console.warn("LocalStorage cache write failed (quota exceeded?):", e);
         }

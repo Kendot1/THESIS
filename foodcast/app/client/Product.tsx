@@ -583,14 +583,9 @@ export default function Product({
   const combinedName = product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name;
   const isUp = product.predictedPrice >= product.currentPrice;
   const hasModelForecast = product.forecastSource === "model";
-  const horizonForecastPoints = forecastHorizonPoints(
-    product.forecastData,
-    product.forecastOriginDate,
-    selectedHorizon,
-  );
-  const weeklyForecastPoint = dailyAverageMode ? researchChartPoints(researchRows).find(row => row.horizon === 'weekly') : forecastHorizonPoints(
-    product.forecastData,
-    product.forecastOriginDate,
+  const horizonForecastPoints = marketAnalysisForecasts(product, selectedHorizon);
+  const weeklyForecastPoint = dailyAverageMode ? researchChartPoints(researchRows).find(row => row.horizon === 'weekly') : marketAnalysisForecasts(
+    product,
     "weekly",
   )[0];
   const weeklyChangePercent = !researchMode && hasModelForecast

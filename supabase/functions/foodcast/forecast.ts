@@ -87,7 +87,7 @@ export function addUtcDays(date: string, days: number): string {
 export function resolveForecastOrigin(lastActualDate: string, savedOrigin?: string | null): string {
   const actual = dateOnly(lastActualDate);
   const saved = dateOnly(String(savedOrigin || ""));
-  return isIsoDate(actual) && isIsoDate(saved) && saved >= actual ? saved : actual;
+  return isIsoDate(saved) ? saved : actual;
 }
 
 /** Keep only stored period points tied to the selected, still-current daily forecast. */

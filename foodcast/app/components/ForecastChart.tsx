@@ -189,7 +189,16 @@ const ForecastChart = ({
   // Build series data
   const { actualData, predictedData, forecastPoints } = useMemo(() => {
     const selected = period.toLowerCase() as ForecastHorizon;
-    const dailyActuals = data.filter(point => (point.horizon ?? "daily") === "daily"
+    const selectedForecasts = marketAnalysisForecasts(
+      { forecastData: data, forecastOriginDate, forecastSource: "model" },
+      selected,
+      forecastContract,
+    );
+    const selectedForecastByDate = new Map(selectedForecasts.map(point => [`${point.horizon ?? selected}:${point.date}`, point]));
+    const chartInput = data.filter(point => (point.horizon ?? "daily") !== selected
+      || point.actual != null
+      || selectedForecastByDate.has(`${point.horizon ?? selected}:${point.date}`));
+    const dailyActuals = chartInput.filter(point => (point.horizon ?? "daily") === "daily"
       && point.actual != null && Number.isFinite(point.actual));
     // Derive every view from the same causal daily observations, never from
     // precomputed period records (which can belong to a different origin).
@@ -227,7 +236,7 @@ const ForecastChart = ({
         .map(([end, bucket]) => ({ time: end as Time, value: bucket.sum / bucket.count, periodStart: bucket.start }));
       actuals.push({ time: latest.date as Time, value: latest.actual! });
     }
-    const forecastPoints = marketAnalysisForecasts({ forecastData: data, forecastOriginDate, forecastSource: "model" }, selected, forecastContract);
+    const forecastPoints = selectedForecasts;
     const predictions = forecastPoints.map(point => ({ time: point.date as Time, value: point.predicted! }));
 
     // Start the forecast line at the latest observed price. Without this

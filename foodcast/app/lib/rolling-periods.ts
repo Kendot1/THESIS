@@ -10,7 +10,7 @@ export function rollingPeriods(origin: string): Record<'daily' | 'weekly' | 'mon
   if (!/^\d{4}-\d{2}-\d{2}$/.test(origin) || !Number.isFinite(timestamp) || new Date(timestamp).toISOString().slice(0, 10) !== origin) throw new Error('Invalid origin');
   const date = (offset: number) => new Date(timestamp + offset * 86400000).toISOString().slice(0, 10);
   const period = (lead: number, from: number, to: number): RollingPeriod => ({ lead, target_start: date(from), target_end: date(to), period_days: to - from + 1 });
-  return { daily: Array.from({ length: 7 }, (_, i) => period(i + 1, i + 1, i + 1)), weekly: Array.from({ length: 4 }, (_, i) => period(i + 1, i * 7 + 1, i * 7 + 7)), monthly: [period(1, 1, 30)] };
+  return { daily: Array.from({ length: 7 }, (_, i) => period(i + 1, i + 1, i + 1)), weekly: Array.from({ length: 4 }, (_, i) => period(i + 1, i * 7 + 1, i * 7 + 7)), monthly: [period(1, 0, 29)] };
 }
 export function rollingPeriodLabel(start: string, end: string, horizon: string, language = 'en'): string {
   const short = (value: string) => new Date(`${value}T00:00:00Z`).toLocaleDateString(language === 'tl' ? 'fil-PH' : 'en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });

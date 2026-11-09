@@ -1,6 +1,56 @@
 import { forecastHorizonPoints } from "./data";
 import type { ForecastDataPoint, ForecastHorizon, Product } from "./data";
 
+function addUtcDays(value: string, days: number): string {
+  const date = new Date(`${value}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function averageDailyForecasts(
+  data: ForecastDataPoint[],
+  origin: string,
+  horizon: "weekly" | "monthly",
+): ForecastDataPoint[] {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(origin) || !Number.isFinite(Date.parse(`${origin}T00:00:00Z`))) return [];
+  const daily = data
+    .filter(point => (point.horizon === "daily" || point.horizon == null)
+      && point.date >= origin
+      && point.predicted != null
+      && Number.isFinite(point.predicted)
+      && point.predicted > 0)
+    .sort((left, right) => left.date.localeCompare(right.date));
+  const byDate = new Map(daily.map(point => [point.date, point]));
+  const periods = horizon === "weekly"
+    ? Array.from({ length: 4 }, (_, index) => ({
+      step: index + 1,
+      start: addUtcDays(origin, index * 7 + 1),
+      end: addUtcDays(origin, index * 7 + 7),
+    }))
+    : [{ step: 1, start: origin, end: addUtcDays(origin, 29) }];
+
+  return periods.flatMap(period => {
+    const values: number[] = [];
+    for (let offset = 0; offset <= (Date.parse(period.end) - Date.parse(period.start)) / 86400000; offset++) {
+      const point = byDate.get(addUtcDays(period.start, offset));
+      if (!point?.predicted || !Number.isFinite(point.predicted)) return [];
+      values.push(point.predicted);
+    }
+    return [{
+      date: period.end,
+      name: period.start,
+      actual: null,
+      predicted: Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2)),
+      horizon,
+      target_period_start: period.start,
+      target_period_end: period.end,
+      forecast_step: period.step,
+      covered_days: values.length,
+      period_days: values.length,
+    }];
+  });
+}
+
 /** Select saved prices for the current contract; never aggregate a daily path. */
 export function marketAnalysisForecasts(
   product: Pick<Product, "forecastSource" | "forecastOriginDate" | "forecastData">,
@@ -9,8 +59,16 @@ export function marketAnalysisForecasts(
 ): ForecastDataPoint[] {
   const origin = product.forecastOriginDate;
   if (horizon !== "daily" && product.forecastSource !== "model") return [];
-  if (contract === "rolling" || horizon === "daily") {
+  if (horizon === "daily") {
     return forecastHorizonPoints(product.forecastData, origin, horizon);
+  }
+  if (contract === "rolling") {
+    // The publisher persists means computed from its complete daily path, even
+    // when the public payload contains only the first seven daily predictions.
+    // Require exact origin-relative ranges, counts and steps before using them.
+    const saved = forecastHorizonPoints(product.forecastData, origin, horizon);
+    if (saved.length > 0) return saved;
+    return averageDailyForecasts(product.forecastData, origin ?? "", horizon);
   }
   // Explicit historical research bypass only: retain the original calendar
   // targets without moving dates or passing these rows off as rolling prices.

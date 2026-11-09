@@ -6,16 +6,8 @@ export const dynamic = 'force-static';
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-  const newsList = await fetchNews(50);
-  const tags = new Set<string>();
-  
-  newsList.forEach((article) => {
-    getNewsTagKeywords(article).forEach((kw) => tags.add(kw));
-  });
-
-  return Array.from(tags).map((tag) => ({
-    id: tag,
-  }));
+  // Generate tags on demand instead of fetching and rendering every tag at build.
+  return [];
 }
 
 export default async function TagPage({ params }: { params: Promise<{ id: string }> }) {
