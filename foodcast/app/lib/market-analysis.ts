@@ -66,8 +66,26 @@ export function marketAnalysisForecasts(
     // The publisher persists means computed from its complete daily path, even
     // when the public payload contains only the first seven daily predictions.
     // Require exact origin-relative ranges, counts and steps before using them.
-    const saved = forecastHorizonPoints(product.forecastData, origin, horizon);
-    if (saved.length > 0) return saved;
+    const saved = product.forecastData
+      .filter(point => point.horizon === horizon
+        && point.date > (origin ?? "")
+        && point.target_period_start != null
+        && point.target_period_end === point.date
+        && (horizon === "monthly"
+          ? ((point.target_period_start === origin && point.date === addUtcDays(origin!, 29))
+            || (point.target_period_start === addUtcDays(origin!, 1) && point.date === addUtcDays(origin!, 30)))
+          : (point.forecast_step != null
+            && point.target_period_start === addUtcDays(origin!, (point.forecast_step - 1) * 7 + 1)
+            && point.date === addUtcDays(origin!, point.forecast_step * 7)))
+        && point.predicted != null
+        && Number.isFinite(point.predicted)
+        && point.predicted > 0
+        && (point.forecast_step == null || point.forecast_step > 0)
+        && (point.covered_days == null || point.period_days == null || point.covered_days === point.period_days))
+      .sort((left, right) => (left.forecast_step ?? 0) - (right.forecast_step ?? 0)
+        || left.date.localeCompare(right.date));
+    const expectedCount = horizon === "weekly" ? 4 : 1;
+    if (saved.length >= expectedCount) return saved.slice(0, expectedCount);
     return averageDailyForecasts(product.forecastData, origin ?? "", horizon);
   }
   // Explicit historical research bypass only: retain the original calendar
