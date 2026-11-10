@@ -10,7 +10,8 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from evaluation.frozen_holdout import score
 from evaluation.promotion import (
-    COMPONENTS, digest, validation_comparison, verify_promotion_evidence,
+    COMPONENTS, POLICY_VERSION, digest, validation_comparison,
+    verify_promotion_evidence,
 )
 from models.model_store import ModelStore, REQUIRED_FILES
 
@@ -41,7 +42,7 @@ class PromotionEvidenceTests(unittest.TestCase):
                       for m in (9, 10, 11) for d in (5, 10)]
         self.csv("validation.csv", validation)
         self.selection = dict(model_run_id=self.run.name, model_metadata_sha256=digest(self.run / "metadata.json"),
-            promotion_policy_version=2,
+            promotion_policy_version=POLICY_VERSION,
             selected_at="2024-12-31T00:00:00+00:00", declared_series=[self.series],
             validation_forecasts_sha256=digest(self.evidence / "validation.csv"))
         self.write(self.evidence / "selection.json", self.selection)
@@ -60,7 +61,7 @@ class PromotionEvidenceTests(unittest.TestCase):
         self.write(self.evidence / "actuals.json", self.actual_manifest)
         self.rescore()
         self.review = dict(schema_version=1, model_run_id=self.run.name, reviewed_by="Synthetic test reviewer",
-            promotion_policy_version=2,
+            promotion_policy_version=POLICY_VERSION,
             reviewed_at="2025-02-02T00:00:00+00:00", selection_provenance_checked=True,
             actuals_provenance_checked=True, holdout_not_used_for_selection=True)
         self.refresh_review()
@@ -156,10 +157,10 @@ class PromotionEvidenceTests(unittest.TestCase):
         self.write(self.evidence / "actuals.json", self.actual_manifest)
         self.rescore()
         self.refresh_review()
-        with self.assertRaisesRegex(ValueError, "fails the metric"):
+        with self.assertRaisesRegex(ValueError, "misses pooled"):
             self.verify()
 
-    def test_final_within_10_regression_vs_persistence_is_rejected(self):
+    def test_final_within_5_regression_blocks_activation(self):
         for index, row in enumerate(self.forecasts):
             row["anchor"] = 105
             row["prediction"] = 111 if index < 3 else 100
@@ -169,11 +170,29 @@ class PromotionEvidenceTests(unittest.TestCase):
         self.rescore()
         self.refresh_review()
         score_report = self.read(self.evidence / "score.json")
-        self.assertTrue(score_report["target_met_for_full_declared_scope"])
+        self.assertFalse(score_report["target_met_for_full_declared_scope"])
         self.assertLess(
-            score_report["overall"]["within_10_accuracy_pct"],
-            score_report["persistence_on_same_rows"]["within_10_accuracy_pct"])
-        with self.assertRaisesRegex(ValueError, "does not improve on matched persistence"):
+            score_report["published_outputs_overall"]["within_5_php_accuracy_pct"],
+            score_report["published_outputs_persistence"]["within_5_php_accuracy_pct"])
+        with self.assertRaisesRegex(ValueError, "misses pooled Within-5-PHP"):
+            self.verify()
+
+    def test_mape_complement_cannot_replace_the_within_5_php_target(self):
+        for index in (0, 10, 20):
+            self.forecasts[index]["prediction"] = 115
+        self.csv("forecasts.csv", self.forecasts)
+        self.contract["forecast_sha256"] = digest(self.evidence / "forecasts.csv")
+        self.write(self.evidence / "contract.json", self.contract)
+        self.rescore()
+        score_report = self.read(self.evidence / "score.json")
+        daily = score_report["timeframes"]["daily"]["overall"]
+        self.assertGreaterEqual(score_report["published_outputs_overall"][
+            "accuracy_100_minus_mape_pct"], 95.0)
+        self.assertLess(daily["within_5_php_accuracy_pct"], 95.0)
+        self.assertEqual(score_report["thresholds"]["within_5_php_tolerance"], 5.0)
+        self.assertFalse(score_report["target_met_for_full_declared_scope"])
+        self.refresh_review()
+        with self.assertRaisesRegex(ValueError, "misses pooled Within-5-PHP"):
             self.verify()
 
     def test_validation_regression_blocks_promotion(self):
@@ -187,7 +206,7 @@ class PromotionEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "stable matched"):
             self.verify()
 
-    def test_within_10_regression_blocks_validation_despite_lower_error_metrics(self):
+    def test_within_5_php_regression_blocks_validation_despite_lower_error_metrics(self):
         rows = []
         for month in (9, 10, 11):
             origin = f"2024-{month:02}-01"
@@ -197,9 +216,9 @@ class PromotionEvidenceTests(unittest.TestCase):
                     series=self.series, origin=origin,
                     target_date=f"2024-{month:02}-{offset:02}", actual=100,
                     prediction=prediction, champion=champion, anchor=anchor))
-        path = self.evidence / "validation_within_10_regression.csv"
+        path = self.evidence / "validation_within_5_regression.csv"
         self.csv(path.name, rows)
-        with self.assertRaisesRegex(ValueError, "stable matched improvement on all four"):
+        with self.assertRaisesRegex(ValueError, "stable matched Within-5-PHP non-regression"):
             validation_comparison(path, date(2025, 1, 2))
 
     def test_population_cannot_shrink_after_selection(self):

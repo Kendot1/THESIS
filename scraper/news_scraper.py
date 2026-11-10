@@ -406,8 +406,9 @@ class NewsScraper:
                             self._run_stats["discovery_successes"] += 1
                             for link_info in result.links.get("internal", []):
                                 href = link_info.get("href", "") if isinstance(link_info, dict) else str(link_info)
+                                text = link_info.get("text", "") if isinstance(link_info, dict) else ""
                                 article_url = urljoin(section_url, href)
-                                if self._is_article_url(article_url):
+                                if self._is_article_url(article_url, text):
                                     urls.add(article_url)
                         else:
                             self._run_stats["discovery_failures"] += 1
@@ -637,7 +638,7 @@ class NewsScraper:
         host = (host or "").lower().rstrip(".").removeprefix("www.")
         return host == "abs-cbn.com" or host.endswith(".abs-cbn.com")
 
-    def _is_article_url(self, url: str) -> bool:
+    def _is_article_url(self, url: str, link_text: str = "") -> bool:
         """Check if a URL is a potentially food/price-relevant ABS-CBN article."""
         if not url:
             return False
@@ -654,11 +655,14 @@ class NewsScraper:
         ]
         if any(s in url for s in skip_sections):
             return False
-        # Avoid crawling every article from broad business/nation/region feeds.
-        # Google News discovery still provides a second route for relevant stories
-        # whose URL slug is vague.
         slug = urlparse(url).path.rsplit("/", 1)[-1].replace("-", " ").replace("_", " ")
-        return self._pre_filter_content("", slug)
+        text = (link_text + " " + slug).casefold()
+        def contains_any(terms: tuple[str, ...]) -> bool:
+            return any(
+                re.search(r"(?<!\w)" + re.escape(term) + r"(?!\w)", text)
+                for term in terms
+            )
+        return contains_any(AGRI_FOOD_TOPIC_TERMS) or contains_any(MARKET_IMPACT_TERMS)
 
     # ------------------------------------------------------------------
     # Deduplication

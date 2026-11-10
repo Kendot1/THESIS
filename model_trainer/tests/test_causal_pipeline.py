@@ -1,5 +1,6 @@
 import json
 import csv
+import copy
 import tempfile
 import unittest
 import warnings
@@ -14,8 +15,9 @@ from data.preprocessor import DataPreprocessor, SERIES_KEY
 from features.builder import FEATURE_COLUMNS, LEGACY_FEATURE_COLUMNS, CausalFeatureState, FeatureBuilder, usable_targets
 from models.ensemble import EnsembleModel
 from models.forecast_engine import ForecastEngine
-from models.lstm_model import LSTMModel
+from models.lstm_model import LSTMModel, LSTM_FEATURE_COLS, SCALED_PRICE_FEATURES
 from models.lightgbm_model import LightGBMModel
+from models.lightgbm_model import RESIDUAL_FEATURE_COLUMNS, RESIDUAL_FEATURE_SCHEMA
 from models.model_store import ModelStore, REQUIRED_FILES
 from pipeline.trainer import TrainingPipeline
 from pipeline.prediction_writer import PredictionWriter
@@ -40,6 +42,42 @@ def local_builder(data):
 
 
 class CausalPipelineTests(unittest.TestCase):
+    def test_backtest_accepts_explicit_origins_for_matched_model_scoring(self):
+        clean = DataPreprocessor().validate(panel(days=80))
+        dates = pd.DatetimeIndex(clean.report_date.drop_duplicates().sort_values())
+        builder = local_builder(clean)
+        featured = builder.transform(clean)
+        partition = clean.loc[clean.report_date.between(dates[30], dates[-1])]
+        origins = [dates[29], dates[49]]
+        pipeline = TrainingPipeline.__new__(TrainingPipeline)
+        pipeline.cfg = SimpleNamespace(monthly_horizon=2, evaluation_stride=30)
+        pipeline.preprocessor = DataPreprocessor()
+
+        class StubEngine:
+            def _prepare(self, history, featured_history, market_history,
+                         product_market_history=None):
+                origin = pd.Timestamp(history.report_date.iloc[-1])
+                return {"origin": origin,
+                        "anchor": float(history.price_index.iloc[-1])}
+
+            def forecast_many(self, cases, horizon, return_feature_rows=False):
+                return [SimpleNamespace(
+                    dates=pd.date_range(case["origin"] + pd.Timedelta(days=1), periods=horizon),
+                    anchor=case["anchor"],
+                    lstm=np.full(horizon, case["anchor"]),
+                    lgbm=np.full(horizon, case["anchor"]),
+                    point=np.full(horizon, case["anchor"] + 1.0),
+                ) for case in cases]
+
+        forecasts, paths = pipeline._backtest(
+            clean, featured, partition, StubEngine(), return_paths=True,
+            origin_dates=origins)
+        expected = {date.date() for date in origins}
+        self.assertEqual(set(pd.to_datetime(forecasts.origin).dt.date), expected)
+        self.assertEqual(set(pd.to_datetime(paths.origin).dt.date), expected)
+        self.assertEqual(len(paths), len(origins) * pipeline.cfg.monthly_horizon)
+        self.assertTrue(np.allclose(paths.ensemble_path, paths.anchor + 1.0))
+
     def test_backtest_can_rebuild_features_from_each_report_date_cutoff(self):
         dates = pd.date_range("2026-10-01", periods=4)
         clean = pd.DataFrame({
@@ -62,7 +100,8 @@ class CausalPipelineTests(unittest.TestCase):
                 self.builder = builder
                 self.anchors = []
 
-            def _prepare(self, history, featured_history, market_history):
+            def _prepare(self, history, featured_history, market_history,
+                         product_market_history=None):
                 self.assert_no_precomputed_features = featured_history is None
                 anchor = float(history.price_index.iloc[-1])
                 origin = pd.Timestamp(history.report_date.iloc[-1])
@@ -116,7 +155,8 @@ class CausalPipelineTests(unittest.TestCase):
                 self.builder = builder
                 self.category_lags = []
 
-            def _prepare(self, history, featured_history, market_history):
+            def _prepare(self, history, featured_history, market_history,
+                         product_market_history=None):
                 origin = pd.Timestamp(history.report_date.iloc[-1])
                 first_forecast = featured_history.loc[
                     featured_history.report_date.eq(origin + pd.Timedelta(days=1))]
@@ -296,7 +336,7 @@ class CausalPipelineTests(unittest.TestCase):
 
     def test_report_date_cutoff_uses_existing_observed_labels(self):
         pipeline = TrainingPipeline.__new__(TrainingPipeline)
-        pipeline.cfg = get_settings()
+        pipeline.cfg = copy.copy(get_settings())
         pipeline.preprocessor = DataPreprocessor()
 
         clean = pipeline.preprocessor.validate(panel(days=600))
@@ -314,8 +354,12 @@ class CausalPipelineTests(unittest.TestCase):
         raw = panel(days=len(dates))
 
         pipeline = TrainingPipeline.__new__(TrainingPipeline)
-        pipeline.cfg = get_settings()
+        pipeline.cfg = copy.copy(get_settings())
+        pipeline.cfg.validation_size = 0.2
+        pipeline.cfg.test_size = 0.1
         pipeline.preprocessor = DataPreprocessor()
+        pipeline.feature_version = None
+        pipeline.lstm_price_huber_delta = None
         clean = pipeline.preprocessor.validate(raw)
         train, validation, _ = pipeline.preprocessor.split_three(
             clean, pipeline.cfg.validation_size, pipeline.cfg.test_size)
@@ -355,11 +399,13 @@ class CausalPipelineTests(unittest.TestCase):
         lgbm_instances, lstm_instances = [], []
 
         class StubLightGBM:
-            def __init__(self, artifact_dir):
+            def __init__(self, artifact_dir, feature_version=None):
                 self.y_train = None
+                self.feature_version = feature_version
                 lgbm_instances.append(self)
 
-            def train(self, x_train, y_train, x_val, y_val):
+            def train(self, x_train, y_train, x_val, y_val,
+                      train_sample_weight=None, sample_weight_description=None):
                 self.y_train = np.asarray(y_train)
                 return {"stub": True}
 
@@ -384,12 +430,15 @@ class CausalPipelineTests(unittest.TestCase):
 
         with patch("pipeline.trainer.FeatureBuilder", return_value=builder), \
              patch("pipeline.trainer.LightGBMModel", StubLightGBM), \
-             patch("pipeline.trainer.LSTMModel", StubLSTM):
+             patch("pipeline.trainer.LSTMModel", StubLSTM), \
+             patch("pipeline.trainer.capture_snapshot") as snapshot_capture:
             result = pipeline._train(
                 raw, activate=False, fit_source_cutoff=fit_cutoff,
                 source_availability_cutoffs=cutoffs)
 
         self.assertEqual(result, "candidate-staged")
+        snapshot_capture.assert_called_once()
+        self.assertEqual(snapshot_capture.call_args.args[0], run_dir)
         self.assertTrue(finish_args["label_filtering_applied"])
         self.assertEqual(finish_args["source_availability_cutoffs"], cutoffs)
         self.assertEqual(len(lgbm_instances), 1)
@@ -475,12 +524,24 @@ class CausalPipelineTests(unittest.TestCase):
                 "metrics": {
                     "validation": {"ensemble": {"n": 3, "mae": 20 / 3,
                         "rmse": np.sqrt(400 / 3), "mape": 20 / 3,
-                        "prediction_success": 2 / 3}},
+                        "prediction_success": 2 / 3,
+                        "within_5_php_count": 2,
+                        "within_5_php_sample_count": 3,
+                        "within_5_php_accuracy_pct": 200 / 3,
+                        "within_5_percent_count": 2,
+                        "within_5_percent_sample_count": 3,
+                        "within_5_percent_accuracy_pct": 200 / 3}},
                     "product_validation_metrics_by_identity": {series: {
                         "mae": 20 / 3, "rmse": np.sqrt(400 / 3), "mape": 20 / 3,
                         "sample_count": 3,
                         "sample_basis": "observed_validation_targets_across_forecast_steps",
                         "prediction_success": 2 / 3,
+                        "within_5_php_count": 2,
+                        "within_5_php_sample_count": 3,
+                        "within_5_php_accuracy_pct": 200 / 3,
+                        "within_5_percent_count": 2,
+                        "within_5_percent_sample_count": 3,
+                        "within_5_percent_accuracy_pct": 200 / 3,
                     }},
                 },
             }), encoding="utf-8")
@@ -491,7 +552,13 @@ class CausalPipelineTests(unittest.TestCase):
         self.assertEqual(metrics["product_metrics"]["rice-id"]["sample_count"], 3)
         self.assertEqual(metrics["product_metrics"]["rice-id"]["sample_basis"],
                          "observed_validation_targets_across_forecast_steps")
+        self.assertEqual(metrics["product_metrics"]["rice-id"]["within_5_php_accuracy_pct"],
+                         200 / 3)
+        self.assertEqual(metrics["product_metrics"]["rice-id"]["within_5_percent_accuracy_pct"],
+                         200 / 3)
         self.assertEqual(metrics["prediction_success"], 2 / 3)
+        self.assertEqual(metrics["within_5_php_sample_count"], 3)
+        self.assertEqual(metrics["within_5_php_accuracy_pct"], 200 / 3)
         self.assertEqual(metrics["sample_count"], 3)
         self.assertEqual(metrics["mae"], 20 / 3)
         self.assertEqual(metrics["mape"], 20 / 3)
@@ -554,6 +621,15 @@ class CausalPipelineTests(unittest.TestCase):
         self.assertEqual(metrics['success_tolerance'], .05)
         self.assertEqual(metrics['within_10_count'], 1)
         self.assertEqual(metrics['within_10_accuracy_pct'], 50.0)
+        self.assertEqual(metrics['within_5_php_count'], 1)
+        self.assertEqual(metrics['within_5_php_accuracy_pct'], 50.0)
+
+    def test_within_5_php_is_absolute_inclusive(self):
+        from utils.metrics import compute_all_metrics
+        metrics = compute_all_metrics([1., 100.], [6., 105.])
+        self.assertEqual(metrics['within_5_php_count'], 2)
+        self.assertEqual(metrics['within_5_php_sample_count'], 2)
+        self.assertEqual(metrics['within_5_php_accuracy_pct'], 100.0)
 
     def test_within_10_accuracy_uses_inclusive_ten_percent_boundary(self):
         from utils.metrics import compute_all_metrics
@@ -561,10 +637,14 @@ class CausalPipelineTests(unittest.TestCase):
         self.assertEqual(metrics['within_10_count'], 1)
         self.assertEqual(metrics['within_10_accuracy_pct'], 50.0)
 
-    def test_mape_rejects_zero_or_near_zero_actuals(self):
+    def test_zero_actual_is_excluded_from_percentage_metrics_but_not_absolute_metrics(self):
         from utils.metrics import compute_all_metrics
-        with self.assertRaisesRegex(ValueError, "MAPE undefined"):
-            compute_all_metrics([1e-9], [1e-9])
+        metrics = compute_all_metrics([1e-9, 100.0], [1e-9, 100.0])
+        self.assertEqual(metrics["n"], 2)
+        self.assertEqual(metrics["within_5_php_accuracy_pct"], 100.0)
+        self.assertEqual(metrics["within_5_percent_sample_count"], 1)
+        self.assertEqual(metrics["within_5_percent_excluded_zero_or_near_zero"], 1)
+        self.assertEqual(metrics["mape"], 0.0)
 
     def test_absolute_lightgbm_target_remains_backward_compatible(self):
         model = LightGBMModel()
@@ -797,6 +877,53 @@ class CausalPipelineTests(unittest.TestCase):
                 np.array([20.0]), np.array([30.0]), 10.0, "Stable")
             np.testing.assert_array_equal(prediction, np.array([10.0]))
 
+    def test_ensemble_volatility_regime_separates_perishables_from_staples(self):
+        rows = []
+        for horizon in range(1, 4):
+            for idx in range(12):
+                # Low-volatility staple ("Rice"): LSTM/anchor tracks actual, LightGBM overshoots
+                rows.append({
+                    "series": "Rice||Well Milled||Standard||Local||kg",
+                    "horizon": horizon,
+                    "actual": 50.0 + (idx % 2) * 0.2,
+                    "anchor": 50.0,
+                    "lstm": 50.0 + (idx % 2) * 0.2,
+                    "lgbm": 62.0,
+                })
+                # High-volatility perishable ("Vegetables"): LightGBM tracks actual jump, LSTM stays near anchor
+                jump = 25.0 if idx % 2 == 0 else -18.0
+                rows.append({
+                    "series": "Vegetables||Bell Pepper||Red||Local||kg",
+                    "horizon": horizon,
+                    "actual": 120.0 + jump,
+                    "anchor": 120.0,
+                    "lstm": 120.0 + 0.05 * jump,
+                    "lgbm": 120.0 + jump,
+                })
+        with tempfile.TemporaryDirectory() as tmp:
+            model = EnsembleModel(Path(tmp)).fit(
+                pd.DataFrame(rows), 3, objective="volatility_regime")
+            self.assertGreater(model.category_weights["Vegetables"], 0.8)
+            self.assertLess(model.category_weights["Rice"], 0.2)
+            loaded = EnsembleModel(Path(tmp))
+            loaded.load()
+            self.assertEqual(loaded.category_weights, model.category_weights)
+            veg_path = loaded.predict(
+                np.array([121.0, 121.0, 121.0]),
+                np.array([145.0, 145.0, 145.0]),
+                120.0,
+                "Vegetables",
+            )
+            veg_rows = loaded.predict_rows(
+                np.array([121.0, 121.0, 121.0]),
+                np.array([145.0, 145.0, 145.0]),
+                np.array([1, 2, 3]),
+                np.array([120.0, 120.0, 120.0]),
+                np.array(["Vegetables||Bell Pepper||Red||Local||kg"] * 3),
+            )
+            np.testing.assert_allclose(veg_path, veg_rows)
+            self.assertTrue((veg_path > 135.0).all())
+
     def test_ensemble_mean_reverts_anomalous_anchor(self):
         rows = []
         for horizon in range(1, 3):
@@ -817,52 +944,67 @@ class CausalPipelineTests(unittest.TestCase):
             np.array([11, 9]), np.array([12, 8]), np.array([10, 10]))
         self.assertEqual(score, 100.0)
 
-    def test_promotion_requires_within_10_and_all_three_errors_to_improve(self):
+    def test_promotion_requires_within_5_php_and_all_three_errors_to_improve(self):
         reference = {"mae": 2.0, "rmse": 3.0, "mape": 4.0,
-                     "within_10_accuracy_pct": 85.0}
+                     "within_5_php_accuracy_pct": 85.0}
         self.assertTrue(TrainingPipeline._improves_all(
             {"mae": 1.9, "rmse": 2.9, "mape": 3.9,
-             "within_10_accuracy_pct": 86.0}, reference))
+             "within_5_php_accuracy_pct": 86.0}, reference))
         self.assertFalse(TrainingPipeline._improves_all(
             {"mae": 1.9, "rmse": 2.9, "mape": 4.1,
-             "within_10_accuracy_pct": 86.0}, reference))
+             "within_5_php_accuracy_pct": 86.0}, reference))
         self.assertFalse(TrainingPipeline._improves_all(
             {"mae": 1.9, "rmse": 2.9, "mape": 3.9,
-             "within_10_accuracy_pct": 84.9}, reference))
+             "within_5_php_accuracy_pct": 84.9}, reference))
 
     def test_promotion_also_requires_improvement_over_active_champion(self):
         test = {
             "ensemble": {"mae": 1.9, "rmse": 2.9, "mape": 3.9,
-                         "within_10_accuracy_pct": 90.0},
+                         "within_5_php_accuracy_pct": 90.0},
             "persistence": {"mae": 2.0, "rmse": 3.0, "mape": 4.0,
-                             "within_10_accuracy_pct": 85.0},
+                             "within_5_php_accuracy_pct": 85.0},
         }
         champion = {"mae": 1.8, "rmse": 2.8, "mape": 3.8,
-                    "within_10_accuracy_pct": 95.0}
+                    "within_5_php_accuracy_pct": 95.0}
         self.assertEqual(
             TrainingPipeline._promotion_decision(test, champion),
             (True, False, False),
         )
 
+    def test_missing_comparable_champion_is_unknown_and_blocks_development_pass(self):
+        test = {
+            "ensemble": {"mae": 1.9, "rmse": 2.9, "mape": 3.9,
+                         "within_5_php_accuracy_pct": 90.0},
+            "persistence": {"mae": 2.0, "rmse": 3.0, "mape": 4.0,
+                             "within_5_php_accuracy_pct": 85.0},
+        }
+        self.assertEqual(
+            TrainingPipeline._promotion_decision(test, champion_metrics=None),
+            (True, None, False),
+        )
+
     def test_promotion_requires_at_least_five_percent_improvement_on_each_metric(self):
         reference = {"mae": 10.0, "rmse": 20.0, "mape": 5.0,
-                     "within_10_accuracy_pct": 80.0}
+                     "within_5_php_accuracy_pct": 80.0}
         self.assertTrue(TrainingPipeline._improves_all_by(
             {"mae": 9.49, "rmse": 18.99, "mape": 4.74,
-             "within_10_accuracy_pct": 84.0}, reference, .05))
+             "within_5_php_accuracy_pct": 84.0}, reference, .05))
         self.assertFalse(TrainingPipeline._improves_all_by(
             {"mae": 9.49, "rmse": 18.99, "mape": 4.76,
-             "within_10_accuracy_pct": 84.0}, reference, .05))
-        self.assertFalse(TrainingPipeline._improves_all_by(
+             "within_5_php_accuracy_pct": 84.0}, reference, .05))
+        self.assertTrue(TrainingPipeline._improves_all_by(
             {"mae": 9.49, "rmse": 18.99, "mape": 4.74,
-             "within_10_accuracy_pct": 83.99}, reference, .05))
+             "within_5_php_accuracy_pct": 83.99}, reference, .05))
 
-    def test_development_targets_include_primary_within_10_metric(self):
-        good = {"within_10_accuracy_pct": 90.0, "mae": 5.0,
+    def test_development_targets_use_within_5_php_and_independent_error_limits(self):
+        good = {"within_5_php_accuracy_pct": 95.0, "mae": 5.0,
                 "rmse": 5.0, "mape": 5.0}
         self.assertTrue(TrainingPipeline._targets_met(good))
         self.assertFalse(TrainingPipeline._targets_met(
-            {**good, "within_10_accuracy_pct": 89.99}))
+            {**good, "within_5_php_accuracy_pct": 0.0}))
+        self.assertFalse(TrainingPipeline._targets_met(
+            {**good, "within_5_php_accuracy_pct": 94.99}))
+        self.assertFalse(TrainingPipeline._targets_met({**good, "mape": 5.01}))
         self.assertFalse(TrainingPipeline._targets_met(
             {**good, "rmse": 5.01}))
 
@@ -903,7 +1045,8 @@ class CausalPipelineTests(unittest.TestCase):
         cfg = get_settings()
         saved = {name: getattr(cfg, name) for name in [
             "lstm_hidden_size", "lstm_num_layers", "lstm_epochs",
-            "lstm_batch_size", "lstm_patience", "evaluation_stride"]}
+            "lstm_batch_size", "lstm_patience", "evaluation_stride",
+            "validation_size", "test_size"]}
         saved_params = dict(cfg.lgbm_params)
         try:
             cfg.lstm_hidden_size = 8
@@ -912,10 +1055,15 @@ class CausalPipelineTests(unittest.TestCase):
             cfg.lstm_batch_size = 32
             cfg.lstm_patience = 2
             cfg.evaluation_stride = 30
+            cfg.validation_size = 0.2
+            cfg.test_size = 0.1
             cfg.lgbm_params.update({"n_estimators": 12,
                                     "early_stopping_rounds": 3,
                                     "learning_rate": .1, "num_threads": 1})
-            raw = panel(660).drop(columns="observed_price")
+            raw = panel(640).drop(columns="observed_price")
+            # Keep this synthetic fit before the repository's frozen October
+            # holdout, and give its short panel enough calibration origins.
+            raw["report_date"] = pd.date_range("2024-01-01", periods=len(raw))
             with tempfile.TemporaryDirectory() as tmp:
                 pipeline = TrainingPipeline(Path(tmp))
                 # Even a successful internal comparison cannot substitute for
@@ -944,10 +1092,29 @@ class CausalPipelineTests(unittest.TestCase):
                                  cfg.random_seed)
                 self.assertEqual(configuration["lstm"]["training"]["loss"]["name"],
                                  "Huber")
+                self.assertEqual(result["final_model_refit"]["status"], "completed")
+                self.assertEqual(
+                    result["final_model_refit"]["training_end"],
+                    raw.report_date.max().date().isoformat())
+                self.assertEqual(
+                    configuration["lstm"]["training"]["final_refit"][
+                        "validation_used_for_final_checkpoint_selection"], False)
+                self.assertTrue(configuration["lightgbm"]["training"][
+                    "final_refit"]["uses_all_supplied_rows"])
+                self.assertEqual(
+                    result["final_model_refit"]["test_metrics_scope"],
+                    "chronological_selection_fit_before_final_refit")
+                saved_ensemble = json.loads(
+                    (run / "ensemble.json").read_text(encoding="utf-8"))
+                self.assertEqual(
+                    saved_ensemble["calibration"]["calibration_base_model_scope"],
+                    "pre_refit_chronological_selection_fit")
                 with patch.object(TrainingPipeline, "_beats_persistence", return_value=True), \
-                        patch.object(TrainingPipeline, "_improves_all_by", return_value=True):
+                        patch.object(TrainingPipeline, "_improves_all_by", return_value=True), \
+                        patch("pipeline.trainer.pending_holdout_window", return_value=None):
                     recalibrated = pipeline.recalibrate_candidate(result["run_id"], activate=True)
-                self.assertTrue(recalibrated["promotion_gate"]["development_comparison_passed"])
+                self.assertFalse(recalibrated["promotion_gate"]["development_comparison_passed"])
+                self.assertIsNone(recalibrated["promotion_gate"]["beats_active_champion"])
                 self.assertFalse(recalibrated["activated"])
                 self.assertFalse((Path(tmp) / "manifest.json").exists())
                 recalibrated_run = Path(tmp) / "runs" / recalibrated["run_id"]
@@ -963,6 +1130,195 @@ class CausalPipelineTests(unittest.TestCase):
             for name, value in saved.items():
                 setattr(cfg, name, value)
             cfg.lgbm_params = saved_params
+
+    def test_tiny_residual_lightgbm_bundle_uses_oof_lstm_targets(self):
+        cfg = get_settings()
+        saved = {name: getattr(cfg, name) for name in [
+            "lstm_hidden_size", "lstm_num_layers", "lstm_epochs",
+            "lstm_batch_size", "lstm_patience", "evaluation_stride",
+            "validation_size", "test_size"]}
+        saved_params = dict(cfg.lgbm_params)
+        try:
+            cfg.lstm_hidden_size = 8
+            cfg.lstm_num_layers = 1
+            cfg.lstm_epochs = 2
+            cfg.lstm_batch_size = 32
+            cfg.lstm_patience = 2
+            cfg.evaluation_stride = 30
+            cfg.validation_size = 0.2
+            cfg.test_size = 0.1
+            cfg.lgbm_params.update({"n_estimators": 12,
+                                    "early_stopping_rounds": 3,
+                                    "learning_rate": .1, "num_threads": 1})
+            raw = panel(640).drop(columns="observed_price")
+            raw["report_date"] = pd.date_range("2024-01-01", periods=len(raw))
+            with tempfile.TemporaryDirectory() as tmp:
+                pipeline = TrainingPipeline(
+                    Path(tmp), lgbm_role="residual_relative")
+                with patch.object(TrainingPipeline, "_promotion_decision",
+                                  return_value=(True, True, True)):
+                    result = pipeline.run_full_training(raw_df=raw, activate=True)
+                run = Path(tmp) / "runs" / result["run_id"]
+                metadata = json.loads((run / "metadata.json").read_text(encoding="utf-8"))
+                configuration = metadata["model_configuration"]
+                self.assertEqual(configuration["pipeline"]["lightgbm_role"],
+                                 "residual_relative")
+                self.assertEqual(configuration["lightgbm"]["target_mode"],
+                                 "residual_relative")
+                self.assertEqual(
+                    configuration["lightgbm"]["features"][-len(
+                        RESIDUAL_FEATURE_COLUMNS):], RESIDUAL_FEATURE_COLUMNS)
+                self.assertGreater(configuration["residual_training"]["fit_rows"], 0)
+                self.assertGreater(configuration["residual_training"]["validation_rows"], 0)
+                provenance = configuration["residual_training"]
+                self.assertEqual(provenance["final_fit_rows"], provenance["rows"])
+                self.assertEqual(
+                    provenance["selected_iteration"],
+                    configuration["lightgbm"]["training"]["best_iteration"])
+                self.assertEqual(provenance["base_prediction"],
+                                 "recursive_lstm_only_rollout")
+                self.assertEqual(
+                    provenance["inference_feature_state"],
+                    "causal_recursive_lstm_predictions_at_each_lead")
+                self.assertEqual(
+                    provenance["residual_feature_schema"], RESIDUAL_FEATURE_SCHEMA)
+                self.assertTrue(provenance[
+                    "uses_lstm_base_relative_change_feature"])
+                self.assertTrue(provenance["uses_forecast_lead_feature"])
+                self.assertEqual(provenance["validation_horizons"],
+                                 list(range(1, cfg.monthly_horizon + 1)))
+                self.assertLessEqual(provenance["fit_target_end"],
+                                     provenance["first_validation_origin"])
+                self.assertGreater(provenance["validation_origin_start"],
+                                   provenance["lstm_early_stopping_end"])
+                ensemble = json.loads((run / "ensemble.json").read_text(encoding="utf-8"))
+                self.assertTrue(all(weight == 1.0 for weight in ensemble["weights"]))
+                self.assertEqual(ensemble["calibration"]["scope"],
+                                 "held_out_from_residual_fit")
+                self.assertEqual(result["final_model_refit"]["reason"],
+                    "residual_model_requires_a_matched_oof_lstm_refit")
+                validation_rows = pd.read_csv(run / "validation_forecasts.csv")
+                np.testing.assert_allclose(validation_rows.ensemble,
+                                           validation_rows.lgbm)
+                test_rows = pd.read_csv(run / "test_forecasts.csv")
+                np.testing.assert_allclose(test_rows.ensemble, test_rows.lgbm)
+                self.assertFalse(result["activated"])
+        finally:
+            for name, value in saved.items():
+                setattr(cfg, name, value)
+            cfg.lgbm_params = saved_params
+
+    def test_residual_inference_reuses_lstm_only_oof_feature_state(self):
+        history = DataPreprocessor().validate(panel(days=100))
+        builder = local_builder(history)
+
+        class StubLSTM:
+            feature_cols = list(LSTM_FEATURE_COLS)
+            scaled_features = list(SCALED_PRICE_FEATURES)
+            horizon = 4
+            seq_len = 30
+
+            @staticmethod
+            def predict_paths(sequences, anchors):
+                offsets = np.array([.25, .5, .75, 1.0], dtype=float)
+                return anchors[:, None] + np.tile(offsets, (len(anchors), 1))
+
+            @staticmethod
+            def _scale(sequence, anchor):
+                return np.asarray(sequence)
+
+        class BaseOnlyLightGBM:
+            _feature_names = list(builder.feature_columns)
+            is_residual_model = False
+
+            @staticmethod
+            def predict(features, base_prediction=None):
+                return np.asarray(base_prediction, dtype=float)
+
+        class ResidualLightGBM(BaseOnlyLightGBM):
+            _feature_names = (list(builder.feature_columns)
+                              + RESIDUAL_FEATURE_COLUMNS)
+            is_residual_model = True
+            residual_feature_schema = RESIDUAL_FEATURE_SCHEMA
+
+            @staticmethod
+            def predict(features, base_prediction=None):
+                return np.asarray(base_prediction, dtype=float) + 2.0
+
+        class DirectLightGBM(BaseOnlyLightGBM):
+            @staticmethod
+            def predict(features, base_prediction=None):
+                return np.asarray(base_prediction, dtype=float) + 2.0
+
+        class IdentityEnsemble:
+            weights = np.ones(4, dtype=float)
+
+            @staticmethod
+            def predict(lstm, lgbm, *args):
+                return np.asarray(lgbm, dtype=float)
+
+        def case():
+            origin_history = history.copy()
+            origin = pd.Timestamp(origin_history.report_date.iloc[-1])
+            anchor = float(origin_history.price_index.iloc[-1])
+            last = origin_history.iloc[-1]
+            return {
+                "origin": origin, "anchor": anchor,
+                "category": str(last.product_category),
+                "sequence": np.zeros((1, 30, len(LSTM_FEATURE_COLS)), dtype=np.float32),
+                "market_history": None, "product_market_history": None,
+                "product_group_key": tuple(last[list(SERIES_KEY[:3])]),
+                "peer_group_key": tuple(str(last[column]) for column in (
+                    SERIES_KEY[0], SERIES_KEY[1], SERIES_KEY[2], SERIES_KEY[4])),
+                "cross_variant_group_key": tuple(str(last[column]) for column in (
+                    SERIES_KEY[0], SERIES_KEY[1], SERIES_KEY[4])),
+                "cross_variant_variant": str(last[SERIES_KEY[2]]),
+                "product": "Rice||Rice",
+                "moving_average7": float(origin_history.price_index.tail(7).mean()),
+                "state": CausalFeatureState(origin_history, builder.encoder),
+            }
+
+        base = ForecastEngine(
+            BaseOnlyLightGBM(), StubLSTM(), None, builder
+        ).forecast_many([case()], horizon=4, return_feature_rows=True)[0]
+        residual = ForecastEngine(
+            ResidualLightGBM(), StubLSTM(), IdentityEnsemble(), builder
+        ).forecast_many([case()], horizon=4, return_feature_rows=True)[0]
+        direct = ForecastEngine(
+            DirectLightGBM(), StubLSTM(), IdentityEnsemble(), builder
+        ).forecast_many([case()], horizon=4, return_feature_rows=True)[0]
+
+        np.testing.assert_allclose(
+            residual.feature_rows[builder.feature_columns],
+            base.feature_rows[builder.feature_columns], rtol=0, atol=1e-10)
+        np.testing.assert_allclose(
+            residual.feature_rows["lstm_base_relative_change"],
+            residual.lstm / residual.feature_rows.price_lag_1d - 1.0,
+            rtol=0, atol=1e-12)
+        np.testing.assert_allclose(
+            residual.feature_rows["forecast_lead_fraction"],
+            [0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0], rtol=0, atol=1e-12)
+        np.testing.assert_allclose(residual.point, base.lstm + 2.0, rtol=0, atol=1e-10)
+        unblended_residual = ForecastEngine(
+            ResidualLightGBM(), StubLSTM(), None, builder
+        ).forecast_many([case()], horizon=8, return_feature_rows=True)[0]
+        np.testing.assert_allclose(
+            unblended_residual.point, unblended_residual.lgbm, rtol=0, atol=1e-10)
+        np.testing.assert_allclose(
+            unblended_residual.point, unblended_residual.lstm + 2.0,
+            rtol=0, atol=1e-10)
+        self.assertAlmostEqual(
+            residual.feature_rows.price_lag_1d.iloc[1], base.lstm[0])
+        self.assertAlmostEqual(
+            direct.feature_rows.price_lag_1d.iloc[1], base.lstm[0] + 2.0)
+
+        extended = ForecastEngine(
+            ResidualLightGBM(), StubLSTM(), IdentityEnsemble(), builder
+        ).forecast_many([case()], horizon=8, return_feature_rows=True)[0]
+        np.testing.assert_allclose(
+            extended.feature_rows["forecast_lead_fraction"],
+            [0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+            rtol=0, atol=1e-12)
 
 
 if __name__ == "__main__":

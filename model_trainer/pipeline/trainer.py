@@ -2,7 +2,8 @@
 import hashlib
 import json
 import shutil
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -10,10 +11,19 @@ import pandas as pd
 from config.settings import get_settings
 from data.fetcher import DataFetcher
 from data.preprocessor import DataPreprocessor, SERIES_KEY, source_date
-from features.builder import CausalFeatureState, FEATURE_COLUMNS, FeatureBuilder, usable_targets
+from data.snapshot import (
+    MANIFEST_FILE as SOURCE_MANIFEST_FILE,
+    SNAPSHOT_FILE as SOURCE_SNAPSHOT_FILE,
+    capture_snapshot,
+)
+from features.builder import (CausalFeatureState, PEER_PRODUCT_KEY,
+                              PRODUCT_VARIANT_KEY,
+                              FeatureBuilder, usable_targets)
 from models.ensemble import EnsembleModel
 from models.forecast_engine import ForecastEngine
-from models.lightgbm_model import LightGBMModel
+from models.lightgbm_model import (
+    LightGBMModel, RESIDUAL_FEATURE_SCHEMA,
+)
 from models.lstm_model import LSTMModel
 from models.model_store import ModelStore
 from utils.logger import get_logger
@@ -21,8 +31,42 @@ from utils.metrics import compute_all_metrics
 
 log = get_logger(__name__)
 EVALUATION_ORIGIN_POLICY = "fixed_stride_plus_partition_terminal_v1"
-WITHIN_10_TARGET_PERCENT = 90.0
+MAPE_TARGET_PERCENT = 5.0
+WITHIN_5_PHP_TARGET_PERCENT = 95.0
 PRICE_ERROR_TARGET_PHP = 5.0
+FROZEN_HOLDOUT_CONTRACT = (
+    Path(__file__).resolve().parents[2]
+    / "audits" / "target5_20261002" / "prospective_20261005" / "contract.json"
+)
+
+
+def pending_holdout_window(contract_path=FROZEN_HOLDOUT_CONTRACT):
+    """Return the active frozen window while its one-time score is pending."""
+    path = Path(contract_path)
+    if not path.is_file() or path.with_name("score.json").is_file():
+        return None
+    contract = json.loads(path.read_text(encoding="utf-8"))
+    if contract.get("status") != "frozen_predictions_waiting_for_complete_holdout_period":
+        return None
+    start = date.fromisoformat(contract["holdout_start"])
+    end = date.fromisoformat(contract["holdout_end"])
+    if end < start:
+        raise ValueError("Frozen holdout end precedes its start")
+    return start, end
+
+
+def assert_no_pending_holdout_rows(frame, window):
+    """Fail closed if candidate input data reaches a still-pending holdout."""
+    if window is None:
+        return
+    if "report_date" not in frame:
+        raise ValueError("Cannot verify training data against the pending frozen holdout")
+    start, _ = window
+    dates = pd.to_datetime(frame["report_date"], errors="coerce").dt.date
+    if dates.ge(start).any():
+        raise ValueError(
+            f"Training input reaches the pending frozen holdout starting {start}; "
+            "use a source snapshot ending before the holdout")
 
 
 def _jsonable(value):
@@ -38,14 +82,30 @@ def _jsonable(value):
 
 
 class TrainingPipeline:
-    def __init__(self, artifact_root=None):
+    def __init__(self, artifact_root=None, ensemble_objective='balanced',
+                 feature_version=None, lgbm_role='direct'):
+        if ensemble_objective not in {
+                'balanced', 'balanced_lgbm', 'rmse_lgbm', 'within5'}:
+            raise ValueError(
+                'Ensemble objective must be balanced, balanced_lgbm, rmse_lgbm, or within5')
         self.cfg = get_settings()
         self.fetcher = DataFetcher()
         self.preprocessor = DataPreprocessor()
         self.store = ModelStore(artifact_root)
+        self.ensemble_objective = ensemble_objective
+        if lgbm_role not in {'direct', 'residual_absolute', 'residual_relative'}:
+            raise ValueError(
+                "LightGBM role must be direct, residual_absolute, or residual_relative")
+        self.lgbm_role = lgbm_role
+        self.lstm_price_huber_delta = None
+        self.lstm_price_tolerance_huber_delta = None
+        self.lstm_relative_tolerance_huber_delta = None
+        self.feature_version = feature_version
+        self._residual_training_provenance = None
 
     def run_full_training(self, raw_df=None, activate=True, *, source_as_of=False,
-                          fit_source_cutoff=None, source_availability_cutoffs=None):
+                          fit_source_cutoff=None, source_availability_cutoffs=None,
+                          lgbm_sample_weight_half_life_days=None):
         explicit_cutoff_plan = (fit_source_cutoff is not None
                                 or source_availability_cutoffs is not None)
         if source_as_of and explicit_cutoff_plan:
@@ -62,14 +122,24 @@ class TrainingPipeline:
             raise ValueError(
                 "Point-in-time training requires an explicit bounded raw_df; "
                 "it will not fetch unbounded production data")
-        raw = self.fetcher.fetch_all() if raw_df is None else raw_df
+        pending_window = pending_holdout_window()
+        through_date = (
+            (pending_window[0] - timedelta(days=1)).isoformat()
+            if pending_window else None
+        )
+        if raw_df is None:
+            raw = self.fetcher.fetch_all(through_date=through_date)
+        else:
+            raw = raw_df
+            assert_no_pending_holdout_rows(raw, pending_window)
         if raw.empty:
             raise ValueError("No training data")
         return self._train(
             raw, activate=activate,
             source_as_of=source_as_of,
             fit_source_cutoff=fit_source_cutoff,
-            source_availability_cutoffs=source_availability_cutoffs)
+            source_availability_cutoffs=source_availability_cutoffs,
+            lgbm_sample_weight_half_life_days=lgbm_sample_weight_half_life_days)
 
     def run_incremental_training(self, since_date=None, raw_df=None, activate=True):
         log.info("Incremental warm starts are disabled; running a fresh causal retrain.")
@@ -80,6 +150,7 @@ class TrainingPipeline:
 
     def resume_candidate(self, run_id, raw, activate=False):
         """Resume calibration/evaluation when complete fitted models already exist."""
+        assert_no_pending_holdout_rows(raw, pending_holdout_window())
         run_dir = self.store.runs / run_id
         if not run_dir.is_dir():
             raise FileNotFoundError(run_id)
@@ -96,10 +167,11 @@ class TrainingPipeline:
         lstm = LSTMModel(run_dir)
         lstm.load()
         val_mask = (featured.report_date.between(
-            validation.report_date.min(), validation.report_date.max()) & usable_targets(featured))
+            validation.report_date.min(), validation.report_date.max())
+            & usable_targets(featured, builder.feature_columns))
         lgbm_metrics = compute_all_metrics(
             featured.loc[val_mask, "observed_price"].to_numpy(),
-            lgbm.predict(featured.loc[val_mask, FEATURE_COLUMNS]))
+            lgbm.predict(featured.loc[val_mask, lgbm._feature_names]))
         history = json.loads((run_dir / "lstm_history.json").read_text(encoding="utf-8"))
         relative_lstm_metrics = {
             "best_masked_relative_mae": min(row["val_loss"] for row in history),
@@ -113,10 +185,13 @@ class TrainingPipeline:
 
     def recalibrate_candidate(self, run_id, activate=False):
         """Create a recalibrated child bundle while preserving its immutable parent."""
+        if pending_holdout_window() is not None:
+            raise ValueError(
+                "Candidate recalibration is disabled while the final holdout score is pending")
         parent_dir = self.store.runs / run_id
         metadata = json.loads((parent_dir / "metadata.json").read_text(encoding="utf-8"))
         parent_test = dict(metadata["metrics"]["test"]["ensemble"])
-        if "within_10_accuracy_pct" not in parent_test:
+        if "within_5_php_accuracy_pct" not in parent_test:
             saved_test = parent_dir / "test_forecasts.csv"
             if saved_test.exists():
                 parent_test = self._metrics(pd.read_csv(saved_test), "ensemble")
@@ -124,6 +199,14 @@ class TrainingPipeline:
         for name in ["categorical_mappings.json", "lightgbm_model.txt",
                      "lightgbm_meta.json", "lstm_model.pt", "lstm_meta.json",
                      "lstm_history.json"]:
+            shutil.copy2(parent_dir / name, run_dir / name)
+        snapshot_files = {SOURCE_SNAPSHOT_FILE, SOURCE_MANIFEST_FILE}
+        archived = snapshot_files & set(metadata.get("sha256", {}))
+        if archived and archived != snapshot_files:
+            raise ValueError("Parent bundle has incomplete source snapshot provenance")
+        for name in sorted(archived):
+            if self.store._digest(parent_dir / name) != metadata["sha256"][name]:
+                raise ValueError(f"Parent source snapshot is corrupt: {name}")
             shutil.copy2(parent_dir / name, run_dir / name)
         validation = pd.read_csv(parent_dir / "validation_forecasts.csv")
         test = pd.read_csv(parent_dir / "test_forecasts.csv")
@@ -153,7 +236,7 @@ class TrainingPipeline:
         # A parent may be older/weaker than the currently active model. Saved
         # forecasts permit comparison only when their evaluation windows match.
         champion = None
-        beats_champion = True
+        beats_champion = None
         try:
             active_path = self.store.active_path()
         except FileNotFoundError:
@@ -167,18 +250,21 @@ class TrainingPipeline:
                 == metadata.get('metrics', {}).get('evaluation_stride_days')
                 and active.get('metrics', {}).get('evaluation_origin_policy')
                 == metadata.get('metrics', {}).get('evaluation_origin_policy'))
-            beats_champion = comparable and self._improves_all_by(
-                metrics['test']['ensemble'], active['metrics']['test']['ensemble'], .05)
-            if comparable and not beats_champion:
+            beats_champion = (
+                self._improves_all_by(
+                    metrics['test']['ensemble'], active['metrics']['test']['ensemble'], .05)
+                if comparable else None)
+            if comparable and beats_champion is False:
                 stored_metrics = active.get("metrics", {}).get("test", {}).get("ensemble", {})
                 saved_test = active_path / "test_forecasts.csv"
-                if ("within_10_accuracy_pct" not in stored_metrics and saved_test.exists()
+                if ("within_5_php_accuracy_pct" not in stored_metrics and saved_test.exists()
                         and len(pd.read_csv(saved_test)) == stored_metrics.get("n")):
                     active_test = self._metrics(pd.read_csv(saved_test), "ensemble")
                     beats_champion = self._improves_all_by(
                         metrics["test"]["ensemble"], active_test, .05)
             champion = {'run_id': active_path.name, 'same_evaluation_window': comparable}
-        development_passed = beats_persistence and beats_parent and beats_champion
+        development_passed = bool(
+            beats_persistence and beats_parent and beats_champion is True)
         # Saved retrospective forecasts have been used for repeated development.
         # They cannot establish an independent final holdout for this child model.
         passed = False
@@ -191,12 +277,12 @@ class TrainingPipeline:
                 metrics["test"]["ensemble"]),
             "beats_persistence": bool(beats_persistence),
             "beats_parent": bool(beats_parent),
-            "beats_active_champion": bool(beats_champion),
+            "beats_active_champion": beats_champion,
             "active_champion": champion,
             "rule": (
                 "Retrospective comparisons are diagnostic. Activation requires "
-                "independent frozen final-holdout Within-10 >= 90%, MAE/RMSE <= PHP 5, "
-                "MAPE <= 5%, "
+                "independent frozen final-holdout pooled and per-horizon "
+                "Within-5-PHP accuracy >= 95%, MAPE <= 5%, and MAE/RMSE <= PHP 5, "
                 "validated selection provenance and declared product coverage."
             ),
         }
@@ -219,7 +305,8 @@ class TrainingPipeline:
             }
         self.store.finalize(run_dir, _jsonable(metrics), metadata["split"],
                             metadata["data_fingerprint"], activate=bool(activate and passed),
-                            model_configuration=model_configuration)
+                            model_configuration=model_configuration,
+                            preprocessing_contract=metadata.get("preprocessing_contract"))
         metrics["run_id"] = run_dir.name
         metrics["activated"] = bool(activate and passed)
         return _jsonable(metrics)
@@ -373,7 +460,7 @@ class TrainingPipeline:
                     f"Source-availability cutoff for {origin_key} falls after its forecast origin")
             input_view = input_view.loc[input_view.report_date <= origin].copy()
             feature_inputs = []
-            for _, series in input_view.groupby(SERIES_KEY, sort=True):
+            for key, series in input_view.groupby(SERIES_KEY, sort=True):
                 series = series.sort_values("report_date")
                 feature_inputs.append(ForecastEngine._append_day(
                     series, pd.Timestamp(series.report_date.iloc[-1]) + pd.Timedelta(days=1)))
@@ -395,6 +482,13 @@ class TrainingPipeline:
                 dates = pd.to_datetime(group.report_date)
                 market_histories[str(category)] = group.loc[
                     dates <= origin, "category_return"].to_numpy(dtype=float).tolist()
+            product_daily = FeatureBuilder.product_return_history(input_view)
+            product_daily["product_return"] = product_daily.product_return.fillna(0.0)
+            product_histories = {}
+            for product_key, group in product_daily.groupby(SERIES_KEY[:3], sort=False):
+                dates = pd.to_datetime(group.report_date)
+                product_histories[tuple(map(str, product_key))] = group.loc[
+                    dates <= origin, "product_return"].to_numpy(dtype=float).tolist()
 
             for key, full_series in input_view.groupby(SERIES_KEY, sort=True):
                 history = full_series[full_series.report_date <= origin].sort_values("report_date")
@@ -403,8 +497,11 @@ class TrainingPipeline:
                         usable_history.report_date.iloc[-1]) != pd.Timestamp(origin):
                     continue
                 market_history = market_histories.get(str(full_series.product_category.iloc[-1]), [])
+                product_market_history = product_histories.get(tuple(map(str, key[:3])), [])
                 try:
-                    prepared = engine._prepare(history, feature_groups.get(key), market_history)
+                    prepared = engine._prepare(
+                        history, feature_groups.get(key), market_history,
+                        product_market_history)
                 except ValueError:
                     continue
                 last_seven = history.price_index[
@@ -494,9 +591,37 @@ class TrainingPipeline:
                 for category, group in market_daily.groupby(
                     "product_category", sort=False)
             }
+            product_market_daily = FeatureBuilder.product_return_history(input_view)
+            product_market_daily["product_return"] = (
+                product_market_daily.product_return.fillna(0.0))
+            product_market_histories = {}
+            for product_key, group in product_market_daily.groupby(SERIES_KEY[:3], sort=False):
+                product_market_histories[tuple(map(str, product_key))] = group.loc[
+                    pd.to_datetime(group.report_date) <= origin,
+                    "product_return"].to_numpy(dtype=float).tolist()
+            cross_variant_histories = {}
+            if builder.feature_version in {12, 13}:
+                cross_variant_daily = FeatureBuilder.cross_variant_peer_history(input_view)
+                cross_variant_histories = {
+                    tuple(map(str, product_key)): group.loc[
+                        pd.to_datetime(group.report_date) <= origin,
+                        ["_peer_return", "_peer_count"]].to_numpy(dtype=float).tolist()
+                    for product_key, group in cross_variant_daily.groupby(
+                        PRODUCT_VARIANT_KEY, sort=False)
+                }
+            category_peer_histories = {}
+            if builder.feature_version in {10, 13}:
+                category_peer_daily = FeatureBuilder.category_peer_return_history(input_view)
+                category_peer_histories = {
+                    tuple(map(str, product_key)): group.loc[
+                        pd.to_datetime(group.report_date) <= origin,
+                        ["_peer_mean", "_peer_count"]].to_numpy(dtype=float).tolist()
+                    for product_key, group in category_peer_daily.groupby(
+                        PEER_PRODUCT_KEY, sort=False)
+                }
 
             target_rows = []
-            for _, series in input_view.groupby(SERIES_KEY, sort=True):
+            for key, series in input_view.groupby(SERIES_KEY, sort=True):
                 series = series.sort_values("report_date")
                 available = series.loc[np.isfinite(series.price_index)]
                 if (available.empty
@@ -505,10 +630,16 @@ class TrainingPipeline:
                 category = str(series.product_category.iloc[-1])
                 state = CausalFeatureState(series, builder.encoder)
                 target_row = state.row(
-                    target_date, market_histories.get(category, []))
+                    target_date, market_histories.get(category, []),
+                    product_market_histories.get(tuple(map(str, key[:3])), []),
+                    category_peer_market_history=category_peer_histories.get(
+                        tuple(str(key[index]) for index in (0, 1, 2, 4)), []),
+                    cross_variant_market_history=cross_variant_histories.get(
+                        tuple(str(key[index]) for index in (0, 1, 4, 2)), []))
                 target_row["forecast_anchor"] = float(available.price_index.iloc[-1])
                 target_rows.append(target_row[
-                    SERIES_KEY + ["report_date", "forecast_anchor"] + FEATURE_COLUMNS])
+                    SERIES_KEY + ["report_date", "forecast_anchor"]
+                    + builder.feature_columns])
             if target_rows:
                 feature_frames.append(pd.concat(target_rows, ignore_index=True))
 
@@ -533,26 +664,42 @@ class TrainingPipeline:
             "target_feature_rows": int(len(source_features)),
             "observed_labels_with_source_anchor_and_features": int(
                 (featured.is_observed & featured.forecast_anchor.notna()
-                 & np.isfinite(featured[FEATURE_COLUMNS]).all(axis=1)).sum()),
+                 & np.isfinite(featured[builder.feature_columns]).all(axis=1)).sum()),
             "observed_labels_without_source_anchor_or_features": int(
                 (featured.is_observed & ~(
                     featured.forecast_anchor.notna()
-                    & np.isfinite(featured[FEATURE_COLUMNS]).all(axis=1))).sum()),
+                    & np.isfinite(featured[builder.feature_columns]).all(axis=1))).sum()),
             "origin_cutoffs_from_utc": min(cutoff_times).isoformat() if cutoff_times else None,
             "origin_cutoffs_through_utc": max(cutoff_times).isoformat() if cutoff_times else None,
         }
         return featured, audit
 
     def _backtest(self, clean, featured, partition, engine, return_paths=False,
-                  source_availability_cutoffs=None):
+                  source_availability_cutoffs=None, return_feature_rows=False,
+                  stride_days=None, origin_dates=None):
         if source_availability_cutoffs is not None:
+            if (return_feature_rows or stride_days is not None
+                    or origin_dates is not None):
+                raise ValueError(
+                    "Feature-row collection, custom strides, and custom origins "
+                    "require report-date replay")
             return self._backtest_as_of_sources(
                 clean, partition, engine, source_availability_cutoffs,
                 return_paths=return_paths)
         start = pd.Timestamp(partition.report_date.min())
         end = pd.Timestamp(partition.report_date.max())
-        origins = self._evaluation_origins(
-            start, end, self.cfg.monthly_horizon, self.cfg.evaluation_stride)
+        if origin_dates is None:
+            origins = self._evaluation_origins(
+                start, end, self.cfg.monthly_horizon,
+                self.cfg.evaluation_stride if stride_days is None else stride_days)
+        else:
+            origins = pd.DatetimeIndex(
+                pd.to_datetime(list(origin_dates), errors="raise")).normalize()
+            if (origins.empty or not origins.is_unique
+                    or not origins.is_monotonic_increasing):
+                raise ValueError("Explicit forecast origins must be nonempty, unique, and sorted")
+            if origins.min() < start - pd.Timedelta(days=1) or origins.max() > end:
+                raise ValueError("Explicit forecast origins fall outside the evaluation window")
         rows, path_rows, cases, contexts = [], [], [], []
         feature_groups = {key: group for key, group in featured.groupby(SERIES_KEY, sort=False)}
         market_daily = FeatureBuilder.category_return_history(clean)
@@ -563,6 +710,14 @@ class TrainingPipeline:
             for origin in origins:
                 market_histories[(str(category), pd.Timestamp(origin))] = (
                     group.loc[dates <= origin, 'category_return'].to_numpy(dtype=float).tolist())
+        product_daily = FeatureBuilder.product_return_history(clean)
+        product_daily['product_return'] = product_daily.product_return.fillna(0.0)
+        product_market_histories = {}
+        for product_key, group in product_daily.groupby(SERIES_KEY[:3], sort=False):
+            dates = pd.to_datetime(group.report_date)
+            for origin in origins:
+                product_market_histories[(tuple(map(str, product_key)), pd.Timestamp(origin))] = (
+                    group.loc[dates <= origin, 'product_return'].to_numpy(dtype=float).tolist())
         for key, full_series in clean.groupby(SERIES_KEY, sort=True):
             full_series = full_series.sort_values("report_date")
             actual = full_series.set_index("report_date").observed_price
@@ -571,13 +726,19 @@ class TrainingPipeline:
                 try:
                     category = str(full_series.product_category.iloc[-1])
                     market_history = market_histories.get((category, pd.Timestamp(origin)), [])
-                    prepared = engine._prepare(history, feature_groups[key], market_history)
+                    product_market_history = product_market_histories.get(
+                        (tuple(map(str, key[:3])), pd.Timestamp(origin)), [])
+                    prepared = engine._prepare(
+                        history, feature_groups[key], market_history,
+                        product_market_history)
                 except ValueError:
                     continue
                 cases.append(prepared)
                 last_seven = history.price_index[np.isfinite(history.price_index)].tail(7).to_numpy()
                 contexts.append((key, origin, actual, last_seven))
-        paths = engine.forecast_many(cases, self.cfg.monthly_horizon)
+        paths = engine.forecast_many(
+            cases, self.cfg.monthly_horizon,
+            return_feature_rows=return_feature_rows)
         for path, context in zip(paths, contexts):
             key, origin, actual, last_seven = context
             if pd.Timestamp(path.dates[0]) != origin + pd.Timedelta(days=1):
@@ -598,6 +759,12 @@ class TrainingPipeline:
                     "lgbm": path.lgbm[h - 1], "persistence": persistence,
                     "seasonal7": seasonal[h - 1], "moving_average7": moving_average,
                 }
+                if getattr(path, "point", None) is not None:
+                    row["ensemble_path"] = path.point[h - 1]
+                if return_feature_rows:
+                    if path.feature_rows is None or len(path.feature_rows) != len(path.dates):
+                        raise ValueError("Forecast engine did not return aligned feature rows")
+                    row.update(path.feature_rows.iloc[h - 1].to_dict())
                 path_rows.append(row)
                 if np.isfinite(truth):
                     rows.append(row)
@@ -619,13 +786,16 @@ class TrainingPipeline:
 
     @staticmethod
     def _targets_met(metrics):
-        within_10 = metrics.get("within_10_accuracy_pct")
+        mape = metrics.get("mape")
+        accuracy = metrics.get("within_5_php_accuracy_pct")
         return (
-            within_10 is not None
-            and within_10 >= WITHIN_10_TARGET_PERCENT
+            mape is not None
+            and 0 <= mape <= MAPE_TARGET_PERCENT
+            and accuracy is not None
+            and accuracy >= WITHIN_5_PHP_TARGET_PERCENT
             and all(metrics.get(name) is not None
                     and 0 <= metrics[name] <= PRICE_ERROR_TARGET_PHP
-                    for name in ("mae", "rmse", "mape"))
+                    for name in ("mae", "rmse"))
         )
 
     def _attach_validation_quality(self, run_dir, validation, metrics,
@@ -645,6 +815,12 @@ class TrainingPipeline:
                 "sample_origin_count": int(rows.origin.nunique()),
                 "sample_basis": "observed_validation_targets_across_forecast_steps",
                 "prediction_success": result["prediction_success"],
+                "within_5_php_count": result["within_5_php_count"],
+                "within_5_php_sample_count": result["within_5_php_sample_count"],
+                "within_5_php_accuracy_pct": result["within_5_php_accuracy_pct"],
+                "within_5_percent_count": result["within_5_percent_count"],
+                "within_5_percent_sample_count": result["within_5_percent_sample_count"],
+                "within_5_percent_accuracy_pct": result["within_5_percent_accuracy_pct"],
                 "evaluation_source": "chronological_validation",
             }
         metrics["product_validation_metrics_by_identity"] = product_metrics
@@ -748,7 +924,7 @@ class TrainingPipeline:
                 and metadata.get("metrics", {}).get("evaluation_origin_policy")
                 == EVALUATION_ORIGIN_POLICY):
             stored_metrics = metadata.get("metrics", {}).get("test", {}).get("ensemble", {})
-            if "within_10_accuracy_pct" in stored_metrics:
+            if "within_5_php_accuracy_pct" in stored_metrics:
                 return {
                     "run_id": active_dir.name,
                     "ensemble": stored_metrics,
@@ -791,7 +967,13 @@ class TrainingPipeline:
         }
 
     def _train(self, raw, activate=True, source_as_of=False, fit_source_cutoff=None,
-               source_availability_cutoffs=None):
+               source_availability_cutoffs=None,
+               lgbm_sample_weight_half_life_days=None):
+        # Keep lightweight callers that construct a pipeline via ``__new__``
+        # backward-compatible with the pre-role trainer contract.
+        if not hasattr(self, 'lgbm_role'):
+            self.lgbm_role = 'direct'
+        assert_no_pending_holdout_rows(raw, pending_holdout_window())
         explicit_cutoff_plan = (fit_source_cutoff is not None
                                 or source_availability_cutoffs is not None)
         if source_as_of and explicit_cutoff_plan:
@@ -826,11 +1008,15 @@ class TrainingPipeline:
                     "Report-date training has no observed labels available by the fit cutoff")
         run_dir = self.store.begin_run()
         log.info("Training candidate bundle %s", run_dir.name)
+        # Preserve the exact input vintage even when fitting or evaluation fails.
+        capture_snapshot(run_dir, raw, self._fingerprint(raw), self._fingerprint)
         split = {"train": self._partition_bounds(train),
                  "validation": self._partition_bounds(validation),
                  "test": self._partition_bounds(test)}
 
-        builder = FeatureBuilder(run_dir).fit(train)
+        builder = FeatureBuilder(
+            run_dir, feature_version=self.feature_version).fit(train)
+        feature_columns = builder.feature_columns
         feature_audit = None
         if strict_sources:
             featured, feature_audit = self._source_asof_training_features(
@@ -848,23 +1034,53 @@ class TrainingPipeline:
             featured = builder.transform(clean)
         train_mask = featured.report_date.between(train.report_date.min(), train.report_date.max())
         val_mask = featured.report_date.between(tuning_partition.report_date.min(), tuning_partition.report_date.max())
-        train_rows = train_mask & usable_targets(featured)
+        train_rows = train_mask & usable_targets(featured, feature_columns)
         if strict_sources:
             train_rows &= featured["_fit_label_available"]
-        val_rows = val_mask & usable_targets(featured)
+        val_rows = val_mask & usable_targets(featured, feature_columns)
         if not train_rows.any() or not val_rows.any():
             raise ValueError("No finite observed LightGBM targets after causal feature construction")
 
-        lgbm = LightGBMModel(run_dir)
-        lgbm_metrics = lgbm.train(
-            featured.loc[train_rows, FEATURE_COLUMNS],
-            featured.loc[train_rows, "observed_price"],
-            featured.loc[val_rows, FEATURE_COLUMNS],
-            featured.loc[val_rows, "observed_price"])
+        train_sample_weight = None
+        sample_weight_description = None
+        if lgbm_sample_weight_half_life_days is not None:
+            half_life = float(lgbm_sample_weight_half_life_days)
+            if not np.isfinite(half_life) or half_life <= 0:
+                raise ValueError("LGBM sample-weight half-life must be positive and finite")
+            train_dates = pd.to_datetime(featured.loc[train_rows, "report_date"])
+            age_days = (pd.Timestamp(train.report_date.max()) - train_dates).dt.days
+            train_sample_weight = np.exp(
+                -np.log(2.0) * age_days.to_numpy(dtype=float) / half_life)
+            mean_weight = float(train_sample_weight.mean())
+            if not np.isfinite(mean_weight) or mean_weight <= 0:
+                raise ValueError("Recency sample weights could not be normalized")
+            train_sample_weight /= mean_weight
+            sample_weight_description = {
+                "method": "exponential_recency_decay",
+                "half_life_days": half_life,
+                "normalization": "mean training weight equals one",
+                "validation_weights": "uniform",
+            }
 
         lstm = LSTMModel(run_dir).fit_scalers(train)
         train_start, train_end = train.report_date.min(), train.report_date.max()
         val_start, val_end = tuning_partition.report_date.min(), tuning_partition.report_date.max()
+        residual_partition = tuning_partition
+        lstm_early_stopping_end = None
+        if self.lgbm_role != 'direct':
+            tuning_dates = pd.DatetimeIndex(
+                pd.to_datetime(tuning_partition.report_date).unique()).sort_values()
+            if len(tuning_dates) < 60:
+                raise ValueError(
+                    "Residual LightGBM requires at least 60 tuning dates to separate "
+                    "LSTM early stopping from residual rollouts")
+            lstm_stop_index = max(1, len(tuning_dates) // 3 - 1)
+            val_end = tuning_dates[lstm_stop_index]
+            lstm_early_stopping_end = pd.Timestamp(val_end)
+            residual_partition = tuning_partition.loc[
+                tuning_partition.report_date > val_end].copy()
+            if residual_partition.empty:
+                raise ValueError("No dates remain for out-of-sample residual rollouts")
         train_featured = featured
         anchor_column = None
         if strict_sources:
@@ -872,13 +1088,56 @@ class TrainingPipeline:
             train_featured.loc[~train_featured["_fit_label_available"],
                               "observed_price"] = np.nan
             anchor_column = "forecast_anchor"
-        x_train, y_train, _, _, _ = lstm.build_sequences(
+        x_train, y_train, train_anchors, _, _ = lstm.build_sequences(
             train_featured, target_start=train_start, target_end=train_end,
             stride=self.cfg.training_sequence_stride, anchor_column=anchor_column)
-        x_val, y_val, _, _, _ = lstm.build_sequences(
+        x_val, y_val, val_anchors, _, _ = lstm.build_sequences(
             featured, target_start=val_start, target_end=val_end,
             anchor_column=anchor_column)
-        relative_lstm_metrics = lstm.train(x_train, y_train, x_val, y_val)
+        price_huber_delta = getattr(self, 'lstm_price_huber_delta', None)
+        tolerance_huber_delta = getattr(
+            self, 'lstm_price_tolerance_huber_delta', None)
+        relative_tolerance_huber_delta = getattr(
+            self, 'lstm_relative_tolerance_huber_delta', None)
+        if sum(value is not None for value in (
+                price_huber_delta, tolerance_huber_delta,
+                relative_tolerance_huber_delta)) > 1:
+            raise ValueError("Choose only one specialized LSTM loss")
+        if all(value is None for value in (
+                price_huber_delta, tolerance_huber_delta,
+                relative_tolerance_huber_delta)):
+            relative_lstm_metrics = lstm.train(x_train, y_train, x_val, y_val)
+        elif price_huber_delta is not None:
+            relative_lstm_metrics = lstm.train(
+                x_train, y_train, x_val, y_val,
+                train_anchors=train_anchors, val_anchors=val_anchors,
+                price_huber_delta=price_huber_delta)
+        elif tolerance_huber_delta is not None:
+            relative_lstm_metrics = lstm.train(
+                x_train, y_train, x_val, y_val,
+                train_anchors=train_anchors, val_anchors=val_anchors,
+                price_tolerance_huber_delta=tolerance_huber_delta)
+        else:
+            relative_lstm_metrics = lstm.train(
+                x_train, y_train, x_val, y_val,
+                relative_tolerance_huber_delta=relative_tolerance_huber_delta)
+
+        if self.lgbm_role == 'direct':
+            lgbm = LightGBMModel(run_dir, feature_version=builder.feature_version)
+            lgbm_metrics = lgbm.train(
+                featured.loc[train_rows, feature_columns],
+                featured.loc[train_rows, "observed_price"],
+                featured.loc[val_rows, feature_columns],
+                featured.loc[val_rows, "observed_price"],
+                train_sample_weight=train_sample_weight,
+                sample_weight_description=sample_weight_description)
+        else:
+            if strict_sources:
+                raise ValueError(
+                    "Residual LightGBM role requires an explicit source-as-of OOF plan")
+            lgbm, lgbm_metrics = self._fit_residual_lightgbm(
+                run_dir, clean, featured, builder, lstm, residual_partition,
+                lstm_early_stopping_end)
 
         return self._finish_candidate(
             raw, clean, featured, train, validation, test, split, run_dir,
@@ -886,7 +1145,125 @@ class TrainingPipeline:
             fit_source_cutoff=fit_source_cutoff,
             source_availability_cutoffs=source_availability_cutoffs,
             training_feature_audit=feature_audit,
-            label_filtering_applied=bool(strict_sources))
+            label_filtering_applied=bool(strict_sources),
+            final_refit_data=clean if not strict_sources else None,
+            final_refit_skip_reason=(
+                "point_in_time_source_mode_requires_a_separate_final_cutoff_plan"
+                if strict_sources else None))
+
+    def _fit_residual_lightgbm(self, run_dir, clean, featured, builder, lstm,
+                               validation_partition, lstm_early_stopping_end=None):
+        """Fit residuals on recursive, out-of-sample LSTM forecast paths.
+
+        The LSTM early-stopping labels end before this partition. A base-only
+        recursive replay then generates both the LSTM predictions and the
+        features LightGBM will receive at each forecast lead. Residual fitting
+        and early stopping are chronological; training labels are purged at the
+        first residual-validation origin.
+        """
+        if lstm_early_stopping_end is None:
+            raise ValueError(
+                "Residual LightGBM requires a disjoint LSTM early-stopping cutoff")
+
+        class LSTMBaseOnly:
+            _feature_names = list(builder.feature_columns)
+
+            @staticmethod
+            def predict(features, base_prediction=None):
+                if base_prediction is None:
+                    raise ValueError("Base-only rollout requires LSTM predictions")
+                return np.asarray(base_prediction, dtype=float)
+
+        base_engine = ForecastEngine(LSTMBaseOnly(), lstm, None, builder)
+        _, residual_paths = self._backtest(
+            clean, featured, validation_partition, base_engine,
+            return_paths=True, return_feature_rows=True, stride_days=7)
+        residual_rows = residual_paths.loc[
+            np.isfinite(residual_paths.actual)
+            & np.isfinite(residual_paths.lstm)
+        ].copy()
+        if residual_rows.empty:
+            raise ValueError("Residual LightGBM has no observed recursive LSTM targets")
+        residual_rows['origin'] = pd.to_datetime(residual_rows.origin)
+        residual_rows['date'] = pd.to_datetime(residual_rows.date)
+        if residual_rows.origin.min() < pd.Timestamp(lstm_early_stopping_end):
+            raise ValueError("Residual rollout overlaps LSTM early-stopping dates")
+        base_feature_columns = list(builder.feature_columns)
+        usable = (np.isfinite(
+            residual_rows[base_feature_columns].to_numpy(dtype=float)).all(axis=1)
+                  & np.isfinite(residual_rows[['actual', 'lstm']].to_numpy(dtype=float)).all(axis=1))
+        residual_rows = residual_rows.loc[usable].copy()
+        lgbm = LightGBMModel(
+            run_dir, feature_version=builder.feature_version,
+            target_mode=self.lgbm_role)
+        if lgbm.residual_feature_schema == RESIDUAL_FEATURE_SCHEMA:
+            anchor = pd.to_numeric(
+                residual_rows['price_lag_1d'], errors='coerce').to_numpy(float)
+            if not np.isfinite(anchor).all() or (anchor <= 0).any():
+                raise ValueError("Residual OOF features require positive finite anchors")
+            residual_rows['lstm_base_relative_change'] = (
+                residual_rows['lstm'].to_numpy(float) / anchor - 1.0)
+            lead_denominator = max(1, int(self.cfg.monthly_horizon) - 1)
+            residual_rows['forecast_lead_fraction'] = (
+                (residual_rows['horizon'].to_numpy(float) - 1.0)
+                / lead_denominator).clip(0.0, 1.0)
+        feature_columns = list(lgbm._feature_names)
+        feature_usable = np.isfinite(
+            residual_rows[feature_columns].to_numpy(dtype=float)).all(axis=1)
+        residual_rows = residual_rows.loc[feature_usable].copy()
+        origins = pd.DatetimeIndex(residual_rows.origin.unique()).sort_values()
+        if len(origins) < 4:
+            raise ValueError(
+                "Residual LightGBM requires four or more recursive validation origins")
+        validation_origin = origins[len(origins) * 2 // 3]
+        # A training target may be known at the first validation origin, but no
+        # later target label can influence LightGBM early stopping.
+        fit_rows = residual_rows.loc[
+            (residual_rows.origin < validation_origin)
+            & (residual_rows.date <= validation_origin)].copy()
+        val_rows = residual_rows.loc[
+            residual_rows.origin >= validation_origin].copy()
+        if fit_rows.empty or val_rows.empty:
+            raise ValueError("Residual LightGBM chronological fit/validation is empty")
+        metrics = lgbm.train(
+            fit_rows[feature_columns], fit_rows['actual'],
+            val_rows[feature_columns], val_rows['actual'],
+            base_train_prediction=fit_rows['lstm'],
+            base_val_prediction=val_rows['lstm'])
+        selected_iteration = int(lgbm.training_configuration['best_iteration'])
+        lgbm.refit_fixed_rounds(
+            residual_rows[feature_columns], residual_rows['actual'],
+            base_prediction=residual_rows['lstm'],
+            num_boost_round=selected_iteration)
+        self._residual_training_provenance = {
+            'role': self.lgbm_role,
+            'base_prediction': 'recursive_lstm_only_rollout',
+            'feature_state': 'causal_recursive_lstm_predictions_at_each_lead',
+            'inference_feature_state': 'causal_recursive_lstm_predictions_at_each_lead',
+            'residual_feature_schema': lgbm.residual_feature_schema,
+            'uses_lstm_base_relative_change_feature': (
+                'lstm_base_relative_change' in feature_columns),
+            'uses_forecast_lead_feature': 'forecast_lead_fraction' in feature_columns,
+            'lstm_early_stopping_end': pd.Timestamp(
+                lstm_early_stopping_end).isoformat(),
+            'origin_stride_days': 7,
+            'rows': int(len(residual_rows)),
+            'fit_rows': int(len(fit_rows)),
+            'validation_rows': int(len(val_rows)),
+            'final_fit_rows': int(len(residual_rows)),
+            'selected_iteration': selected_iteration,
+            'final_fit_target_start': pd.Timestamp(residual_rows.date.min()).isoformat(),
+            'final_fit_target_end': pd.Timestamp(residual_rows.date.max()).isoformat(),
+            'fit_origin_start': pd.Timestamp(fit_rows.origin.min()).isoformat(),
+            'fit_origin_end': pd.Timestamp(fit_rows.origin.max()).isoformat(),
+            'fit_target_end': pd.Timestamp(fit_rows.date.max()).isoformat(),
+            'validation_origin_start': pd.Timestamp(val_rows.origin.min()).isoformat(),
+            'validation_target_start': pd.Timestamp(val_rows.date.min()).isoformat(),
+            'validation_horizons': sorted(
+                residual_rows.horizon.astype(int).unique().tolist()),
+            'first_validation_origin': pd.Timestamp(validation_origin).isoformat(),
+        }
+        return lgbm, metrics
 
     def _model_configuration(self, run_dir, lgbm, lstm):
         ensemble = json.loads((run_dir / "ensemble.json").read_text(encoding="utf-8"))
@@ -921,32 +1298,158 @@ class TrainingPipeline:
                 "evaluation_origin_policy": EVALUATION_ORIGIN_POLICY,
                 "training_availability_mode": getattr(
                     self, "_training_availability_mode", "report_date_causal"),
-                "feature_columns": list(FEATURE_COLUMNS),
+                "lightgbm_role": self.lgbm_role,
+                "feature_columns": list(lgbm._feature_names),
             },
             "lightgbm": lgbm_config,
+            "residual_training": self._residual_training_provenance,
             "lstm": lstm_config,
             "ensemble": {
                 "artifact": "ensemble.json",
                 "objective": ensemble.get("objective"),
+            "weight_selection_objective": ensemble.get("weight_selection_objective", "balanced"),
                 "calibration": ensemble.get("calibration"),
             },
         }
+
+    def _refit_final_direct_models(self, clean, run_dir, builder, lgbm, lstm):
+        """Refit selected direct models on all pre-origin observed history.
+
+        The caller runs this only after chronological validation and diagnostic
+        test forecasts have been saved. The test rows are therefore not used to
+        select the ensemble or stop either model, but may be included in the
+        final production fit when they precede the forecast origin.
+        """
+        if self.lgbm_role != 'direct':
+            return builder, {
+                "status": "skipped",
+                "reason": "residual_model_requires_a_matched_oof_lstm_refit",
+            }
+        if clean is None or clean.empty:
+            return builder, {"status": "skipped", "reason": "no_final_refit_data"}
+        assert_no_pending_holdout_rows(clean, pending_holdout_window())
+        config = lstm.training_configuration or {}
+        selected_epoch = config.get("selected_epoch")
+        if selected_epoch is None or int(selected_epoch) <= 0:
+            raise ValueError(
+                "Final LSTM refit requires an epoch selected by chronological validation")
+        lgbm_config = lgbm.training_configuration or {}
+        selected_rounds = lgbm_config.get("best_iteration")
+        if selected_rounds is None or int(selected_rounds) <= 0:
+            raise ValueError(
+                "Final LightGBM refit requires rounds selected by chronological validation")
+
+        # Refit categorical mappings only from data available at the forecast
+        # origin, then rebuild causal features with those mappings.
+        builder.fit(clean)
+        featured = builder.transform(clean)
+        feature_columns = list(builder.feature_columns)
+        lgbm_rows = usable_targets(featured, feature_columns)
+        if not lgbm_rows.any():
+            raise ValueError("Final LightGBM refit has no eligible observed rows")
+        lgbm_weights = None
+        weight_config = lgbm_config.get("sample_weighting")
+        if weight_config:
+            half_life = float(weight_config.get("half_life_days", 0))
+            if (weight_config.get("method") != "exponential_recency_decay"
+                    or not np.isfinite(half_life) or half_life <= 0):
+                raise ValueError("Unsupported LightGBM final-refit weighting policy")
+            fit_dates = pd.to_datetime(featured.loc[lgbm_rows, "report_date"])
+            age_days = (pd.Timestamp(clean.report_date.max()) - fit_dates).dt.days
+            lgbm_weights = np.exp(-np.log(2.0) * age_days.to_numpy(float) / half_life)
+            lgbm_weights /= lgbm_weights.mean()
+        lgbm.refit_fixed_rounds(
+            featured.loc[lgbm_rows, feature_columns],
+            featured.loc[lgbm_rows, "observed_price"],
+            num_boost_round=int(selected_rounds), sample_weight=lgbm_weights)
+
+        start, end = clean.report_date.min(), clean.report_date.max()
+        x_all, y_all, anchors, _, _ = lstm.build_sequences(
+            featured, target_start=start, target_end=end,
+            stride=self.cfg.training_sequence_stride)
+        if not len(x_all):
+            raise ValueError("Final LSTM refit has no eligible observed sequences")
+        history_path = run_dir / "lstm_history.json"
+        history = json.loads(history_path.read_text(encoding="utf-8"))
+        selected_schedule = [
+            float(row["lr"]) for row in history
+            if int(row["epoch"]) <= int(selected_epoch)
+        ]
+        if len(selected_schedule) != int(selected_epoch):
+            selected_schedule = [float(lstm.lr)] * int(selected_epoch)
+        price_huber_delta = getattr(self, "lstm_price_huber_delta", None)
+        tolerance_huber_delta = getattr(
+            self, "lstm_price_tolerance_huber_delta", None)
+        relative_tolerance_huber_delta = getattr(
+            self, "lstm_relative_tolerance_huber_delta", None)
+        if sum(value is not None for value in (
+                price_huber_delta, tolerance_huber_delta,
+                relative_tolerance_huber_delta)) > 1:
+            raise ValueError("Choose only one specialized LSTM loss")
+        lstm_refit = lstm.refit_fixed_epochs(
+            x_all, y_all, epochs=int(selected_epoch),
+            learning_rate_schedule=selected_schedule,
+            train_anchors=(anchors if price_huber_delta is not None
+                           or tolerance_huber_delta is not None else None),
+            price_huber_delta=price_huber_delta,
+            price_tolerance_huber_delta=tolerance_huber_delta,
+            relative_tolerance_huber_delta=relative_tolerance_huber_delta)
+        provenance = {
+            "status": "completed",
+            "strategy": "selected_configuration_refit_on_all_pre_origin_data",
+            "training_start": pd.Timestamp(start).date().isoformat(),
+            "training_end": pd.Timestamp(end).date().isoformat(),
+            "observed_lightgbm_rows": int(lgbm_rows.sum()),
+            "lstm_sequences": int(len(x_all)),
+            "lstm_observed_targets": int(np.isfinite(y_all).sum()),
+            "lstm_selected_epochs": int(selected_epoch),
+            "lightgbm_selected_rounds": int(selected_rounds),
+            "test_metrics_scope": "chronological_selection_fit_before_final_refit",
+            "forecast_holdout_rows_included": False,
+            "lstm_refit": lstm_refit,
+        }
+        return builder, provenance
 
     def _finish_candidate(self, raw, clean, featured, train, validation, test,
                           split, run_dir, builder, lgbm, lstm, lgbm_metrics,
                           relative_lstm_metrics, activate,
                           base_model_scope='calibration_excluded_from_early_stopping',
                           fit_source_cutoff=None, source_availability_cutoffs=None,
-                          training_feature_audit=None, label_filtering_applied=False):
-        raw_engine = ForecastEngine(lgbm, lstm, None, builder)
+                          training_feature_audit=None, label_filtering_applied=False,
+                          final_refit_data=None, final_refit_skip_reason=None):
+        residual_role = bool(getattr(lgbm, 'is_residual_model', False))
+        ensemble = EnsembleModel(run_dir) if residual_role else None
+        if residual_role:
+            ensemble.weights = np.ones(self.cfg.monthly_horizon, dtype=float)
+            ensemble.trust_weights = np.ones(self.cfg.monthly_horizon, dtype=float)
+            ensemble.category_trust_weights = {}
+            ensemble.specialist_blends = {}
+            ensemble.anomaly_threshold = 1e9
+            ensemble.anomaly_strength = 0.0
+            ensemble.anomaly_decay = 1.0
+            ensemble.objective = self.ensemble_objective
+            ensemble.calibration = {
+                'scope': 'held_out_from_residual_fit',
+                'base_model_scope': base_model_scope,
+                'purpose': 'product_confidence_reliability',
+            }
+        raw_engine = ForecastEngine(lgbm, lstm, ensemble, builder)
         validation_forecasts, validation_paths = self._backtest(
             clean, featured, validation, raw_engine, return_paths=True,
             source_availability_cutoffs=source_availability_cutoffs)
         tuning, calibration = self._split_forecasts(
             validation_forecasts, cutoff=self._tuning_partition(validation).report_date.max())
-        ensemble = EnsembleModel(run_dir).fit(
-            tuning, self.cfg.monthly_horizon, calibration_frame=calibration)
-        ensemble.calibration['base_model_scope'] = base_model_scope
+        if residual_role:
+            ensemble.calibration.update({
+                'sample_count': int(len(calibration)),
+                'start': str(pd.Timestamp(calibration.date.min())),
+                'end': str(pd.Timestamp(calibration.date.max())),
+            })
+        else:
+            ensemble = EnsembleModel(run_dir).fit(
+                tuning, self.cfg.monthly_horizon, calibration_frame=calibration,
+                objective=self.ensemble_objective)
+            ensemble.calibration['base_model_scope'] = base_model_scope
         ensemble.save()
         validation_forecasts["ensemble"] = ensemble.predict_rows(
             validation_forecasts.lstm.to_numpy(), validation_forecasts.lgbm.to_numpy(),
@@ -971,6 +1474,16 @@ class TrainingPipeline:
             test_paths.lstm.to_numpy(), test_paths.lgbm.to_numpy(),
             test_paths.horizon.to_numpy(), test_paths.anchor.to_numpy(),
             test_paths.series.to_numpy(), test_paths.moving_average7.to_numpy())
+        final_refit = {"status": "skipped", "reason": final_refit_skip_reason}
+        if final_refit_data is not None:
+            builder, final_refit = self._refit_final_direct_models(
+                final_refit_data, run_dir, builder, lgbm, lstm)
+        if final_refit.get("status") == "completed":
+            ensemble.calibration.update({
+                "final_model_refit_scope": final_refit["strategy"],
+                "calibration_base_model_scope": "pre_refit_chronological_selection_fit",
+            })
+            ensemble.save()
         observed = clean.loc[clean.is_observed, "report_date"]
         training_source_audit = self._training_source_audit(
             train, available_through=fit_source_cutoff,
@@ -1011,6 +1524,7 @@ class TrainingPipeline:
             "test_samples": int(len(test_forecasts)),
             "validation_path_samples": int(len(validation_paths)),
             "test_path_samples": int(len(test_paths)),
+            "final_model_refit": final_refit,
             "evaluation_stride_days": self.cfg.evaluation_stride,
             "evaluation_origin_policy": EVALUATION_ORIGIN_POLICY,
             "evaluation_scope": (
@@ -1046,12 +1560,12 @@ class TrainingPipeline:
             "target_met_on_development_rows": self._targets_met(
                 metrics["test"]["ensemble"]),
             "beats_persistence": bool(beats_baseline),
-            "beats_active_champion": bool(beats_champion),
+            "beats_active_champion": beats_champion,
             "active_champion": champion,
             "rule": (
                 "Retrospective comparisons are diagnostic. Activation requires "
-                "independent frozen final-holdout Within-10 >= 90%, MAE/RMSE <= PHP 5, "
-                "MAPE <= 5%, "
+                "independent frozen final-holdout pooled and per-horizon "
+                "Within-5-PHP accuracy >= 95%, MAPE <= 5%, and MAE/RMSE <= PHP 5, "
                 "validated selection provenance and declared product coverage."
             ),
         }
@@ -1062,10 +1576,22 @@ class TrainingPipeline:
         self._attach_validation_quality(
             run_dir, validation_forecasts, metrics, validation_paths)
         model_configuration = self._model_configuration(run_dir, lgbm, lstm)
+        snapshot_manifest = capture_snapshot(
+            run_dir, raw, fingerprint, self._fingerprint)
+        model_configuration["pipeline"]["source_snapshot"] = {
+            "file": SOURCE_SNAPSHOT_FILE,
+            "manifest": SOURCE_MANIFEST_FILE,
+            "sha256": snapshot_manifest["sha256"],
+            "row_count": snapshot_manifest["row_count"],
+            "report_date_min": snapshot_manifest["report_date_min"],
+            "report_date_max": snapshot_manifest["report_date_max"],
+            "scope": "raw_training_and_evaluation_input_before_preprocessing",
+        }
         run_id = self.store.finalize(
             run_dir, _jsonable(metrics), split, fingerprint,
             activate=bool(activate and passed),
-            model_configuration=model_configuration)
+            model_configuration=model_configuration,
+            preprocessing_contract=self.preprocessor.preprocessing_contract())
         metrics["run_id"] = run_id
         metrics["activated"] = bool(activate and passed)
         log.info("Candidate %s complete; activated=%s", run_id, metrics["activated"])
@@ -1080,31 +1606,33 @@ class TrainingPipeline:
     def _promotion_decision(test_metrics, champion_metrics=None):
         """Development comparison only; this does not authorize activation."""
         beats_persistence = TrainingPipeline._beats_persistence(test_metrics)
-        beats_champion = (champion_metrics is None or TrainingPipeline._improves_all_by(
-            test_metrics["ensemble"], champion_metrics, .05))
-        return beats_persistence, beats_champion, beats_persistence and beats_champion
+        beats_champion = (
+            None if champion_metrics is None else
+            TrainingPipeline._improves_all_by(
+                test_metrics["ensemble"], champion_metrics, .05))
+        development_passed = bool(beats_persistence and beats_champion is True)
+        return beats_persistence, beats_champion, development_passed
 
     @staticmethod
     def _improves_all(candidate, reference):
-        within_10 = candidate.get("within_10_accuracy_pct")
-        reference_within_10 = reference.get("within_10_accuracy_pct")
-        return (
-            within_10 is not None and reference_within_10 is not None
-            and within_10 > reference_within_10
-            and all(candidate.get(name) is not None and reference.get(name) is not None
-                    and candidate[name] < reference[name]
-                    for name in ("mae", "rmse", "mape"))
-        )
+        within_5_nonregression = (
+            candidate.get("within_5_php_accuracy_pct") is not None
+            and reference.get("within_5_php_accuracy_pct") is not None
+            and candidate["within_5_php_accuracy_pct"]
+                >= reference["within_5_php_accuracy_pct"])
+        return within_5_nonregression and all(
+            candidate.get(name) is not None and reference.get(name) is not None
+            and candidate[name] < reference[name]
+            for name in ("mae", "rmse", "mape"))
 
     @staticmethod
     def _improves_all_by(candidate, reference, fraction):
-        within_10 = candidate.get("within_10_accuracy_pct")
-        reference_within_10 = reference.get("within_10_accuracy_pct")
-        return (
-            within_10 is not None and reference_within_10 is not None
-            and within_10 > reference_within_10
-            and within_10 >= reference_within_10 * (1 + fraction)
-            and all(candidate.get(name) is not None and reference.get(name) is not None
-                    and candidate[name] <= reference[name] * (1 - fraction)
-                    for name in ("mae", "rmse", "mape"))
-        )
+        within_5_nonregression = (
+            candidate.get("within_5_php_accuracy_pct") is not None
+            and reference.get("within_5_php_accuracy_pct") is not None
+            and candidate["within_5_php_accuracy_pct"]
+                >= reference["within_5_php_accuracy_pct"])
+        return within_5_nonregression and all(
+            candidate.get(name) is not None and reference.get(name) is not None
+            and candidate[name] <= reference[name] * (1 - fraction)
+            for name in ("mae", "rmse", "mape"))

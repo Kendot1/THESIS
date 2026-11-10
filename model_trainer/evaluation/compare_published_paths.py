@@ -8,10 +8,12 @@ from pathlib import Path
 from statistics import mean
 
 import pandas as pd
+import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from data.preprocessor import DataPreprocessor
+from evaluation.frozen_holdout import error_metrics as php_error_metrics
 from evaluation.horizon_audit import metrics
 from features.builder import FeatureBuilder
 from models.ensemble import EnsembleModel
@@ -78,6 +80,8 @@ def _published_rows(paths):
             output.append({
                 "series": str(series), "origin": str(origin_text)[:10],
                 "date": target.isoformat(), "horizon": horizon,
+                "target_period_start": row["target_period_start"],
+                "target_period_end": row["target_period_end"],
                 "forecast_step": int(row["forecast_step"]),
                 "actual": actual, "ensemble": float(row["predicted_price"]),
                 "covered_days": covered_days,
@@ -89,7 +93,13 @@ def _published_rows(paths):
 
 
 def _metric_rows(rows):
-    return metrics(rows)
+    result = metrics(rows)
+    # Report the project's fixed-PHP tolerance and requested 100-MAPE
+    # definition alongside the legacy percentage-tolerance fields.
+    fixed_php = php_error_metrics(rows, column="ensemble")
+    result.update({key: value.item() if isinstance(value, np.generic) else value
+                   for key, value in fixed_php.items()})
+    return result
 
 
 def _by(rows, field):
@@ -171,7 +181,8 @@ def _partitions_from_metadata(clean, split_metadata, pipeline):
     return partitions
 
 
-def compare(candidate_run, snapshot, output, partition_name="validation"):
+def compare(candidate_run, snapshot, output, partition_name="validation",
+            rows_output=None):
     candidate_run, snapshot, output = Path(candidate_run), Path(snapshot), Path(output)
     candidate_meta = json.loads((candidate_run / "metadata.json").read_text(encoding="utf-8"))
     raw = pd.DataFrame(json.loads(snapshot.read_text(encoding="utf-8")))
@@ -216,6 +227,29 @@ def compare(candidate_run, snapshot, output, partition_name="validation"):
     if baseline_keys != candidate_keys:
         raise ValueError("Candidate and active published outputs are not directly comparable")
 
+    if rows_output is not None:
+        keys = ["series", "origin", "date", "horizon", "forecast_step"]
+        active_rows = pd.DataFrame(baseline_rows).rename(
+            columns={"ensemble": "active_prediction"})
+        candidate_rows_frame = pd.DataFrame(candidate_rows).rename(
+            columns={"ensemble": "candidate_prediction"})
+        columns = keys + ["actual", "active_prediction", "covered_days",
+                          "observed_days", "period_days", "partial_period"]
+        candidate_join = candidate_rows_frame[
+            keys + ["actual", "candidate_prediction"]].rename(
+                columns={"actual": "candidate_actual"})
+        matched = active_rows[columns].merge(
+            candidate_join, on=keys, how="inner", validate="one_to_one")
+        if len(matched) != len(baseline_rows):
+            raise ValueError("Row-level comparison lost matched published targets")
+        if not np.allclose(matched.actual, matched.candidate_actual,
+                           rtol=0, atol=1e-10, equal_nan=True):
+            raise ValueError("Row-level comparison found mismatched actual labels")
+        matched = matched.drop(columns="candidate_actual")
+        rows_output = Path(rows_output)
+        rows_output.parent.mkdir(parents=True, exist_ok=True)
+        matched.to_csv(rows_output, index=False)
+
     results = {
         "active": _summarize(baseline_rows),
         "candidate": _summarize(candidate_rows),
@@ -250,11 +284,23 @@ def compare(candidate_run, snapshot, output, partition_name="validation"):
         "active_path_count": int(active_paths.groupby(["series", "origin"]).ngroups),
         "active_scored_rows": len(baseline_rows),
         "candidate_scored_rows": len(candidate_rows),
+        "matched_rows_output": (str(Path(rows_output).resolve())
+                                if rows_output is not None else None),
         "candidate_validation_confidence_status_counts": dict(statuses),
         "candidate_validation_confidence_numeric_count": int(numeric),
+        "candidate_point_in_time_training_verified": bool(candidate_meta.get(
+            "metrics", {}).get("point_in_time_training_verified", False)),
+        "candidate_source_availability_audit": candidate_meta.get(
+            "metrics", {}).get("source_data", {}).get(
+                "training_report_date_availability", {}),
+        "candidate_promotion_gate": candidate_meta.get("metrics", {}).get(
+            "promotion_gate", {}),
         "metrics": results,
         "metric_notes": {
             "within_10": "Absolute percentage error <= 10%; actuals below 1e-8 PHP excluded and counted.",
+            "within_5_php": "Primary forecast accuracy: fraction of valid published rows with absolute price error <= PHP 5.",
+            "within_5_percent": "Secondary accuracy: fraction of nonzero actuals with absolute percentage error <= 5%.",
+            "forecast_accuracy": "Uses within_5_php_accuracy_pct as primary accuracy; 100 minus MAPE is not an accuracy metric.",
             "mae_rmse": "PHP scale; all finite nonnegative actuals.",
             "weekly_monthly": "PredictionWriter aggregation and centavo rounding; realized average over observed forecast-covered dates.",
             "partial_periods": "Retained and counted in each weekly/monthly metric group.",
@@ -272,8 +318,11 @@ def main():
     parser.add_argument("--snapshot", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--partition", choices=("validation", "test"), default="validation")
+    parser.add_argument("--rows-output", type=Path,
+                        help="Optional CSV of matched active and candidate published predictions")
     args = parser.parse_args()
-    report = compare(args.candidate_run, args.snapshot, args.output, args.partition)
+    report = compare(args.candidate_run, args.snapshot, args.output, args.partition,
+                     args.rows_output)
     print(json.dumps({"active_run": report["active_run"],
                       "candidate_run": report["candidate_run"],
                       "evaluation_partition": report["evaluation_partition"],

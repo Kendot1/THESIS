@@ -3,7 +3,10 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from pipeline.prediction_writer import PredictionWriter
+from pipeline.prediction_writer import (
+    PUBLISHED_FORECAST_STEPS,
+    PredictionWriter,
+)
 
 
 class TestPredictionWriterPeriods(unittest.TestCase):
@@ -24,12 +27,15 @@ class TestPredictionWriterPeriods(unittest.TestCase):
         origin = np.datetime64("2026-09-27", "D")
         dates = origin + np.arange(1, 31).astype("timedelta64[D]")
         points = np.arange(101, 131, dtype=float)
-        product_metrics = {"confidence_by_horizon": {
-            "daily": {"evidence_status": "validated", "confidence_score": 83.0,
-                      "confidence_level": "High"},
-            "weekly": {"evidence_status": "validated", "confidence_score": 76.0,
-                       "confidence_level": "Moderate"},
-            "monthly": {"evidence_status": "insufficient_data"},
+        product_metrics = {"confidence_by_step": {
+            "daily": {"1": {"evidence_status": "validated",
+                             "evaluation_source": "chronological_validation",
+                             "confidence_score": 83.0,
+                             "confidence_level": "High"}},
+            "weekly": {"1": {"evidence_status": "validated",
+                              "evaluation_source": "chronological_validation",
+                              "confidence_score": 76.0,
+                              "confidence_level": "Moderate"}},
         }}
 
         rows = PredictionWriter._rows("product-1", dates, points, origin, product_metrics)
@@ -97,6 +103,40 @@ class TestPredictionWriterPeriods(unittest.TestCase):
         self.assertEqual(prices["Fresh"], 10.0)
         self.assertTrue(np.isnan(prices["Stale"]))
         self.assertTrue((latest.report_date == pd.Timestamp("2026-10-08")).all())
+
+    def test_production_rows_have_exact_objective_horizon_counts(self):
+        origin = pd.Timestamp("2026-10-05")
+        history = pd.DataFrame({
+            "report_date": pd.date_range("2026-08-01", origin, freq="D"),
+            "observed_price": np.linspace(40.0, 60.0, 66),
+            "is_observed": True,
+        })
+        dates = origin.to_datetime64() + np.arange(1, 8).astype("timedelta64[D]")
+        points = np.linspace(61.0, 67.0, 7)
+        metrics = {"prediction_intervals": {"daily": {
+            "1": {"nominal_level": 0.8, "lower_error_php": -2.0,
+                  "upper_error_php": 3.0, "reliability_status": "limited"},
+        }}}
+
+        rows = PredictionWriter._production_rows(
+            "product-1", dates, points, origin, history, metrics,
+        )
+        counts = {name: sum(row["forecast_horizon"] == name for row in rows)
+                  for name in PUBLISHED_FORECAST_STEPS}
+        self.assertEqual(counts, {"daily": 7, "weekly": 4, "monthly": 1})
+        self.assertEqual(PUBLISHED_FORECAST_STEPS, counts)
+        daily = [row for row in rows if row["forecast_horizon"] == "daily"]
+        weekly = [row for row in rows if row["forecast_horizon"] == "weekly"]
+        monthly = [row for row in rows if row["forecast_horizon"] == "monthly"]
+        self.assertEqual(daily[0]["prediction_date"], "2026-10-06")
+        self.assertEqual(daily[-1]["prediction_date"], "2026-10-12")
+        self.assertEqual((weekly[0]["target_period_start"], weekly[0]["target_period_end"]),
+                         ("2026-10-06", "2026-10-12"))
+        self.assertEqual(weekly[-1]["forecast_step"], 4)
+        self.assertEqual((monthly[0]["target_period_start"], monthly[0]["target_period_end"]),
+                         ("2026-10-06", "2026-11-04"))
+        self.assertEqual((daily[0]["lower_bound"], daily[0]["upper_bound"]), (59.0, 64.0))
+        self.assertTrue(all(row["confidence_level"] == "Insufficient data" for row in weekly + monthly))
 
 
 if __name__ == "__main__":

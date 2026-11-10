@@ -5,15 +5,22 @@ export const maxDuration = 60; // Allow more time for Gemini/Groq processing
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { productName, currentPrice, predictedPrice, newsContext, language } = body;
+    const { productName, currentPrice, predictedPrice, newsContext, language } = body ?? {};
+
+    if (!productName || typeof currentPrice !== "number" || typeof predictedPrice !== "number") {
+      return NextResponse.json(
+        { error: "Invalid request: productName, currentPrice, and predictedPrice are required" },
+        { status: 400 }
+      );
+    }
 
     const groqKey = process.env.GROQ_API_KEY_REASONING || process.env.GROQ_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY_REASONING;
 
     if (!groqKey && !geminiKey) {
       return NextResponse.json(
-        { error: "Both GROQ_API_KEY_REASONING and GEMINI_API_KEY_REASONING are missing." },
-        { status: 500 }
+        { error: "Reasoning service unavailable: API keys not configured" },
+        { status: 503 }
       );
     }
 

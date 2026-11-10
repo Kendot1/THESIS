@@ -1,5 +1,12 @@
 # Reviewed local model activation
 
+For new independent 14-daily/4-weekly/1-monthly evidence, use
+[`POLICY12.md`](POLICY12.md). The version-10 pathway below is retained for
+legacy compatibility, but its daily-derived weekly/monthly scores do not
+validate the current published targets. No existing October 2026 package
+qualifies as policy-12 prospective evidence. Policy 11 is superseded without
+any real sealed packages.
+
 New `ModelStore.activate(run_id, evidence_dir=...)` calls require reviewed final
 evidence. Missing or failing evidence leaves the active pointer unchanged.
 `finalize(..., activate=True)` and `rollback(...)` cannot bypass this check.
@@ -7,11 +14,20 @@ Stage new bundles with `activate=False`, then evaluate them independently before
 requesting activation. Reading an existing legacy active bundle remains possible;
 this compatibility is not a retrospective certification of its accuracy.
 
-## Admission policy version 2
+## Admission policy version 10
 
-Policy version 1 evidence does not qualify under version 2. Existing prospective
-contracts must not be retagged or rewritten; the new checks apply to a newly
-selected model and its own forecasts frozen before their target dates.
+**Legacy-path limitation:** This verifier's 30-day scorer aggregates daily
+predictions into partial weekly/monthly periods. The current serving path
+publishes independent 14-daily/4-full-week/1-full-month targets, so a
+policy-10 receipt is not evidence that those horizon-specific outputs improved.
+A new versioned contract and scorer must be implemented before a new model can
+be considered qualified for the current 14/4/1 mission. Preserve existing
+frozen evidence; do not rewrite it into the new schema. See
+`audits/foodcast_accuracy_20261017/PROSPECTIVE_EVIDENCE_GAP.md`.
+
+Evidence from earlier policy versions does not qualify under version 10. Existing
+prospective contracts must not be retagged or rewritten; the new checks apply to
+a newly selected model and its own forecasts frozen before their target dates.
 
 The policy is an operational threshold, not a statistical theorem. Record its
 version at selection, before final forecasts are frozen.
@@ -22,23 +38,32 @@ version at selection, before final forecasts are frozen.
 - Model creation precedes selection; selection precedes freeze; review follows
   final scoring. Every timestamp includes a timezone.
 - Matched validation forecasts finish before selection and the holdout. Recompute
-  Within-10 accuracy and MAE, RMSE, and MAPE against champion and persistence on
-  identical rows. Require strict aggregate improvement on all four metrics and
-  improvement on all four at at least two thirds of at least three origins.
+  Within-5-PHP accuracy, MAE, RMSE, and MAPE against champion and persistence
+  on identical rows. Require no Within-5-PHP regression and strict improvement
+  on MAE, RMSE, and MAPE at at least two thirds of at least three origins and
+  in aggregate. Report Within-5% accuracy separately.
 - A closed, fully reconciled final period with scores recomputed by
-  `frozen_holdout.score`. Require Within-10 >= 90%, MAE <= PHP 5, RMSE <= PHP 5,
-  MAPE <= 5%, full declared scope under the scorer's observed-label rules, and
-  no Within-10 regression plus strict improvement on all three errors over
-  matched persistence. The saved score report must reproduce exactly apart from
-  the scoring clock field.
+  `frozen_holdout.score`. Require Within-5-PHP accuracy >=95%, MAPE <=5%,
+  MAE <=PHP 5, and RMSE <=PHP 5 on pooled published outputs and separately
+  for Daily, Weekly, and Monthly. Report Within-5% accuracy and 100-minus-MAPE
+  as distinct secondary metrics. Require full declared scope under the scorer's
+  observed-label rules, no Within-5-PHP regression, and strict improvement on
+  MAE, RMSE, and MAPE over matched persistence, both pooled and per horizon.
+  The saved score report must reproduce exactly apart from the scoring clock field.
 - Identified reviewer attests to checking selection provenance, actual-source
   provenance and non-use of the final holdout for selection.
 
 This is not a mechanism to relabel development data as final evidence. The current
-October replay is late-frozen, covers 86/119 series and has no pre-freeze selection
+October replay covers 86/114 input series and has no pre-freeze selection
 record in this format; it cannot satisfy this admission policy. Do not amend that
 historical contract to manufacture missing evidence. No current research candidate
 has qualifying evidence.
+
+The frozen scorer reports direct Within-5-PHP accuracy, Within-5% accuracy,
+Within-10 accuracy, and MAPE independently. It also reports 100-minus-MAPE as
+a MAPE complement; it is not an accuracy target. Its
+`target_met_for_full_declared_scope` flag requires Within-5-PHP accuracy >=95%,
+MAE/RMSE <=PHP 5, MAPE <=5%, and complete coverage.
 
 ## Evidence directory
 
@@ -54,7 +79,7 @@ Keep these files and their referenced data within one evidence directory:
 
 ```json
 {
-  "promotion_policy_version": 2,
+  "promotion_policy_version": 10,
   "model_run_id": "<exact bundle directory name>",
   "model_metadata_sha256": "<finalized metadata digest>",
   "selected_at": "<actual timezone-aware selection timestamp>",
@@ -76,7 +101,7 @@ Keep these files and their referenced data within one evidence directory:
 ```json
 {
   "schema_version": 1,
-  "promotion_policy_version": 2,
+  "promotion_policy_version": 10,
   "model_run_id": "<exact bundle directory name>",
   "reviewed_by": "<identified reviewer>",
   "reviewed_at": "<actual timezone-aware review timestamp>",

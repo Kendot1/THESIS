@@ -28,8 +28,15 @@ interface NewsCardProps {
 const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, source, content, content_tl, sentimentScore, keywords, affectedProducts, _compact = false }: NewsCardProps) => {
   const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [failedImage, setFailedImage] = useState<string | null>(null);
+
+  const handleCardClick = () => {
+    setIsOpen(true);
+    setIsOpening(true);
+    setTimeout(() => setIsOpening(false), 300);
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -72,7 +79,7 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
     <>
       {/* Card */}
       <div
-        onClick={() => setIsOpen(true)}
+        onClick={handleCardClick}
         className={`group min-w-0 bg-white overflow-hidden cursor-pointer ${_compact
           ? "flex h-full w-full flex-row-reverse items-center gap-3 px-4 py-3 transition-all duration-300"
           : "w-full rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-500 flex flex-col h-full"
@@ -171,69 +178,91 @@ const NewsCard = ({ id, title, title_tl, excerpt, category, date, image, url, so
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 sm:p-8 overflow-y-auto flex-1">
-              <div className="flex flex-wrap items-center gap-3 mb-3">
-                <span className="px-3 py-1 bg-gray-50 rounded-full text-[10px] font-bold text-primary-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <Tag className="w-3 h-3" />
-                  {t(category)}
-                </span>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <Clock className="w-3 h-3" />
-                  {displayDate}
-                </span>
+            {isOpening ? (
+              <div className="p-6 sm:p-8 space-y-6" aria-busy="true">
+                <div className="flex items-center gap-3">
+                  <div className="h-5 w-24 bg-gray-100 rounded-full skeleton-shimmer" />
+                  <div className="h-5 w-32 bg-gray-100 rounded-full skeleton-shimmer" />
+                </div>
+                <div className="space-y-3">
+                  <div className="h-7 sm:h-8 w-full bg-gray-200 rounded-xl skeleton-shimmer" />
+                  <div className="h-7 sm:h-8 w-3/4 bg-gray-200 rounded-xl skeleton-shimmer" />
+                </div>
+                <div className="h-3 w-40 bg-gray-100 rounded-md skeleton-shimmer" />
+                <div className="space-y-3 pt-2">
+                  <div className="h-4 w-full bg-gray-100 rounded skeleton-shimmer" />
+                  <div className="h-4 w-full bg-gray-100 rounded skeleton-shimmer" />
+                  <div className="h-4 w-5/6 bg-gray-100 rounded skeleton-shimmer" />
+                  <div className="h-4 w-4/6 bg-gray-100 rounded skeleton-shimmer" />
+                </div>
+                <div className="flex gap-2 pt-4">
+                  <div className="h-6 w-20 bg-gray-100 rounded-full skeleton-shimmer" />
+                  <div className="h-6 w-24 bg-gray-100 rounded-full skeleton-shimmer" />
+                </div>
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-2 leading-tight" style={{ fontFamily: "var(--font-display)" }}>
-                {displayTitle}
-              </h2>
+            ) : (
+              <div className="p-6 sm:p-8 overflow-y-auto flex-1">
+                <div className="flex flex-wrap items-center gap-3 mb-3">
+                  <span className="px-3 py-1 bg-gray-50 rounded-full text-[10px] font-bold text-primary-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Tag className="w-3 h-3" />
+                    {t(category)}
+                  </span>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Clock className="w-3 h-3" />
+                    {displayDate}
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-2 leading-tight" style={{ fontFamily: "var(--font-display)" }}>
+                  {displayTitle}
+                </h2>
 
-              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">
-                {t("source")}: {source || t("marketNews")}
-              </div>
+                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">
+                  {t("source")}: {source || t("marketNews")}
+                </div>
 
+                <div className="w-12 h-0.5 bg-gradient-to-r from-primary-700 to-accent rounded-full mb-6" />
 
+                {/* Full article content */}
+                <div className="text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-line mb-8">
+                  {fullContent}
+                </div>
 
-              <div className="w-12 h-0.5 bg-gradient-to-r from-primary-700 to-accent rounded-full mb-6" />
-
-              {/* Full article content */}
-              <div className="text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-line mb-8">
-                {fullContent}
-              </div>
-
-              {/* Tags Section */}
-              {relatedKeywords.length > 0 && (() => {
-                const tagColors = [
-                  "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
-                  "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
-                  "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
-                  "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100",
-                  "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100",
-                  "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100",
-                  "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100",
-                  "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100",
-                ];
-                return (
-                  <div className="pt-6 border-t border-gray-100">
-                    <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <Tag className="w-3.5 h-3.5" />
-                      {t("relatedTags") || "Related Tags"}
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {relatedKeywords.map((kw, idx) => {
-                        return (
-                          <Link
-                            key={idx}
-                            href={`/tags/${encodeURIComponent(kw)}`}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors capitalize ${tagColors[idx % tagColors.length]}`}
-                          >
-                            {kw}
-                          </Link>
-                        );
-                      })}
+                {/* Tags Section */}
+                {relatedKeywords.length > 0 && (() => {
+                  const tagColors = [
+                    "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
+                    "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
+                    "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
+                    "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100",
+                    "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100",
+                    "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100",
+                    "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100",
+                    "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100",
+                  ];
+                  return (
+                    <div className="pt-6 border-t border-gray-100">
+                      <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <Tag className="w-3.5 h-3.5" />
+                        {t("relatedTags") || "Related Tags"}
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {relatedKeywords.map((kw, idx) => {
+                          return (
+                            <Link
+                              key={idx}
+                              href={`/tags/${encodeURIComponent(kw)}`}
+                              className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors capitalize ${tagColors[idx % tagColors.length]}`}
+                            >
+                              {kw}
+                            </Link>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })()}
-            </div>
+                  );
+                })()}
+              </div>
+            )}
 
             {/* Modal Footer */}
             <div className="flex-shrink-0 px-6 sm:px-8 py-5 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">

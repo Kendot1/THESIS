@@ -14,6 +14,7 @@ import {
   selectSavedPeriodPredictions,
 } from "./forecast.ts"
 import type { SavedPeriodPrediction } from "./forecast.ts"
+import { createSupabaseClient, publicError, statusForError, checkRateLimit, MemoryCache } from "./upstream.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,10 +35,7 @@ const PRICE_IMPACT_NEWS_EVENT_TYPES = [
 ]
 
 function getSupabase() {
-  return createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  )
+  return createSupabaseClient()
 }
 
 // ── /comparisons ─────────────────────────────────────────
@@ -264,35 +262,90 @@ function slugify(text: string) {
 
 const DEFAULT_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&q=80&w=800";
 
-async function fetchAllPaginated(queryFactory: (start: number, end: number) => any, pageSize = 1000): Promise<any[]> {
-  let allData: any[] = [];
-  let start = 0;
-  while (true) {
+async function fetchAllPaginated(queryFactory: (start: number, end: number, includeCount: boolean) => any, pageSize = 1000): Promise<any[]> {
+  const first = await queryFactory(0, pageSize - 1, true);
+  if (first.error) throw first.error;
+  const allData: any[] = [...(first.data ?? [])];
+  if (allData.length < pageSize) return allData;
+  if (Number.isSafeInteger(first.count) && first.count >= allData.length) {
+    // Offset pages are independent once the filtered count is known. Keep
+    // database pressure bounded and concatenate in original offset order.
+    for (let start = pageSize; start < first.count; start += pageSize * 4) {
+      const offsets = Array.from({ length: Math.min(4, Math.ceil((first.count - start) / pageSize)) },
+        (_, i) => start + i * pageSize);
+      const pages = await Promise.all(offsets.map(offset => queryFactory(offset, offset + pageSize - 1)));
+      for (const page of pages) {
+        if (page.error) throw page.error;
+        allData.push(...(page.data ?? []));
+      }
+    }
+    return allData;
+  }
+  // Compatibility for callers without a count.
+  for (let start = pageSize; ; start += pageSize) {
     const { data, error } = await queryFactory(start, start + pageSize - 1);
     if (error) throw error;
-    if (!data || data.length === 0) break;
-    allData.push(...data);
-    if (data.length < pageSize) break;
-    start += pageSize;
+    allData.push(...(data ?? []));
+    if (!data || data.length < pageSize) return allData;
   }
-  return allData;
 }
 
 // ── /products ────────────────────────────────────────────
-let productsRequest: Promise<any[]> | null = null;
-let productsCache: { rows: any[]; expiresAt: number } | null = null;
+const productsCache = new MemoryCache<any[]>(300_000, 600_000); // 5 min fresh, 10 min SWR
 
-async function handleProducts() {
-  // Coalesce concurrent history queries during page loads and builds. Cache
-  // successful results briefly per worker; failures never become empty data.
-  if (productsCache && productsCache.expiresAt > Date.now()) return productsCache.rows;
-  if (!productsRequest) {
-    productsRequest = loadProducts().then(rows => {
-      if (rows.length) productsCache = { rows, expiresAt: Date.now() + 30_000 };
-      return rows;
-    }).finally(() => { productsRequest = null; });
+async function handleProducts(url?: URL) {
+  const allProducts = await productsCache.getOrFetch(() => loadProducts());
+
+  if (!url) return allProducts;
+
+  const pageParam = url.searchParams.get("page");
+  const limitParam = url.searchParams.get("limit");
+  const categoryParam = url.searchParams.get("category")?.trim();
+  const searchParam = url.searchParams.get("search")?.trim();
+  const liteParam = url.searchParams.get("lite") === "true";
+
+  let filtered = allProducts;
+  if (categoryParam && categoryParam !== "All") {
+    filtered = filtered.filter((p: any) => p.category?.toLowerCase() === categoryParam.toLowerCase());
   }
-  return productsRequest;
+  if (searchParam) {
+    const q = searchParam.toLowerCase();
+    filtered = filtered.filter((p: any) => p.name?.toLowerCase().includes(q));
+  }
+
+  // Lazy loading: strip heavy 365-day forecastData if caller asked for lite listing
+  const formatItem = (p: any) => {
+    if (liteParam) {
+      const { forecastData: _unused, ...lite } = p;
+      return lite;
+    }
+    return p;
+  };
+
+  const hasPagination = pageParam !== null || limitParam !== null;
+  if (hasPagination) {
+    const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+    const limit = Math.min(Math.max(1, parseInt(limitParam || "20", 10) || 20), 100);
+    const total = filtered.length;
+    const startIndex = (page - 1) * limit;
+    const items = filtered.slice(startIndex, startIndex + limit).map(formatItem);
+
+    return {
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  if (liteParam || categoryParam || searchParam) {
+    return filtered.map(formatItem);
+  }
+
+  return allProducts;
 }
 
 // Product charts load the selected series on demand. The list endpoint keeps
@@ -334,18 +387,22 @@ async function loadProducts() {
   oneYearAgo.setDate(oneYearAgo.getDate() - 365);
   const sinceDate = oneYearAgo.toISOString().split("T")[0];
 
-  const [productRows, priceRows, runResponse] = await Promise.all([
-    fetchAllPaginated((s, e) => supabase.from("products").select("id, name, variant, origin, category, unit, image_url, description").range(s, e)),
-    fetchAllPaginated((s, e) => supabase.from("food_prices").select("product_name, product_category, product_variant, origin, price_index, report_date, unit").gte("report_date", sinceDate).order("report_date", { ascending: true }).range(s, e)),
-    supabase.from("forecast_runs").select("id, model_run_id, generated_at, metrics")
-      .order("generated_at", { ascending: false }).order("id", { ascending: false }).limit(1).maybeSingle(),
+  const [productRows, priceRows, { forecastRun, predRows }] = await Promise.all([
+    fetchAllPaginated((s, e) => supabase.from("products").select("id, name, variant, origin, category, unit, image_url, description", { count: "exact" }).order("id").range(s, e)),
+    fetchAllPaginated((s, e) => supabase.from("food_prices").select("product_name, product_category, product_variant, origin, price_index, report_date, unit", { count: "exact" }).gte("report_date", sinceDate).order("report_date", { ascending: true }).order("id", { ascending: true }).range(s, e)),
+    (async () => {
+      const runResponse = await supabase.from("forecast_runs").select("id, model_run_id, generated_at, metrics")
+        .order("generated_at", { ascending: false }).order("id", { ascending: false }).limit(1).maybeSingle();
+      if (runResponse.error) throw runResponse.error;
+      const forecastRun = runResponse.data;
+      // Only the run lookup is a dependency: overlap forecast pagination with
+      // price history, retaining one immutable vintage during publication.
+      const predRows = forecastRun ? await fetchAllPaginated((s, e) => supabase
+        .from("forecast_values").select("product_id, prediction_date, predicted_price, forecast_horizon, forecast_origin_date, target_period_start, target_period_end, forecast_step, covered_days, period_days, confidence_score, confidence_level")
+        .eq("run_id", forecastRun.id).order("product_id").order("forecast_horizon").order("forecast_step").range(s, e)) : [];
+      return { forecastRun, predRows };
+    })(),
   ]);
-  if (runResponse.error) throw runResponse.error;
-  const forecastRun = runResponse.data;
-  // Read a single immutable vintage so a concurrent publication cannot mix models.
-  const predRows = forecastRun ? await fetchAllPaginated((s, e) => supabase
-    .from("forecast_values").select("product_id, prediction_date, predicted_price, forecast_horizon, forecast_origin_date, target_period_start, target_period_end, forecast_step, covered_days, period_days, confidence_score, confidence_level")
-    .eq("run_id", forecastRun.id).order("product_id").order("forecast_horizon").order("forecast_step").range(s, e)) : [];
 
   if (priceRows.length === 0) return [];
 
@@ -480,57 +537,66 @@ async function loadProducts() {
   return products.sort((a: any, b: any) => a.name.localeCompare(b.name));
 }
 
-async function handleDashboardProducts() {
-  const oneYearAgo = new Date();
-  oneYearAgo.setDate(oneYearAgo.getDate() - 365);
-  const { data, error } = await getSupabase().rpc("dashboard_product_summary", {
-    p_since_date: oneYearAgo.toISOString().split("T")[0],
-  });
+const dashboardProductsCache = new MemoryCache<any[]>(300_000, 600_000);
 
-  // Keep the endpoint usable while the additive migration is being rolled out
-  // (or if the RPC is temporarily unavailable). The legacy response is more
-  // expensive, but preserves the dashboard contract instead of returning 500.
-  if (error || !data || !Array.isArray(data.rows) || data.requires_legacy) {
-    // Existing queries do not define ordering for ties. Preserve that path
-    // instead of silently picking a different metadata row/price/order.
-    return (await handleProducts()).map(({ id, name, category, image, variant, origin, currentPrice, unit, dailyForecast, forecastSource, lastActualDate }) =>
-      ({ id, name, category, image, variant, origin, currentPrice, unit,
-         predictedPrice: dailyForecast[0]?.predicted_price ?? currentPrice,
-         forecastDate: dailyForecast[0]?.date ?? null,
-         forecastSource, lastActualDate }));
-  }
-  return mapDashboardSummary(data.rows, {
-    slugify,
-    defaultImage: DEFAULT_PRODUCT_IMAGE,
+async function handleDashboardProducts() {
+  return dashboardProductsCache.getOrFetch(async () => {
+    const lookback = new Date();
+    lookback.setDate(lookback.getDate() - 60);
+    const { data, error } = await getSupabase().rpc("dashboard_product_summary", {
+      p_since_date: lookback.toISOString().split("T")[0],
+    });
+
+    // Keep the endpoint usable while the additive migration is being rolled out
+    // (or if the RPC is temporarily unavailable). The legacy response is more
+    // expensive, but preserves the dashboard contract instead of returning 500.
+    if (error || !data || !Array.isArray(data.rows) || data.requires_legacy) {
+      // Existing queries do not define ordering for ties. Preserve that path
+      // instead of silently picking a different metadata row/price/order.
+      const legacyProducts = (await handleProducts()) as any[];
+      return legacyProducts.map(({ id, name, category, image, variant, origin, currentPrice, unit, dailyForecast, forecastSource, lastActualDate }: any) =>
+        ({ id, name, category, image, variant, origin, currentPrice, unit,
+           predictedPrice: dailyForecast[0]?.predicted_price ?? currentPrice,
+           forecastDate: dailyForecast[0]?.date ?? null,
+           forecastSource, lastActualDate }));
+    }
+    return mapDashboardSummary(data.rows, {
+      slugify,
+      defaultImage: DEFAULT_PRODUCT_IMAGE,
+    });
   });
 }
 
+const forecastStatusCache = new MemoryCache<any>(300_000, 600_000);
+
 async function handleForecastStatus() {
-  const supabase = getSupabase()
-  const latest = (columns: string) => supabase.from("forecast_runs")
-    .select(columns)
-    .order("generated_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(1).maybeSingle()
+  return forecastStatusCache.getOrFetch(async () => {
+    const supabase = getSupabase()
+    const latest = (columns: string) => supabase.from("forecast_runs")
+      .select(columns)
+      .order("generated_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(1).maybeSingle()
 
-  let response = await latest("model_run_id, generated_at, horizon, row_count, metrics")
-  if (response.error?.code === "42703" && /\bmetrics\b/.test(response.error.message)) {
-    response = await latest("model_run_id, generated_at, horizon, row_count")
-  }
-  if (response.error) throw response.error
-  if (!response.data) return null
+    let response = await latest("model_run_id, generated_at, horizon, row_count, metrics")
+    if (response.error?.code === "42703" && /\bmetrics\b/.test(response.error.message)) {
+      response = await latest("model_run_id, generated_at, horizon, row_count")
+    }
+    if (response.error) throw response.error
+    if (!response.data) return null
 
-  const run = response.data
-  const metrics = run.metrics && typeof run.metrics === "object" && !Array.isArray(run.metrics)
-    ? run.metrics : null
-  return {
-    modelRunId: run.model_run_id,
-    generatedAt: run.generated_at,
-    horizon: run.horizon,
-    rowCount: run.row_count,
-    metrics,
-    modelMetrics: metrics,
-  }
+    const run = response.data
+    const metrics = run.metrics && typeof run.metrics === "object" && !Array.isArray(run.metrics)
+      ? run.metrics : null
+    return {
+      modelRunId: run.model_run_id,
+      generatedAt: run.generated_at,
+      horizon: run.horizon,
+      rowCount: run.row_count,
+      metrics,
+      modelMetrics: metrics,
+    }
+  });
 }
 
 // ── /news ────────────────────────────────────────────────
@@ -598,21 +664,26 @@ async function handleNews(url: URL) {
 }
 
 // ── /categories ──────────────────────────────────────────
+const categoriesCache = new MemoryCache<Record<string, string[]>>(900_000, 1_800_000); // 15 min
+
 async function handleCategories(url: URL) {
   const supabase = getSupabase()
   const type = url.searchParams.get("type") || "products" // 'products' or 'news'
 
-  if (type === "news") {
-    const { data, error } = await supabase.from('news_articles').select('event_type')
-    if (error) throw error
-    const uniqueTypes = Array.from(new Set(data.map((r: any) => r.event_type).filter(Boolean))) as string[]
-    return ["All", ...uniqueTypes.sort()]
-  } else {
-    const { data, error } = await supabase.from('products').select('category')
-    if (error) throw error
-    const uniqueCats = Array.from(new Set(data.map((r: any) => r.category).filter(Boolean))) as string[]
-    return ["All", ...uniqueCats.sort()]
-  }
+  const allCategories = await categoriesCache.getOrFetch(async () => {
+    const [{ data: newsData }, { data: prodData }] = await Promise.all([
+      supabase.from('news_articles').select('event_type'),
+      supabase.from('products').select('category'),
+    ]);
+    const newsTypes = Array.from(new Set((newsData ?? []).map((r: any) => r.event_type).filter(Boolean))) as string[];
+    const prodCats = Array.from(new Set((prodData ?? []).map((r: any) => r.category).filter(Boolean))) as string[];
+    return {
+      news: ["All", ...newsTypes.sort()],
+      products: ["All", ...prodCats.sort()],
+    };
+  });
+
+  return allCategories[type] || allCategories.products;
 }
 
 // ── Router ───────────────────────────────────────────────
@@ -620,6 +691,30 @@ serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
+  }
+
+  // Rate Limiting Protection (120 req/min per IP)
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || req.headers.get("cf-connecting-ip")
+    || req.headers.get("x-real-ip")
+    || "unknown";
+  const rateLimit = checkRateLimit(clientIp);
+  const rateLimitHeaders = {
+    "X-RateLimit-Limit": String(rateLimit.limit),
+    "X-RateLimit-Remaining": String(rateLimit.remaining),
+    "X-RateLimit-Reset": String(rateLimit.resetSeconds),
+  };
+
+  if (!rateLimit.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests. Please slow down." }), {
+      status: 429,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        "Retry-After": String(rateLimit.resetSeconds),
+        ...rateLimitHeaders,
+      },
+    });
   }
 
   try {
@@ -636,7 +731,7 @@ serve(async (req) => {
         result = await handleForecastStatus()
         break
       case "products":
-        result = await handleProducts()
+        result = await handleProducts(url)
         break
       case "product-history":
         result = await handleProductHistory(url)
@@ -661,7 +756,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({
             endpoints: [
-              "/foodcast/products",
+              "/foodcast/products?page=1&limit=20&category=...&search=...&lite=true",
               "/foodcast/product-history?name=...&variant=...&origin=...&category=...&unit=...",
               "/foodcast/dashboard-products",
               "/foodcast/forecast-status",
@@ -670,23 +765,34 @@ serve(async (req) => {
               "/foodcast/recommendations",
               "/foodcast/categories",
             ],
-            status: "FOODCAST Supabase Backend — running",
+            status: "FOODCAST Supabase Backend — running (optimized: caching, rate-limiting, lazy-loading)",
           }),
           {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { ...corsHeaders, "Content-Type": "application/json", ...rateLimitHeaders },
             status: 200,
           }
         )
     }
 
+    const cacheControlHeaders = req.method === "GET"
+      ? { "Cache-Control": "public, max-age=60, s-maxage=300, stale-while-revalidate=600" }
+      : { "Cache-Control": "no-store" };
+
     return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        ...cacheControlHeaders,
+        ...rateLimitHeaders,
+      },
       status: 200,
     })
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
+    const status = statusForError(error)
+    console.error("FOODCAST request failed", error)
+    return new Response(JSON.stringify({ error: publicError(error) }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json", ...rateLimitHeaders },
+      status,
     })
   }
 })

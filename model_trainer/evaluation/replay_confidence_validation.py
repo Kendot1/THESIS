@@ -91,21 +91,27 @@ def replay(bundle, snapshot, output, stride_days=7):
 
     target_start = date.fromisoformat(calibration["start"][:10])
     target_end = date.fromisoformat(calibration["end"][:10])
-    first_origin = target_start - timedelta(days=1)
-    last_origin = target_end - timedelta(days=30)
-    if last_origin < first_origin:
-        raise ValueError("Held-out calibration window is shorter than 30 forecast days")
-
     validation = pd.read_csv(bundle / "validation_forecasts.csv")
     validation["origin_dt"] = pd.to_datetime(validation.origin).dt.date
     validation["date_dt"] = pd.to_datetime(validation.date).dt.date
-    heldout = validation[
-        (validation.origin_dt >= first_origin)
-        & (validation.date_dt >= target_start)
-        & (validation.date_dt <= target_end)
+    in_window = validation[
+        validation.date_dt.between(target_start, target_end)
     ].copy()
-    if len(heldout) != int(calibration.get("sample_count", -1)):
+    expected_count = int(calibration.get("sample_count", -1))
+    heldout_candidates = []
+    for cutoff in sorted(in_window.origin_dt.unique()):
+        candidate = in_window[in_window.origin_dt >= cutoff].copy()
+        if (len(candidate) == expected_count and not candidate.empty
+                and min(candidate.date_dt) == target_start
+                and max(candidate.date_dt) == target_end):
+            heldout_candidates.append(candidate)
+    if len(heldout_candidates) != 1:
         raise ValueError("Saved held-out validation rows do not match calibration provenance")
+    heldout = heldout_candidates[0]
+    first_origin = min(heldout.origin_dt)
+    last_origin = target_end - timedelta(days=1)
+    if last_origin < first_origin:
+        raise ValueError("Held-out calibration window has no future forecast origins")
 
     actual_map, saved_predictions = {}, {}
     for row in heldout.itertuples():
@@ -118,11 +124,10 @@ def replay(bundle, snapshot, output, stride_days=7):
         saved_predictions[(str(row.series), row.origin_dt, row.date_dt)] = float(row.ensemble)
 
     origin_set = set(pd.date_range(first_origin, last_origin, freq=f"{stride_days}D").date)
-    # Include the original held-out origins for direct replay parity checks.
-    origin_set.update(
-        origin for origin in validation.loc[
-            (validation.origin_dt >= first_origin)
-            & (validation.origin_dt <= last_origin), "origin_dt"].unique())
+    # Include every saved held-out origin for direct replay parity checks. Paths
+    # may extend past calibration_end, but actual labels outside the sealed
+    # calibration window are absent from ``actual_map`` and are never scored.
+    origin_set.update(heldout.origin_dt.unique())
     origins = [pd.Timestamp(origin) for origin in sorted(origin_set)]
 
     raw = pd.DataFrame(json.loads(snapshot.read_text(encoding="utf-8")))

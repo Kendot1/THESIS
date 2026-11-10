@@ -2,7 +2,6 @@ import { fetchProducts } from "../lib/data";
 import MarketData from "../client/MarketData";
 
 export const revalidate = 3600; // ISR revalidation (1 hour)
-export const dynamic = 'force-static';
 
 export default async function MarketDataPage() {
   // Fetch products data on the server during SSG/ISR

@@ -25,6 +25,8 @@ dist/
 # Next.js / React
 # ============================================
 **/.next/
+**/.next-development/
+**/.next-rolling-research/
 /out/
 
 # ============================================
@@ -69,6 +71,13 @@ audits/**/probe_artifacts/
 # Temporary / tool-generated directories
 # ============================================
 .tmp/
+/.tmp_pytests/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/graphify-out/
+/ocr_temp/
+.hermes-tmp.*
 .codex/
 .opencode/
 
@@ -87,6 +96,14 @@ supabase/.temp/
 *~
 
 # ============================================
+# Test files and fixtures (existing tracked files remain tracked)
+**/tests/
+**/test_*.py
+**/*_test.py
+**/*.test.*
+**/*.spec.*
+
+# ============================================
 # OS files
 # ============================================
 .DS_Store
@@ -100,3 +117,6 @@ desktop.ini
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+
+.vercel
+.env*

@@ -542,8 +542,9 @@ export function hasModelPrediction(product: Partial<Product> | null | undefined)
 /** Dashboard summaries have no forecast arrays; use their dated next-day model price. */
 export function hasDashboardModelPrediction(product: Partial<DashboardProduct> | null | undefined): boolean {
   return Boolean(product) && product!.forecastSource === "model"
-    && typeof product!.forecastDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(product!.forecastDate)
-    && (!product!.lastActualDate || product!.forecastDate > product!.lastActualDate)
+    && typeof product!.name === "string" && product!.name.trim().length > 0
+    && typeof product!.lastActualDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(product!.lastActualDate)
+    && isFinitePositive(product!.currentPrice)
     && isFinitePositive(product!.predictedPrice);
 }
 
@@ -584,7 +585,7 @@ function getServerBuiltin<T = any>(moduleName: string): T {
 
 // Server-side raw HTTP request that bypasses Next.js's patched fetch()
 // This avoids the "items over 2MB can not be cached" warning entirely.
-async function nativeServerFetch(url: string, headers: Record<string, string>, timeoutMs = 15_000): Promise<any> {
+async function nativeServerFetch(url: string, headers: Record<string, string>, timeoutMs = 15_000, redirects = 0, deadlineAt = Date.now() + timeoutMs): Promise<any> {
   const https = getServerBuiltin('https');
   const http = getServerBuiltin('http');
 
@@ -592,8 +593,17 @@ async function nativeServerFetch(url: string, headers: Record<string, string>, t
     const mod = url.startsWith('https') ? https : http;
     const req = mod.request(url, { method: 'GET', headers }, (res: any) => {
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        // Follow redirects
-        nativeServerFetch(res.headers.location, headers).then(resolve).catch(reject);
+        res.resume();
+        try {
+          const next = new URL(res.headers.location, url);
+          if (redirects >= 5 || next.origin !== new URL(url).origin) {
+            reject(new Error('Upstream redirect rejected'));
+          } else {
+            nativeServerFetch(next.href, headers, timeoutMs, redirects + 1, deadlineAt).then(resolve).catch(reject);
+          }
+        } catch {
+          reject(new Error('Invalid upstream redirect'));
+        }
         return;
       }
 
@@ -612,14 +622,14 @@ async function nativeServerFetch(url: string, headers: Record<string, string>, t
         }
       });
     });
-    const deadline = setTimeout(() => req.destroy(new Error('Upstream request deadline exceeded')), timeoutMs);
+    const deadline = setTimeout(() => req.destroy(new Error('Upstream request timed out: deadline exceeded')), Math.max(0, deadlineAt - Date.now()));
     req.on('close', () => clearTimeout(deadline));
     req.on('error', reject);
     req.end();
   });
 }
 
-async function fetchFromNetwork<T>(path: string, retries = 3, bypassCache = false): Promise<T> {
+async function fetchFromNetwork<T>(path: string, retries = 3, bypassCache = false, timeoutMs = 15_000): Promise<T> {
   const isServer = typeof window === 'undefined';
   let fs: any, pathModule: any;
   let cacheFilePath = '';
@@ -628,22 +638,29 @@ async function fetchFromNetwork<T>(path: string, retries = 3, bypassCache = fals
     try {
       fs = getServerBuiltin('fs');
       pathModule = getServerBuiltin('path');
-      const cacheDir = pathModule.join(process.cwd(), '.next', 'custom-cache');
+      const candidates = [
+        pathModule.join(process.cwd(), '.next', 'custom-cache'),
+        pathModule.join(process.cwd(), '.next-development', 'custom-cache'),
+      ];
+      const cacheDir = candidates.find((d: string) => fs.existsSync(d)) || candidates[0];
       if (!fs.existsSync(cacheDir)) {
         fs.mkdirSync(cacheDir, { recursive: true });
       }
-      cacheFilePath = pathModule.join(
-        cacheDir, `${CACHE_VERSION}_${path.replace(/[^a-zA-Z0-9]/g, '_')}.json`);
-      
-      // Check if cache file exists and is less than 1 hour old
-      if (fs.existsSync(cacheFilePath)) {
-        const stats = fs.statSync(cacheFilePath);
-        const age = Date.now() - Math.max(stats.mtimeMs, stats.ctimeMs);
-        if (age < 60 * 60 * 1000) {
-          const fileData = fs.readFileSync(cacheFilePath, 'utf8');
-          const data = JSON.parse(fileData);
-          memoryCache[path] = { data, expiry: Date.now() + 60 * 60 * 1000 };
-          return data;
+      const fileName = `${CACHE_VERSION}_${path.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+      cacheFilePath = pathModule.join(cacheDir, fileName);
+
+      // Check all candidate cache dirs for existing file
+      for (const dir of candidates) {
+        const potentialFile = pathModule.join(dir, fileName);
+        if (fs.existsSync(potentialFile)) {
+          const stats = fs.statSync(potentialFile);
+          const age = Date.now() - Math.max(stats.mtimeMs, stats.ctimeMs);
+          if (age < 60 * 60 * 1000) {
+            const fileData = fs.readFileSync(potentialFile, 'utf8');
+            const data = JSON.parse(fileData);
+            memoryCache[path] = { data, expiry: Date.now() + 60 * 60 * 1000 };
+            return data;
+          }
         }
       }
     } catch (e) {
@@ -654,6 +671,7 @@ async function fetchFromNetwork<T>(path: string, retries = 3, bypassCache = fals
   const now = Date.now();
   let lastError: any;
   const requestHeaders = {
+    "apikey": SUPABASE_ANON_KEY,
     "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
     "Content-Type": "application/json",
   };
@@ -665,15 +683,21 @@ async function fetchFromNetwork<T>(path: string, retries = 3, bypassCache = fals
 
       if (isServer) {
         // Use native Node.js HTTP — bypasses Next.js fetch cache entirely (no 2MB limit)
-        data = await nativeServerFetch(url, requestHeaders);
+        data = await nativeServerFetch(url, requestHeaders, timeoutMs);
       } else {
-        // Client-side: use normal fetch
-        const res = await fetch(url, { headers: requestHeaders, cache: 'no-store' });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: res.statusText }));
-          throw new Error(err.error || `Edge function error: ${res.status}`);
+        // Client-side: use normal fetch with timeout
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+          const res = await fetch(url, { headers: requestHeaders, cache: 'no-store', signal: controller.signal });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: res.statusText }));
+            throw new Error(err.error || `Edge function error: ${res.status}`);
+          }
+          data = await res.json();
+        } finally {
+          clearTimeout(timer);
         }
-        data = await res.json();
       }
       
       // Write to file cache (server only)
@@ -791,32 +815,45 @@ export async function fetchLiveProducts(): Promise<Product[]> {
 }
 
 export async function fetchDashboardProducts(): Promise<DashboardProduct[]> {
-  try {
-    // Dashboard prices are live operational data; do not reuse build, disk, or
-    // browser caches after a new forecast vintage is published.
-    const data = await fetchFromNetwork<unknown>("dashboard-products", 3, true);
-    // Older Edge deployments answer unknown paths with their status object.
-    // Never pass that object into Home, which expects an iterable product list.
-    if (Array.isArray(data) && data.every(product =>
-      product && Object.hasOwn(product, "forecastDate"))) return filterDisplayableDashboardProducts(data as DashboardProduct[]);
-    console.warn("Dashboard summary has no dated daily forecast; using live product details");
-  } catch (e) {
-    console.error("Error fetching dashboard products:", e);
+  const cached = memoryCache["dashboard-products"];
+  if (cached && cached.expiry > Date.now()) return cached.data;
+  // A failed summary must not trigger a second, much heavier history request
+  // against the same unavailable database or masquerade as a successful [].
+  let pending = pendingRequests.get("dashboard-products");
+  if (!pending) {
+    pending = (async () => {
+      const data = await fetchFromNetwork<unknown>("dashboard-products", 1, false, 20_000);
+      if (!Array.isArray(data) || !data.every(product =>
+        product && Object.hasOwn(product, "forecastDate"))) {
+        throw new Error("Invalid dashboard summary response");
+      }
+      const products = filterDisplayableDashboardProducts(data as DashboardProduct[]);
+      memoryCache["dashboard-products"] = { data: products, expiry: Date.now() + 60_000 };
+      return products;
+    })().finally(() => pendingRequests.delete("dashboard-products"));
+    pendingRequests.set("dashboard-products", pending);
   }
-  try {
-    // Never resurrect a cached weekly average as a live daily forecast when
-    // the summary endpoint times out or an older Edge deployment is serving.
-    return filterDisplayableDashboardProducts((await fetchLiveProducts()).map(toDashboardProduct));
-  } catch (e) {
-    console.error("Error fetching live dashboard fallback:", e);
-    return [];
-  }
+  return pending as Promise<DashboardProduct[]>;
 }
 
 export async function fetchForecastStatus(): Promise<ForecastStatus | null> {
-  const response = await fetchFromNetwork<ForecastStatus | null>("forecast-status", 1, true);
-  if (!response || typeof response.generatedAt !== "string") return null;
-  return response;
+  const cached = memoryCache["forecast-status"];
+  if (cached && cached.expiry > Date.now()) return cached.data;
+  let pending = pendingRequests.get("forecast-status");
+  if (!pending) {
+    pending = (async () => {
+      const response = await fetchFromNetwork<ForecastStatus | null>("forecast-status", 1, false, 15_000);
+      if (response === null) {
+        memoryCache["forecast-status"] = { data: null, expiry: Date.now() + 60_000 };
+        return null;
+      }
+      if (!response || typeof response.generatedAt !== "string") throw new Error("Invalid forecast status response");
+      memoryCache["forecast-status"] = { data: response, expiry: Date.now() + 60_000 };
+      return response;
+    })().finally(() => pendingRequests.delete("forecast-status"));
+    pendingRequests.set("forecast-status", pending);
+  }
+  return pending as Promise<ForecastStatus | null>;
 }
 
 // Fetch trending views from Supabase
@@ -847,8 +884,8 @@ export async function fetchTrendingInteractions(): Promise<Record<string, number
   }
 }
 
-// News alone may read the explicitly authorized local test source. A 404 means
-// this server did not opt in; failures from an enabled bridge must not mix DBs.
+// News alone may read the explicitly authorized local test source. A disabled
+// bridge falls back to the configured source; enabled bridge failures never mix DBs.
 async function localNewsRows(start: number, limit: number, search = '', category = 'All', dateFilter = 'All') {
   if (process.env.NODE_ENV !== 'development') return null;
   const query = new URLSearchParams({ start: String(start), limit: String(limit), search, category, dateFilter });
@@ -857,19 +894,14 @@ async function localNewsRows(start: number, limit: number, search = '', category
     return nativeServerFetch(`http://127.0.0.1:${process.env.PORT || '3000'}/api/local-news?${query}`, {});
   }
   const response = await fetch(`/api/local-news?${query}`, { cache: 'no-store' });
-  if (response.status === 404) return null;
+  if (response.status === 204 || response.status === 404) return null;
   if (!response.ok) throw new Error('Local news unavailable');
   return response.json();
 }
 
 export async function fetchNews(limit = 10): Promise<NewsArticle[]> {
-  try {
-    // Use the same source, mapping, and filters as /News (no one-hour empty cache).
-    return (await fetchPaginatedUniqueNews(0, limit)).data;
-  } catch (e) {
-    console.error("Error fetching news:", e);
-    return [];
-  }
+  // Reject failed refreshes so SWR retains its last successful news population.
+  return (await fetchPaginatedUniqueNews(0, limit)).data;
 }
 
 // ─── Direct Supabase Queries (lightweight, no Edge Fn needed) ──
@@ -897,24 +929,10 @@ export function toEventTypeKey(label: string): string {
   return label.toLowerCase().replace(/ /g, '_');
 }
 
-/** Fetch all unique news event_type values from the Edge function, returned as pretty labels. */
+/** Supported food-market news filters, returned as display labels. */
 export async function fetchNewsCategories(): Promise<string[]> {
-  try {
-    const articles = (await fetchPaginatedNews(0, 1000)).data;
-    const rawCategories = [...new Set(articles.map(article => normalizeNewsEventType(article.category)))];
-    if (!rawCategories || rawCategories.length === 0) return ["All"];
-    
-    // The Edge Function returns the raw DB keys (e.g. 'policy_change')
-    // We filter out "All", format the rest, and prepend "All" again
-    const uniqueTypes = rawCategories.filter(c =>
-      c !== "All" && PRICE_IMPACT_NEWS_EVENT_TYPES.has(normalizeNewsEventType(c))
-    );
-    const labels = uniqueTypes.map(formatEventType).sort();
-    return ["All", ...labels];
-  } catch (e) {
-    console.error("Failed to fetch news categories:", e);
-    return ["All"];
-  }
+  // These are the complete supported filter values, not an article query.
+  return ["All", ...Array.from(PRICE_IMPACT_NEWS_EVENT_TYPES).map(formatEventType).sort()];
 }
 
 export async function fetchProductById(id: string): Promise<Product | null> {
@@ -942,6 +960,7 @@ export async function fetchPaginatedNews(
       // The scraper records affected_products only when an article has a
       // supported, concrete food-market impact. Hide unrelated legacy rows too.
       query = query
+        .or("url.ilike.https://www.abs-cbn.com/%,url.ilike.https://abs-cbn.com/%,url.ilike.http://www.abs-cbn.com/%,url.ilike.http://abs-cbn.com/%")
         .in("event_type", Array.from(PRICE_IMPACT_NEWS_EVENT_TYPES))
         .not("affected_products", "is", null)
         .neq("affected_products", "{}");
@@ -961,7 +980,8 @@ export async function fetchPaginatedNews(
         query = query.gte("published_at", thirtyDaysAgo.toISOString());
       }
 
-      return query.order("published_at", { ascending: false }).range(start, start + limit - 1);
+      return query.order("published_at", { ascending: false }).range(start, start + limit - 1)
+        .abortSignal(AbortSignal.timeout(15_000));
     };
 
     let result = await localNewsRows(start, limit, search, category, dateFilter) ?? await fetchRows(true);
@@ -970,10 +990,7 @@ export async function fetchPaginatedNews(
     }
     const { data, count, error } = result;
 
-    if (error) {
-      console.error("Error fetching paginated news:", error);
-      return { data: [], total: 0, rawCount: 0 };
-    }
+    if (error) throw error;
 
     type NewsRow = {
       id: string;
@@ -1013,7 +1030,7 @@ export async function fetchPaginatedNews(
     return { data: articles, total: count || 0, rawCount };
   } catch (e) {
     console.error("Failed to fetch paginated news:", e);
-    return { data: [], total: 0, rawCount: 0 };
+    throw e;
   }
 }
 

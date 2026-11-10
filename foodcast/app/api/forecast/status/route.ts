@@ -10,7 +10,7 @@ export async function GET() {
     const rawStatus = await fetchForecastStatus();
     const status = withModelCapability(rawStatus, capabilitySnapshot);
     return Response.json(status, {
-      headers: { "Cache-Control": "no-store, max-age=0" },
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
     });
   } catch (error) {
     console.error("Failed to fetch forecast status:", error);

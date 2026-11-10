@@ -5,6 +5,15 @@ on:
     # Run the DA price fetch + downstream model pipeline daily at 1:00 AM Philippine Time (17:00 UTC).
     - cron: "0 17 * * *"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Fetch and parse live sources without database writes"
+        type: boolean
+        default: true
+      run_model_pipeline:
+        description: "Run training/publication (requires separate explicit approval)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -40,7 +49,24 @@ jobs:
           python -m pip install -r scraper/requirements.txt
 
       - name: Run DA PDF Scraper
-        run: python scraper/main.py
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          mkdir -p artifacts
+          if [ "$DRY_RUN" = "true" ]; then
+            python -m scraper.main --dry-run --max-reports 1 --output artifacts/da.json
+          else
+            python -m scraper.main --output artifacts/da.json
+          fi
+
+      - name: Archive DA scraper results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: da-scraper-${{ github.run_id }}
+          path: artifacts/da.json
+          if-no-files-found: warn
+          retention-days: 14
 
   scrape_news:
     name: Scrape Market News
@@ -74,14 +100,31 @@ jobs:
       - name: Run News Scraper
         env:
           CRAWL4_AI_BASE_DIRECTORY: ${{ runner.temp }}
-        run: python -m scraper.news_scraper
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+        run: |
+          mkdir -p artifacts
+          if [ "$DRY_RUN" = "true" ]; then
+            python -m scraper.news_scraper --dry-run --max-articles 5 --output artifacts/news.json
+          else
+            python -m scraper.news_scraper --output artifacts/news.json
+          fi
+
+      - name: Archive news scraper results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: news-scraper-${{ github.run_id }}
+          path: artifacts/news.json
+          if-no-files-found: warn
+          retention-days: 14
 
   train_model:
     name: Train Candidate and Publish Forecasts
     runs-on: ubuntu-latest
     needs: [scrape_da_prices, scrape_news]
-    # News enriches training but is optional; only DA price scrape is required.
-    if: ${{ always() && needs.scrape_da_prices.result == 'success' }}
+    # Scraper schedules must not consume an unapproved training allowance.
+    # A manual training run additionally requires a separately recorded grant.
+    if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.run_model_pipeline && !inputs.dry_run && needs.scrape_da_prices.result == 'success' }}
     timeout-minutes: 360
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, Circle } from "react-leaflet";
+import { useEffect, useState, useRef, Fragment } from "react";
+import { MapContainer, TileLayer, Marker, Popup, Tooltip, useMap, Circle, Polyline, Polygon } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { MarketLocation, getNearestMarkets } from "../lib/markets";
+import ncrBoundary from "../lib/ncr-boundary.json";
 import { MapPin, ExternalLink, Layers } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "../lib/i18n/LanguageContext";
@@ -134,28 +135,27 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
 
   // NCR Bounds to restrict panning
   const ncrBounds = L.latLngBounds(
-    [14.33, 120.88], // SouthWest
-    [14.80, 121.15]  // NorthEast
+    [14.25, 120.75], // SouthWest
+    [14.90, 121.25]  // NorthEast
   );
 
   const selectedMarket = markets.find(m => m.id === selectedMarketId);
   const mapCenter: [number, number] = selectedMarket
     ? [selectedMarket.lat, selectedMarket.lng]
-    : userLocation ? [userLocation.lat, userLocation.lng] : [14.5995, 120.9842]; // Default: Manila
+    : userLocation ? [userLocation.lat, userLocation.lng] : [14.5663, 121.0302]; // Center of NCR land boundaries
 
   return (
     <div className="absolute inset-0 overflow-hidden z-0 bg-gray-100">
       <MapContainer
         center={mapCenter}
-        zoom={selectedMarket ? 15 : 12}
-        minZoom={11}
+        zoom={selectedMarket ? 15 : 11}
+        minZoom={10}
         maxBounds={ncrBounds}
-        maxBoundsViscosity={1.0}
-        preferCanvas={true} // Performance optimization
+        maxBoundsViscosity={0.7}
         style={{ height: "100%", width: "100%", position: "absolute", top: 0, left: 0, zIndex: 0 }}
         zoomControl={false}
       >
-        <MapController center={mapCenter} zoom={selectedMarket ? 15 : 12} />
+        <MapController center={mapCenter} zoom={selectedMarket ? 15 : 11} />
 
 
         {/* Custom Map Controls - Top Right */}
@@ -200,10 +200,63 @@ export default function MarketMap({ markets, marketStats, userLocation, selected
           key={activeStyle.id}
           attribution={activeStyle.attribution}
           url={activeStyle.url}
-          keepBuffer={4} // Performance: Keep tiles loaded off-screen
-          updateWhenZooming={false} // Performance: Don't load during zoom animation
-          updateWhenIdle={true}
+          keepBuffer={6}
         />
+
+        {/* NCR Regional Land Boundaries (Green lines on land borders only, excluding water) */}
+        {ncrBoundary.landBorders.map((borderCoords, idx) => (
+          <Fragment key={idx}>
+            {/* Soft regional fill highlighting the NCR land territory */}
+            <Polygon
+              positions={borderCoords as [number, number][]}
+              pathOptions={{
+                fillColor: "#0B3D2E",
+                fillOpacity: 0.05,
+                stroke: false,
+              }}
+            />
+            {/* White contrast underlay for clear visibility across all map styles */}
+            <Polyline
+              positions={borderCoords as [number, number][]}
+              pathOptions={{
+                color: "#ffffff",
+                weight: 7,
+                opacity: 0.7,
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            />
+            {/* Main FOODCAST Theme Green Border Line */}
+            <Polyline
+              positions={borderCoords as [number, number][]}
+              pathOptions={{
+                color: "#0B3D2E", // FOODCAST primary dark green
+                weight: 4.5,
+                opacity: 1,
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            >
+              <Tooltip sticky direction="top" opacity={0.95}>
+                <div className="text-center font-bold text-xs text-[#0B3D2E] px-2 py-1 bg-white/95 rounded-lg shadow-sm border border-gray-100">
+                  National Capital Region (NCR) Provincial Border
+                </div>
+              </Tooltip>
+            </Polyline>
+            {/* Inner Accent Bright Green Dashed Line */}
+            <Polyline
+              positions={borderCoords as [number, number][]}
+              pathOptions={{
+                color: "#7ED957", // FOODCAST accent bright green
+                weight: 2,
+                opacity: 0.95,
+                dashArray: "6, 8",
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            />
+          </Fragment>
+        ))}
 
         {/* User Location */}
         {userLocation && (

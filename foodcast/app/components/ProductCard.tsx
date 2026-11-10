@@ -5,12 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ArrowUpRight, ArrowDownRight, Eye } from "lucide-react";
-import { preload } from "swr";
-import { DEFAULT_PRODUCT_IMAGE, fetchProducts } from "../lib/data";
+import { DEFAULT_PRODUCT_IMAGE } from "../lib/data";
 import { encryptId } from "../../lib/idCipher";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 
 const VariantOverflowDropdown = ({ overflow, selectedVariantId, isOpen, onToggle, onSelect, onClose, getCleanVariant }: any) => {
+  const { t } = useLanguage();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const [mounted, setMounted] = useState(false);
@@ -80,7 +80,7 @@ const VariantOverflowDropdown = ({ overflow, selectedVariantId, isOpen, onToggle
                   : "hover:bg-gray-50 text-gray-600"
                   }`}
               >
-                <span className="text-[10px] font-bold">{getCleanVariant(v.variant || "Standard")}</span>
+                <span className="text-[10px] font-bold">{t(getCleanVariant(v.variant || "Standard"))}</span>
                 {selectedVariantId === v.id && (
                   <svg className="w-3.5 h-3.5 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
@@ -184,8 +184,6 @@ const ProductCard = ({
         setIsHovered(true);
         // Prefetch the product detail route on hover so it's instant on click
         router.prefetch(`/Product/${encryptId(id)}`);
-        // Warm the SWR data cache so products are ready before navigation
-        preload("supabase_products", fetchProducts);
       }}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -341,7 +339,7 @@ const ProductCard = ({
                       : "bg-white text-gray-600 border-gray-100 hover:border-primary-200 hover:text-primary-700 active:bg-primary-50"
                       }`}
                   >
-                    {getCleanVariant(v.variant || "Standard")}
+                    {t(getCleanVariant(v.variant || "Standard"))}
                   </button>
                 ))}
                 {overflow.length > 0 && (
@@ -397,5 +395,52 @@ const ProductCard = ({
     </div>
   );
 };
+
+export function ProductCardSkeleton({ compact = false }: { compact?: boolean }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="bg-white rounded-3xl border border-gray-100 p-4 sm:p-5 flex flex-col justify-between h-full relative overflow-hidden"
+    >
+      <div>
+        {/* Thumbnail Image Skeleton */}
+        <div className="relative aspect-4/3 rounded-2xl overflow-hidden mb-3 sm:mb-4 bg-gray-100 skeleton-shimmer" />
+
+        {/* Category & Origin Skeleton */}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="h-3 w-16 bg-gray-100 rounded skeleton-shimmer" />
+          <div className="h-3 w-12 bg-gray-100 rounded skeleton-shimmer" />
+        </div>
+
+        {/* Product Name Skeleton */}
+        <div className="space-y-1.5 mb-3">
+          <div className={`w-3/4 bg-gray-200 rounded-lg skeleton-shimmer ${compact ? 'h-4' : 'h-5'}`} />
+          <div className={`w-1/2 bg-gray-100 rounded skeleton-shimmer ${compact ? 'h-3' : 'h-3.5'}`} />
+        </div>
+
+        {/* Variant Pills Skeleton */}
+        <div className="flex gap-1.5 mb-4">
+          <div className="h-6 w-16 bg-gray-100 rounded-lg skeleton-shimmer" />
+          <div className="h-6 w-14 bg-gray-100 rounded-lg skeleton-shimmer" />
+        </div>
+      </div>
+
+      {/* Prices Skeleton */}
+      <div className="mt-auto mb-4 flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div className="h-3 w-12 bg-gray-100 rounded skeleton-shimmer" />
+          <div className="h-4 w-16 bg-gray-200 rounded skeleton-shimmer" />
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="h-3 w-14 bg-gray-100 rounded skeleton-shimmer" />
+          <div className="h-4 w-16 bg-gray-200 rounded skeleton-shimmer" />
+        </div>
+      </div>
+
+      {/* Button Skeleton */}
+      <div className="h-9 sm:h-11 w-full bg-gray-100 rounded-full skeleton-shimmer" />
+    </div>
+  );
+}
 
 export default React.memo(ProductCard);

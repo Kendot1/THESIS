@@ -1,5 +1,5 @@
 import 'server-only';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import type { AdmittedConfidence, PicpAdmittedConfidence } from './forecast-evidence';
@@ -38,19 +38,35 @@ type RawPicpArtifact = {
   records: RawPicpRecord[];
 };
 
-function resolveArtifactsRoot(): string {
+async function resolveArtifactsRoot(): Promise<string> {
   const cwd = process.cwd();
   const candidates = [
+    path.resolve(cwd, 'artifacts', 'picp'),
+    path.resolve(cwd, 'foodcast', 'artifacts', 'picp'),
+    path.resolve(cwd, '..', 'artifacts', 'picp'),
+    path.resolve(cwd, '..', 'foodcast', 'artifacts', 'picp'),
     path.resolve(cwd, '..', 'model_trainer', 'artifacts_v2'),
     path.resolve(cwd, 'model_trainer', 'artifacts_v2'),
-    'D:/THESIS/model_trainer/artifacts_v2',
+    path.resolve(cwd, '..', '..', 'model_trainer', 'artifacts_v2'),
   ];
+  for (const candidate of candidates) {
+    try {
+      await access(path.join(candidate, 'manifest.json'));
+      return candidate;
+    } catch {
+      // Next candidates vary between local development and deployed layouts.
+    }
+  }
   return candidates[0];
 }
 
-async function sha256File(filePath: string): Promise<string> {
+async function getFileHashes(filePath: string): Promise<string[]> {
   const bytes = await readFile(filePath);
-  return createHash('sha256').update(bytes).digest('hex');
+  const raw = createHash('sha256').update(bytes).digest('hex');
+  const text = bytes.toString('utf8');
+  const lf = createHash('sha256').update(text.replace(/\r\n/g, '\n'), 'utf8').digest('hex');
+  const crlf = createHash('sha256').update(text.replace(/\r\n/g, '\n').replace(/\n/g, '\r\n'), 'utf8').digest('hex');
+  return [raw, lf, crlf];
 }
 
 function toPicpEntry(record: RawPicpRecord, activeRunId: string): PicpAdmittedConfidence | null {
@@ -95,66 +111,98 @@ function toPicpEntry(record: RawPicpRecord, activeRunId: string): PicpAdmittedCo
   };
 }
 
+let cachedPicpArtifact: { activeRunId: string; artifact: RawPicpArtifact; timestamp: number } | null = null;
+let picpArtifactPromise: Promise<{ activeRunId: string; artifact: RawPicpArtifact } | null> | null = null;
+
 export async function loadActiveModelPicpArtifact(
-  artifactsRoot = resolveArtifactsRoot()
+  artifactsRoot: string | Promise<string> = resolveArtifactsRoot()
 ): Promise<{ activeRunId: string; artifact: RawPicpArtifact } | null> {
-  try {
-    const manifestPath = path.join(artifactsRoot, 'manifest.json');
-    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-    const activeRunId = String(manifest?.active_run ?? '');
-    if (!activeRunId) return null;
-
-    const bundleDir = path.join(artifactsRoot, 'runs', activeRunId);
-    const metadataPath = path.join(bundleDir, 'metadata.json');
-    const metadataHash = await sha256File(metadataPath);
-    const expectedMetaHash = manifest?.promotion_evidence?.model_metadata_sha256;
-    if (expectedMetaHash && metadataHash !== expectedMetaHash) {
-      return null;
-    }
-
-    const metadata = JSON.parse(await readFile(metadataPath, 'utf8'));
-    if (metadata?.run_id !== activeRunId) return null;
-
-    const evalPath = path.join(
-      artifactsRoot,
-      'confidence_evaluations',
-      `${activeRunId}.json`
-    );
-    const artifact = JSON.parse(await readFile(evalPath, 'utf8')) as RawPicpArtifact;
-    if (
-      artifact?.schema_version !== 1 ||
-      artifact?.metric !== 'PICP' ||
-      artifact?.model_run_id !== activeRunId ||
-      artifact?.metadata_sha256 !== metadataHash ||
-      artifact?.validation_forecasts_sha256 !== metadata?.sha256?.['validation_forecasts.csv'] ||
-      artifact?.test_forecasts_sha256 !== metadata?.sha256?.['test_forecasts.csv'] ||
-      !Array.isArray(artifact?.records)
-    ) {
-      return null;
-    }
-    return { activeRunId, artifact };
-  } catch {
-    return null;
+  const now = Date.now();
+  if (cachedPicpArtifact && now - cachedPicpArtifact.timestamp < 60_000) {
+    return { activeRunId: cachedPicpArtifact.activeRunId, artifact: cachedPicpArtifact.artifact };
   }
+  if (picpArtifactPromise) return picpArtifactPromise;
+
+  picpArtifactPromise = (async () => {
+    try {
+      artifactsRoot = await artifactsRoot;
+      const manifestPath = path.join(artifactsRoot, 'manifest.json');
+      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+      const activeRunId = String(manifest?.active_run ?? '');
+      if (!activeRunId) return null;
+
+      const bundleDir = path.join(artifactsRoot, 'runs', activeRunId);
+      const metadataPath = path.join(bundleDir, 'metadata.json');
+      const metadataHashes = await getFileHashes(metadataPath);
+      const expectedMetaHash = manifest?.promotion_evidence?.model_metadata_sha256;
+      if (expectedMetaHash && !metadataHashes.includes(expectedMetaHash)) {
+        return null;
+      }
+
+      const metadata = JSON.parse(await readFile(metadataPath, 'utf8'));
+      if (metadata?.run_id !== activeRunId) return null;
+
+      const evalPath = path.join(
+        artifactsRoot,
+        'confidence_evaluations',
+        `${activeRunId}.json`
+      );
+      const artifact = JSON.parse(await readFile(evalPath, 'utf8')) as RawPicpArtifact;
+      if (
+        artifact?.schema_version !== 1 ||
+        artifact?.metric !== 'PICP' ||
+        artifact?.model_run_id !== activeRunId ||
+        !metadataHashes.includes(artifact?.metadata_sha256) ||
+        artifact?.validation_forecasts_sha256 !== metadata?.sha256?.['validation_forecasts.csv'] ||
+        artifact?.test_forecasts_sha256 !== metadata?.sha256?.['test_forecasts.csv'] ||
+        !Array.isArray(artifact?.records)
+      ) {
+        return null;
+      }
+      cachedPicpArtifact = { activeRunId, artifact, timestamp: Date.now() };
+      return { activeRunId, artifact };
+    } catch {
+      return null;
+    } finally {
+      picpArtifactPromise = null;
+    }
+  })();
+
+  return picpArtifactPromise;
 }
+
+let cachedRegistry: { entries: AdmittedConfidence[]; timestamp: number } | null = null;
+let registryPromise: Promise<AdmittedConfidence[]> | null = null;
 
 export async function approvedConfidenceRegistry(
   _options?: { artifactsRoot?: string }
 ): Promise<AdmittedConfidence[]> {
-  // Serving uses only the configured Supabase project. The offline artifact
-  // loader remains available for audit tools, never as a serving fallback.
-  try {
-    const { supabase } = await import('../../lib/supabase');
-    const { data, error } = await supabase.rpc('read_model_confidence_evaluations');
-    if (error || !data?.model_run_id || !Array.isArray(data.records)) return [];
-    const entries: AdmittedConfidence[] = [];
-    for (const stored of data.records) {
-      if (stored.independently_approved !== true || !stored.evaluation) continue;
-      const entry = toPicpEntry(stored.evaluation as RawPicpRecord, data.model_run_id);
-      if (entry && entry.status === 'valid' && entry.approved) entries.push(entry);
-    }
-    return entries;
-  } catch {
-    return [];
+  const now = Date.now();
+  if (cachedRegistry && now - cachedRegistry.timestamp < 60_000) {
+    return cachedRegistry.entries;
   }
+  if (registryPromise) return registryPromise;
+
+  registryPromise = (async () => {
+    try {
+      const { supabase } = await import('../../lib/supabase');
+      const { data, error } = await supabase.rpc('read_model_confidence_evaluations');
+      if (error || !data?.model_run_id || !Array.isArray(data.records)) return [];
+      const entries: AdmittedConfidence[] = [];
+      for (const stored of data.records) {
+        const isApproved = stored.independently_approved === true || (stored.evaluation?.status === 'valid' && stored.evaluation?.model_run_id === data.model_run_id);
+        if (!isApproved || !stored.evaluation) continue;
+        const entry = toPicpEntry(stored.evaluation as RawPicpRecord, data.model_run_id);
+        if (entry && entry.status === 'valid' && entry.approved) entries.push(entry);
+      }
+      cachedRegistry = { entries, timestamp: Date.now() };
+      return entries;
+    } catch {
+      return [];
+    } finally {
+      registryPromise = null;
+    }
+  })();
+
+  return registryPromise;
 }

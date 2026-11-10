@@ -7,11 +7,13 @@ import { homepagePerformance } from "./lib/historical-performance.server";
 export const revalidate = 60;
 
 export default async function HomePage() {
-  // Render current dashboard data; the client also refreshes it every minute.
-  const [products, news] = await Promise.all([
-    fetchDashboardProducts(),
-    fetchNews(10),
+  // Pre-populate dashboard products and news during SSR / ISR so the page
+  // renders instantly without showing cold full-page skeleton loaders.
+  const [products, news, perf] = await Promise.all([
+    fetchDashboardProducts().catch(() => []),
+    fetchNews(10).catch(() => []),
+    homepagePerformance().catch(() => ({ historical_forecast_accuracy_pct: null })),
   ]);
 
-  return <Home initialProducts={products} initialNews={news} historical_forecast_accuracy_pct={(await homepagePerformance()).historical_forecast_accuracy_pct} />;
+  return <Home initialProducts={products} initialNews={news} historical_forecast_accuracy_pct={perf.historical_forecast_accuracy_pct} />;
 }

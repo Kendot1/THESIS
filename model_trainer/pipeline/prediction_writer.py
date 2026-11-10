@@ -1,5 +1,6 @@
 """Generate one complete forecast vintage and publish it atomically."""
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+import calendar
 from pathlib import Path
 from uuid import uuid4
 import json
@@ -15,18 +16,25 @@ from data.preprocessor import DataPreprocessor, SERIES_KEY
 from features.builder import FeatureBuilder
 from models.registry import ModelRegistry
 from models.model_store import ModelStore
-from utils.metrics import SUCCESS_TOLERANCE
+from utils.metrics import SUCCESS_TOLERANCE, compute_all_metrics
 from utils.prices import mean_price as _mean_price, round_price as _round_price
 from evaluation.product_confidence import METHOD as CONFIDENCE_METHOD
+from evaluation.interval_calibration import (
+    build_model_confidence_evaluations,
+    interval_from_calibration,
+    validation_intervals_by_series,
+)
 
 
 HORIZON_MAP = {"daily": 1, "weekly": 7, "monthly": 30}
-PUBLISHED_FORECAST_MONTHS = 3
+PUBLISHED_FORECAST_STEPS = {"daily": 7, "weekly": 4, "monthly": 1}
+PUBLISHED_DAILY_FORECAST_DAYS = PUBLISHED_FORECAST_STEPS["daily"]
 PH_TIME = timezone(timedelta(hours=8))
 MIGRATION = "supabase/migrations/202609240001_atomic_forecast_vintages.sql"
 SAFE_DELETE_MIGRATION = "supabase/migrations/202609250001_fix_forecast_safe_delete.sql"
 QUALITY_METRICS_MIGRATION = "supabase/migrations/202610010002_forecast_run_quality_metrics.sql"
 PERIOD_FORECAST_MIGRATION = "supabase/migrations/202610090001_multi_period_point_forecasts.sql"
+INTERVAL_MIGRATION = "supabase/migrations/202610170001_prediction_interval_calibration.sql"
 
 
 
@@ -68,11 +76,13 @@ class PredictionWriter:
         try:
             self.db.table('forecast_values').select(
                 'forecast_horizon,forecast_origin_date,target_period_start,target_period_end,'
-                'forecast_step,confidence_score,confidence_level,covered_days,period_days'
+                'forecast_step,confidence_score,confidence_level,covered_days,period_days,'
+                'lower_bound,upper_bound,interval_level,interval_width,interval_reliability'
             ).limit(1).execute()
         except Exception as exc:
             raise RuntimeError(
-                f'Multi-period forecast schema is unavailable. Apply {PERIOD_FORECAST_MIGRATION} '
+                f'Multi-period/interval forecast schema is unavailable. Apply '
+                f'{PERIOD_FORECAST_MIGRATION} and {INTERVAL_MIGRATION} '
                 'before running the daily pipeline.') from exc
 
     @staticmethod
@@ -135,6 +145,9 @@ class PredictionWriter:
             score = metric.get("confidence_score")
             level = metric.get("confidence_level")
             if (metric.get("evidence_status") == "validated"
+                    and product_metrics.get(
+                        "confidence_evaluation_source", "chronological_validation"
+                    ) == "chronological_validation"
                     and metric.get("evaluation_source") == "chronological_validation"
                     and isinstance(score, (int, float)) and np.isfinite(score)
                     and 0 <= score <= 100
@@ -192,10 +205,182 @@ class PredictionWriter:
         return forecasts["daily"] + forecasts["weekly"] + forecasts["monthly"]
 
     @staticmethod
-    def _confidence_profile(bundle_path, metadata):
-        """Load a sidecar only when it is bound to this exact legacy bundle."""
-        profile_path = (Path(__file__).resolve().parents[1] / "confidence_profiles"
-                        / f"{bundle_path.name}.json")
+    def _next_period_start(origin, horizon):
+        origin = pd.Timestamp(origin).normalize()
+        if horizon == "weekly":
+            return origin + pd.Timedelta(days=7 - int(origin.weekday()))
+        if horizon == "monthly":
+            return (origin.replace(day=1) + pd.offsets.MonthBegin(1)).normalize()
+        raise ValueError(f"Unsupported period horizon: {horizon}")
+
+    @staticmethod
+    def _period_baseline(series, origin, horizon):
+        """Return the latest completed observed calendar-period mean.
+
+        This is a separate persistence baseline for period targets. It never
+        averages the daily forecast path into a weekly or monthly prediction.
+        """
+        origin = pd.Timestamp(origin).normalize()
+        observed = series.loc[
+            series.is_observed.fillna(False).astype(bool)
+            & pd.to_numeric(series.observed_price, errors="coerce").gt(0)
+            & pd.to_datetime(series.report_date).le(origin),
+            ["report_date", "observed_price"],
+        ].copy()
+        observed["report_date"] = pd.to_datetime(observed.report_date).dt.normalize()
+        observed["observed_price"] = pd.to_numeric(observed.observed_price, errors="coerce")
+        observed = observed.dropna(subset=["report_date", "observed_price"])
+        if observed.empty:
+            raise ValueError(f"No observed price available for {horizon} persistence baseline")
+        if horizon == "weekly":
+            observed["period_start"] = (
+                observed.report_date - pd.to_timedelta(observed.report_date.dt.weekday, unit="D")
+            )
+            observed["period_end"] = observed.period_start + pd.Timedelta(days=6)
+            minimum_coverage = 4
+        elif horizon == "monthly":
+            observed["period_start"] = observed.report_date.values.astype("datetime64[M]").astype("datetime64[ns]")
+            observed["period_end"] = observed.period_start + pd.offsets.MonthEnd(0)
+            minimum_coverage = 15
+        else:
+            raise ValueError(f"Unsupported period horizon: {horizon}")
+        grouped = (observed.groupby(["period_start", "period_end"], sort=True)
+                   .agg(value=("observed_price", "mean"), observed_days=("observed_price", "count"))
+                   .reset_index())
+        completed = grouped.loc[
+            (grouped.period_end <= origin) & grouped.observed_days.ge(minimum_coverage)
+        ]
+        if completed.empty:
+            # Preserve a usable forecast for short histories while exposing
+            # the limitation through the forecast source metadata.
+            return float(observed.observed_price.iloc[-1]), "latest_observed_price_insufficient_period_history"
+        latest = completed.iloc[-1]
+        return float(latest.value), "completed_period_mean_persistence"
+
+    @staticmethod
+    def _rolling_period_bounds(origin, horizon, step):
+        """Origin-relative publication contract; historical calendar helpers stay intact."""
+        if horizon not in {"weekly", "monthly"} or type(step) is not int:
+            raise ValueError("Unsupported rolling horizon or step")
+        if not 1 <= step <= (4 if horizon == "weekly" else 1):
+            raise ValueError("Unsupported rolling horizon or step")
+        from pipeline.rolling_periods import rolling_period_bounds
+        return rolling_period_bounds(origin, horizon, step)
+
+    @staticmethod
+    def _production_rows(product_id, daily_dates, daily_point, origin, series,
+                          product_metrics, allow_confidence=True):
+        """Build exactly 7 daily, 4 weekly, and 1 monthly rows.
+
+        Daily rows and exact inclusive rolling means use one saved daily path.
+        Historical calendar helpers and their evaluation contracts stay separate.
+        Missing required dates produce unavailable periods, never partial means.
+        """
+        origin = pd.Timestamp(origin).normalize()
+        dates = [pd.Timestamp(value).normalize() for value in daily_dates]
+        points = [float(value) for value in daily_point]
+        if len(points) != len(dates) or len(set(dates)) != len(dates):
+            raise ValueError("Invalid or duplicate daily forecast dates")
+        if any(pd.isna(d) for d in dates) or not np.isfinite(points).all():
+            raise ValueError("Invalid daily forecast dates or values")
+        by_date = dict(zip(dates, points))
+        origin_rows = series.loc[pd.to_datetime(series.report_date).dt.normalize() == origin]
+        if not origin_rows.empty:
+            anchor = float(origin_rows.price_index.iloc[-1])
+            if np.isfinite(anchor) and anchor > 0:
+                by_date[origin] = anchor
+        required_daily = [origin + pd.Timedelta(days=step) for step in range(1, 8)]
+        if any(d not in by_date for d in required_daily):
+            raise ValueError("Production daily targets must include seven dates after origin")
+
+        def confidence(step):
+            if not allow_confidence:
+                return None, "Insufficient data"
+            metric = ((product_metrics.get("confidence_by_step", {}) or {})
+                       .get("daily", {}).get(str(step), {}))
+            if (metric.get("evidence_status") == "validated"
+                    and product_metrics.get(
+                        "confidence_evaluation_source", "chronological_validation"
+                    ) == "chronological_validation"
+                    and metric.get("evaluation_source") == "chronological_validation"
+                    and isinstance(metric.get("confidence_score"), (int, float))
+                    and np.isfinite(metric.get("confidence_score"))
+                    and 0 <= metric.get("confidence_score") <= 100
+                    and metric.get("confidence_level") in {
+                        "Very High", "High", "Moderate", "Low", "Very Low",
+                    }):
+                return float(metric["confidence_score"]), metric["confidence_level"]
+            return None, "Insufficient data"
+
+        def interval(step, value):
+            calibration = ((product_metrics.get("prediction_intervals", {}) or {})
+                           .get("daily", {}).get(str(step)))
+            bounds = interval_from_calibration(value, calibration)
+            if bounds is None:
+                return {}
+            lower, upper = bounds
+            return {
+                "lower_bound": _round_price(lower),
+                "upper_bound": _round_price(upper),
+                "interval_level": float(calibration["nominal_level"]),
+                "interval_width": _round_price(upper - lower),
+                "interval_reliability": calibration.get(
+                    "reliability_status", "calibrated_on_validation_only"),
+            }
+
+        rows = []
+        for step, date in enumerate(required_daily, start=1):
+            value = by_date[date]
+            score, level = confidence(step)
+            rows.append({
+                "product_id": product_id,
+                "prediction_date": date.date().isoformat(),
+                "forecast_horizon": "daily",
+                "forecast_origin_date": origin.date().isoformat(),
+                "target_period_start": date.date().isoformat(),
+                "target_period_end": date.date().isoformat(),
+                "forecast_step": step,
+                "predicted_price": _round_price(value),
+                "confidence_score": score,
+                "confidence_level": level,
+                "covered_days": 1,
+                "period_days": 1,
+                **interval(step, value),
+            })
+
+        for horizon in ("weekly", "monthly"):
+            source = "complete_daily_path_mean"
+            for step in range(1, PUBLISHED_FORECAST_STEPS[horizon] + 1):
+                period_start, period_end = PredictionWriter._rolling_period_bounds(
+                    origin, horizon, step)
+                required = pd.date_range(period_start, period_end)
+                missing = [d.date().isoformat() for d in required if d not in by_date]
+                value = None if missing else float(np.mean([by_date[d] for d in required]))
+                rows.append({
+                    "product_id": product_id,
+                    "prediction_date": period_end.isoformat(),
+                    "forecast_horizon": horizon,
+                    "forecast_origin_date": origin.date().isoformat(),
+                    "target_period_start": period_start.isoformat(),
+                    "target_period_end": period_end.isoformat(),
+                    "forecast_step": step,
+                    "predicted_price": None if value is None else _round_price(value),
+                    "unavailable": bool(missing),
+                    "unavailable_reason": "Unsupported daily forecast dates: " + ", ".join(missing) if missing else None,
+                    "confidence_score": None,
+                    "confidence_level": "Insufficient data",
+                    "covered_days": len(required) - len(missing),
+                    "period_days": int((period_end - period_start).days + 1),
+                    "period_forecast_source": source,
+                })
+        return rows
+
+    @staticmethod
+    def _confidence_profile(bundle_path, metadata, profile_path=None):
+        """Load only bundle-bound confidence evidence from untouched validation."""
+        if profile_path is None:
+            profile_path = (Path(__file__).resolve().parents[1] / "confidence_profiles"
+                            / f"{bundle_path.name}.json")
         if not profile_path.exists():
             return {}, None
         try:
@@ -204,16 +389,19 @@ class PredictionWriter:
                 (bundle_path / "metadata.json").read_bytes()).hexdigest()
             ensemble_sha256 = hashlib.sha256(
                 (bundle_path / "ensemble.json").read_bytes()).hexdigest()
+            forecasts_sha256 = hashlib.sha256(
+                (bundle_path / "test_forecasts.csv").read_bytes()).hexdigest()
             if (
                 profile.get("profile_schema_version") != 1
-                or profile.get("profile_status") != "development_validated_with_selection_reuse"
+                or profile.get("profile_status") != "chronological_validation"
                 or profile.get("model_run_id") != bundle_path.name
                 or profile.get("data_fingerprint") != metadata.get("data_fingerprint")
                 or profile.get("model_metadata_sha256") != metadata_sha256
                 or profile.get("ensemble_sha256") != ensemble_sha256
+                or profile.get("source_forecasts_sha256") != forecasts_sha256
                 or profile.get("confidence_method") != CONFIDENCE_METHOD
-                or profile.get("evaluation_source") != "chronological_development_test"
-                or profile.get("development_test_reused_for_selection") is not True
+                or profile.get("evaluation_source") != "chronological_validation"
+                or profile.get("development_test_reused_for_selection") is not False
             ):
                 return {}, None
             confidence = profile.get("product_confidence_by_identity")
@@ -232,28 +420,19 @@ class PredictionWriter:
         frame = pd.read_csv(path, usecols=["series", "origin", "actual", "ensemble"])
         frame["actual"] = pd.to_numeric(frame.actual, errors="coerce")
         frame["ensemble"] = pd.to_numeric(frame.ensemble, errors="coerce")
-        frame = frame[np.isfinite(frame.actual) & np.isfinite(frame.ensemble)].copy()
 
         def summarize(rows):
             if rows.empty:
                 return {}
             actual = rows.actual.to_numpy(dtype=float)
             predicted = rows.ensemble.to_numpy(dtype=float)
-            errors = np.abs(predicted - actual)
-            usable = np.abs(actual) >= 1e-8
-            percentage_errors = errors[usable] / np.abs(actual[usable])
+            metrics = compute_all_metrics(actual, predicted)
+            valid_rows = rows.loc[
+                np.isfinite(rows.actual) & np.isfinite(rows.ensemble) & rows.actual.ge(0)]
             return {
-                "mae": float(errors.mean()),
-                "rmse": float(np.sqrt(np.mean(errors ** 2))),
-                "mape": float(percentage_errors.mean() * 100) if len(percentage_errors) else None,
-                "sample_count": int(len(rows)),
-                "sample_origin_count": int(rows.origin.nunique()),
-                "prediction_success": float(np.mean(percentage_errors <= SUCCESS_TOLERANCE))
-                    if len(percentage_errors) else None,
-                "within_10_accuracy_pct": float(np.mean(percentage_errors <= 0.10) * 100)
-                    if len(percentage_errors) else None,
-                "within_10_count": int(np.count_nonzero(percentage_errors <= 0.10)),
-                "within_10_sample_count": int(len(percentage_errors)),
+                **metrics,
+                "sample_count": metrics["n"],
+                "sample_origin_count": int(valid_rows.origin.nunique()),
                 "sample_basis": "observed_validation_targets_across_forecast_steps",
             }
 
@@ -271,12 +450,64 @@ class PredictionWriter:
         validation = dict(run_metrics.get("validation", {}).get("ensemble", {}))
         validation_by_identity = run_metrics.get("product_validation_metrics_by_identity", {})
         file_metrics, file_summary = PredictionWriter._validation_metrics_from_file(bundle_path)
+        try:
+            prediction_intervals_by_identity = validation_intervals_by_series(bundle_path)
+        except (OSError, ValueError, KeyError, pd.errors.ParserError):
+            prediction_intervals_by_identity = {}
+        try:
+            catalog_items = [
+                {
+                    "id": pid,
+                    "category": ident[0],
+                    "name": ident[1],
+                    "variant": ident[2],
+                    "origin": ident[3],
+                    "unit": ident[4],
+                }
+                for ident, pid in product_ids.items()
+            ]
+            picp_report = build_model_confidence_evaluations(
+                bundle_path, products_catalog=catalog_items
+            )
+            picp_by_product_horizon = {}
+            for rec in picp_report.get("records", []):
+                picp_by_product_horizon.setdefault(rec["commodity_id"], {})[
+                    rec["forecast_horizon"]
+                ] = rec
+        except (OSError, ValueError, KeyError, pd.errors.ParserError):
+            picp_report = None
+            picp_by_product_horizon = {}
         validation = {key: value for key, value in {
             **file_summary, **validation,
         }.items() if value is not None}
         product_metrics = {}
         confidence_by_identity = run_metrics.get("product_confidence_by_identity", {})
+        if not isinstance(confidence_by_identity, dict):
+            confidence_by_identity = {}
         confidence_evaluation_source = "chronological_validation"
+        confidence_profile_status = "bundle_validation"
+        def saved_confidence_metrics():
+            for profile in confidence_by_identity.values():
+                if not isinstance(profile, dict):
+                    continue
+                for steps in (profile.get("confidence_by_step", {}) or {}).values():
+                    if isinstance(steps, dict):
+                        yield from (metric for metric in steps.values()
+                                    if isinstance(metric, dict))
+
+        has_validated_bundle_confidence = any(
+            metric.get("evidence_status") == "validated"
+            and metric.get("confidence_method") == CONFIDENCE_METHOD
+            and isinstance(metric.get("confidence_score"), (int, float))
+            and np.isfinite(metric.get("confidence_score"))
+            for metric in saved_confidence_metrics())
+        if not has_validated_bundle_confidence:
+            profile_confidence, profile_source = PredictionWriter._confidence_profile(
+                bundle_path, metadata)
+            if profile_source is not None:
+                confidence_by_identity = profile_confidence
+                confidence_evaluation_source = profile_source
+                confidence_profile_status = "development_validated_with_selection_reuse"
         for identity, product_id in product_ids.items():
             series = "||".join(identity)
             validation_product = {
@@ -295,7 +526,17 @@ class PredictionWriter:
                 "sample_basis": validation_product.get(
                     "sample_basis", "observed_validation_targets_across_forecast_steps"),
                 "prediction_success": validation_product.get("prediction_success"),
+                "within_5_php_count": validation_product.get("within_5_php_count"),
+                "within_5_php_tolerance": validation_product.get("within_5_php_tolerance"),
+                "within_5_php_sample_count": validation_product.get("within_5_php_sample_count"),
+                "within_5_php_accuracy_pct": validation_product.get("within_5_php_accuracy_pct"),
+                "within_5_percent_count": validation_product.get("within_5_percent_count"),
+                "within_5_percent_sample_count": validation_product.get("within_5_percent_sample_count"),
+                "within_5_percent_accuracy_pct": validation_product.get("within_5_percent_accuracy_pct"),
+                "prediction_intervals": prediction_intervals_by_identity.get(series, {}),
+                "picp_by_horizon": picp_by_product_horizon.get(product_id, {}),
                 "evaluation_source": "chronological_validation",
+                "confidence_evaluation_source": confidence_evaluation_source,
             }
         source_data = run_metrics.get("source_data", {})
         processed_from = source_data.get("processed_from")
@@ -317,6 +558,15 @@ class PredictionWriter:
             "prediction_success": validation.get("prediction_success"),
             "success_tolerance": SUCCESS_TOLERANCE,
             "success_definition": "absolute_percentage_error_at_most_tolerance",
+            "within_5_php_count": validation.get("within_5_php_count"),
+            "within_5_php_tolerance": validation.get("within_5_php_tolerance"),
+            "within_5_php_sample_count": validation.get("within_5_php_sample_count"),
+            "within_5_php_accuracy_pct": validation.get("within_5_php_accuracy_pct"),
+            "within_5_percent_count": validation.get("within_5_percent_count"),
+            "within_5_percent_sample_count": validation.get("within_5_percent_sample_count"),
+            "within_5_percent_accuracy_pct": validation.get("within_5_percent_accuracy_pct"),
+            "within_5_percent_excluded_zero_or_near_zero": validation.get(
+                "within_5_percent_excluded_zero_or_near_zero"),
             "within_10_tolerance": 0.10,
             "within_10_definition": "absolute_percentage_error_at_most_tolerance",
             "within_10_accuracy_pct": validation.get("within_10_accuracy_pct"),
@@ -325,8 +575,10 @@ class PredictionWriter:
             "evaluation_source": "chronological_validation",
             "sample_count": validation.get("n"),
             "product_metrics": product_metrics,
+            "picp_confidence_evaluation": picp_report,
             "confidence_method": CONFIDENCE_METHOD,
             "confidence_evaluation_source": confidence_evaluation_source,
+            "confidence_profile_status": confidence_profile_status,
             "processed_from": processed_from,
             "processed_through": processed_through,
             "training_through": training_through[:10] if isinstance(training_through, str) else training_through,
@@ -338,7 +590,35 @@ class PredictionWriter:
             "metric_aggregation": "row_weighted_across_observed_product_date_step_targets",
         }
 
-    def run(self, horizon="monthly"):
+    def sync_model_confidence_evaluations(self, model_run_id, product_ids):
+        """Upsert out-of-sample PICP evaluations into public.model_confidence_evaluations."""
+        bundle_path = ModelStore().runs / model_run_id
+        catalog_items = [
+            {
+                "id": pid,
+                "category": ident[0],
+                "name": ident[1],
+                "variant": ident[2],
+                "origin": ident[3],
+                "unit": ident[4],
+            }
+            for ident, pid in product_ids.items()
+        ]
+        report = build_model_confidence_evaluations(
+            bundle_path, products_catalog=catalog_items
+        )
+        rows = report.get("records", [])
+        if not rows:
+            return 0
+        try:
+            response = self.db.rpc(
+                "upsert_model_confidence_evaluations", {"p_rows": rows}
+            ).execute()
+            return int(response.data or len(rows))
+        except Exception:
+            return 0
+
+    def run(self, horizon="monthly", origin_date=None):
         if horizon not in HORIZON_MAP:
             raise ValueError(f"Unsupported forecast mode: {horizon}")
         registry = ModelRegistry.get().load_all()
@@ -346,19 +626,22 @@ class PredictionWriter:
         self.check_schema(product_ids)
         quality_metrics = self._quality_metrics(registry.run_id, product_ids)
         today = pd.Timestamp(datetime.now(PH_TIME).date())
-        raw = self.fetcher.fetch_all(through_date=today.date().isoformat())
+        latest_date_str = self.fetcher.fetch_latest_date()
+        latest_date = pd.Timestamp(latest_date_str) if latest_date_str else today
+        if origin_date:
+            effective_origin = pd.Timestamp(origin_date)
+        else:
+            effective_origin = max(today, latest_date)
+        raw = self.fetcher.fetch_all(through_date=effective_origin.date().isoformat())
         report_dates = pd.to_datetime(raw.get("report_date"), errors="coerce").dropna()
         if report_dates.empty:
             raise RuntimeError("No dated price rows are available for forecast publication")
-        # Base the forecast on the latest date represented by the DA price table.
+        # Issue date is Manila today or the latest available database report date.
         # Some rows are copied forward from their source PDF; validate() keeps
         # those rows out of observed labels, while the causal fill limit decides
         # whether their source price is still recent enough to use as an input.
-        issue_origin = min(today, report_dates.max().normalize())
-        forecast_end = (
-            issue_origin + pd.DateOffset(months=PUBLISHED_FORECAST_MONTHS)
-        ) + pd.offsets.MonthEnd(0)
-        horizon_days = int((forecast_end.normalize() - issue_origin.normalize()).days)
+        issue_origin = effective_origin
+        horizon_days = 30
         clean = self.preprocessor.validate(raw)
         clean = self._extend_inputs_to_origin(
             clean, issue_origin, self.cfg.max_fill_days)
@@ -370,6 +653,10 @@ class PredictionWriter:
         market_daily['category_return'] = market_daily.category_return.fillna(0.0)
         market_groups = {str(category): group for category, group
                          in market_daily.groupby('product_category', sort=False)}
+        product_daily = FeatureBuilder.product_return_history(clean)
+        product_daily['product_return'] = product_daily.product_return.fillna(0.0)
+        product_groups = {tuple(map(str, key)): group for key, group
+                          in product_daily.groupby(SERIES_KEY[:3], sort=False)}
         prepared, prepared_meta = [], []
         for key, series in clean.groupby(SERIES_KEY, sort=True):
             product_id = product_ids.get(tuple(key))
@@ -416,7 +703,11 @@ class PredictionWriter:
                 history = ([] if market is None else market.loc[
                     pd.to_datetime(market.report_date) <= origin,
                     'category_return'].to_numpy(dtype=float).tolist())
-                item = registry.engine._prepare(series, None, history)
+                product_market = product_groups.get(tuple(map(str, key[:3])))
+                product_history = ([] if product_market is None else product_market.loc[
+                    pd.to_datetime(product_market.report_date) <= origin,
+                    'product_return'].to_numpy(dtype=float).tolist())
+                item = registry.engine._prepare(series, None, history, product_history)
                 prepared.append(item)
                 prepared_meta.append((tuple(key), series, product_id))
             except (ValueError, FileNotFoundError) as exc:
@@ -424,13 +715,14 @@ class PredictionWriter:
                     try:
                         dates, point = self._persistence_fallback(
                             registry.engine, series, horizon_days)
-                        rows.extend(self._rows(product_id, dates, point,
-                            dates[0] - np.timedelta64(1, "D"),
+                        rows.extend(self._production_rows(
+                            product_id, dates, point, issue_origin, series,
                             quality_metrics.get("product_metrics", {}).get(product_id, {}),
                             allow_confidence=False))
                         forecast_products[product_id] = {
                             "source": "persistence_fallback",
-                            "origin_date": str(np.datetime_as_string(dates[0]-np.timedelta64(1, "D"), unit="D")),
+                            "origin_date": issue_origin.date().isoformat(),
+                            "period_forecast_source": "complete_daily_path_mean",
                         }
                         fallbacks.append({"series": tuple(key), "reason": str(exc)})
                     except ValueError as fallback_exc:
@@ -440,13 +732,14 @@ class PredictionWriter:
         if prepared:
             try:
                 forecasts = registry.engine.forecast_many(prepared, horizon_days)
-                for (_, _, product_id), forecast in zip(prepared_meta, forecasts):
-                    rows.extend(self._rows(product_id, forecast.dates, forecast.point,
-                        forecast.dates[0] - np.timedelta64(1, "D"),
+                for (_, series, product_id), forecast in zip(prepared_meta, forecasts):
+                    rows.extend(self._production_rows(
+                        product_id, forecast.dates, forecast.point, issue_origin, series,
                         quality_metrics.get("product_metrics", {}).get(product_id, {})))
                     forecast_products[product_id] = {
                         "source": "model",
-                        "origin_date": str(np.datetime_as_string(forecast.dates[0]-np.timedelta64(1, "D"), unit="D")),
+                        "origin_date": issue_origin.date().isoformat(),
+                        "period_forecast_source": "complete_daily_path_mean",
                     }
                     model_count += 1
             except (ValueError, FileNotFoundError) as exc:
@@ -458,6 +751,33 @@ class PredictionWriter:
                 f"first={failures[0]}")
         if not rows:
             raise RuntimeError("Forecast vintage was not published: no series has usable recent inputs")
+        expected_rows_by_horizon = dict(PUBLISHED_FORECAST_STEPS)
+        published_ids = {
+            product_id for product_id, detail in forecast_products.items()
+            if detail.get("source") != "unavailable"
+        }
+        for product_id in published_ids:
+            product_rows = [row for row in rows if row["product_id"] == product_id]
+            counts = {
+                name: sum(row["forecast_horizon"] == name for row in product_rows)
+                for name in expected_rows_by_horizon
+            }
+            if counts != expected_rows_by_horizon:
+                raise RuntimeError(
+                    f"Forecast output contract violated for product {product_id}: "
+                    f"expected {expected_rows_by_horizon}, got {counts}")
+        quality_metrics["publication_contract"] = {
+            "daily_steps": PUBLISHED_FORECAST_STEPS["daily"],
+            "weekly_steps": PUBLISHED_FORECAST_STEPS["weekly"],
+            "monthly_steps": PUBLISHED_FORECAST_STEPS["monthly"],
+            "contract_id": "rolling_daily7_weekly4_monthly30_v2",
+            "weekly_target": "four consecutive 7-day windows starting origin+1",
+            "monthly_target": "origin price plus 29 future daily forecasts: origin through origin+29 inclusive",
+            "period_model": (
+                "equal-weight means of complete daily forecast paths; "
+                "historical calendar evaluation does not validate this contract"
+            ),
+        }
         run_id = str(uuid4())
         payload = {
             "p_run_id": run_id,
@@ -510,6 +830,9 @@ class PredictionWriter:
                     break
                 else:
                     raise
+        confidence_evaluations_upserted = self.sync_model_confidence_evaluations(
+            registry.run_id, product_ids
+        )
         return {"forecast_run_id": run_id, "model_run_id": registry.run_id,
                 "forecast_origin_date": issue_origin.date().isoformat(),
                 "series": series_count,
@@ -520,4 +843,5 @@ class PredictionWriter:
                 "unavailable_details": unavailable,
                 "rows_written": len(rows),
                 "quality_metrics_published": quality_metrics_published,
+                "confidence_evaluations_upserted": confidence_evaluations_upserted,
                 "database_result": result.data}

@@ -77,43 +77,162 @@ export const translations = {
   "Rice": { en: "Rice", tl: "Bigas" },
   "Vegetables": { en: "Vegetables", tl: "Gulay" },
   "Fish": { en: "Fish", tl: "Isda" },
+  "Livestock": { en: "Livestock", tl: "Karne" },
   "Meat": { en: "Meat", tl: "Karne" },
+  "Poultry": { en: "Poultry", tl: "Manok at Itlog" },
   "Fruits": { en: "Fruits", tl: "Prutas" },
+  "Corn": { en: "Corn", tl: "Mais" },
+  "Oils": { en: "Oils", tl: "Mantika" },
+  "Sugar": { en: "Sugar", tl: "Asukal" },
   "Spices": { en: "Spices", tl: "Pampalasa" },
-  
-  // Dynamic Products (Common Examples)
+
+  // Origins & Units
+  "Local": { en: "Local", tl: "Lokal" },
+  "Imported": { en: "Imported", tl: "Inangkat" },
+  "kg": { en: "kg", tl: "kilo" },
+  "piece": { en: "piece", tl: "piraso" },
+  "pc": { en: "pc", tl: "piraso" },
+  "bottle": { en: "bottle", tl: "bote" },
+  "tray": { en: "tray", tl: "trey" },
+
+  // All 50 Commodities in FOODCAST Catalog
+  "Alumahan": { en: "Alumahan", tl: "Alumahan" },
+  "Avocado": { en: "Avocado", tl: "Abukado" },
+  "Baguio Beans": { en: "Baguio Beans", tl: "Baguio Beans" },
+  "Banana": { en: "Banana", tl: "Saging" },
+  "Beef": { en: "Beef", tl: "Baka" },
+  "Bell Pepper": { en: "Bell Pepper", tl: "Bell Pepper" },
+  "Bittergourd": { en: "Bittergourd", tl: "Ampalaya" },
+  "Broccoli": { en: "Broccoli", tl: "Broccoli" },
+  "Cabbage": { en: "Cabbage", tl: "Repolyo" },
+  "Calamansi": { en: "Calamansi", tl: "Kalamansi" },
+  "Carrot": { en: "Carrot", tl: "Karot" },
+  "Cauliflower": { en: "Cauliflower", tl: "Cauliflower" },
+  "Celery": { en: "Celery", tl: "Kintsay" },
+  "Chayote": { en: "Chayote", tl: "Sayote" },
+  "Chicken": { en: "Chicken", tl: "Manok" },
+  "Chicken Egg": { en: "Chicken Egg", tl: "Itlog ng Manok" },
+  "Chili": { en: "Chili", tl: "Sili" },
+  "Coconut Oil": { en: "Coconut Oil", tl: "Mantika ng Niyog" },
+  "Corn Cracked": { en: "Corn Cracked", tl: "Binasag na Mais" },
+  "Corn Grits": { en: "Corn Grits", tl: "Giniling na Mais" },
+  "Eggplant": { en: "Eggplant", tl: "Talong" },
+  "Garlic": { en: "Garlic", tl: "Bawang" },
+  "Ginger": { en: "Ginger", tl: "Luya" },
+  "Indian Mackerel": { en: "Indian Mackerel", tl: "Alumahan" },
+  "Lettuce": { en: "Lettuce", tl: "Letsugas" },
+  "Mango": { en: "Mango", tl: "Mangga" },
+  "Melon": { en: "Melon", tl: "Melon" },
+  "Milkfish": { en: "Milkfish", tl: "Bangus" },
+  "Mung Beans": { en: "Mung Beans", tl: "Munggo" },
+  "Palm Oil": { en: "Palm Oil", tl: "Mantika ng Palma" },
+  "Papaya": { en: "Papaya", tl: "Papaya" },
+  "Pechay": { en: "Pechay", tl: "Pechay" },
+  "Pechay Baguio": { en: "Pechay Baguio", tl: "Pechay Baguio" },
+  "Pechay Tagalog": { en: "Pechay Tagalog", tl: "Pechay Tagalog" },
+  "Pomelo": { en: "Pomelo", tl: "Suha" },
+  "Pork": { en: "Pork", tl: "Baboy" },
+  "Potato": { en: "Potato", tl: "Patatas" },
+  "Red Onion": { en: "Red Onion", tl: "Pulang Sibuyas" },
+  "Round Scad": { en: "Round Scad", tl: "Galunggong" },
+  "Sardines": { en: "Sardines", tl: "Sardinas" },
+  "Squash": { en: "Squash", tl: "Kalabasa" },
+  "Squid": { en: "Squid", tl: "Pusit" },
+  "String Beans": { en: "String Beans", tl: "Sitaw" },
+  "Tilapia": { en: "Tilapia", tl: "Tilapia" },
+  "Tomato": { en: "Tomato", tl: "Kamatis" },
+  "Watermelon": { en: "Watermelon", tl: "Pakwan" },
+  "White Onion": { en: "White Onion", tl: "Puting Sibuyas" },
+  "Yellow Sweet Corn": { en: "Yellow Sweet Corn", tl: "Dilaw na Mais" },
+
+  // All 55 Product Variants
+  "1L": { en: "1L", tl: "1L" },
+  "350ml": { en: "350ml", tl: "350ml" },
+  "Basmati": { en: "Basmati", tl: "Basmati" },
+  "Belly": { en: "Belly", tl: "Liempo" },
+  "Brisket": { en: "Brisket", tl: "Brisket" },
+  "Brown": { en: "Brown", tl: "Kayumanggi" },
+  "Brown (Extra Large)": { en: "Brown (Extra Large)", tl: "Kayumanggi (Extra Large)" },
+  "Brown (Large)": { en: "Brown (Large)", tl: "Kayumanggi (Large)" },
+  "Brown (Medium)": { en: "Brown (Medium)", tl: "Kayumanggi (Medium)" },
+  "Carabao": { en: "Carabao", tl: "Carabao" },
+  "Cob": { en: "Cob", tl: "Busal" },
+  "Feed Grade": { en: "Feed Grade", tl: "Pampatuka" },
+  "Food Grade": { en: "Food Grade", tl: "Pangkain" },
+  "Frozen Kasim": { en: "Frozen Kasim", tl: "Frozen na Kasim" },
+  "Frozen Liempo": { en: "Frozen Liempo", tl: "Frozen na Liempo" },
+  "Glutinous": { en: "Glutinous", tl: "Malagkit" },
+  "Green": { en: "Green", tl: "Berde" },
+  "Green Ice": { en: "Green Ice", tl: "Green Ice" },
+  "Ham": { en: "Ham", tl: "Kasim" },
+  "Iceberg": { en: "Iceberg", tl: "Iceberg" },
+  "Jasponica/Japonica": { en: "Jasponica/Japonica", tl: "Jasponica/Japonica" },
+  "Kadiwa (Benteng Bigas)": { en: "Kadiwa (Benteng Bigas)", tl: "Kadiwa (Benteng Bigas)" },
+  "Kadiwa Premium (RFA5)": { en: "Kadiwa Premium (RFA5)", tl: "Kadiwa Premium (RFA5)" },
+  "Kadiwa Regular Milled (RFA100)": { en: "Kadiwa Regular Milled (RFA100)", tl: "Kadiwa Regular Milled (RFA100)" },
+  "Kadiwa Well Milled (RFA25)": { en: "Kadiwa Well Milled (RFA25)", tl: "Kadiwa Well Milled (RFA25)" },
+  "Labuyo": { en: "Labuyo", tl: "Labuyo" },
+  "Lakatan": { en: "Lakatan", tl: "Lakatan" },
+  "Latundan": { en: "Latundan", tl: "Latundan" },
+  "Medium": { en: "Medium", tl: "Katamtaman" },
+  "Other Special Rice": { en: "Other Special Rice", tl: "Iba pang Espesyal na Bigas" },
+  "Premium": { en: "Premium", tl: "Premium" },
+  "Rare Ball": { en: "Rare Ball", tl: "Rare Ball" },
+  "Red": { en: "Red", tl: "Pula" },
+  "Refined": { en: "Refined", tl: "Refined (Puti)" },
+  "Regular Milled": { en: "Regular Milled", tl: "Karaniwang Giling" },
+  "Romaine": { en: "Romaine", tl: "Romaine" },
+  "Rump": { en: "Rump", tl: "Rump" },
+  "Saba": { en: "Saba", tl: "Saba" },
+  "Scorpio": { en: "Scorpio", tl: "Scorpio" },
+  "Special": { en: "Special", tl: "Espesyal" },
+  "Standard": { en: "Standard", tl: "Standard" },
+  "Washed": { en: "Washed", tl: "Washed (Pula)" },
+  "Well Milled": { en: "Well Milled", tl: "Makinis na Giling" },
+  "White": { en: "White", tl: "Puti" },
+  "White (Extra Large)": { en: "White (Extra Large)", tl: "Puti (Extra Large)" },
+  "White (Extra Small)": { en: "White (Extra Small)", tl: "Puti (Extra Small)" },
+  "White (Jumbo)": { en: "White (Jumbo)", tl: "Puti (Jumbo)" },
+  "White (Large)": { en: "White (Large)", tl: "Puti (Large)" },
+  "White (Medium)": { en: "White (Medium)", tl: "Puti (Medium)" },
+  "White (Pewee)": { en: "White (Pewee)", tl: "Puti (Pewee)" },
+  "White (Small)": { en: "White (Small)", tl: "Puti (Small)" },
+  "Whole": { en: "Whole", tl: "Buo" },
+  "Wonder Ball": { en: "Wonder Ball", tl: "Wonder Ball" },
+  "Yellow": { en: "Yellow", tl: "Dilaw" },
+  "Yellow (Feed Grade)": { en: "Yellow (Feed Grade)", tl: "Dilaw (Feed Grade)" },
+
+  // Common Formatted / Combined Product Names
   "Local Commercial Rice": { en: "Local Commercial Rice", tl: "Lokal na Komersyal na Bigas" },
   "Imported Commercial Rice": { en: "Imported Commercial Rice", tl: "Inangkat na Komersyal na Bigas" },
   "Special (Blue tag)": { en: "Special (Blue tag)", tl: "Espesyal (Blue tag)" },
   "Premium (Yellow tag)": { en: "Premium (Yellow tag)", tl: "Premium (Yellow tag)" },
   "Well-milled (White tag)": { en: "Well-milled (White tag)", tl: "Well-milled (White tag)" },
   "Regular-milled (White tag)": { en: "Regular-milled (White tag)", tl: "Regular-milled (White tag)" },
-  
-  "Bangus": { en: "Bangus", tl: "Bangus" },
-  "Tilapia": { en: "Tilapia", tl: "Tilapia" },
-  "Galunggong": { en: "Galunggong", tl: "Galunggong" },
-  "Alumahan": { en: "Alumahan", tl: "Alumahan" },
-  
   "Pork (Kasim)": { en: "Pork (Kasim)", tl: "Baboy (Kasim)" },
   "Pork (Liempo)": { en: "Pork (Liempo)", tl: "Baboy (Liempo)" },
+  "Pork (Belly)": { en: "Pork (Belly)", tl: "Baboy (Liempo)" },
+  "Pork (Ham)": { en: "Pork (Ham)", tl: "Baboy (Kasim)" },
   "Beef (Rump)": { en: "Beef (Rump)", tl: "Baka (Rump)" },
   "Beef (Brisket)": { en: "Beef (Brisket)", tl: "Baka (Brisket)" },
   "Whole Chicken": { en: "Whole Chicken", tl: "Buong Manok" },
-  "Chicken Egg (Medium)": { en: "Chicken Egg (Medium)", tl: "Itlog ng Manok (Medium)" },
-  
-  "Cabbage": { en: "Cabbage", tl: "Repolyo" },
-  "Carrot": { en: "Carrot", tl: "Karot" },
-  "Tomato": { en: "Tomato", tl: "Kamatis" },
-  "Red Onion": { en: "Red Onion", tl: "Sibuyas (Pula)" },
-  "White Onion": { en: "White Onion", tl: "Sibuyas (Puti)" },
-  "Garlic": { en: "Garlic", tl: "Bawang" },
-  "Potato": { en: "Potato", tl: "Patatas" },
-  "Eggplant": { en: "Eggplant", tl: "Talong" },
-  "Pechay": { en: "Pechay", tl: "Pechay" },
-  
-  "Calamansi": { en: "Calamansi", tl: "Kalamansi" },
-  "Mango": { en: "Mango", tl: "Mangga" },
-  "Banana": { en: "Banana", tl: "Saging" },
+  "Chicken (Whole)": { en: "Chicken (Whole)", tl: "Manok (Buo)" },
+  "Chicken Egg (Medium)": { en: "Chicken Egg (Medium)", tl: "Itlog ng Manok (Katamtaman)" },
+  "Chili (Labuyo)": { en: "Chili (Labuyo)", tl: "Siling Labuyo" },
+  "Chili (Green)": { en: "Chili (Green)", tl: "Siling Berde" },
+  "Bell Pepper (Red)": { en: "Bell Pepper (Red)", tl: "Pulang Bell Pepper" },
+  "Bell Pepper (Green)": { en: "Bell Pepper (Green)", tl: "Berdeng Bell Pepper" },
+  "Rice (Special)": { en: "Rice (Special)", tl: "Espesyal na Bigas" },
+  "Rice (Premium)": { en: "Rice (Premium)", tl: "Premium na Bigas" },
+  "Rice (Well Milled)": { en: "Rice (Well Milled)", tl: "Makinis na Bigas (Well Milled)" },
+  "Rice (Regular Milled)": { en: "Rice (Regular Milled)", tl: "Karaniwang Bigas (Regular Milled)" },
+  "Rice (Glutinous)": { en: "Rice (Glutinous)", tl: "Malagkit na Bigas" },
+  "Rice (Basmati)": { en: "Rice (Basmati)", tl: "Basmati na Bigas" },
+  "Rice (Jasponica/Japonica)": { en: "Rice (Jasponica/Japonica)", tl: "Jasponica na Bigas" },
+  "Banana (Lakatan)": { en: "Banana (Lakatan)", tl: "Saging (Lakatan)" },
+  "Banana (Latundan)": { en: "Banana (Latundan)", tl: "Saging (Latundan)" },
+  "Banana (Saba)": { en: "Banana (Saba)", tl: "Saging (Saba)" },
+  "Mango (Carabao)": { en: "Mango (Carabao)", tl: "Manggang Kalabaw" },
   // Footer
   footerDesc: { en: "AI-Based Forecasting and Market Analysis of Agri-Fishery Food Prices in NCR Markets using Machine Learning Algorithms.", tl: "Pagsusuri at pagtataya sa presyo ng pagkain sa NCR gamit ang Machine Learning." },
   accuracy: { en: "Accuracy", tl: "Katumpakan" },
@@ -172,6 +291,7 @@ export const translations = {
   confidenceBacktestTitle: { en: "Estimated share of chronological validation forecasts within 5% of observed prices. Smoothed toward the model-wide validation rate using distinct forecast origins. This is historical performance, not a calibrated probability or prediction interval for the next forecast.", tl: "Tinatayang bahagi ng mga forecast sa kronolohikal na validation na nasa loob ng 5% ng naitalang presyo. Inaayon sa pangkalahatang validation rate gamit ang magkakaibang pinagmulan ng forecast. Dating resulta ito, hindi nasuring posibilidad o prediction interval para sa susunod na forecast." },
   updated2hAgo: { en: "Updated", tl: "Na-update" },
   marketReasoning: { en: "Market Reasoning", tl: "Basehan ng Palengke" },
+  forecastBreakdown: { en: "Forecast Breakdown", tl: "Pagsusuri ng Forecast" },
   aiAnalyzingNews: { en: "AI is analyzing market news...", tl: "Sinusuri ng AI ang balita..." },
   viewDailyForecast: { en: "View Daily Forecast", tl: "Tingnan ang Araw-araw na Pagtataya" },
   marketPrice: { en: "Market Price", tl: "Presyo sa Palengke" },
@@ -404,17 +524,50 @@ export const translations = {
   noNewsForTag: { en: "No news articles found for this tag.", tl: "Walang nahanap na balita para sa tag na ito." },
   affectedProducts: { en: "Affected Products", tl: "Mga Apektadong Produkto" },
   noProductsForTag: { en: "No products directly linked to this tag yet.", tl: "Wala pang direktang produktong nakaugnay sa tag na ito." },
+  daHeroCreditTitle: { en: "Data Sourced from Department of Agriculture (DA)", tl: "Datos mula sa Department of Agriculture (DA)" },
+  daHeroCreditSubtitle: { en: "Prevailing retail prices powered by DA Bantay Presyo (AMAS)", tl: "Umiiral na presyo mula sa DA Bantay Presyo (AMAS)" },
+  daSectionEyebrow: { en: "OFFICIAL DATA PARTNER & CITATION", tl: "OPISYAL NA PINAGMULAN NG DATOS" },
+  daSectionTitle: { en: "Powered by Department of Agriculture Price Monitoring", tl: "Pinapagana ng Pagmamanman ng Presyo ng Department of Agriculture" },
+  daSectionDesc: { en: "FOODCAST's artificial intelligence models are built and evaluated using official public retail market price bulletins released by the Department of Agriculture (DA) through its Agribusiness and Marketing Assistance Service (AMAS). We gratefully credit the Department of Agriculture for enabling agricultural price transparency across the National Capital Region (NCR).", tl: "Ang mga artificial intelligence model ng FOODCAST ay binuo at sinusuri gamit ang mga opisyal na bulletin ng presyo sa merkado mula sa Department of Agriculture (DA) sa pamamagitan ng Agribusiness and Marketing Assistance Service (AMAS). Taos-puso nating kinikilala ang Department of Agriculture sa pagbibigay-daan sa transparency ng presyo ng pagkain sa National Capital Region (NCR)." },
+  daBadgeRepublic: { en: "Republic of the Philippines", tl: "Republika ng Pilipinas" },
+  daBadgeAmas: { en: "DA Agribusiness & Marketing Assistance Service", tl: "DA Agribusiness & Marketing Assistance Service" },
+  daBadgeBantayPresyo: { en: "Bantay Presyo Daily Retail Price Bulletins", tl: "Bantay Presyo Pang-araw-araw na Presyo" },
+  daVisitPortal: { en: "Visit Department of Agriculture (da.gov.ph)", tl: "Bisitahin ang Department of Agriculture (da.gov.ph)" },
 };
 
 export type Language = "en" | "tl";
 export type TranslationKey = keyof typeof translations | string;
 
 export function getTranslation(key: TranslationKey, lang: Language): string {
-  // Try to find exact match
-  if (translations[key as keyof typeof translations]) {
-    return translations[key as keyof typeof translations][lang];
+  if (!key || typeof key !== "string") return "";
+  if (lang === "en") {
+    if (translations[key as keyof typeof translations]) {
+      return translations[key as keyof typeof translations]["en"];
+    }
+    return key;
   }
-  
-  // If no translation found, return the original key
+
+  // 1. Try exact match in translations dictionary
+  if (translations[key as keyof typeof translations]) {
+    return translations[key as keyof typeof translations]["tl"];
+  }
+
+  // 2. Try trimmed match
+  const trimmed = key.trim();
+  if (translations[trimmed as keyof typeof translations]) {
+    return translations[trimmed as keyof typeof translations]["tl"];
+  }
+
+  // 3. Decompose compound strings like "Name (Variant)" e.g. "Rice (Well Milled)" or "Pork (Belly)"
+  const parenMatch = trimmed.match(/^([^(]+?)\s*\((.+)\)$/);
+  if (parenMatch) {
+    const base = parenMatch[1].trim();
+    const variant = parenMatch[2].trim();
+    const translatedBase = getTranslation(base, lang);
+    const translatedVariant = getTranslation(variant, lang);
+    return `${translatedBase} (${translatedVariant})`;
+  }
+
+  // 4. If no translation found, return original key
   return key;
 }

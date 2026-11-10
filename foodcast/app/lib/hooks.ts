@@ -41,7 +41,7 @@ export function useProducts(fallbackData?: Product[]) {
 }
 
 async function fetchDashboardProducts(): Promise<DashboardProduct[]> {
-  const response = await fetch("/api/dashboard/products", { cache: "no-store" });
+  const response = await fetch("/api/dashboard/products");
   if (!response.ok) throw new Error("Failed to fetch dashboard products");
   return response.json();
 }

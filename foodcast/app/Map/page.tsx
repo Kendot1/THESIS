@@ -3,7 +3,6 @@ import { fetchProducts } from "../lib/data";
 import { MarketLocation, ncrMarkets } from "../lib/markets";
 
 export const revalidate = 3600; // ISR revalidation (1 hour)
-export const dynamic = 'force-static';
 
 export const metadata = {
   title: "Market Map | FOODCAST",

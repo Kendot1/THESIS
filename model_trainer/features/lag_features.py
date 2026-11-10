@@ -110,6 +110,31 @@ class LagFeatures:
             0.0,
         )
 
+        for days, lag in ((30,31),(60,61),(90,91)):
+            prior = grouped.shift(lag)
+            df[f"price_pct_change_{days}d"] = np.where(
+                prior.notna() & prior.ne(0),
+                (df["price_lag_1d"] - prior) / prior,
+                0.0,
+            )
+        mean_60 = grouped.transform(
+            lambda s: s.shift(1).rolling(window=60, min_periods=2).mean()
+        )
+        std_60 = grouped.transform(
+            lambda s: s.shift(1).rolling(window=60, min_periods=2).std()
+        )
+        df["price_volatility_60d"] = np.where(
+            (mean_60 != 0) & np.isfinite(mean_60) & np.isfinite(std_60),
+            std_60 / mean_60,
+            np.nan,
+        )
+        df["price_deviation_from_rolling_mean_60d"] = np.where(
+            (mean_60 != 0) & np.isfinite(mean_60)
+            & np.isfinite(df["price_lag_1d"]),
+            (df["price_lag_1d"] - mean_60) / mean_60,
+            np.nan,
+        )
+
         # ── Expanding mean (long-term average up to current point) ──
         df["price_expanding_mean"] = grouped.transform(
             lambda s: s.shift(1).expanding(min_periods=1).mean()

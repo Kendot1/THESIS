@@ -12,7 +12,8 @@ class ProductConfidenceTests(unittest.TestCase):
     SERIES = ("Rice", "Rice", "Regular", "Local", "kg")
     IDS = {SERIES: "rice-id", ("Rice", "Other", "Regular", "Local", "kg"): "other-id"}
 
-    def bundle(self, count=12, scope="calibration_excluded_from_early_stopping", corrupt=False):
+    def bundle(self, count=12, scope="calibration_excluded_from_early_stopping",
+               calibration_scope="held_out_from_ensemble_fit", corrupt=False):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         bundle = Path(temp.name)
@@ -23,7 +24,7 @@ class ProductConfidenceTests(unittest.TestCase):
                 rows.append(dict(series="||".join(self.SERIES), origin=origin.isoformat(),
                                  date=(origin+timedelta(days=lead)).isoformat(), horizon=lead,
                                  actual=100, ensemble=99))
-        calibration = dict(scope="held_out_from_ensemble_fit", base_model_scope=scope,
+        calibration = dict(scope=calibration_scope, base_model_scope=scope,
                            start=min(r["date"] for r in rows), end=max(r["date"] for r in rows),
                            sample_count=len(rows)+(1 if corrupt else 0))
         (bundle / "ensemble.json").write_text(json.dumps(dict(calibration=calibration)))
@@ -75,7 +76,10 @@ class ProductConfidenceTests(unittest.TestCase):
         result = validation_confidence(bundle, self.IDS)
         for horizon, expected_min in (("daily", 100), ("weekly", 8), ("monthly", 8)):
             metric = result["rice-id"]["confidence_by_horizon"][horizon]
-            self.assertEqual(metric["confidence_score"], 99)
+            expected_probability = round(100 * (metric["within5_php_success_count"] + 1)
+                                        / (metric["within5_php_sample_count"] + 2), 1)
+            self.assertEqual(metric["confidence_score"], expected_probability)
+            self.assertEqual(metric["within5_php_rate"], 1.0)
             self.assertEqual(metric["mape"], 1)
             self.assertGreaterEqual(metric["sample_count"], expected_min)
             self.assertEqual(metric["model_version"], bundle.name)
@@ -84,7 +88,16 @@ class ProductConfidenceTests(unittest.TestCase):
         step = result["rice-id"]["confidence_by_step"]["daily"][1]
         self.assertEqual(step["forecast_step"], 1)
         self.assertEqual(step["sample_count"], 12)
-        self.assertEqual(step["confidence_score"], 99)
+        self.assertEqual(step["confidence_score"], 92.9)
+        self.assertIn("probability of absolute price error <= PHP 5",
+                      step["confidence_definition"])
+
+    def test_accepts_calibration_held_out_from_residual_fit(self):
+        bundle = self.bundle(calibration_scope="held_out_from_residual_fit")
+        result = validation_confidence(bundle, self.IDS)
+        metric = result["rice-id"]["confidence_by_horizon"]["daily"]
+        self.assertEqual(metric["evidence_status"], "validated")
+        self.assertEqual(metric["confidence_score"], 99.7)
 
     def test_refuses_legacy_or_mismatched_provenance(self):
         for bundle in (self.bundle(scope="parent_validation_used_for_early_stopping"),
@@ -93,6 +106,27 @@ class ProductConfidenceTests(unittest.TestCase):
             for metric in result["confidence_by_horizon"].values():
                 self.assertIsNone(metric["confidence_score"])
                 self.assertEqual(metric["evidence_status"], "unverified_provenance")
+
+    def test_confidence_uses_absolute_php5_not_percentage_ten(self):
+        bundle = self.bundle()
+        for name in ("validation_forecasts.csv", "validation_paths.csv"):
+            path = bundle / name
+            with path.open(newline="") as stream:
+                rows = list(csv.DictReader(stream))
+            for row in rows:
+                if row["origin"] == "2024-01-01" and row["horizon"] == "1":
+                    row["ensemble"] = "94"
+            with path.open("w", newline="") as stream:
+                writer = csv.DictWriter(stream, fieldnames=rows[0].keys())
+                writer.writeheader()
+                writer.writerows(rows)
+
+        metric = validation_confidence(bundle, self.IDS)["rice-id"][
+            "confidence_by_horizon"]["daily"]
+        self.assertEqual(metric["within5_php_success_count"], 359)
+        self.assertEqual(metric["within5_php_sample_count"], 360)
+        self.assertEqual(metric["within10_success_count"], 360)
+        self.assertEqual(metric["confidence_score"], 99.4)
 
     def test_missing_full_paths_withholds_confidence_for_unknown_coverage(self):
         bundle = self.bundle()
@@ -226,7 +260,9 @@ class ProductConfidenceTests(unittest.TestCase):
         for horizon in ("daily", "weekly", "monthly"):
             metric = result["confidence_by_horizon"][horizon]
             self.assertEqual(metric["evidence_status"], "validated")
-            self.assertEqual(metric["confidence_score"], 99)
+            expected_probability = round(100 * (metric["within5_php_success_count"] + 1)
+                                        / (metric["within5_php_sample_count"] + 2), 1)
+            self.assertEqual(metric["confidence_score"], expected_probability)
             self.assertEqual(metric["evaluation_source"], "chronological_development_test")
             self.assertGreaterEqual(metric["formula_validation_origins"], 3)
             self.assertEqual(metric["observed_label_coverage"], 1.0)

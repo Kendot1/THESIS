@@ -1,6 +1,9 @@
 """Causal daily panel construction. Imputed inputs are never scored as truth."""
 import re
+import json
+import hashlib
 from datetime import datetime
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from config.settings import get_settings
@@ -25,6 +28,49 @@ def source_date(source):
 
 class DataPreprocessor:
     REQUIRED_COLUMNS = SERIES_KEY + ['report_date', 'price_index']
+
+    @classmethod
+    def preprocessing_contract(cls):
+        """Describe source-quality handling so old bundles can be replayed exactly."""
+        path = Path(__file__).with_name('source_quality_exclusions.json')
+        if not path.exists():
+            return {
+                'source_quality_exclusions_applied': False,
+                'source_quality_exclusions_sha256': None,
+            }
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        return {
+            'source_quality_exclusions_applied': True,
+            'source_quality_exclusions_sha256': digest,
+        }
+
+    @staticmethod
+    def _quarantine_reviewed_source_errors(df):
+        """Exclude source-reviewed invalid DA records from observations."""
+        path = Path(__file__).with_name('source_quality_exclusions.json')
+        if not path.exists():
+            return df
+        with path.open(encoding='utf-8') as handle:
+            reviewed = json.load(handle)
+        if not reviewed:
+            return df
+
+        source_pdf = df.get('source_pdf', pd.Series('', index=df.index)).fillna('').astype(str)
+        report_date = pd.to_datetime(df.report_date, errors='coerce').dt.strftime('%Y-%m-%d')
+        price = pd.to_numeric(df.price_index, errors='coerce')
+        for item in reviewed:
+            identity = item['series']
+            mask = (
+                report_date.eq(item['report_date'])
+                & source_pdf.eq(item['source_pdf'])
+                & np.isclose(price, float(item['invalid_price_index']), rtol=0, atol=1e-6)
+            )
+            for column, value in zip(SERIES_KEY, identity):
+                mask &= df[column].astype(str).eq(str(value))
+            # Require source provenance to have marked the row as observed.
+            mask &= df.get('is_observed', pd.Series(False, index=df.index)).fillna(False).astype(bool)
+            df.loc[mask, 'is_observed'] = False
+        return df
 
     @staticmethod
     def source_target_availability(clean, available_through):
@@ -101,7 +147,7 @@ class DataPreprocessor:
         }
         return view, audit
 
-    def validate(self, df):
+    def validate(self, df, *, apply_source_quality_exclusions=True):
         missing = set(self.REQUIRED_COLUMNS) - set(df.columns)
         if missing:
             raise ValueError(f'Missing required columns: {sorted(missing)}')
@@ -135,6 +181,8 @@ class DataPreprocessor:
             df['is_observed'] = dates.eq(df.report_date)
         else:
             raise ValueError('Provide is_observed provenance or dated source_pdf URLs')
+        if apply_source_quality_exclusions:
+            df = self._quarantine_reviewed_source_errors(df)
         # Copied/unknown rows are not new observations. Reconstruct filling causally.
         df['price_index'] = df.price_index.where(df.is_observed)
         duplicates = df.duplicated(SERIES_KEY + ['report_date'], keep=False)

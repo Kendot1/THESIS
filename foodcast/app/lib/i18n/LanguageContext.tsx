@@ -37,24 +37,12 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setLanguage = useCallback((lang: Language) => {
-    // Start transitioning
-    setIsTransitioning(true);
-    if (transitionTimer.current) clearTimeout(transitionTimer.current);
-
-    // Apply language change after a brief delay so the skeleton renders first
-    transitionTimer.current = setTimeout(() => {
-      setLanguageState(lang);
-      try {
-        localStorage.setItem("foodcast_language", lang);
-      } catch (e) {
-        // Ignore
-      }
-
-      // End transitioning after another brief moment for re-render
-      transitionTimer.current = setTimeout(() => {
-        setIsTransitioning(false);
-      }, 400);
-    }, 50);
+    setLanguageState(lang);
+    try {
+      localStorage.setItem("foodcast_language", lang);
+    } catch (e) {
+      // Ignore
+    }
   }, []);
 
   const t = useCallback(

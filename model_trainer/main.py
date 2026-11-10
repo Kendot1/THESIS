@@ -32,6 +32,14 @@ def cmd_train(args):
     from pipeline.trainer import TrainingPipeline
     from data.fetcher import DataFetcher
     source_as_of = bool(getattr(args, "report_date_as_of", False))
+    residual_role = getattr(args, "lgbm_role", "direct") != "direct"
+    if residual_role:
+        if args.resume or args.recalibrate or args.mode != "full":
+            raise ValueError("Residual architecture selection requires a new full candidate")
+        if source_as_of:
+            raise ValueError("Residual training requires a separate source-as-of OOF plan")
+        if not args.no_activate:
+            raise ValueError("Experimental residual training requires --no-activate")
     if args.through and (args.resume or args.recalibrate):
         raise ValueError("--through is for new training runs; resume/recalibrate must retain their original data scope")
     if source_as_of:
@@ -46,7 +54,7 @@ def cmd_train(args):
         raw = _read_data(args.data, args.through)
     elif args.through:
         raw = DataFetcher().fetch_all(through_date=args.through)
-    pipeline = TrainingPipeline()
+    pipeline = TrainingPipeline(lgbm_role=getattr(args, "lgbm_role", "direct"))
     if source_as_of:
         metrics = pipeline.run_full_training(
             raw, activate=not args.no_activate, source_as_of=True)
@@ -107,9 +115,23 @@ def cmd_evaluate(_args):
                      indent=2))
 
 
+def cmd_baseline_report(args):
+    from evaluation.baseline_report import build_report, write_report
+    from models.model_store import ModelStore
+
+    store = ModelStore()
+    bundle = store.active_path() if args.run_id is None else store.runs / args.run_id
+    if not bundle.is_dir():
+        raise FileNotFoundError(f"Model bundle is missing: {bundle}")
+    report = build_report(bundle)
+    paths = write_report(report, args.output_dir)
+    print(json.dumps({"run_id": bundle.name, "paths": paths,
+                      "summary": report["models"]["ensemble"]}, indent=2))
+
+
 def cmd_predict(args):
     from pipeline.prediction_writer import PredictionWriter
-    print(json.dumps(PredictionWriter().run(args.horizon), indent=2))
+    print(json.dumps(PredictionWriter().run(args.horizon, origin_date=getattr(args, "origin", None)), indent=2))
 
 
 def cmd_export_quality(args):
@@ -139,11 +161,15 @@ def cmd_preview(args):
     from data.preprocessor import DataPreprocessor, SERIES_KEY
     from features.builder import FeatureBuilder
     from models.registry import ModelRegistry
-    from pipeline.prediction_writer import HORIZON_MAP
+    from pipeline.prediction_writer import PUBLISHED_FORECAST_STEPS, PredictionWriter
 
     raw = (_read_data(args.data, args.through) if args.data else
            DataFetcher().fetch_all(through_date=args.through))
+    from pipeline.rolling_periods import manila_today
+    issue_origin = pd.Timestamp(manila_today())
     clean = DataPreprocessor().validate(raw)
+    clean = clean.loc[pd.to_datetime(clean.report_date) <= issue_origin].copy()
+    clean = PredictionWriter._extend_inputs_to_origin(clean, issue_origin, 7)
     registry = ModelRegistry.get().load_all()
     query = (args.product or "").casefold()
     results, failures = [], []
@@ -163,7 +189,7 @@ def cmd_preview(args):
     for key, series in selected:
         try:
             category = str(key[0])
-            origin = pd.Timestamp(series.report_date.max())
+            origin = issue_origin
             market = market_groups.get(category)
             market_history = ([] if market is None else market.loc[
                 pd.to_datetime(market.report_date) <= origin,
@@ -173,21 +199,22 @@ def cmd_preview(args):
         except (ValueError, FileNotFoundError) as exc:
             failures.append({"series": "||".join(map(str, key)), "error": str(exc)})
     try:
-        forecasts = registry.engine.forecast_many(prepared, HORIZON_MAP[args.horizon])
+        forecasts = registry.engine.forecast_many(prepared, 30)
     except (ValueError, FileNotFoundError) as exc:
         forecasts = []
-        failures.extend({"series": "||".join(map(str, key)), "error": str(exc)}
-                        for key, _ in metadata)
+        failures.extend({"series": "||".join(map(str, key)), "error": str(exc)} for key, _ in metadata)
     for (key, series), forecast in zip(metadata, forecasts):
         try:
+            rows = PredictionWriter._production_rows(None, forecast.dates, forecast.point,
+                                                     issue_origin, series, {}, allow_confidence=False)
             results.append({
                 "series": dict(zip(SERIES_KEY, key)),
-                "latest_observation": str(pd.Timestamp(series.report_date.max()).date()),
+                "forecast_origin": issue_origin.date().isoformat(),
+                "latest_observation": str(pd.Timestamp(series.loc[series.is_observed, 'report_date'].max()).date()),
                 "anchor": round(float(forecast.anchor), 2),
-                "forecast": [{
-                    "date": str(np.datetime_as_string(date, unit="D")),
-                    "predicted_price": round(float(forecast.point[index]), 2),
-                } for index, date in enumerate(forecast.dates)],
+                "forecast_horizon": args.horizon,
+                "forecast_source": "daily_model_path" if args.horizon == "daily" else "complete_daily_path_mean",
+                "forecast": [r for r in rows if r['forecast_horizon'] == args.horizon],
             })
         except (ValueError, FileNotFoundError) as exc:
             failures.append({"series": "||".join(map(str, key)), "error": str(exc)})
@@ -211,6 +238,10 @@ def main():
     train = commands.add_parser("train")
     train.add_argument("--mode", choices=["full", "incremental", "daily"], default="full")
     train.add_argument("--data", help="Offline JSON or CSV snapshot")
+    train.add_argument("--lgbm-role",
+                       choices=["direct", "residual_absolute", "residual_relative"],
+                       default="direct",
+                       help="Direct tree forecast or correction of the LSTM base (candidate only)")
     train.add_argument("--through", type=iso_report_date,
                        help="Inclusive report-date cutoff (YYYY-MM-DD), applied before preprocessing")
     train.add_argument("--report-date-as-of", action="store_true",
@@ -224,6 +255,11 @@ def main():
     train.set_defaults(func=cmd_train)
     evaluate = commands.add_parser("evaluate")
     evaluate.set_defaults(func=cmd_evaluate)
+    baseline_report = commands.add_parser(
+        "baseline-report", help="Write a read-only per-model, per-lead and per-series report")
+    baseline_report.add_argument("--output-dir", required=True)
+    baseline_report.add_argument("--run-id", help="Saved bundle ID; defaults to the active bundle")
+    baseline_report.set_defaults(func=cmd_baseline_report)
     export_quality = commands.add_parser('export-quality')
     export_quality.add_argument('--output', required=True)
     export_quality.set_defaults(func=cmd_export_quality)
@@ -232,6 +268,8 @@ def main():
     predict = commands.add_parser("predict")
     predict.add_argument("--horizon", choices=["daily", "weekly", "monthly"],
                          default="monthly")
+    predict.add_argument("--origin", type=iso_report_date,
+                         help="Forecast origin date (defaults to latest available report date)")
     predict.set_defaults(func=cmd_predict)
     preview = commands.add_parser("preview")
     preview.add_argument("--horizon", choices=["daily", "weekly", "monthly"],

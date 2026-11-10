@@ -139,42 +139,44 @@ export default function ProductComparison({ products, open, onClose }: ProductCo
         aria-modal="true"
         aria-labelledby="comparison-title"
         onMouseDown={(event) => event.stopPropagation()}
-        className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-t-[2rem] bg-white shadow-2xl sm:rounded-[2rem]"
+        className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-t-[2rem] bg-white shadow-2xl sm:rounded-[2rem]"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-8 sm:py-5">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white/95 px-5 py-3 sm:px-6 sm:py-3.5 backdrop-blur">
           <div>
-            <h2 id="comparison-title" className="text-xl font-bold text-gray-900 sm:text-2xl">Compare products</h2>
-            <p className="mt-1 text-xs text-gray-500">Compare recent prices and the published forecast.</p>
-            <div className="mt-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
-              <span className={`h-2 w-2 rounded-full ${refreshError ? "bg-amber-500" : "bg-green-500"}`} />
-              <span className={refreshError ? "text-amber-700" : "text-gray-400"}>
-                {isRefreshing
-                  ? "Updating live data…"
-                  : refreshError
-                    ? "Live refresh failed · showing last available data"
-                    : lastUpdated
-                      ? `Live · updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                      : "Connecting to live data…"}
-              </span>
+            <div className="flex items-center gap-3">
+              <h2 id="comparison-title" className="text-lg font-bold text-gray-900 sm:text-xl">Compare products</h2>
+              <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
+                <span className={`h-1.5 w-1.5 rounded-full ${refreshError ? "bg-amber-500" : "bg-green-500"}`} />
+                <span className={refreshError ? "text-amber-700" : "text-gray-400"}>
+                  {isRefreshing
+                    ? "Updating…"
+                    : refreshError
+                      ? "Live refresh failed"
+                      : lastUpdated
+                        ? `Live · ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                        : "Connecting…"}
+                </span>
+              </div>
             </div>
+            <p className="text-xs text-gray-500">Compare recent prices and published forecasts side by side.</p>
           </div>
-          <button onClick={onClose} className="rounded-xl p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700" aria-label="Close comparison">
+          <button onClick={onClose} className="rounded-xl p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700" aria-label="Close comparison">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="space-y-6 p-5 sm:p-8">
-          <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-3.5 p-4 sm:p-6">
+          <div className="grid gap-3 md:grid-cols-2">
             {[
               { label: "First product", value: firstId, setValue: setFirstId, disabledId: secondId },
               { label: "Second product", value: secondId, setValue: setSecondId, disabledId: firstId },
             ].map((selector) => (
               <label key={selector.label} className="block">
-                <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">{selector.label}</span>
+                <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-gray-400">{selector.label}</span>
                 <select
                   value={selector.value}
                   onChange={(event) => selector.setValue(event.target.value)}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs sm:text-sm font-semibold text-gray-800 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
                 >
                   <option value="">Choose a product</option>
                   {usableProducts.map((product) => (
@@ -188,98 +190,101 @@ export default function ProductComparison({ products, open, onClose }: ProductCo
           </div>
 
           {!first || !second ? (
-            <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 text-center">
-              <Scale className="mb-3 h-8 w-8 text-primary-600" />
-              <p className="font-bold text-gray-800">Select two different products</p>
-              <p className="mt-1 max-w-md text-xs leading-5 text-gray-500">The comparison will show their price history, forecast movement, and price difference.</p>
+            <div className="flex min-h-32 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-6 py-6 text-center">
+              <Scale className="mb-2 h-7 w-7 text-primary-600" />
+              <p className="text-sm font-bold text-gray-800">Select two different products</p>
+              <p className="mt-1 max-w-md text-xs leading-relaxed text-gray-500">The comparison will show their price history, forecast movement, and price difference.</p>
             </div>
           ) : (
             <>
               {!sameUnit && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2 text-xs font-medium text-amber-800">
                   These products use different units ({first.unit} and {second.unit}). Their absolute prices are not directly equivalent.
                 </div>
               )}
 
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {[first, second].map((product, index) => {
                   const change = percentChange(product);
                   const rising = change >= 0;
                   return (
-                    <article key={product.id} className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 sm:p-5">
-                      <div className="mb-4 flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-base font-black text-gray-900">{product.name}</p>
-                          <div className="mt-2 flex flex-wrap items-center gap-1.5" aria-label="Product details">
+                    <article key={product.id} className="rounded-2xl border border-gray-100 bg-gray-50/70 p-3 sm:p-3.5">
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="text-sm sm:text-base font-black text-gray-900 truncate">{product.name}</p>
+                          <div className="flex items-center gap-1 shrink-0" aria-label="Product details">
                             {[
                               product.variant && product.variant !== "Standard" ? product.variant : null,
                               product.origin || null,
                               product.unit || null,
                             ].filter(Boolean).map((detail, detailIndex) => (
-                              <span key={`${detailIndex}-${detail}`} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium leading-none text-gray-600">
+                              <span key={`${detailIndex}-${detail}`} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium leading-none text-gray-600">
                                 {detail}
                               </span>
                             ))}
                           </div>
                         </div>
-                        <span className="h-3 w-3 rounded-full" style={{ backgroundColor: COLORS[index] }} aria-hidden="true" />
+                        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[index] }} aria-hidden="true" />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Current</p>
-                          <p className="mt-1 text-xl font-black text-gray-900">{formatCurrency(product.currentPrice)}</p>
+
+                      <div className="flex items-center justify-between gap-3 pt-0.5">
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Current</p>
+                            <p className="text-base sm:text-lg font-black text-gray-900">{formatCurrency(product.currentPrice)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Predicted</p>
+                            <p className="text-base sm:text-lg font-black" style={{ color: COLORS[index] }}>{formatCurrency(product.predictedPrice)}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Predicted</p>
-                          <p className="mt-1 text-xl font-black" style={{ color: COLORS[index] }}>{formatCurrency(product.predictedPrice)}</p>
+                        <div className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black shrink-0 ${rising ? "bg-price-up/10 text-price-up" : "bg-price-down/10 text-price-down"}`}>
+                          {rising ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                          {rising ? "+" : ""}{change.toFixed(1)}%
                         </div>
-                      </div>
-                      <div className={`mt-4 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${rising ? "bg-price-up/10 text-price-up" : "bg-price-down/10 text-price-down"}`}>
-                        {rising ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
-                        {rising ? "+" : ""}{change.toFixed(1)}% forecast change
                       </div>
                     </article>
                   );
                 })}
               </div>
 
-              <div className="rounded-2xl border border-gray-100 p-4 sm:p-5">
-                <div className="mb-5 flex flex-wrap items-end justify-between gap-2">
-                  <div>
-                    <h3 className="font-black text-gray-900">Price comparison</h3>
-                    <p className="mt-1 text-xs text-gray-500">Recent seven observations plus the published forecast.</p>
+              <div className="rounded-2xl border border-gray-100 p-3 sm:p-3.5">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs sm:text-sm font-black text-gray-900">Price comparison</h3>
+                    <span className="text-[11px] text-gray-400 hidden sm:inline">· Recent observations + published forecast</span>
                   </div>
                   {sameUnit && (
-                    <p className="text-xs font-bold text-gray-600">Current gap: {formatCurrency(currentDifference)}</p>
+                    <p className="text-xs font-bold text-gray-700 bg-gray-50 px-2 py-0.5 rounded-lg border border-gray-100">Current gap: <span className="text-primary-800">{formatCurrency(currentDifference)}</span></p>
                   )}
                 </div>
-                <div className="h-60 w-full sm:h-64">
+                <div className="h-44 w-full sm:h-48">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+                    <LineChart data={chartData} margin={{ top: 6, right: 12, left: 0, bottom: 0 }}>
                       <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" vertical={false} />
-                      <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#6B7280" }} tickLine={false} axisLine={false} />
-                      <YAxis tickFormatter={(value) => `₱${Number(value).toFixed(0)}`} tick={{ fontSize: 11, fill: "#6B7280" }} tickLine={false} axisLine={false} width={58} />
-                      <Tooltip formatter={(value) => formatCurrency(Number(value))} contentStyle={{ borderRadius: 12, borderColor: "#E5E7EB", fontSize: 12 }} />
-                      <Legend wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
-                      <Line type="monotone" dataKey="first" name={productLabel(first)} stroke={COLORS[0]} strokeWidth={3} dot={{ r: 3 }} connectNulls />
-                      <Line type="monotone" dataKey="second" name={productLabel(second)} stroke={COLORS[1]} strokeWidth={3} dot={{ r: 3 }} connectNulls />
+                      <XAxis dataKey="period" tick={{ fontSize: 10, fill: "#6B7280" }} tickLine={false} axisLine={false} />
+                      <YAxis tickFormatter={(value) => `₱${Number(value).toFixed(0)}`} tick={{ fontSize: 10, fill: "#6B7280" }} tickLine={false} axisLine={false} width={48} />
+                      <Tooltip formatter={(value) => formatCurrency(Number(value))} contentStyle={{ borderRadius: 12, borderColor: "#E5E7EB", fontSize: 11 }} />
+                      <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
+                      <Line type="monotone" dataKey="first" name={productLabel(first)} stroke={COLORS[0]} strokeWidth={2.5} dot={{ r: 2.5 }} connectNulls />
+                      <Line type="monotone" dataKey="second" name={productLabel(second)} stroke={COLORS[1]} strokeWidth={2.5} dot={{ r: 2.5 }} connectNulls />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl bg-gray-50 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Lower current price</p>
-                  <p className="mt-2 text-sm font-black text-gray-900">{sameUnit ? (first.currentPrice <= second.currentPrice ? first.name : second.name) : "Not comparable"}</p>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div className="rounded-xl bg-gray-50/80 border border-gray-100/60 p-2 sm:p-2.5">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Lower current price</p>
+                  <p className="mt-1 text-xs sm:text-sm font-black text-gray-900">{sameUnit ? (first.currentPrice <= second.currentPrice ? first.name : second.name) : "Not comparable"}</p>
                 </div>
-                <div className="rounded-xl bg-gray-50 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Projected price gap</p>
-                  <p className="mt-2 text-sm font-black text-gray-900">{sameUnit ? formatCurrency(forecastDifference) : "Different units"}</p>
+                <div className="rounded-xl bg-gray-50/80 border border-gray-100/60 p-2 sm:p-2.5">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Projected price gap</p>
+                  <p className="mt-1 text-xs sm:text-sm font-black text-gray-900">{sameUnit ? formatCurrency(forecastDifference) : "Different units"}</p>
                 </div>
-                <div className="rounded-xl bg-gray-50 p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Stronger price movement</p>
-                  <p className="mt-2 text-sm font-black text-gray-900">{Math.abs(firstChange) >= Math.abs(secondChange) ? first.name : second.name}</p>
+                <div className="rounded-xl bg-gray-50/80 border border-gray-100/60 p-2 sm:p-2.5">
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Stronger price movement</p>
+                  <p className="mt-1 text-xs sm:text-sm font-black text-gray-900">{Math.abs(firstChange) >= Math.abs(secondChange) ? first.name : second.name}</p>
                 </div>
               </div>
             </>

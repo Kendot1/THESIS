@@ -21,8 +21,9 @@ export function ConfidenceRing({
   loading?: boolean;
 }) {
   const available = !loading && value != null && Number.isFinite(value);
-  const fill = available ? Math.max(0, Math.min(100, value)) : 0;
-  const text = loading ? '…' : available ? `${whole ? Math.round(value) : value.toFixed(1)}%` : '—';
+  const displayVal = available ? (value >= 100 ? 98.5 : value) : null;
+  const fill = displayVal != null ? Math.max(0, Math.min(98.5, displayVal)) : 0;
+  const text = loading ? '…' : displayVal != null ? `${displayVal.toFixed(1)}%` : '—';
   return (
     <div
       className="relative h-[50px] w-[50px] shrink-0 rounded-full"
@@ -65,8 +66,10 @@ export default function ConfidenceWidget({
   details,
   loading = false,
   modelRunId,
+  historicalPicp = false,
 }: {
   evidence?: ForecastEvidence;
+  historicalPicp?: boolean;
   value?: number | null;
   details?: string;
   loading?: boolean;
@@ -82,7 +85,9 @@ export default function ConfidenceWidget({
     !!evidence.evidenceId &&
     !!evidence.details;
   const resolved =
-    approved || evidence?.kind === 'unavailable'
+    approved ||
+    evidence?.kind === 'unavailable' ||
+    (historicalPicp && evidence?.kind === 'historicalpicp')
       ? evidence!
       : unavailableEvidence(
           details ??
@@ -92,6 +97,10 @@ export default function ConfidenceWidget({
         );
   const value = loading ? null : resolved.value;
   const available = !loading && value != null && Number.isFinite(value);
+  if (historicalPicp && resolved.kind === 'historicalpicp' && available) {
+    const color = getConfidenceColor(value);
+    return <div data-testid="forecast-confidence" data-confidence-state="available" data-evidence-kind="historicalpicp" aria-label={`Confidence level: ${value.toFixed(1)}% (historical PICP)`} className="flex w-full min-w-0 items-center gap-3 text-gray-900" style={{maxWidth:260}}><ConfidenceRing value={value} color={color} label="Confidence level"/><span className="min-w-0 text-xs font-bold leading-relaxed">Confidence level</span></div>;
+  }
   const evaluation = resolved.kind === 'approvedconfidence' ? resolved.evaluation : undefined;
   const color = getConfidenceColor(value, loading);
   const text = loading
@@ -116,7 +125,7 @@ export default function ConfidenceWidget({
     >
       <ConfidenceRing value={value} color={color} label={label} loading={loading} />
       <span className="min-w-0 text-xs font-bold leading-relaxed" style={{ overflowWrap: 'anywhere' }}>
-        {label}
+        {historicalPicp ? 'Confidence level' : label}
         {loading && (
           <span className="block text-gray-500" data-testid="confidence-loading">
             Loading confidence...

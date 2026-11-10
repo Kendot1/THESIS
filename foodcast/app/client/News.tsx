@@ -35,12 +35,17 @@ export default function News({ initialNews, initialTotal, initialOffset, initial
   const [failedFeaturedImage, setFailedFeaturedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const [isFeaturedOpen, setIsFeaturedOpen] = useState(false);
+  const [isFeaturedOpening, setIsFeaturedOpening] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   const { t, language, isTransitioning } = useLanguage();
 
   useEffect(() => {
     setIsMounted(true);
+    const timer = setTimeout(() => setIsInitialLoading(false), 300);
+    return () => clearTimeout(timer);
   }, []);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,12 +82,19 @@ export default function News({ initialNews, initialTotal, initialOffset, initial
     const refresh = async () => {
       setLoading(true);
       const dbCategory = selectedCategory === "All" ? "All" : toEventTypeKey(selectedCategory);
-      const { data, total, rawCount } = await fetchPaginatedUniqueNews(0, INITIAL_UNIQUE_NEWS_COUNT, searchQuery, dbCategory, dateFilter);
-      if (!active) return;
-      setNews(mergeUniqueNews([], data));
-      setTotalRecords(total);
-      setNextOffset(rawCount);
-      setLoading(false);
+      try {
+        const { data, total, rawCount } = await fetchPaginatedUniqueNews(0, INITIAL_UNIQUE_NEWS_COUNT, searchQuery, dbCategory, dateFilter);
+        if (!active) return;
+        setNews(mergeUniqueNews([], data));
+        setTotalRecords(total);
+        setNextOffset(rawCount);
+        setFetchError(false);
+      } catch {
+        // Keep the last successful articles rather than replacing them with [].
+        if (active) setFetchError(true);
+      } finally {
+        if (active) setLoading(false);
+      }
     };
     void refresh();
     window.addEventListener('focus', refresh);
@@ -120,6 +132,8 @@ export default function News({ initialNews, initialTotal, initialOffset, initial
       setNews(prev => mergeUniqueNews(prev, additions));
       setNextOffset(offset);
       setTotalRecords(total);
+    } catch {
+      setFetchError(true);
     } finally {
       setLoadingMore(false);
     }
@@ -135,8 +149,8 @@ export default function News({ initialNews, initialTotal, initialOffset, initial
     return () => { document.body.style.overflow = ""; };
   }, [isFeaturedOpen]);
 
-  // --- Full-page skeleton for language transition ---
-  if (isTransitioning) {
+  // --- Full-page skeleton when loading, initially rendering, or during language transition ---
+  if (isInitialLoading || (loading && news.length === 0) || isTransitioning) {
     return (
       <main className="min-h-screen bg-surface">
         {/* Hero Skeleton */}
@@ -214,6 +228,7 @@ export default function News({ initialNews, initialTotal, initialOffset, initial
 
       <main className="min-h-screen bg-surface">
         {/* Premium Hero Section */}
+        {fetchError && <p role="status" className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-xl bg-white px-5 py-3 text-sm text-gray-700 shadow-lg">News could not refresh. Showing the last available articles.</p>}
         <section className="relative  pt-30 md:pt-40 pb-10 md:pb-20 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-primary-900 via-primary-900/90 to-surface" />
 
@@ -245,7 +260,11 @@ export default function News({ initialNews, initialTotal, initialOffset, initial
               return (
                 <ScrollReveal delay={200}>
                   <div
-                    onClick={() => setIsFeaturedOpen(true)}
+                    onClick={() => {
+                      setIsFeaturedOpen(true);
+                      setIsFeaturedOpening(true);
+                      setTimeout(() => setIsFeaturedOpening(false), 300);
+                    }}
                     className="group relative bg-white rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/20 flex flex-col lg:flex-row transition-all duration-500 hover:shadow-accent/10 cursor-pointer"
                   >
                     <div className="relative lg:w-1/2 h-[200px] lg:h-auto overflow-hidden bg-gray-100">
@@ -313,53 +332,77 @@ export default function News({ initialNews, initialTotal, initialOffset, initial
                           </div>
                         </div>
 
-                        <div className="p-6 sm:p-8 overflow-y-auto flex-1">
-                          <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-2 leading-tight" style={{ fontFamily: "var(--font-display)" }}>
-                            {displayTitle}
-                          </h2>
-                          <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">
-                            {t("source")}: {featuredArticle.source || t("marketNews")}
+                        {isFeaturedOpening ? (
+                          <div className="p-6 sm:p-8 space-y-6" aria-busy="true">
+                            <div className="flex items-center gap-3">
+                              <div className="h-5 w-24 bg-gray-100 rounded-full skeleton-shimmer" />
+                              <div className="h-5 w-32 bg-gray-100 rounded-full skeleton-shimmer" />
+                            </div>
+                            <div className="space-y-3">
+                              <div className="h-7 sm:h-8 w-full bg-gray-200 rounded-xl skeleton-shimmer" />
+                              <div className="h-7 sm:h-8 w-3/4 bg-gray-200 rounded-xl skeleton-shimmer" />
+                            </div>
+                            <div className="h-3 w-40 bg-gray-100 rounded-md skeleton-shimmer" />
+                            <div className="space-y-3 pt-2">
+                              <div className="h-4 w-full bg-gray-100 rounded skeleton-shimmer" />
+                              <div className="h-4 w-full bg-gray-100 rounded skeleton-shimmer" />
+                              <div className="h-4 w-5/6 bg-gray-100 rounded skeleton-shimmer" />
+                              <div className="h-4 w-4/6 bg-gray-100 rounded skeleton-shimmer" />
+                            </div>
+                            <div className="flex gap-2 pt-4">
+                              <div className="h-6 w-20 bg-gray-100 rounded-full skeleton-shimmer" />
+                              <div className="h-6 w-24 bg-gray-100 rounded-full skeleton-shimmer" />
+                            </div>
                           </div>
-                          <div className="w-12 h-0.5 bg-gradient-to-r from-primary-700 to-accent rounded-full mb-6" />
-                          <div className="text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-line mb-8">
-                            {displayContent}
-                          </div>
+                        ) : (
+                          <div className="p-6 sm:p-8 overflow-y-auto flex-1">
+                            <h2 className="text-xl sm:text-2xl font-black text-gray-900 mb-2 leading-tight" style={{ fontFamily: "var(--font-display)" }}>
+                              {displayTitle}
+                            </h2>
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-6">
+                              {t("source")}: {featuredArticle.source || t("marketNews")}
+                            </div>
+                            <div className="w-12 h-0.5 bg-gradient-to-r from-primary-700 to-accent rounded-full mb-6" />
+                            <div className="text-gray-600 text-sm sm:text-base leading-relaxed whitespace-pre-line mb-8">
+                              {displayContent}
+                            </div>
 
-                          {/* Tags Section */}
-                          {relatedKeywords.length > 0 && (() => {
-                            const tagColors = [
-                              "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
-                              "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
-                              "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
-                              "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100",
-                              "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100",
-                              "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100",
-                              "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100",
-                              "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100",
-                            ];
-                            return (
-                              <div className="pt-6 border-t border-gray-100">
-                                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                  <Tag className="w-3.5 h-3.5" />
-                                  {t("relatedTags") || "Related Tags"}
-                                </h4>
-                                <div className="flex flex-wrap gap-2">
-                                  {relatedKeywords.map((kw, idx) => {
-                                    return (
-                                      <Link
-                                        key={idx}
-                                        href={`/tags/${encodeURIComponent(kw)}`}
-                                        className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors capitalize ${tagColors[idx % tagColors.length]}`}
-                                      >
-                                        {kw}
-                                      </Link>
-                                    );
-                                  })}
+                            {/* Tags Section */}
+                            {relatedKeywords.length > 0 && (() => {
+                              const tagColors = [
+                                "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
+                                "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
+                                "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
+                                "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100",
+                                "bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-100",
+                                "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100",
+                                "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100",
+                                "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100",
+                              ];
+                              return (
+                                <div className="pt-6 border-t border-gray-100">
+                                  <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                    <Tag className="w-3.5 h-3.5" />
+                                    {t("relatedTags") || "Related Tags"}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-2">
+                                    {relatedKeywords.map((kw, idx) => {
+                                      return (
+                                        <Link
+                                          key={idx}
+                                          href={`/tags/${encodeURIComponent(kw)}`}
+                                          className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors capitalize ${tagColors[idx % tagColors.length]}`}
+                                        >
+                                          {kw}
+                                        </Link>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
+                              );
+                            })()}
+                          </div>
+                        )}
 
                         <div className="flex-shrink-0 px-6 sm:px-8 py-5 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
                           <button

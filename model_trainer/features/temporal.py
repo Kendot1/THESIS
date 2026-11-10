@@ -16,6 +16,35 @@ _PH_HOLIDAY_DOYS = [pd.Timestamp(2001, m, d).dayofyear
                                  (8, 21), (11, 1), (11, 30), (12, 25), (12, 30)]]
 
 
+def easter_sunday(year):
+    """Return Gregorian Easter Sunday using the Meeus/Jones/Butcher algorithm."""
+    year = int(year)
+    a = year % 19
+    b, c = divmod(year, 100)
+    d, e = divmod(b, 4)
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i, k = divmod(c, 4)
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month = (h + l - 7 * m + 114) // 31
+    day = (h + l - 7 * m + 114) % 31 + 1
+    return pd.Timestamp(year, month, day)
+
+
+def moving_easter_features(date):
+    """Return causal calendar features for dates relative to that year's Easter."""
+    date = pd.Timestamp(date).normalize()
+    offset = int((date - easter_sunday(date.year)).days)
+    return {
+        # Saturation keeps far-away dates from becoming a proxy for year/month.
+        "easter_offset_days": float(np.clip(offset, -21, 21)),
+        # Palm Sunday through Easter Sunday (Good Friday is inside this span).
+        "is_holy_week": int(-7 <= offset <= 0),
+    }
+
+
 def holiday_proximity(day_of_year, month, day):
     proximity = False
     for holiday in _PH_HOLIDAY_DOYS:
@@ -69,9 +98,18 @@ class TemporalFeatures:
         df["is_holiday_proximity"] = holiday_proximity(
             df["day_of_year"], df["month"], day).astype(int)
 
+        years = dt.dt.year.to_numpy(dtype=int)
+        easter_by_year = {int(year): easter_sunday(int(year))
+                          for year in np.unique(years)}
+        easter_dates = pd.to_datetime([easter_by_year[int(year)] for year in years])
+        easter_offset = (dt.dt.normalize().reset_index(drop=True)
+                         - pd.Series(easter_dates)).dt.days
+        df["easter_offset_days"] = np.clip(easter_offset.to_numpy(dtype=float), -21, 21)
+        df["is_holy_week"] = easter_offset.between(-7, 0).astype(int).to_numpy()
+
         # Days since start of dataset (trend feature)
         min_date = pd.Timestamp('2000-01-01')
         df["days_since_start"] = (dt - min_date).dt.days
 
-        log.info("Added 21 temporal features.")
+        log.info("Added 23 temporal features.")
         return df

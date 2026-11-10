@@ -1,0 +1,24 @@
+.git
+.github
+.hermes
+.tmp*
+temp/
+tmp/
+audits/
+model_trainer/
+scraper/
+supabase/
+New folder/
+**/.venv
+**/.python-runtime
+**/__pycache__
+**/*.pyc
+**/*.zip
+**/*.tar.gz
+**/*.pt
+**/*.bin
+**/*.onnx
+**/node_modules
+**/.next
+**/.next-development
+**/.next-rolling-research

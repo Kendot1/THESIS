@@ -174,7 +174,13 @@ const ForecastChart = ({
 
   useEffect(() => {
     const selected = period.toLowerCase() as ForecastHorizon;
-    forecastRangesRef.current = Object.fromEntries(data.filter(point => point.horizon === selected && point.predicted != null && point.target_period_start).map(point => [point.date, point.target_period_start!]));
+    forecastRangesRef.current = selected === "daily"
+      ? {}
+      : Object.fromEntries(
+          data
+            .filter(point => point.horizon === selected && point.predicted != null && point.target_period_start && point.target_period_start !== point.date)
+            .map(point => [point.date, point.target_period_start!])
+        );
     tooltipConfidenceRef.current = Object.fromEntries(data
       .filter(point => (point.horizon === selected || (!point.horizon && selected === "daily"))
         && point.predicted != null)
@@ -390,8 +396,11 @@ const ForecastChart = ({
         const formatDate = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
           month: "long", day: "numeric", year: "numeric", timeZone: "UTC",
         });
-        const periodStart = predictedValue !== undefined ? forecastRangesRef.current[dateStr] : historicalRangesRef.current[dateStr];
-        const formattedDate = periodStart
+        const isDaily = period.toLowerCase() === "daily";
+        const periodStart = !isDaily
+          ? (predictedValue !== undefined ? forecastRangesRef.current[dateStr] : historicalRangesRef.current[dateStr])
+          : undefined;
+        const formattedDate = (periodStart && periodStart !== dateStr)
           ? `${formatDate(periodStart)} – ${formatDate(dateStr)}`
           : formatDate(dateStr);
 

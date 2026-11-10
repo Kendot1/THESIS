@@ -14,6 +14,7 @@ import { Product } from "../lib/data";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import { encryptId } from "../../lib/idCipher";
 import { useProducts } from "../lib/hooks";
+import { matchesBilingualQuery } from "../lib/bilingual-search";
 
 type SortKey = "name" | "category" | "origin" | "currentPrice" | "predictedPrice" | "change" | "volume";
 type SortDir = "asc" | "desc";
@@ -127,12 +128,7 @@ export default function MarketData({ initialProducts }: { initialProducts?: Prod
     let results = products.filter((p) => {
       const matchCategory =
         deferredCategory === "All" || p.category === deferredCategory;
-      const matchQuery =
-        !deferredQuery ||
-        p.name.toLowerCase().includes(deferredQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(deferredQuery.toLowerCase()) ||
-        (p.variant && p.variant.toLowerCase().includes(deferredQuery.toLowerCase())) ||
-        (p.origin && p.origin.toLowerCase().includes(deferredQuery.toLowerCase()));
+      const matchQuery = matchesBilingualQuery(p, deferredQuery);
 
       const matchPrice = (() => {
         if (priceRange === "All Prices") return true;
@@ -280,40 +276,40 @@ export default function MarketData({ initialProducts }: { initialProducts?: Prod
         {/* Header Skeleton */}
         <section className="relative bg-gradient-to-br from-primary-800 to-primary-900 py-7 sm:py-10 pt-22 sm:pt-25 overflow-hidden">
           <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
-            <div className="h-4 w-32 bg-white/10 rounded-md mb-6 animate-pulse" />
-            <div className="h-10 sm:h-12 w-48 sm:w-64 bg-white/10 rounded-xl mb-4 animate-pulse" />
-            <div className="h-4 w-64 sm:w-96 bg-white/5 rounded-lg animate-pulse" />
+            <div className="h-4 w-32 bg-white/10 rounded-md mb-6 skeleton-shimmer-dark" />
+            <div className="h-10 sm:h-12 w-48 sm:w-64 bg-white/10 rounded-xl mb-4 skeleton-shimmer-dark" />
+            <div className="h-4 w-64 sm:w-96 bg-white/5 rounded-lg skeleton-shimmer-dark" />
           </div>
         </section>
 
-        <div className="max-w-7xl mx-auto px-5 lg:px-10 py-6 sm:py-8 lg:py-10">
+        <div className="max-w-7xl mx-auto px-5 lg:px-10 py-6 sm:py-8 lg:py-10" aria-hidden="true">
           {/* Filter Skeleton */}
           <div className="mb-5 flex flex-col lg:flex-row gap-4">
             <div className="flex gap-2 flex-1">
-              <div className="h-12 flex-1 bg-white border border-gray-100 rounded-2xl animate-pulse" />
-              <div className="h-12 w-12 bg-white border border-gray-100 rounded-2xl animate-pulse" />
+              <div className="h-12 flex-1 bg-white border border-gray-100 rounded-2xl skeleton-shimmer" />
+              <div className="h-12 w-12 bg-white border border-gray-100 rounded-2xl skeleton-shimmer" />
             </div>
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="h-12 w-24 bg-white border border-gray-100 rounded-2xl animate-pulse hidden sm:block" />
+                <div key={i} className="h-12 w-24 bg-white border border-gray-100 rounded-2xl skeleton-shimmer hidden sm:block" />
               ))}
             </div>
           </div>
 
           {/* Table Skeleton */}
           <div className="bg-white rounded-[1.5rem] border border-gray-100 shadow-xl overflow-hidden">
-            <div className="h-14 bg-primary-700 animate-pulse border-b border-black/5" />
+            <div className="h-14 bg-primary-700/50 skeleton-shimmer border-b border-black/5" />
             <div className="divide-y divide-gray-50">
               {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                 <div key={i} className="flex items-center justify-between p-4 sm:px-8 py-5">
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-positive animate-pulse" />
-                    <span className="text-gray-400 font-medium">{t("dataRefreshed")}</span>
+                    <div className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-gray-200 skeleton-shimmer" />
+                    <div className="h-4 w-28 bg-gray-200 rounded-md skeleton-shimmer" />
                   </div>
-                  <div className="h-6 w-20 bg-primary-100 rounded-lg animate-pulse hidden sm:block" />
-                  <div className="h-5 w-16 bg-gray-200 rounded-md animate-pulse" />
-                  <div className="h-5 w-16 bg-gray-200 rounded-md animate-pulse" />
-                  <div className="h-6 w-16 bg-gray-100 rounded-full animate-pulse" />
+                  <div className="h-6 w-20 bg-primary-50 rounded-lg skeleton-shimmer hidden sm:block" />
+                  <div className="h-5 w-16 bg-gray-200 rounded-md skeleton-shimmer" />
+                  <div className="h-5 w-16 bg-gray-200 rounded-md skeleton-shimmer" />
+                  <div className="h-6 w-16 bg-gray-100 rounded-full skeleton-shimmer" />
                 </div>
               ))}
             </div>
@@ -401,22 +397,18 @@ export default function MarketData({ initialProducts }: { initialProducts?: Prod
                   <div className=" relative flex items-center gap-2 pb-1 scrollbar-hide">
                     {categories.slice(0, visibleCount).map((cat) => {
                       const isActive = selectedCategory === cat;
-                      const count = categoryCounts[cat] || 0;
 
                       return (
                         <button
                           key={cat}
                           onClick={() => setSelectedCategory(cat)}
-                          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 border ${isActive
+                          className={`flex items-center justify-center px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all duration-300 border ${isActive
                             ? "bg-primary-800 border-primary-800 text-white shadow-md scale-105"
                             : "bg-white border-gray-100 text-gray-500 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-800"
                             }`}
                           aria-pressed={isActive}
                         >
                           {t(cat)}
-                          <span className={`text-[10px] font-medium opacity-60 ${isActive ? "text-white" : "text-gray-400"}`}>
-                            ({count})
-                          </span>
                         </button>
                       );
                     })}
@@ -442,7 +434,6 @@ export default function MarketData({ initialProducts }: { initialProducts?: Prod
                         <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-gray-100 py-2 z-[100] animate-fade-in origin-top-right">
                           {categories.slice(visibleCount).map((cat) => {
                             const isActive = selectedCategory === cat;
-                            const count = categoryCounts[cat] || 0;
                             return (
                               <button
                                 key={cat}
@@ -454,7 +445,6 @@ export default function MarketData({ initialProducts }: { initialProducts?: Prod
                                   ${isActive ? "text-primary-800 bg-primary-50/50" : "text-gray-600 hover:text-primary-800"}`}
                               >
                                 <span>{t(cat)}</span>
-                                <span className="text-[10px] opacity-60">({count})</span>
                               </button>
                             );
                           })}

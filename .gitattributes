@@ -1,2 +1,5 @@
 model_trainer/artifacts*/**/*.txt -text
+audits/external_context_20261003/raw/* -text
 *.py text eol=lf
+# Hash-bound deployment evidence must retain its original bytes.
+foodcast/artifacts/** -text

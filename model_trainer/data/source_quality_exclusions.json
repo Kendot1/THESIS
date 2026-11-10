@@ -1,0 +1,65 @@
+[
+  {
+    "report_date": "2024-08-14",
+    "series": ["Corn", "Corn Grits", "Feed Grade", "Local", "kg"],
+    "source_pdf": "https://www.da.gov.ph/wp-content/uploads/2024/08/Price-Monitoring-August-14-2024.pdf",
+    "invalid_price_index": 7.0,
+    "reason": "The source lists Corn Grits (White) and Corn Grits (Yellow) as NOT AVAILABLE; Feed Grade is printed under Corn Cracked. The ₱7.00 Corn Grits Feed Grade record is a product/price alignment error.",
+    "source_evidence": "https://www.da.gov.ph/wp-content/uploads/2024/08/Price-Monitoring-August-14-2024.pdf"
+  },
+  {
+    "report_date": "2025-02-21",
+    "series": ["Poultry", "Chicken Egg", "White (Pewee)", "Local", "piece"],
+    "source_pdf": "https://www.da.gov.ph/wp-content/uploads/2025/02/Price-Monitoring-February-21-2025.pdf",
+    "invalid_price_index": 36.73,
+    "published_low": 5.5,
+    "published_high": 8.0,
+    "published_prevailing": 7.0,
+    "reason": "The DA table reports a ₱36.73 average outside its ₱5.50–₱8.00 range; the row is not valid average-price truth.",
+    "source_evidence": "https://www.da.gov.ph/wp-content/uploads/2025/02/Price-Monitoring-February-21-2025.pdf"
+  },
+  {
+    "report_date": "2025-06-07",
+    "series": ["Fish", "Salmon Head", "Standard", "Local", "kg"],
+    "source_pdf": "https://www.da.gov.ph/wp-content/uploads/2025/06/Price-Monitoring-June-7-2025.pdf",
+    "invalid_price_index": 21.49,
+    "published_low": 160.0,
+    "published_high": 280.0,
+    "published_prevailing": 240.0,
+    "reason": "The DA table reports a ₱21.49 average outside its ₱160–₱280 range; adjacent observed source averages are ₱216.83 and ₱216.61.",
+    "source_evidence": "https://www.da.gov.ph/wp-content/uploads/2025/06/Price-Monitoring-June-7-2025.pdf"
+  },
+  {
+    "report_date": "2024-08-14",
+    "series": ["Corn", "Corn Grits", "Feed Grade", "Local", "kg"],
+    "source_pdf": "https://www.da.gov.ph/wp-content/uploads/2024/08/Price-Monitoring-August-14-2024.pdf",
+    "invalid_price_index": 41.0,
+    "prior_invalid_price_index": 7.0,
+    "reason": "The source places Feed Grade under Corn Cracked, not Corn Grits. The current snapshot value still has the unsupported Corn Grits/Feed Grade identity; quarantine this exact row without reassigning it.",
+    "source_evidence": "https://www.da.gov.ph/wp-content/uploads/2024/08/Price-Monitoring-August-14-2024.pdf"
+  },
+  {
+    "report_date": "2025-02-21",
+    "series": ["Poultry", "Chicken Egg", "White (Pewee)", "Local", "piece"],
+    "source_pdf": "https://www.da.gov.ph/wp-content/uploads/2025/02/Price-Monitoring-February-21-2025.pdf",
+    "invalid_price_index": 7.0,
+    "prior_invalid_price_index": 36.73,
+    "published_low": 5.5,
+    "published_high": 8.0,
+    "published_prevailing": 7.0,
+    "reason": "The source's average is PHP 36.73, outside its PHP 5.50-8.00 range. The current snapshot's PHP 7.00 is the prevailing statistic, not a supported average-price label; quarantine this exact row rather than substitute it.",
+    "source_evidence": "https://www.da.gov.ph/wp-content/uploads/2025/02/Price-Monitoring-February-21-2025.pdf"
+  },
+  {
+    "report_date": "2025-06-07",
+    "series": ["Fish", "Salmon Head", "Standard", "Local", "kg"],
+    "source_pdf": "https://www.da.gov.ph/wp-content/uploads/2025/06/Price-Monitoring-June-7-2025.pdf",
+    "invalid_price_index": 230.0,
+    "prior_invalid_price_index": 21.49,
+    "published_low": 160.0,
+    "published_high": 280.0,
+    "published_prevailing": 240.0,
+    "reason": "The source's average is PHP 21.49, outside its PHP 160-280 range. The current snapshot's PHP 230.00 is not identified as the average and cannot be treated as a supported average-price label; quarantine this exact row rather than substitute it.",
+    "source_evidence": "https://www.da.gov.ph/wp-content/uploads/2025/06/Price-Monitoring-June-7-2025.pdf"
+  }
+]

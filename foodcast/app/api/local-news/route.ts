@@ -5,9 +5,12 @@ import { localNewsEnabled, TEST_NEWS_URL } from '../../lib/news-source';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 let anonKey: Promise<string> | undefined;
+const newsCache = new Map<string, { payload: unknown; expires: number }>();
 
 // Resolve only the test project's public anon credential. Never serialize keys.
 function testAnonKey() {
+  const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (envKey) return Promise.resolve(envKey);
   return anonKey ??= promisify(execFile)('npx.cmd', [
     '--yes', 'supabase', 'projects', 'api-keys',
     '--remote=zhwhnnxbodzrklhgsurn', '--reveal', '--output', 'json',
@@ -19,8 +22,21 @@ function testAnonKey() {
 }
 
 export async function GET(request: Request) {
-  if (!localNewsEnabled(process.env)) return Response.json({ error: 'Not found' }, { status: 404 });
-  const input = new URL(request.url).searchParams;
+  if (!localNewsEnabled(process.env)) {
+    // An optional local bridge is disabled in ordinary development. Avoid an
+    // expected 404 in the browser; production remains explicitly unavailable.
+    return process.env.NODE_ENV === 'development'
+      ? new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } })
+      : Response.json({ error: 'Not found' }, { status: 404 });
+  }
+  const url = new URL(request.url);
+  const cacheKey = url.search;
+  const now = Date.now();
+  const cached = newsCache.get(cacheKey);
+  if (cached && cached.expires > now) {
+    return Response.json(cached.payload, { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } });
+  }
+  const input = url.searchParams;
   const start = Math.max(0, Math.floor(Number(input.get('start')) || 0));
   const limit = Math.min(1000, Math.max(1, Math.floor(Number(input.get('limit')) || 10)));
   const types = ['supply_shock', 'demand_spike', 'policy_change', 'import_export', 'price_movement', 'weather', 'fuel_energy'];
@@ -48,7 +64,9 @@ export async function GET(request: Request) {
       cache: 'no-store', signal: AbortSignal.timeout(30000),
     });
     if (!response.ok) throw new Error('News read failed');
-    return Response.json({ data: await response.json(), count: Number(response.headers.get('content-range')?.split('/')[1] || 0), project_ref: 'zhwhnnxbodzrklhgsurn' }, { headers: { 'Cache-Control': 'no-store' } });
+    const resultPayload = { data: await response.json(), count: Number(response.headers.get('content-range')?.split('/')[1] || 0), project_ref: 'zhwhnnxbodzrklhgsurn' };
+    newsCache.set(cacheKey, { payload: resultPayload, expires: Date.now() + 60_000 });
+    return Response.json(resultPayload, { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } });
   } catch {
     return Response.json({ error: 'Test news read unavailable' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }

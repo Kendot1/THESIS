@@ -1,23 +1,25 @@
-"""Product/lead reliability from the untouched part of chronological validation.
+"""Empirical product/lead probability of meeting the absolute PHP 5 tolerance.
 
-This is a historical accuracy score, not a probability or a price interval.
-Legacy bundles without explicit early-stopping isolation fail closed.
+Scores use isolated chronological validation outcomes and fail closed when
+provenance, forecast paths, sample count, or forward checks are insufficient.
 """
 import csv
 import json
 import math
 from collections import defaultdict
 from datetime import date, timedelta
-from statistics import mean, stdev
+from statistics import mean
 from utils.prices import mean_price, round_price
 
 HORIZONS = {1: "daily", 7: "weekly", 30: "monthly"}
-METHOD = "chronological_mape_reliability_v1"
+METHOD = "chronological_within5_php_probability_v1"
 MIN_SAMPLES = 8
 MIN_ORIGINS = 8
 MIN_FORMULA_CHECK_ORIGINS = 3
 MIN_OBSERVED_LABEL_COVERAGE = 0.8
 PUBLISHED_PATH_DAYS = 30
+WITHIN5_PHP_TOLERANCE = 5.0
+WITHIN10_TOLERANCE = 0.10  # retained as a separate diagnostic
 
 
 def level(score):
@@ -28,9 +30,11 @@ def level(score):
         (60, "Low"), (0, "Very Low")) if score >= threshold)
 
 
-def _score(errors, conservative=False):
-    penalty = stdev(errors) / math.sqrt(len(errors)) if conservative and len(errors) > 1 else 0
-    return max(0.0, min(100.0, 100 - mean(errors) - penalty))
+def _smoothed_probability(successes, sample_count):
+    """Beta(1, 1)-smoothed hit rate for the calibration sample."""
+    if sample_count <= 0:
+        return None
+    return (successes + 1) / (sample_count + 2)
 
 
 def _empty_metric(bundle, lead, step=None):
@@ -129,8 +133,9 @@ def validation_confidence(bundle, product_ids, forecast_paths=None,
                           evaluation_partition="validation"):
     """Score product confidence from a verified chronological model partition.
 
-    Production training uses the default held-out validation calibration. The
-    explicit development_test mode supports offline diagnostics for legacy
+    Production training uses the default held-out validation calibration. A
+    residual bundle identifies its calibration as held out from residual fitting.
+    The explicit development_test mode supports offline diagnostics for legacy
     bundles whose test partition is out of model fit but lacks saved full paths.
     """
     result = {pid: {
@@ -145,7 +150,8 @@ def validation_confidence(bundle, product_ids, forecast_paths=None,
             calibration = json.loads(
                 (bundle / "ensemble.json").read_text(encoding="utf-8")
             ).get("calibration", {})
-            if (calibration.get("scope") != "held_out_from_ensemble_fit" or
+            if (calibration.get("scope") not in {
+                    "held_out_from_ensemble_fit", "held_out_from_residual_fit"} or
                     calibration.get("base_model_scope") != "calibration_excluded_from_early_stopping"):
                 return result
             # A boundary reconstructed from metadata is accepted only if the complete
@@ -324,55 +330,80 @@ def validation_confidence(bundle, product_ids, forecast_paths=None,
 
 
 def score_metrics(metric_groups):
-    """Shared chronological formula check; optional fifth field is availability date."""
-    # Only two fixed candidates, assessed forward in time. A sample's outcome
-    # becomes usable after its target date, never merely after its origin date.
-    losses = {False: [], True: []}
+    """Score a smoothed PHP-5 hit probability and verify it forward-only."""
     group_checks = {}
+    clean_groups = []
     for metric, group in metric_groups:
-        group_losses = {False: [], True: []}
+        valid_rows = [row for row in group if math.isfinite(row[2]) and row[2] >= 0]
+        metric["invalid_sample_count"] = len(group) - len(valid_rows)
+        clean_groups.append((metric, valid_rows))
+    for metric, group in clean_groups:
+        group_briers = []
         check_origins = set()
-        percent_rows = [row for row in group if row[3] is not None]
-        for row in sorted(percent_rows):
-            origin, ape = row[0], row[3]
-            past = [r[3] for r in percent_rows if r[4] <= origin]
-            if len(past) < MIN_SAMPLES:
+        valid_rows = group
+        for row in sorted(valid_rows):
+            origin, absolute_error = row[0], row[2]
+            # Date-only outcomes closing on the origin are not yet eligible.
+            past_rows = [r for r in valid_rows if r[4] < origin]
+            if (len(past_rows) < MIN_SAMPLES or
+                    len({r[0] for r in past_rows}) < MIN_ORIGINS):
                 continue
+            past = [r[2] for r in past_rows]
             check_origins.add(origin)
-            for conservative in losses:
-                loss = abs(_score(past, conservative) - max(0, 100-ape))
-                losses[conservative].append(loss)
-                group_losses[conservative].append(loss)
-        group_checks[id(metric)] = (len(check_origins), group_losses)
-    validated_method = any(losses.values()) and min(len(losses[False]), len(losses[True])) > 0
-    conservative = bool(validated_method and mean(losses[True]) < mean(losses[False]))
-    for metric, group in metric_groups:
+            past_successes = sum(error <= WITHIN5_PHP_TOLERANCE for error in past)
+            probability = _smoothed_probability(past_successes, len(past))
+            observed = float(absolute_error <= WITHIN5_PHP_TOLERANCE)
+            group_briers.append((probability - observed) ** 2)
+        group_checks[id(metric)] = (len(check_origins), group_briers)
+
+    for metric, group in clean_groups:
         errors = [r[2] for r in group]
-        percent_rows = [r for r in group if r[3] is not None]
+        percent_rows = [r for r in group if r[3] is not None
+                        and math.isfinite(r[3]) and r[3] >= 0]
         apes = [r[3] for r in percent_rows]
-        formula_origins, group_losses = group_checks[id(metric)]
-        metric.update(mae=mean(errors), rmse=math.sqrt(mean(e*e for e in errors)),
+        sample_origins = len({row[0] for row in group})
+        formula_origins, group_briers = group_checks[id(metric)]
+        successes = sum(error <= WITHIN5_PHP_TOLERANCE for error in errors)
+        within10_successes = sum(ape <= WITHIN10_TOLERANCE * 100 for ape in apes)
+        metric.update(mae=mean(errors) if errors else None,
+                      rmse=math.sqrt(mean(e*e for e in errors)) if errors else None,
                       mape=mean(apes) if apes else None, sample_count=len(group),
                       percentage_sample_count=len(apes),
+                      within5_php_success_count=successes,
+                      within5_php_sample_count=len(errors),
+                      within5_php_rate=successes / len(errors) if errors else None,
+                      # Keep the former diagnostic available without using it
+                      # for the displayed confidence score.
+                      within10_success_count=within10_successes,
+                      within10_sample_count=len(apes),
+                      within10_rate=(within10_successes / len(apes)
+                                    if apes else None),
                       excluded_near_zero=len(group)-len(apes),
-                      sample_origin_count=len({row[0] for row in percent_rows}),
+                      sample_origin_count=sample_origins,
+                      # Groups already isolate product/horizon/step; period end
+                      # identifies a target period within that fixed frequency.
+                      sample_target_period_count=len({row[4] for row in group}),
                       formula_validation_origins=formula_origins,
-                      evaluation_start=min(r[1] for r in group).isoformat(),
-                      evaluation_end=max(r[1] for r in group).isoformat())
+                      formula_validation_brier=mean(group_briers) if group_briers else None,
+                      evaluation_start=min(r[1] for r in group).isoformat() if group else None,
+                      evaluation_end=max(r[1] for r in group).isoformat() if group else None)
         reasons = []
-        if not validated_method:
-            reasons.append("forward confidence-formula comparison is unavailable")
-        if len(apes) < MIN_SAMPLES:
-            reasons.append(f"fewer than {MIN_SAMPLES} percentage errors")
-        if len({row[0] for row in percent_rows}) < MIN_ORIGINS:
+        if len(errors) < MIN_SAMPLES:
+            reasons.append(f"fewer than {MIN_SAMPLES} absolute errors")
+        if sample_origins < MIN_ORIGINS:
             reasons.append(f"fewer than {MIN_ORIGINS} distinct forecast origins")
         if formula_origins < MIN_FORMULA_CHECK_ORIGINS:
             reasons.append(
                 f"fewer than {MIN_FORMULA_CHECK_ORIGINS} forward formula-check origins")
         if reasons:
+            metric.update(confidence_score=None, confidence_level="Insufficient data",
+                          evidence_status="insufficient_data")
             metric["insufficient_data_reason"] = "; ".join(reasons)
             continue
-        score = round(_score(apes, conservative), 1)
+        metric.pop("insufficient_data_reason", None)
+        probability = _smoothed_probability(successes, len(errors))
+        score = round(probability * 100, 1)
         metric.update(confidence_score=score, confidence_level=level(score),
-                      evidence_status="validated", consistency_penalty=conservative,
-                      formula_validation_mae=mean(group_losses[conservative]))
+                      confidence_definition=(
+                          "Beta(1,1)-smoothed probability of absolute price error <= PHP 5"),
+                      evidence_status="validated")

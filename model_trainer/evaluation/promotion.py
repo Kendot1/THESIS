@@ -14,8 +14,9 @@ from .frozen_holdout import METRICS, PHILIPPINE_TIME, calendar_date, error_metri
 
 COMPONENTS = {"categorical_mappings.json", "lightgbm_model.txt", "lightgbm_meta.json",
               "lstm_model.pt", "lstm_meta.json", "ensemble.json"}
-POLICY_VERSION = 2
-VALIDATION_METRICS = ("within_10_accuracy_pct", *METRICS)
+POLICY_VERSION = 10
+FINAL_WITHIN_5_PHP_TARGET_PERCENT = 95.0
+VALIDATION_ERROR_METRICS = METRICS
 
 
 def digest(path):
@@ -34,7 +35,7 @@ def read_json(path):
 
 
 def validation_comparison(path, holdout_start):
-    """Recompute four matched metrics and stability across chronological origins."""
+    """Recompute matched errors and stability across chronological origins."""
     with path.open(encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)
         required = {"series", "origin", "target_date", "actual", "prediction", "champion", "anchor"}
@@ -62,19 +63,23 @@ def validation_comparison(path, holdout_start):
         candidate = error_metrics(block)
         for reference in ("champion", "anchor"):
             baseline = error_metrics(block, reference)
-            for key in VALIDATION_METRICS:
+            if (candidate["within_5_php_accuracy_pct"] is None
+                    or baseline["within_5_php_accuracy_pct"] is None
+                    or candidate["within_5_php_accuracy_pct"]
+                    < baseline["within_5_php_accuracy_pct"]):
+                return False
+            for key in VALIDATION_ERROR_METRICS:
                 if candidate[key] is None or baseline[key] is None:
                     return False
-                if key == "within_10_accuracy_pct":
-                    if candidate[key] <= baseline[key]:
-                        return False
-                elif candidate[key] >= baseline[key]:
+                if candidate[key] >= baseline[key]:
                     return False
         return True
 
     wins = sum(better(block) for block in by_origin.values())
     if not better(rows) or wins < math.ceil(2 * len(by_origin) / 3):
-        raise ValueError("Candidate lacks stable matched improvement on all four metrics")
+        raise ValueError(
+            "Candidate lacks stable matched Within-5-PHP non-regression and "
+            "improvement on MAE, RMSE, and MAPE")
     return {"origins": len(by_origin), "origins_improving_all_metrics": wins,
             "candidate": error_metrics(rows), "champion": error_metrics(rows, "champion"),
             "persistence": error_metrics(rows, "anchor")}
@@ -155,13 +160,41 @@ def verify_promotion_evidence(run_dir, evidence_dir, *, now=None):
     actual = {k: v for k, v in recomputed.items() if k != "scored_at_utc"}
     if actual != expected:
         raise ValueError("Saved final report does not reproduce from sealed inputs")
-    if not recomputed["target_met_for_full_declared_scope"]:
-        raise ValueError("Final holdout fails the metric target or declared coverage")
-    persistence = recomputed["persistence_on_same_rows"]
-    if (recomputed["overall"]["within_10_accuracy_pct"]
-            < persistence["within_10_accuracy_pct"]
-            or not all(recomputed["overall"][k] < persistence[k] for k in METRICS)):
-        raise ValueError("Final candidate does not improve on matched persistence")
+    def meets_targets(metrics):
+        mape = metrics.get("mape")
+        accuracy = metrics.get("within_5_php_accuracy_pct")
+        return (
+            mape is not None
+            and math.isfinite(mape)
+            and mape <= 5.0
+            and accuracy is not None
+            and math.isfinite(accuracy)
+            and accuracy >= FINAL_WITHIN_5_PHP_TARGET_PERCENT
+            and all(metrics.get(name) is not None and math.isfinite(metrics[name])
+                    and metrics[name] <= 5.0 for name in ("mae", "rmse"))
+        )
+
+    pooled = recomputed["published_outputs_overall"]
+    if not meets_targets(pooled):
+        raise ValueError("Final holdout misses pooled Within-5-PHP, MAPE, MAE, or RMSE target")
+    if any(not meets_targets(report["overall"])
+           for report in recomputed["timeframes"].values()):
+        raise ValueError("Final holdout misses Within-5-PHP, MAPE, MAE, or RMSE for a horizon")
+    if not recomputed["full_declared_scope_observed"]:
+        raise ValueError("Final holdout lacks complete declared observed-label coverage")
+    persistence = recomputed["published_outputs_persistence"]
+    if (not all(recomputed["published_outputs_overall"][k] < persistence[k]
+                for k in METRICS)
+            or recomputed["published_outputs_overall"]["within_5_php_accuracy_pct"]
+                < persistence["within_5_php_accuracy_pct"]
+            or any(not all(report["overall"][k] < report["persistence_on_same_rows"][k]
+                           for k in METRICS)
+                   or report["overall"]["within_5_php_accuracy_pct"]
+                       < report["persistence_on_same_rows"]["within_5_php_accuracy_pct"]
+                   for report in recomputed["timeframes"].values())):
+        raise ValueError(
+            "Final candidate regresses Within-5-PHP or does not improve MAE, RMSE, "
+            "and MAPE versus matched persistence")
     return {"review_sha256": digest(review_path), "model_metadata_sha256": metadata_hash,
             "contract_sha256": integrity["contract_sha256"],
             "forecast_sha256": integrity["forecast_sha256"],

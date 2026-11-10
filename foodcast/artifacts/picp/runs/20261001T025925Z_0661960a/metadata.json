@@ -1,0 +1,192 @@
+{
+  "schema_version": 2,
+  "run_id": "20261001T025925Z_0661960a",
+  "created_at": "2026-10-01T03:10:14.273362+00:00",
+  "split": {
+    "train": {
+      "start": "2019-10-10T00:00:00",
+      "end": "2024-08-26T00:00:00",
+      "rows": 94145,
+      "observed_rows": 59872
+    },
+    "validation": {
+      "start": "2024-08-27T00:00:00",
+      "end": "2025-09-12T00:00:00",
+      "rows": 33311,
+      "observed_rows": 25886
+    },
+    "test": {
+      "start": "2025-09-13T00:00:00",
+      "end": "2026-09-30T00:00:00",
+      "rows": 35693,
+      "observed_rows": 29135
+    }
+  },
+  "data_fingerprint": "fd0b58ed32cf41815df25e7f876fa7c5287d396ee50bd69d468f6655317257ca",
+  "metrics": {
+    "lightgbm_one_step_validation": {
+      "mae": 3.620703194415906,
+      "rmse": 9.765812493353803,
+      "mape": 2.5398117371769495,
+      "r2": 0.9930926549243151,
+      "n": 25232
+    },
+    "lstm_relative_validation": {
+      "relative_mae": 0.022559114985656388,
+      "relative_rmse": 0.09322466252551345,
+      "n": 24689
+    },
+    "validation": {
+      "ensemble": {
+        "mae": 9.097321402754948,
+        "rmse": 24.09418550730588,
+        "mape": 5.832921757003102,
+        "r2": 0.9575202183983154,
+        "n": 22978,
+        "directional_accuracy": 49.85638436765602
+      },
+      "lstm": {
+        "mae": 9.4661458321559,
+        "rmse": 24.741268877423032,
+        "mape": 6.1441658001003,
+        "r2": 0.9552078701163351,
+        "n": 22978,
+        "directional_accuracy": 47.27130298546436
+      },
+      "lgbm": {
+        "mae": 10.23982505395033,
+        "rmse": 25.861643606165913,
+        "mape": 6.53870652975737,
+        "r2": 0.9510593175855474,
+        "n": 22978,
+        "directional_accuracy": 51.29254069109584
+      },
+      "persistence": {
+        "mae": 10.177967838802333,
+        "rmse": 29.470419981376413,
+        "mape": 6.376798212735912,
+        "r2": 0.9364478239207584,
+        "n": 22978,
+        "directional_accuracy": 11.110627556793455
+      },
+      "seasonal7": {
+        "mae": 10.956240969623117,
+        "rmse": 29.894849084870177,
+        "mape": 6.915733134053061,
+        "r2": 0.9346041021983359,
+        "n": 22978,
+        "directional_accuracy": 43.184785446949256
+      },
+      "moving_average7": {
+        "mae": 10.560537284110268,
+        "rmse": 28.62856736007039,
+        "mape": 6.615876622358482,
+        "r2": 0.9400268297604768,
+        "n": 22978,
+        "directional_accuracy": 51.43615632343981
+      }
+    },
+    "test": {
+      "ensemble": {
+        "mae": 9.109274103212364,
+        "rmse": 26.174824536751913,
+        "mape": 5.161809814389095,
+        "r2": 0.9502603948806809,
+        "n": 25889,
+        "directional_accuracy": 48.24056549113523
+      },
+      "lstm": {
+        "mae": 9.490198135477003,
+        "rmse": 27.09187655638382,
+        "mape": 5.404359027966169,
+        "r2": 0.9467140207722883,
+        "n": 25889,
+        "directional_accuracy": 47.850438410135574
+      },
+      "lgbm": {
+        "mae": 10.474493346046577,
+        "rmse": 27.64149781211784,
+        "mape": 6.0895563669979484,
+        "r2": 0.9445300314100801,
+        "n": 25889,
+        "directional_accuracy": 51.62424195604311
+      },
+      "persistence": {
+        "mae": 9.551541195102166,
+        "rmse": 27.70010260858697,
+        "mape": 5.44096555370851,
+        "r2": 0.9442945700483574,
+        "n": 25889,
+        "directional_accuracy": 5.786241260767121
+      },
+      "seasonal7": {
+        "mae": 11.376810228282281,
+        "rmse": 32.1440431793553,
+        "mape": 6.464948493527902,
+        "r2": 0.9249871302353823,
+        "n": 25889,
+        "directional_accuracy": 39.34103287110356
+      },
+      "moving_average7": {
+        "mae": 11.231774112557455,
+        "rmse": 31.323891275199866,
+        "mape": 6.345894187834868,
+        "r2": 0.9287661871882704,
+        "n": 25889,
+        "directional_accuracy": 45.69122020935533
+      }
+    },
+    "test_interval_coverage": 0.8228591293599599,
+    "test_interval_metrics": {
+      "0.8": {
+        "nominal_coverage": 0.8,
+        "observed_coverage": 0.8228591293599599,
+        "average_width": 23.117811176351093
+      },
+      "0.9": {
+        "nominal_coverage": 0.9,
+        "observed_coverage": 0.9078759318629533,
+        "average_width": 41.96635228558949
+      },
+      "0.95": {
+        "nominal_coverage": 0.95,
+        "observed_coverage": 0.9570087682027115,
+        "average_width": 72.06911489132588
+      }
+    },
+    "validation_samples": 22978,
+    "test_samples": 25889,
+    "evaluation_stride_days": 30,
+    "evaluation_scope": "retrospective source-dated backtest; the database has no immutable historical ingestion vintages for point-in-time reconstruction",
+    "trained_at": "2026-10-01T03:08:41.869961+00:00",
+    "promotion_gate": {
+      "passed": true,
+      "beats_persistence": true,
+      "beats_active_champion": true,
+      "active_champion": {
+        "run_id": "20260930T143815Z_006170b1",
+        "ensemble": {
+          "mae": 9.317333127609343,
+          "rmse": 26.581433646782372,
+          "mape": 5.339959449291528,
+          "r2": 0.9487030461806376,
+          "n": 25889,
+          "directional_accuracy": 42.75174784657577
+        },
+        "evaluation": "backtested_on_candidate_frozen_test"
+      },
+      "rule": "frozen test ensemble MAE, RMSE, and MAPE all beat persistence and the active champion on the same test window"
+    }
+  },
+  "sha256": {
+    "categorical_mappings.json": "933644a72db05f5b3b1f76e3cad00c5a5cdc96a96b7b87d3d7cf630d1a061fdf",
+    "ensemble.json": "42c288e52d4edbac0e821140baedab9f50ee110a45a96c60221f7c80343c111d",
+    "lightgbm_meta.json": "c20e286da1e7f541ab0ab66141668149e8c46be6419373e62502aaad4e252d59",
+    "lightgbm_model.txt": "3d1e406ae707e8e047e446d898e5c23bdfa42d5e3b816d79f74646e6f4960bd7",
+    "lstm_history.json": "f0256556d31288fe33ea81b4f0c303ebae6cd75fbda3b1b79b775d51e27bce24",
+    "lstm_meta.json": "88c51067bfabaf68b3a103145bc0dae9f1c6bca7129fffb1ef9b316a937d7f25",
+    "lstm_model.pt": "1171e4be65abd1fd7a197ba0e821b3607aad57c777c45e7c5e44687e92901f14",
+    "test_forecasts.csv": "bfe9ae46cded27e7d770387aa90d45e675974a3fd7cdfee8716b2e731236f9a9",
+    "validation_forecasts.csv": "ba54adfd862341dd2ed04df8af961c1efe5165568e71a95cf787fe915040cf2d"
+  }
+}

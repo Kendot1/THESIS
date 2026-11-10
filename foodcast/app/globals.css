@@ -647,3 +647,7 @@ body::before {
 .leaflet-right .leaflet-control {
   margin-right: 16px !important;
 }
+
+.leaflet-tile {
+  opacity: 1 !important;
+}

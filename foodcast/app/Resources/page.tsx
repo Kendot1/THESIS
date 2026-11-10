@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 
 import Image from "next/image";
 import ScrollReveal from "../components/ScrollReveal";
+import ResourcesSkeleton from "../components/ResourcesSkeleton";
 import { useLanguage } from "../lib/i18n/LanguageContext";
 import {
     Zap,
@@ -16,63 +17,362 @@ import {
     ExternalLink,
     Bot,
     FastForward,
-    Landmark,
-    Newspaper,
-    FileCode,
+    Sparkles,
+    Brain,
     Database,
+    Server,
+    FileCode,
+    FileText,
     Globe,
     Triangle,
     Github,
-    Sparkles,
+    GitBranch,
+    Cloud,
+    Terminal,
+    Landmark,
+    Building2,
+    Newspaper,
+    Search,
+    Code,
+    Palette,
+    LineChart,
+    MapPin,
+    Map,
+    RefreshCw,
+    Feather,
+    ShieldCheck,
     ArrowRight
 } from "lucide-react";
 
-const resourceGroups = [
+interface ResourceItem {
+    name: string;
+    description: string;
+    icon: React.ComponentType<{ className?: string }>;
+    logo?: string;
+    link: string;
+}
+
+interface ResourceGroup {
+    title: string;
+    resources: ResourceItem[];
+}
+
+const resourceGroups: ResourceGroup[] = [
     {
-        title: "Machine Learning & Data Science",
+        title: "Machine Learning & Time-Series Modeling",
         resources: [
-            { name: "LightGBM", description: "Efficient gradient boosting framework for building high-performance prediction models.", icon: Zap, logo: "https://raw.githubusercontent.com/microsoft/LightGBM/master/docs/logo/LightGBM_logo_black_text.svg", link: "https://lightgbm.readthedocs.io/" },
-            { name: "LSTM", description: "Long Short-Term Memory network architecture optimized for time-series forecasting.", icon: Activity, logo: "https://cdn.simpleicons.org/pytorch/EE4C2C", link: "https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html" },
-            { name: "Scikit-learn", description: "Simple and efficient tools for predictive data analysis and statistical modeling.", icon: Cpu, logo: "https://cdn.simpleicons.org/scikitlearn", link: "https://scikit-learn.org/" },
-            { name: "Pandas", description: "Fast, powerful, and flexible open-source data analysis and manipulation tool.", icon: Table, logo: "https://cdn.simpleicons.org/pandas/150458", link: "https://pandas.pydata.org/" },
-            { name: "PyTorch", description: "An open-source machine learning framework that accelerates the path from research prototyping to production.", icon: Flame, logo: "https://cdn.simpleicons.org/pytorch/EE4C2C", link: "https://pytorch.org/" },
-            { name: "NumPy", description: "The fundamental package for scientific computing with Python and large multi-dimensional arrays.", icon: Hash, logo: "https://cdn.simpleicons.org/numpy/013243", link: "https://numpy.org/" },
-            { name: "Joblib", description: "A set of tools to provide lightweight pipelining and disk-caching in Python.", icon: HardDrive, logo: "https://tse4.mm.bing.net/th/id/OIP.9jHkXqDnBXFArRaGU3IApAHaG0?r=0&cb=thfvnextfalcon&rs=1&pid=ImgDetMain&o=7&rm=3", link: "https://joblib.readthedocs.io/" },
-            { name: "HTTPX", description: "A fully featured HTTP client for Python 3, which provides async APIs.", icon: ExternalLink, logo: "https://cdn.simpleicons.org/python/3776AB", link: "https://www.python-httpx.org/" },
+            {
+                name: "LightGBM",
+                description: "High-performance gradient boosting framework using tree-based learning algorithms for fast, accurate tabular agri-fishery price predictions.",
+                icon: Zap,
+                logo: "https://raw.githubusercontent.com/microsoft/LightGBM/master/docs/logo/LightGBM_logo_black_text.svg",
+                link: "https://lightgbm.readthedocs.io/"
+            },
+            {
+                name: "PyTorch",
+                description: "Open-source deep learning framework providing tensor computation and deep neural network acceleration for predictive research.",
+                icon: Flame,
+                logo: "https://cdn.simpleicons.org/pytorch/EE4C2C",
+                link: "https://pytorch.org/"
+            },
+            {
+                name: "LSTM",
+                description: "Long Short-Term Memory recurrent neural network architecture optimized for capturing sequential dependencies and temporal price trends.",
+                icon: Activity,
+                logo: "https://cdn.simpleicons.org/pytorch/EE4C2C",
+                link: "https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html"
+            },
+            {
+                name: "Scikit-learn",
+                description: "Comprehensive machine learning toolkit for feature preprocessing, standard scaling, and multi-horizon validation metrics.",
+                icon: Cpu,
+                logo: "https://cdn.simpleicons.org/scikitlearn",
+                link: "https://scikit-learn.org/"
+            },
+            {
+                name: "Pandas",
+                description: "Fast, powerful data manipulation tool used to build multi-variate time-series matrices and clean historical price observations.",
+                icon: Table,
+                logo: "https://cdn.simpleicons.org/pandas/150458",
+                link: "https://pandas.pydata.org/"
+            },
+            {
+                name: "NumPy",
+                description: "Fundamental scientific computing package powering multi-dimensional arrays, mathematical vectorization, and loss calculations.",
+                icon: Hash,
+                logo: "https://cdn.simpleicons.org/numpy/013243",
+                link: "https://numpy.org/"
+            },
+            {
+                name: "Joblib",
+                description: "Pipelining, disk-caching, and parallel execution toolkit for persisting and loading trained model checkpoints and scalers.",
+                icon: HardDrive,
+                logo: "https://cdn.simpleicons.org/python/3776AB",
+                link: "https://joblib.readthedocs.io/"
+            },
+            {
+                name: "HTTPX",
+                description: "Fully featured async HTTP client for Python, handling fast asynchronous data transport and pipeline orchestration.",
+                icon: ExternalLink,
+                logo: "https://cdn.simpleicons.org/python/3776AB",
+                link: "https://www.python-httpx.org/"
+            }
         ]
     },
     {
-        title: "AI Models",
+        title: "AI Models & Intelligent Analysis",
         resources: [
-            { name: "Google Gemini", description: "Google's largest and most capable AI models, used for advanced reasoning and insights.", icon: Bot, logo: "https://cdn.simpleicons.org/googlegemini/8E75B2", link: "https://deepmind.google/technologies/gemini/" },
-            { name: "Groq AI", description: "Ultra-fast AI inference platform designed for high-performance LLM processing.", icon: FastForward, logo: "https://www.ciscoinvestments.com/assets/logos/groq-logo.png", link: "https://groq.com/" },
+            {
+                name: "Google Gemini",
+                description: "Advanced multimodal reasoning model providing context-aware supply insights, agricultural summaries, and market reasoning.",
+                icon: Bot,
+                logo: "https://cdn.simpleicons.org/googlegemini/8E75B2",
+                link: "https://deepmind.google/technologies/gemini/"
+            },
+            {
+                name: "Groq AI",
+                description: "Ultra-low latency LPU inference platform powering lightning-fast LLM generation and live price anomaly analysis.",
+                icon: FastForward,
+                logo: "https://cdn.simpleicons.org/fastapi/009688",
+                link: "https://groq.com/"
+            },
+            {
+                name: "Hermes Agent",
+                description: "Autonomous AI research and implementation agent driving systematic model audits, performance optimization, and pipeline validation.",
+                icon: Brain,
+                logo: "https://cdn.simpleicons.org/robotframework",
+                link: "https://nousresearch.com/"
+            },
+            {
+                name: "Anthropic Claude",
+                description: "Advanced AI research assistant utilized for code synthesis, architectural refactoring, and statistical verification.",
+                icon: Sparkles,
+                logo: "https://cdn.simpleicons.org/anthropic",
+                link: "https://www.anthropic.com/"
+            }
         ]
     },
     {
-        title: "Institution",
+        title: "Backend, Database & Cloud Infrastructure",
         resources: [
-            { name: "Dept. of Agriculture", description: "The principal agency responsible for the promotion of agri-fishery development in the Philippines.", icon: Landmark, logo: "https://imgs.search.brave.com/gRkFFdg5c09KekCzKcOK-28ekER7IWvwEhGQi294Wng/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9hc3Np/c3RhbmNlLnBoL3dw/LWNvbnRlbnQvdXBs/b2Fkcy8yMDIzLzEy/L0RBLWxvZ28uanBn", link: "https://www.da.gov.ph/" },
-            { name: "ABS-CBN News", description: "Leading news and information organization in the Philippines, providing market trends and reports.", icon: Newspaper, logo: "https://data-corporate.abs-cbn.com/wp-content/uploads/2025/05/02130214/abs-cbn-logo-for-newsroom-scaled.jpg", link: "https://news.abs-cbn.com/" },
+            {
+                name: "Supabase",
+                description: "Open-source backend platform providing managed PostgreSQL, Row-Level Security (RLS), edge APIs, and real-time database capabilities.",
+                icon: Database,
+                logo: "https://cdn.simpleicons.org/supabase",
+                link: "https://supabase.com/"
+            },
+            {
+                name: "PostgreSQL",
+                description: "Enterprise-grade relational database management system storing historical market prices, calibrated prediction intervals, and audit trails.",
+                icon: Database,
+                logo: "https://cdn.simpleicons.org/postgresql",
+                link: "https://www.postgresql.org/"
+            },
+            {
+                name: "Supabase Edge Functions",
+                description: "Globally distributed serverless functions running on Deno for sub-100ms API routing, live forecasting, and cache deduplication.",
+                icon: Server,
+                logo: "https://cdn.simpleicons.org/deno",
+                link: "https://supabase.com/docs/guides/functions"
+            },
+            {
+                name: "Deno",
+                description: "Secure modern JavaScript and TypeScript runtime executing low-latency Edge compute logic with zero cold starts.",
+                icon: Server,
+                logo: "https://cdn.simpleicons.org/deno",
+                link: "https://deno.com/"
+            },
+            {
+                name: "Python",
+                description: "Core backend language powering the entire machine learning pipeline, statistical validation suites, and data ingestion.",
+                icon: FileCode,
+                logo: "https://cdn.simpleicons.org/python",
+                link: "https://www.python.org/"
+            },
+            {
+                name: "Node.js",
+                description: "Cross-platform JavaScript runtime executing frontend server components, API load tests, and build tooling.",
+                icon: Terminal,
+                logo: "https://cdn.simpleicons.org/nodedotjs",
+                link: "https://nodejs.org/"
+            },
+            {
+                name: "Vercel",
+                description: "Frontend cloud platform providing automated deployments, global edge CDN distribution, and continuous performance monitoring.",
+                icon: Triangle,
+                logo: "https://cdn.simpleicons.org/vercel",
+                link: "https://vercel.com/"
+            },
+            {
+                name: "Cloudflare",
+                description: "Global cloud network providing DNS routing, edge security, and distributed object storage for media assets.",
+                icon: Cloud,
+                logo: "https://cdn.simpleicons.org/cloudflare",
+                link: "https://www.cloudflare.com/"
+            }
         ]
     },
     {
-        title: "Other Tools",
+        title: "Data Acquisition, Extraction & Monitoring",
         resources: [
-            { name: "Python", description: "High-level programming language used for data science and backend development.", icon: FileCode, logo: "https://imgs.search.brave.com/slOxOc-tDP66_RuGr9Qf6olFlkr5Po9VT0v8z4SBs98/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9jZG4u/aWNvbnNjb3V0LmNv/bS9pY29uL2ZyZWUv/cG5nLTI1Ni9mcmVl/LXB5dGhvbi1pY29u/LXN2Zy1kb3dubG9h/ZC1wbmctMjI2MDUx/LnBuZz9mPXdlYnAm/dz0xMjg", link: "https://www.python.org/" },
-            { name: "Supabase", description: "Open source Firebase alternative providing database and authentication services.", icon: Database, logo: "https://cdn.simpleicons.org/supabase", link: "https://supabase.com/" },
-            { name: "Next.js", description: "The React framework for building performant and SEO-friendly web applications.", icon: Globe, logo: "/next.svg", link: "https://nextjs.org/" },
-            { name: "Vercel", description: "Platform for frontend frameworks and static sites, providing seamless deployment.", icon: Triangle, logo: "https://cdn.simpleicons.org/vercel", link: "https://vercel.com/" },
-            { name: "GitHub", description: "Web-based version control and collaboration platform for software development.", icon: Github, logo: "https://cdn.simpleicons.org/github", link: "https://github.com/" },
-            { name: "Antigravity", description: "AI-powered development assistant used to build and optimize the platform.", icon: Sparkles, logo: "https://imgs.search.brave.com/bDqXljYPb9fCLJrIaFNZCeWdZDCmDE-1Iq9tTt_7G2Q/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9yYXcu/Z2l0aHVidXNlcmNv/bnRlbnQuY29tL2xv/YmVodWIvbG9iZS1p/Y29ucy9yZWZzL2hl/YWRzL21hc3Rlci9w/YWNrYWdlcy9zdGF0/aWMtcG5nL2xpZ2h0/L2FudGlncmF2aXR5/LWNvbG9yLnBuZw", link: "https://antigravity.ai" },
-            { name: "Crawl4AI", description: "Open-source web crawling framework optimized for LLMs and AI applications.", icon: Bot, logo: "https://cdn.discordapp.com/icons/1278297938551902308/71337092ed954ce09bbe55739b3d3199.png?size=256", link: "https://crawl4ai.com/" },
-            { name: "Tailwind CSS", description: "A utility-first CSS framework for rapidly building custom user interfaces.", icon: Sparkles, logo: "https://cdn.simpleicons.org/tailwindcss", link: "https://tailwindcss.com/" },
-            { name: "TypeScript", description: "A strongly typed programming language that builds on JavaScript, ensuring type safety.", icon: FileCode, logo: "https://cdn.simpleicons.org/typescript", link: "https://www.typescriptlang.org/" },
-            { name: "React", description: "A JavaScript library for building interactive and component-driven user interfaces.", icon: FileCode, logo: "https://cdn.simpleicons.org/react", link: "https://react.dev/" },
-            { name: "Recharts", description: "A composable and reliable charting library built on React components.", icon: Activity, logo: "https://cdn.simpleicons.org/react/61DAFB", link: "https://recharts.org/" },
-            { name: "Lightweight Charts", description: "Financial HTML5 Canvas charting library built for high performance.", icon: Activity, logo: "https://cdn.simpleicons.org/tradingview", link: "https://tradingview.github.io/lightweight-charts/" },
-            { name: "SWR", description: "React Hooks for data fetching with fast, lightweight caching and revalidation.", icon: Zap, logo: "https://cdn.simpleicons.org/swr", link: "https://swr.vercel.app/" },
-            { name: "Deno", description: "Secure runtime for JavaScript and TypeScript, powering Supabase Edge Functions.", icon: Bot, logo: "https://cdn.simpleicons.org/deno", link: "https://deno.com/" },
-            { name: "BeautifulSoup", description: "Python library used for parsing HTML and XML documents in data scraping.", icon: FileCode, logo: "https://cdn.simpleicons.org/python/3776AB", link: "https://www.crummy.com/software/BeautifulSoup/" },
+            {
+                name: "Dept. of Agriculture (DA)",
+                description: "Principal government department responsible for Philippine agri-fishery governance and official retail price monitoring across Metro Manila.",
+                icon: Landmark,
+                logo: "https://www.da.gov.ph/wp-content/uploads/2021/04/DA-Logo-150x150.png",
+                link: "https://www.da.gov.ph/"
+            },
+            {
+                name: "DA AMAS",
+                description: "Agribusiness and Marketing Assistance Service, the primary surveillance division monitoring retail wet market prices across NCR.",
+                icon: Building2,
+                logo: "https://www.da.gov.ph/wp-content/uploads/2021/04/DA-Logo-150x150.png",
+                link: "https://agribusiness.da.gov.ph/"
+            },
+            {
+                name: "pdfplumber",
+                description: "Python library used for high-precision extraction of tabular commodity and price data from official daily PDF price bulletins.",
+                icon: FileText,
+                logo: "https://cdn.simpleicons.org/python/3776AB",
+                link: "https://github.com/jsvine/pdfplumber"
+            },
+            {
+                name: "BeautifulSoup",
+                description: "Python web scraping package used for parsing HTML and extracting real-time agricultural headlines and news reports.",
+                icon: FileCode,
+                logo: "https://cdn.simpleicons.org/python/3776AB",
+                link: "https://www.crummy.com/software/BeautifulSoup/"
+            },
+            {
+                name: "Crawl4AI",
+                description: "Open-source LLM-friendly web crawler automating reliable gathering of market news and commodity intelligence.",
+                icon: Search,
+                logo: "https://cdn.simpleicons.org/gnubash",
+                link: "https://crawl4ai.com/"
+            },
+            {
+                name: "ABS-CBN News",
+                description: "National news organization monitored for supply chain disruptions, typhoons, inflation trends, and retail food price alerts.",
+                icon: Newspaper,
+                logo: "https://cdn.simpleicons.org/rss",
+                link: "https://news.abs-cbn.com/"
+            },
+            {
+                name: "Philippine News Agency",
+                description: "Official news agency of the Philippine government, supplying verified agricultural policies, harvest forecasts, and trade reports.",
+                icon: Newspaper,
+                logo: "https://cdn.simpleicons.org/rss",
+                link: "https://www.pna.gov.ph/"
+            }
+        ]
+    },
+    {
+        title: "Frontend Development & User Experience",
+        resources: [
+            {
+                name: "Next.js 16",
+                description: "Cutting-edge React framework leveraging App Router, React Server Components, and Incremental Static Regeneration for blazing fast rendering.",
+                icon: Globe,
+                logo: "https://cdn.simpleicons.org/nextdotjs",
+                link: "https://nextjs.org/"
+            },
+            {
+                name: "React 19",
+                description: "Industry-standard component library powering interactive client interfaces, concurrent rendering, and reactive state management.",
+                icon: Code,
+                logo: "https://cdn.simpleicons.org/react",
+                link: "https://react.dev/"
+            },
+            {
+                name: "TypeScript",
+                description: "Strongly typed programming language ensuring end-to-end data integrity across database schemas, API routes, and UI components.",
+                icon: FileCode,
+                logo: "https://cdn.simpleicons.org/typescript",
+                link: "https://www.typescriptlang.org/"
+            },
+            {
+                name: "Tailwind CSS v4",
+                description: "Utility-first modern CSS framework providing custom styling, responsive layouts, and cohesive brand design tokens.",
+                icon: Palette,
+                logo: "https://cdn.simpleicons.org/tailwindcss",
+                link: "https://tailwindcss.com/"
+            },
+            {
+                name: "Recharts",
+                description: "Composable SVG charting library built on React components for displaying interactive historical prices and multi-horizon forecasts.",
+                icon: LineChart,
+                logo: "https://cdn.simpleicons.org/react/61DAFB",
+                link: "https://recharts.org/"
+            },
+            {
+                name: "Lightweight Charts",
+                description: "High-performance HTML5 Canvas financial charting library delivering fluid price analysis graphs and crosshair tooltips.",
+                icon: Activity,
+                logo: "https://cdn.simpleicons.org/tradingview",
+                link: "https://tradingview.github.io/lightweight-charts/"
+            },
+            {
+                name: "Leaflet",
+                description: "Mobile-friendly interactive mapping library powering the Metro Manila wet market geographical locator and price heatmaps.",
+                icon: MapPin,
+                logo: "https://cdn.simpleicons.org/leaflet",
+                link: "https://leafletjs.com/"
+            },
+            {
+                name: "OpenStreetMap",
+                description: "Open spatial database providing free geographic cartography, street tiles, and coordinate metadata for NCR markets.",
+                icon: Map,
+                logo: "https://cdn.simpleicons.org/openstreetmap",
+                link: "https://www.openstreetmap.org/"
+            },
+            {
+                name: "SWR",
+                description: "React Hooks for data fetching with stale-while-revalidate caching, request deduplication, and automated background refresh.",
+                icon: RefreshCw,
+                logo: "https://cdn.simpleicons.org/swr",
+                link: "https://swr.vercel.app/"
+            },
+            {
+                name: "Lucide Icons",
+                description: "Crisp, consistent, and customizable SVG icon suite enhancing visual accessibility and clear navigational cues.",
+                icon: Feather,
+                logo: "https://cdn.simpleicons.org/lucide",
+                link: "https://lucide.dev/"
+            }
+        ]
+    },
+    {
+        title: "DevOps & Engineering Tools",
+        resources: [
+            {
+                name: "GitHub",
+                description: "Cloud platform for source code management, collaborative Git version control, issue tracking, and repository storage.",
+                icon: Github,
+                logo: "https://cdn.simpleicons.org/github",
+                link: "https://github.com/"
+            },
+            {
+                name: "GitHub Actions",
+                description: "Automated CI/CD workflow platform executing test suites, model verification checks, and build validation on every commit.",
+                icon: GitBranch,
+                logo: "https://cdn.simpleicons.org/githubactions",
+                link: "https://github.com/features/actions"
+            },
+            {
+                name: "Git",
+                description: "Distributed version control system managing experiment branches, model audits, commit history, and code merges.",
+                icon: GitBranch,
+                logo: "https://cdn.simpleicons.org/git",
+                link: "https://git-scm.com/"
+            },
+            {
+                name: "ESLint",
+                description: "Static code analysis tool identifying code smells, anti-patterns, and enforcing consistent JavaScript and TypeScript standards.",
+                icon: ShieldCheck,
+                logo: "https://cdn.simpleicons.org/eslint",
+                link: "https://eslint.org/"
+            }
         ]
     }
 ];
@@ -145,60 +445,7 @@ export default function ResourcesPage() {
     }, []);
 
     if (isLoading || isTransitioning) {
-        return (
-            <div className="flex flex-col min-h-screen bg-surface">
-
-                <main className="flex-grow">
-                    {/* Hero Skeleton */}
-                    <section className="relative py-12 sm:py-20 pt-28 sm:pt-36 overflow-hidden bg-primary-900">
-                        <div className="relative z-10 max-w-[90rem] mx-auto px-5 lg:px-10">
-                            <div className="h-12 sm:h-16 w-3/4 max-w-lg bg-white/10 rounded-2xl mb-4 animate-pulse" />
-                            <div className="h-4 sm:h-5 w-full max-w-2xl bg-white/5 rounded-lg mb-2 animate-pulse" />
-                            <div className="h-4 sm:h-5 w-5/6 max-w-xl bg-white/5 rounded-lg animate-pulse" />
-                        </div>
-                    </section>
-
-                    {/* Resources Skeleton */}
-                    <section className="py-12 sm:py-20">
-                        <div className="max-w-[90rem] mx-auto px-5 lg:px-10 space-y-16 sm:space-y-24">
-                            {[1, 2].map((groupIdx) => (
-                                <div key={groupIdx}>
-                                    {/* Section Heading Skeleton */}
-                                    <div className="flex items-center gap-4 mb-8 sm:mb-12">
-                                        <div className="h-[2px] w-12 sm:w-16 bg-primary-800/20 animate-pulse" />
-                                        <div className="h-8 sm:h-10 w-48 bg-gray-200 rounded-xl animate-pulse" />
-                                    </div>
-                                    
-                                    {/* Cards Grid Skeleton */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-                                        {[1, 2, 3, 4, 5, 6].map((idx) => (
-                                            <div key={idx} className="bg-white rounded-[1.5rem] sm:rounded-[2rem] p-6 sm:p-8 border border-gray-50 flex flex-col h-[280px] animate-pulse">
-                                                <div className="flex items-center gap-4 mb-4">
-                                                    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gray-100 rounded-2xl shrink-0" />
-                                                    <div className="h-6 sm:h-7 w-3/4 bg-gray-200 rounded-lg" />
-                                                </div>
-                                                
-                                                <div className="space-y-2 mt-4 flex-grow">
-                                                    <div className="h-3 w-full bg-gray-100 rounded-md" />
-                                                    <div className="h-3 w-5/6 bg-gray-100 rounded-md" />
-                                                    <div className="h-3 w-4/6 bg-gray-100 rounded-md" />
-                                                </div>
-                                                
-                                                <div className="mt-6 flex items-center gap-2">
-                                                    <div className="h-4 w-20 bg-gray-200 rounded-md" />
-                                                    <div className="w-4 h-4 bg-gray-100 rounded-full" />
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-                </main>
-
-            </div>
-        );
+        return <ResourcesSkeleton />;
     }
 
     return (

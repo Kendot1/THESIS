@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
 export default async function NewsPage() {
   // Fetch initial data on the server during SSG/ISR
   const [newsData, categories] = await Promise.all([
-    fetchPaginatedUniqueNews(0, INITIAL_UNIQUE_NEWS_COUNT, "", "All", "All"),
+    fetchPaginatedUniqueNews(0, INITIAL_UNIQUE_NEWS_COUNT, "", "All", "All")
+      .catch(() => ({ data: [], total: 0, rawCount: 0 })),
     fetchNewsCategories()
   ]);
 

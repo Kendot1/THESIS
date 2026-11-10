@@ -62,6 +62,8 @@ class Settings:
         default_factory=lambda: int(os.getenv("FOODCAST_TRAINING_SEQUENCE_STRIDE", "1")))
     lgbm_target_mode: str = field(
         default_factory=lambda: os.getenv("FOODCAST_LGBM_TARGET_MODE", "relative").lower())
+    lgbm_mape_delta: float = field(
+        default_factory=lambda: float(os.getenv("FOODCAST_LGBM_MAPE_DELTA", "0.05")))
     # Keep six-month validation and test windows while assigning 86% of the
     # chronological date range to fitting. Older 70/15/15 splits left roughly
     # two years outside fitting on a seven-year dataset.

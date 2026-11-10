@@ -13,7 +13,7 @@ from unittest.mock import patch
 # This suite runs both from the repository root and from model_trainer/.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from model_trainer.evaluation.frozen_holdout import (
-    _timeframe_rows, digest, load_contract, main, score, scoring_attempt_path,
+    _timeframe_rows, digest, error_metrics, load_contract, main, score, scoring_attempt_path,
 )
 
 
@@ -74,8 +74,13 @@ class FrozenHoldoutTests(unittest.TestCase):
         self.assertEqual(result["overall"]["mae"], 1.5)
         self.assertAlmostEqual(result["overall"]["rmse"], math.sqrt(2.5))
         self.assertEqual(result["overall"]["mape"], 1.125)
+        self.assertEqual(result["overall"]["accuracy_100_minus_mape_pct"], 98.875)
         self.assertEqual(result["overall"]["within_10_count"], 4)
         self.assertEqual(result["overall"]["within_10_accuracy_pct"], 100)
+        self.assertEqual(result["overall"]["within_5_php_count"], 4)
+        self.assertEqual(result["overall"]["within_5_php_accuracy_pct"], 100)
+        self.assertEqual(result["overall"]["within_5_percent_count"], 4)
+        self.assertEqual(result["overall"]["within_5_percent_accuracy_pct"], 100)
         self.assertIn("Daily", result["overall_basis"])
         self.assertEqual(result["published_outputs_overall"]["n"], 8)
         self.assertNotIn("range_hit_rate_80", result["overall"])
@@ -85,6 +90,7 @@ class FrozenHoldoutTests(unittest.TestCase):
         for timeframe, expected_periods in (("daily", 4), ("weekly", 2), ("monthly", 2)):
             summary = result["timeframes"][timeframe]
             self.assertEqual(summary["overall"]["within_10_accuracy_pct"], 100)
+            self.assertEqual(summary["overall"]["within_5_php_accuracy_pct"], 100)
             self.assertTrue(summary["metric_target_met_on_scored_rows"])
             self.assertEqual(summary["coverage"]["periods_with_observed_actual"], expected_periods)
         self.assertEqual(result["timeframes"]["weekly"]["forecast_step"]["1"]["n"], 2)
@@ -102,6 +108,30 @@ class FrozenHoldoutTests(unittest.TestCase):
         self.write_forecasts()
         result = self.evaluate()
         self.assertEqual(result["overall"]["within_10_count"], 4)
+
+    def test_within_5_php_boundary_is_inclusive_and_absolute(self):
+        self.forecasts[0]["prediction"] = 105
+        self.forecasts[1]["prediction"] = 105.01
+        self.write_forecasts()
+        result = self.evaluate()
+        self.assertEqual(result["overall"]["within_5_php_count"], 3)
+        self.assertEqual(result["overall"]["within_5_php_accuracy_pct"], 75)
+
+    def test_pooled_metrics_are_computed_from_all_rows(self):
+        rows = [
+            {"actual": 100.0, "prediction": 105.0},
+            {"actual": 1000.0, "prediction": 1100.0},
+            {"actual": 10.0, "prediction": 11.0},
+        ]
+        pooled = error_metrics(rows)
+        first_group = error_metrics(rows[:2])
+        second_group = error_metrics(rows[2:])
+        self.assertAlmostEqual(pooled["mae"], 106 / 3)
+        self.assertAlmostEqual(pooled["rmse"], math.sqrt((25 + 10_000 + 1) / 3))
+        self.assertAlmostEqual(pooled["mape"], 25 / 3)
+        self.assertAlmostEqual(pooled["within_5_percent_accuracy_pct"], 100 / 3)
+        self.assertNotAlmostEqual(
+            pooled["mape"], (first_group["mape"] + second_group["mape"]) / 2)
 
     def test_period_price_rounding_matches_publisher_sum_order(self):
         series = self.series[0]
@@ -183,6 +213,12 @@ class FrozenHoldoutTests(unittest.TestCase):
         self.assertEqual(overall["excluded_near_zero"], 2)
         self.assertEqual(overall["within_10_count"], 2)
         self.assertEqual(overall["within_10_accuracy_pct"], 100)
+        self.assertEqual(overall["within_5_php_sample_count"], 4)
+        self.assertEqual(overall["within_5_php_count"], 2)
+        self.assertEqual(overall["within_5_php_accuracy_pct"], 50)
+        self.assertEqual(overall["within_5_percent_count"], 2)
+        self.assertEqual(overall["within_5_percent_accuracy_pct"], 100)
+        self.assertEqual(overall["within_5_percent_sample_count"], 2)
         self.assertAlmostEqual(overall["mape"], 0.75)
         self.assertAlmostEqual(overall["mae"], 51.5)
         self.assertEqual(result["coverage"][

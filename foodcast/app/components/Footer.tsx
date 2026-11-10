@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { Home, Search, Table2, Info, Mail, MapPin, TrendingUp, BarChart3, Newspaper, BookOpen } from "lucide-react";
+import { Home, Search, Table2, Info, Mail, MapPin, TrendingUp, BarChart3, Newspaper, BookOpen, Landmark } from "lucide-react";
 import GrassField from "./GrassField";
 import { useHistoricalAccuracy } from "../lib/use-historical-accuracy";
 import { useLanguage } from "../lib/i18n/LanguageContext";
@@ -104,9 +104,18 @@ const Footer = () => {
                 transition-all duration-300">
                 <Image src="/FoodcastLogo.svg" alt="FOODCAST" width={200} height={60} />
               </div>
-              <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs mb-6">
+              <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xs mb-5">
                 {t("footerDesc")}
               </p>
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10 mb-6 max-w-xs">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-accent mb-1">
+                  <Landmark className="w-3.5 h-3.5" />
+                  <span>Official Data Source</span>
+                </div>
+                <p className="text-[11px] text-white/60 leading-snug">
+                  Department of Agriculture (DA) — Bantay Presyo NCR retail market bulletins.
+                </p>
+              </div>
               <div className="flex gap-6">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
@@ -177,9 +186,23 @@ const Footer = () => {
             />
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <p className="text-white/35 text-[10px] sm:text-[11px]">© {currentYear} FOODCAST — AgriTech Food Forecast. {t("allRightsReserved")}</p>
-              <div className="flex items-center gap-1.5 text-white/30 text-[9px] sm:text-[10px]">
-                <div className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-pulse" />
-                <span>{t("poweredBy")}</span>
+              <div className="flex flex-wrap items-center gap-2 text-white/40 text-[9px] sm:text-[10px]">
+                <div className="flex items-center gap-1">
+                  <span>Data provided with appreciation to the</span>
+                  <a
+                    href="https://www.da.gov.ph/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline font-medium"
+                  >
+                    Department of Agriculture (DA)
+                  </a>
+                </div>
+                <span>•</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-accent/40 animate-pulse" />
+                  <span>{t("poweredBy")}</span>
+                </div>
               </div>
             </div>
           </div>

@@ -30,12 +30,12 @@ import dynamic from "next/dynamic";
 const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
   ssr: false,
   loading: () => (
-    <div className="w-full animate-pulse" style={{ minHeight: 380 }}>
-      <div className="h-full w-full bg-gray-50 rounded-2xl" />
+    <div className="w-full" style={{ minHeight: 380 }} aria-hidden="true">
+      <div className="h-full w-full min-h-[380px] bg-gray-100 rounded-2xl skeleton-shimmer" />
     </div>
   ),
 });
-import ProductCard from "../components/ProductCard";
+import ProductCard, { ProductCardSkeleton } from "../components/ProductCard";
 import ScrollReveal from "../components/ScrollReveal";
 import ConfidenceGauge from "../components/ConfidenceGauge";
 import { Product as ProductType, ForecastDataPoint, fetchNews, fetchProductPriceHistory, DEFAULT_PRODUCT_IMAGE, formatRelativeAge, formatScheduledDaRefreshAge, ForecastHorizon, forecastHorizonPoints, productValidationReliability } from "../lib/data";
@@ -119,7 +119,7 @@ export default function Product({
   const { id: encryptedId } = use(params);
   const id = decryptId(encryptedId);
   const { t, language, isTransitioning } = useLanguage();
-  const { data: products = [] } = useProducts(initialProducts);
+  const { data: products = [], isLoading: productsLoading } = useProducts(initialProducts);
   const { data: newsList = [] } = useNews(10);
   const { data: forecastStatus } = useForecastStatus();
   const now = useClock();
@@ -148,7 +148,7 @@ export default function Product({
           productName: product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name,
           currentPrice: product.currentPrice,
           predictedPrice: analysisPrice,
-          newsContext: `Forecast horizon: ${chartPeriod}; origin: ${dailyAverageMode ? researchOrigin : product.forecastOriginDate ?? product.lastActualDate}; target: ${displayedForecasts[0]?.periodLabel ?? displayedForecasts[0]?.date}.\n${newsContext || "No recent news available."}`,
+          newsContext: `Forecast horizon: ${chartPeriod}; origin: ${dailyAverageMode ? researchOrigin : (product.lastActualDate && product.forecastOriginDate && product.lastActualDate > product.forecastOriginDate ? product.lastActualDate : (product.forecastOriginDate ?? product.lastActualDate))}; target: ${displayedForecasts[0]?.periodLabel ?? displayedForecasts[0]?.date}.\n${newsContext || "No recent news available."}`,
           language: language,
         }),
       });
@@ -455,104 +455,62 @@ export default function Product({
     };
   }, [suggestedProducts]);
 
-  if (products.length === 0 || isTransitioning) {
+  // Full-page skeleton while products load or during language transitions
+  if (!product && (productsLoading || products.length === 0) || isTransitioning) {
     return (
-      <>
+      <main aria-busy="true" className="min-h-screen bg-surface">
+        {/* Hero Header Skeleton */}
+        <section className="relative bg-primary-900 py-10 pt-24 sm:pt-28 overflow-hidden">
+          <div className="max-w-7xl mx-auto px-5 lg:px-10">
+            <div className="h-4 w-24 bg-white/10 rounded skeleton-shimmer-dark mb-6" />
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-3 max-w-xl w-full">
+                <div className="h-6 w-28 bg-white/10 rounded-full skeleton-shimmer-dark" />
+                <div className="h-10 sm:h-14 w-72 sm:w-96 bg-white/15 rounded-2xl skeleton-shimmer-dark" />
+                <div className="h-4 w-full max-w-md bg-white/10 rounded skeleton-shimmer-dark" />
+                <div className="h-4 w-3/4 max-w-sm bg-white/10 rounded skeleton-shimmer-dark" />
+              </div>
+              <div className="h-20 w-full sm:w-80 bg-white/10 rounded-3xl skeleton-shimmer-dark" />
+            </div>
+          </div>
+        </section>
 
-        <main className="min-h-screen bg-surface pt-20">
-          <div className="border-b border-gray-100/50 bg-white/5">
-            <div className="max-w-7xl mx-auto px-5 lg:px-10 pt-3 h-10 flex items-center">
-              <div className="h-4 w-48 bg-gray-200 rounded-md animate-pulse" />
+        {/* Main Content Area Skeleton */}
+        <div className="max-w-7xl mx-auto px-5 lg:px-10 py-8 sm:py-12 space-y-8">
+          {/* Chart Card Skeleton */}
+          <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <div className="h-8 w-48 bg-gray-200 rounded-xl skeleton-shimmer" />
+              <div className="h-10 w-72 bg-gray-100 rounded-2xl skeleton-shimmer" />
+            </div>
+            <div className="h-[360px] sm:h-[420px] w-full bg-gray-100 rounded-2xl skeleton-shimmer" />
+          </div>
+
+          {/* AI Market Analysis Skeleton */}
+          <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-8">
+              <div className="h-7 w-52 bg-gray-200 rounded-xl skeleton-shimmer" />
+              <div className="h-8 w-28 bg-gray-100 rounded-full skeleton-shimmer" />
+            </div>
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="h-[180px] bg-gray-50 rounded-2xl p-6 skeleton-shimmer" />
+              <div className="h-[180px] bg-gray-50 rounded-2xl p-6 skeleton-shimmer" />
             </div>
           </div>
 
-          <div className="max-w-7xl mx-auto px-5 lg:px-10 pt-3 sm:py-5">
-            {/* Header Skeleton */}
-            <div className="bg-primary-900 mb-6 sm:mb-8 rounded-2xl p-5 sm:p-8">
-              <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 sm:gap-10 mb-8">
-                <div className="shrink-0 w-25 h-25 sm:w-35 sm:h-35 rounded-xl bg-white/10 animate-pulse border-4 border-white/20" />
-                <div className="flex-1 w-full space-y-4">
-                  <div className="flex gap-2">
-                    <div className="h-6 w-24 bg-white/10 rounded-full animate-pulse" />
-                    <div className="h-6 w-20 bg-white/10 rounded-full animate-pulse" />
-                  </div>
-                  <div className="h-10 sm:h-12 w-3/4 sm:w-1/2 bg-white/20 rounded-xl animate-pulse" />
-                  <div className="h-4 w-32 bg-white/10 rounded-md animate-pulse" />
+          {/* Related Commodities Skeleton */}
+          <div className="space-y-6 pt-4">
+            <div className="h-8 w-56 bg-gray-200 rounded-xl skeleton-shimmer" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-[380px]">
+                  <ProductCardSkeleton compact />
                 </div>
-              </div>
-              <div className="pt-8 border-t border-white/10 space-y-2">
-                <div className="h-4 w-full bg-white/10 rounded-md animate-pulse" />
-                <div className="h-4 w-5/6 bg-white/10 rounded-md animate-pulse" />
-                <div className="h-4 w-4/6 bg-white/10 rounded-md animate-pulse" />
-              </div>
-            </div>
-
-            <div className="grid lg:grid-cols-12 gap-8 items-start">
-              {/* Left Column */}
-              <div className="lg:col-span-8 space-y-8">
-                {/* Chart Skeleton */}
-                <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm h-[400px] flex flex-col">
-                  <div className="flex justify-between items-center mb-8">
-                    <div className="space-y-2">
-                      <div className="h-6 w-48 bg-gray-200 rounded-lg animate-pulse" />
-                      <div className="h-4 w-64 bg-gray-100 rounded-md animate-pulse" />
-                    </div>
-                    <div className="h-8 w-40 bg-gray-100 rounded-xl animate-pulse" />
-                  </div>
-                  <div className="flex-1 bg-gray-50 rounded-2xl animate-pulse" />
-                </div>
-
-                {/* AI Reasoning Skeleton */}
-                <div className="bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 shadow-sm">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 animate-pulse" />
-                    <div className="h-6 w-48 bg-gray-200 rounded-lg animate-pulse" />
-                  </div>
-                  <div className="space-y-3">
-                    <div className="h-4 w-full bg-gray-100 rounded-md animate-pulse" />
-                    <div className="h-4 w-full bg-gray-100 rounded-md animate-pulse" />
-                    <div className="h-4 w-5/6 bg-gray-100 rounded-md animate-pulse" />
-                    <div className="h-4 w-4/6 bg-gray-100 rounded-md animate-pulse" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="lg:col-span-4 space-y-6">
-                {/* Metrics Skeleton */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white rounded-3xl border border-gray-100 p-5 h-32 flex flex-col justify-center gap-3 animate-pulse">
-                    <div className="h-4 w-20 bg-gray-100 rounded-md" />
-                    <div className="h-8 w-24 bg-gray-200 rounded-lg" />
-                  </div>
-                  <div className="bg-white rounded-3xl border border-gray-100 p-5 h-32 flex flex-col justify-center gap-3 animate-pulse">
-                    <div className="h-4 w-20 bg-gray-100 rounded-md" />
-                    <div className="h-8 w-24 bg-gray-200 rounded-lg" />
-                  </div>
-                </div>
-
-                {/* News Skeleton */}
-                <div className="bg-white rounded-3xl border border-gray-100 p-6">
-                  <div className="h-5 w-40 bg-gray-200 rounded-lg mb-6 animate-pulse" />
-                  <div className="space-y-4">
-                    {[1, 2, 3].map(i => (
-                      <div key={i} className="flex gap-3">
-                        <div className="w-16 h-16 rounded-xl bg-gray-100 animate-pulse shrink-0" />
-                        <div className="flex-1 space-y-2">
-                          <div className="h-3 w-full bg-gray-200 rounded-md animate-pulse" />
-                          <div className="h-3 w-2/3 bg-gray-200 rounded-md animate-pulse" />
-                          <div className="h-2 w-20 bg-gray-100 rounded-md animate-pulse" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
-        </main>
-
-      </>
+        </div>
+      </main>
     );
   }
 
@@ -675,7 +633,7 @@ export default function Product({
                 </Link>
                 <span className="text-gray-300" aria-hidden="true">/</span>
                 <span className="text-sm font-medium text-gray-900">
-                  {product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name}
+                  {product.variant && product.variant !== "Standard" ? `${t(product.name)} (${t(product.variant)})` : t(product.name)}
                 </span>
               </div>
             </div>
@@ -818,7 +776,7 @@ export default function Product({
                                         }`}
                                     >
                                       <div className="flex flex-col">
-                                        <span className="text-xs font-bold">{v.variant || "Standard"}</span>
+                                        <span className="text-xs font-bold">{t(v.variant || "Standard")}</span>
                                         <span className="text-[10px] opacity-60">₱{v.currentPrice.toFixed(2)}{v.unit ? ` / ${v.unit}` : ''}</span>
                                       </div>
                                       {v.id === product.id && <CheckCircle2 className="w-4 h-4 text-accent" />}
@@ -915,7 +873,7 @@ export default function Product({
                                     }`}
                                 >
                                   <div className="flex flex-col">
-                                    <span className="text-xs font-bold">{v.variant || "Standard"}</span>
+                                    <span className="text-xs font-bold">{t(v.variant || "Standard")}</span>
                                     <span className="text-[10px] opacity-60">₱{v.currentPrice.toFixed(2)}{v.unit ? ` / ${v.unit}` : ''}</span>
                                   </div>
                                   {v.id === product.id && <CheckCircle2 className="w-4 h-4 text-accent" />}
@@ -1083,7 +1041,7 @@ export default function Product({
                         showLegend
                         productName={product.variant && product.variant !== "Standard" ? `${product.name} (${product.variant})` : product.name}
                         period={chartPeriod}
-                        forecastOriginDate={useExperimental ? researchOrigin : hasModelForecast ? product.forecastOriginDate : undefined}
+                        forecastOriginDate={useExperimental ? researchOrigin : hasModelForecast ? (product.lastActualDate && product.forecastOriginDate && product.lastActualDate > product.forecastOriginDate ? product.lastActualDate : product.forecastOriginDate) : undefined}
                       />
                     </div>
                   </div>
@@ -1112,7 +1070,7 @@ export default function Product({
                         </div>
                       </div>
                       <div className="flex min-w-0 flex-col items-end max-w-full sm:max-w-[55%]">
-                        <ForecastConfidenceBadge context={{commodityId:product.id,category:product.category,name:product.name,variant:product.variant,origin:product.origin,unit:product.unit,
+                        <ForecastConfidenceBadge historicalPicp context={{commodityId:product.id,category:product.category,name:product.name,variant:product.variant,origin:product.origin,unit:product.unit,
                           modelId:dailyAverageMode && researchResult?.productId===product.id ? researchResult.model_run??'' : useExperimental ? '' : product.forecastModelRunId??'',
                           route:dailyAverageMode ? 'model' : useExperimental ? 'unverified_research' : product.forecastSource??'',
                           contractId:dailyAverageMode ? researchResult?.contract??ROLLING_CONTRACT : ROLLING_CONTRACT,horizon:chartPeriod,lead:1,
@@ -1132,9 +1090,11 @@ export default function Product({
                         </h3>
                         <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 h-full relative">
                           {isAnalyzing ? (
-                            <div className="flex flex-col items-center justify-center h-full gap-3 opacity-50 min-h-[120px]">
-                              <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                              <span className="text-xs font-medium text-gray-500">{t("aiAnalyzing")}</span>
+                            <div className="space-y-3 py-2 min-h-[120px]" aria-hidden="true">
+                              <div className="h-4 w-full bg-gray-200 rounded-md skeleton-shimmer" />
+                              <div className="h-4 w-5/6 bg-gray-200 rounded-md skeleton-shimmer" style={{ animationDelay: "100ms" }} />
+                              <div className="h-4 w-3/4 bg-gray-200 rounded-md skeleton-shimmer" style={{ animationDelay: "200ms" }} />
+                              <div className="h-4 w-1/2 bg-gray-200 rounded-md skeleton-shimmer" style={{ animationDelay: "300ms" }} />
                             </div>
                           ) : aiReasoning ? (
                             <p className="text-sm text-gray-600 leading-relaxed text-justify animate-in fade-in duration-500">
@@ -1143,7 +1103,7 @@ export default function Product({
                           ) : (
                             <div className="flex flex-col h-full gap-4 relative min-h-[120px]">
                               <p className="text-sm text-gray-600 leading-relaxed text-justify">
-                                {t("aiFallbackIntro")} <span className="font-bold">{product.variant && product.variant !== "Standard" ? `${t(product.name)} (${product.variant})` : t(product.name)}</span> {t("showsA")}
+                                {t("aiFallbackIntro")} <span className="font-bold">{product.variant && product.variant !== "Standard" ? `${t(product.name)} (${t(product.variant)})` : t(product.name)}</span> {t("showsA")}
                                 <span className="font-bold">{(outlookForecastPrice ?? product.predictedPrice) >= product.currentPrice ? t("strongUpward") : t("moderateDownward")}</span> {t("trend")}
                                 {(outlookForecastPrice ?? product.predictedPrice) >= product.currentPrice ? t("supplyConstraints") : t("inflowHarvests")}
                               </p>
@@ -1162,25 +1122,27 @@ export default function Product({
 
                       {/* Selected-horizon forecast */}
                       <div className="flex flex-col h-full">
-                        <div className="relative h-[30px] pr-2 border-b border-gray-50">
-                          <div role="group" aria-label="Analysis forecast horizon" className="absolute right-2 bottom-2 flex items-center p-1 bg-gray-50 rounded-xl border border-gray-100 w-fit">
-                            {(["daily", "weekly", "monthly"] as const).map((period) => (
-                              <button
-                                key={period}
-                                onClick={() => {
-                                  setAnalysisHorizon(period);
-                                  setExpandedDate(null);
-                                }}
-                                aria-pressed={analysisHorizon === period}
-                                className={`px-3 py-1.5 leading-4 text-[10px] font-bold rounded-lg transition-all focus-visible:outline-2 focus-visible:outline-accent ${analysisHorizon === period
-                                  ? "bg-white text-primary-800 shadow-sm border border-gray-100"
-                                  : "text-gray-400 hover:text-gray-600"
-                                  }`}
-                              >
-                                {t(period)}
-                              </button>
-                            ))}
-                          </div>
+                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
+                          {t("forecastBreakdown")}
+                        </h3>
+
+                        <div role="group" aria-label="Analysis forecast horizon" className="w-full grid grid-cols-3 p-1 bg-gray-50 rounded-xl border border-gray-100 mb-3">
+                          {(["daily", "weekly", "monthly"] as const).map((period) => (
+                            <button
+                              key={period}
+                              onClick={() => {
+                                setAnalysisHorizon(period);
+                                setExpandedDate(null);
+                              }}
+                              aria-pressed={analysisHorizon === period}
+                              className={`w-full py-2 px-3 text-center text-xs font-bold rounded-lg transition-all focus-visible:outline-2 focus-visible:outline-accent ${analysisHorizon === period
+                                ? "bg-white text-primary-800 shadow-sm border border-gray-100"
+                                : "text-gray-400 hover:text-gray-600"
+                                }`}
+                            >
+                              {t(period)}
+                            </button>
+                          ))}
                         </div>
 
                         {/* Collapsible dropdown button for mobile view only */}

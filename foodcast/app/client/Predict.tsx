@@ -18,6 +18,8 @@ import { getInheritedTags } from "../lib/tags";
 import { researchChartPoints } from "../lib/local-model";
 import { marketAnalysisForecasts } from "../lib/market-analysis";
 import type { StagingForecast } from "../research-model-test/staging";
+import PredictSkeleton from "../components/PredictSkeleton";
+import { matchesBilingualQuery } from "../lib/bilingual-search";
 
 interface PredictProps {
   initialProducts?: Product[];
@@ -28,7 +30,7 @@ const ROWS_PER_LOAD_MORE = 2;
 
 export default function Predict({ initialProducts }: PredictProps) {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-surface flex items-center justify-center"><div className="w-8 h-8 border-3 border-accent border-t-transparent rounded-full animate-spin" /></div>}>
+    <Suspense fallback={<PredictSkeleton />}>
       <PredictContent initialProducts={initialProducts} />
     </Suspense>
   );
@@ -39,7 +41,7 @@ function PredictContent({ initialProducts }: PredictProps) {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
-  const { data: products = [], isLoading } = useProducts(initialProducts);
+  const { data: products = [], isLoading, error: productsError, mutate: refreshProducts } = useProducts(initialProducts);
   const { data: newsList = [] } = useNews(10);
   const { data: trendingInteractions } = useTrendingInteractions();
   const [categories, setCategories] = useState<string[]>(["All"]);
@@ -168,12 +170,7 @@ function PredictContent({ initialProducts }: PredictProps) {
     return products.filter((p) => {
       const matchCategory =
         deferredCategory === "All" || p.category === deferredCategory;
-      const matchQuery =
-        !deferredQuery ||
-        p.name.toLowerCase().includes(deferredQuery.toLowerCase()) ||
-        p.category.toLowerCase().includes(deferredQuery.toLowerCase()) ||
-        (p.variant && p.variant.toLowerCase().includes(deferredQuery.toLowerCase())) ||
-        (p.origin && p.origin.toLowerCase().includes(deferredQuery.toLowerCase()));
+      const matchQuery = matchesBilingualQuery(p, deferredQuery);
       return matchCategory && matchQuery;
     });
   }, [deferredQuery, deferredCategory, products]);
@@ -373,80 +370,76 @@ function PredictContent({ initialProducts }: PredictProps) {
   /* ─── Search Suggestions ────────────────────── */
   const searchSuggestions = useMemo(() => {
     if (!query || query.length < 1) return [];
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.category.toLowerCase().includes(query.toLowerCase()) ||
-        (p.variant && p.variant.toLowerCase().includes(query.toLowerCase()))
-    ).slice(0, 5);
+    return products.filter((p) => matchesBilingualQuery(p, query)).slice(0, 5);
   }, [query, products]);
 
   if (products.length === 0 || !featuredProduct || isTransitioning) {
     return (
-      <main className="min-h-screen bg-surface">
+      <main aria-busy="true" className="min-h-screen bg-surface">
         <section className="relative py-12 sm:py-15 pt-28 sm:pt-30 bg-primary-900 overflow-hidden">
           <div className="relative max-w-7xl mx-auto px-5 lg:px-10">
-            <div className="h-10 sm:h-12 w-48 sm:w-64 bg-white/10 rounded-xl mb-4 animate-pulse" />
-            <div className="h-4 w-64 sm:w-96 bg-white/5 rounded-lg mb-8 animate-pulse" />
-            <div className="h-12 sm:h-14 max-w-lg bg-white/10 rounded-2xl animate-pulse" />
+            <div className="h-6 w-36 bg-white/10 rounded-full mb-4 skeleton-shimmer-dark" />
+            <div className="h-10 sm:h-12 w-48 sm:w-64 bg-white/15 rounded-xl mb-3 skeleton-shimmer-dark" />
+            <div className="h-4 w-64 sm:w-96 bg-white/10 rounded-lg mb-8 skeleton-shimmer-dark" />
+            <div className="h-12 sm:h-14 max-w-lg bg-white/15 rounded-2xl skeleton-shimmer-dark" />
           </div>
         </section>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" aria-hidden="true">
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-10">
             <div className="lg:col-span-8 bg-white rounded-3xl border border-gray-100 p-6 sm:p-8 flex flex-col min-h-[400px]">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-2xl animate-pulse shrink-0" />
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-2xl skeleton-shimmer shrink-0" />
                 <div className="flex-1 space-y-3">
-                  <div className="h-3 w-24 bg-gray-100 rounded-md animate-pulse" />
-                  <div className="h-6 sm:h-8 w-32 sm:w-48 bg-gray-200 rounded-lg animate-pulse" />
+                  <div className="h-3 w-24 bg-gray-100 rounded-md skeleton-shimmer" />
+                  <div className="h-6 sm:h-8 w-32 sm:w-48 bg-gray-200 rounded-lg skeleton-shimmer" />
                 </div>
-                <div className="w-20 sm:w-24 h-8 sm:h-10 bg-gray-100 rounded-xl animate-pulse hidden sm:block" />
+                <div className="w-20 sm:w-24 h-8 sm:h-10 bg-gray-100 rounded-xl skeleton-shimmer hidden sm:block" />
               </div>
               <div className="space-y-2 mb-8">
-                <div className="h-3 w-full bg-gray-100 rounded-md animate-pulse" />
-                <div className="h-3 w-3/4 bg-gray-100 rounded-md animate-pulse" />
+                <div className="h-3 w-full bg-gray-100 rounded-md skeleton-shimmer" />
+                <div className="h-3 w-3/4 bg-gray-100 rounded-md skeleton-shimmer" />
               </div>
-              <div className="flex-1 bg-gray-50 rounded-2xl animate-pulse min-h-[200px]" />
+              <div className="flex-1 bg-gray-50 rounded-2xl skeleton-shimmer min-h-[200px]" />
             </div>
 
             <div className="lg:col-span-4 flex flex-col gap-6">
               <div className="bg-white rounded-3xl border border-gray-100 p-6 h-fit">
-                <div className="h-4 w-32 bg-gray-200 rounded-lg mb-6 animate-pulse" />
+                <div className="h-4 w-32 bg-gray-200 rounded-lg mb-6 skeleton-shimmer" />
                 <div className="space-y-4">
                   {[1, 2, 3, 4, 5].map(i => (
                     <div key={i} className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-gray-100 animate-pulse shrink-0" />
+                      <div className="w-8 h-8 rounded-lg bg-gray-100 skeleton-shimmer shrink-0" />
                       <div className="flex-1 space-y-2">
-                        <div className="h-3 w-24 bg-gray-200 rounded-md animate-pulse" />
-                        <div className="h-2 w-16 bg-gray-100 rounded-md animate-pulse" />
+                        <div className="h-3 w-24 bg-gray-200 rounded-md skeleton-shimmer" />
+                        <div className="h-2 w-16 bg-gray-100 rounded-md skeleton-shimmer" />
                       </div>
-                      <div className="h-3 w-10 bg-gray-100 rounded-md animate-pulse" />
+                      <div className="h-3 w-10 bg-gray-100 rounded-md skeleton-shimmer" />
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="h-12 w-full bg-gray-100 rounded-2xl animate-pulse" />
+              <div className="h-12 w-full bg-gray-100 rounded-2xl skeleton-shimmer" />
             </div>
           </section>
 
           <section className="mt-12">
-            <div className="h-6 w-32 sm:w-48 bg-gray-200 rounded-xl mb-2 animate-pulse" />
-            <div className="h-3 w-40 sm:w-64 bg-gray-100 rounded-lg mb-6 animate-pulse" />
+            <div className="h-6 w-32 sm:w-48 bg-gray-200 rounded-xl mb-2 skeleton-shimmer" />
+            <div className="h-3 w-40 sm:w-64 bg-gray-100 rounded-lg mb-6 skeleton-shimmer" />
             <div className="flex gap-2 mb-8 overflow-hidden">
               {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="h-10 w-20 sm:w-24 bg-gray-100 rounded-2xl animate-pulse shrink-0" />
+                <div key={i} className="h-10 w-20 sm:w-24 bg-gray-100 rounded-2xl skeleton-shimmer shrink-0" />
               ))}
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
               {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                 <div key={i} className="bg-white rounded-[1.5rem] sm:rounded-[2rem] border border-gray-100 p-3 sm:p-4 h-[220px] sm:h-[260px] flex flex-col">
-                  <div className="h-24 sm:h-32 w-full bg-gray-100 rounded-xl sm:rounded-2xl mb-4 animate-pulse" />
-                  <div className="h-4 sm:h-5 w-3/4 bg-gray-200 rounded-lg mb-2 animate-pulse" />
-                  <div className="h-3 w-1/2 bg-gray-100 rounded-md mb-auto animate-pulse" />
+                  <div className="h-24 sm:h-32 w-full bg-gray-100 rounded-xl sm:rounded-2xl mb-4 skeleton-shimmer" />
+                  <div className="h-4 sm:h-5 w-3/4 bg-gray-200 rounded-lg mb-2 skeleton-shimmer" />
+                  <div className="h-3 w-1/2 bg-gray-100 rounded-md mb-auto skeleton-shimmer" />
                   <div className="flex justify-between items-end mt-4">
-                    <div className="h-4 sm:h-5 w-12 sm:w-16 bg-gray-100 rounded-lg animate-pulse" />
-                    <div className="h-6 sm:h-8 w-16 sm:w-20 bg-gray-100 rounded-xl animate-pulse" />
+                    <div className="h-4 sm:h-5 w-12 sm:w-16 bg-gray-100 rounded-lg skeleton-shimmer" />
+                    <div className="h-6 sm:h-8 w-16 sm:w-20 bg-gray-100 rounded-xl skeleton-shimmer" />
                   </div>
                 </div>
               ))}
@@ -765,21 +758,17 @@ function PredictContent({ initialProducts }: PredictProps) {
                 <div className="flex items-center gap-2 flex-nowrap shrink-0">
                   {categories.slice(0, visibleCategoryCount).map((cat) => {
                     const isActive = selectedCategory === cat;
-                    const count = categoryCounts[cat] || 0;
 
                     return (
                       <button
                         key={cat}
                         onClick={() => setSelectedCategory(cat)}
-                        className={`group flex items-center gap-1.5 px-5 py-3 rounded-2xl transition-all duration-300 whitespace-nowrap border ${isActive
+                        className={`group flex items-center justify-center px-5 py-3 rounded-2xl transition-all duration-300 whitespace-nowrap border ${isActive
                           ? "bg-primary-900 border-primary-900 text-white shadow-md shadow-primary-900/20 scale-105"
                           : "bg-white border-gray-100 text-gray-700 hover:border-primary-200 hover:bg-primary-50/30 hover:text-primary-800"
                           }`}
                       >
                         <span className="text-xs font-bold">{t(cat)}</span>
-                        <span className={`text-[10px] font-medium opacity-60 ${isActive ? "text-white" : "text-gray-400"}`}>
-                          ({count})
-                        </span>
                       </button>
                     );
                   })}
@@ -805,7 +794,6 @@ function PredictContent({ initialProducts }: PredictProps) {
                       <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-gray-100 py-2 z-[100] animate-fade-in origin-top-right">
                         {categories.slice(visibleCategoryCount).map((cat) => {
                           const isActive = selectedCategory === cat;
-                          const count = categoryCounts[cat] || 0;
                           return (
                             <button
                               key={cat}
@@ -817,7 +805,6 @@ function PredictContent({ initialProducts }: PredictProps) {
                                  ${isActive ? "text-primary-800 bg-primary-50/50" : "text-gray-600 hover:text-primary-800"}`}
                             >
                               <span>{t(cat)}</span>
-                              <span className="text-[10px] opacity-60">({count})</span>
                             </button>
                           );
                         })}

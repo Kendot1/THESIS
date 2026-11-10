@@ -6,16 +6,13 @@ import { useLanguage } from "../lib/i18n/LanguageContext";
 import { MarketLocation, getNearestMarkets } from "../lib/markets";
 import { Search, Navigation, MapPin, TrendingUp, TrendingDown, ExternalLink, Crosshair, Locate } from "lucide-react";
 import { useRouter } from "next/navigation";
+import MapSkeleton from "../components/MapSkeleton";
 
 // Leaflet uses the window object, so we must dynamically import the map component with SSR disabled.
 const MarketMap = dynamic(() => import("../components/MarketMap"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center">
-      <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-800 rounded-full animate-spin mb-4" />
-      {/* We can't use useLanguage here easily as it's outside the component, so we keep this as is or make a wrapper. Since it's dynamic loading, a brief hardcoded English is fine, but we'll stick to what we can. */}
-      <span className="text-gray-400 font-bold text-sm tracking-widest uppercase">Loading Map Data...</span>
-    </div>
+    <div className="w-full h-full skeleton-shimmer-map relative overflow-hidden" aria-hidden="true" />
   )
 });
 
@@ -105,14 +102,21 @@ export default function MapClient({ marketStats, initialMarkets }: MapProps) {
     }
   };
 
-  // Filter markets based on search
+  // Filter markets based on search (bilingual English / Tagalog support)
   const filteredMarkets = useMemo(() => {
     if (!searchQuery) return markets;
-    const lower = searchQuery.toLowerCase();
+    const lower = searchQuery.toLowerCase().trim();
+    const cleaned = lower.replace(/\b(palengke|pamilihan|talipapa|bagsakan|lungsod|bayan|sa|ng)\b/g, "").replace(/\s+/g, " ").trim();
+    const queryTerm = cleaned || lower;
     return markets.filter(m =>
       m.name.toLowerCase().includes(lower) ||
       m.city.toLowerCase().includes(lower) ||
-      m.address.toLowerCase().includes(lower)
+      m.address.toLowerCase().includes(lower) ||
+      (queryTerm && (
+        m.name.toLowerCase().includes(queryTerm) ||
+        m.city.toLowerCase().includes(queryTerm) ||
+        m.address.toLowerCase().includes(queryTerm)
+      ))
     );
   }, [searchQuery, markets]);
 
@@ -131,77 +135,8 @@ export default function MapClient({ marketStats, initialMarkets }: MapProps) {
     }
   };
 
-  if (isTransitioning) {
-    return (
-      <div className="h-[calc(100vh-72px)] mt-[72px] w-screen bg-surface flex flex-col overflow-hidden">
-        <main className="flex-1 flex lg:flex-row h-full w-full relative overflow-hidden">
-          {/* Map Area Skeleton */}
-          <div className="absolute inset-0 lg:relative lg:flex-1 lg:h-full z-0 lg:border-r border-gray-200 bg-gray-100">
-            <div className="w-full h-full relative overflow-hidden">
-              <div className="absolute inset-0 skeleton-shimmer-map" />
-              {/* Zoom Controls */}
-              <div className="absolute top-4 right-4 lg:top-6 lg:right-6 z-10 flex flex-col gap-3">
-                <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-                  <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gray-100 border-b border-gray-50 skeleton-shimmer" />
-                  <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gray-100 skeleton-shimmer" style={{ animationDelay: "80ms" }} />
-                </div>
-                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-white rounded-2xl shadow-lg skeleton-shimmer" style={{ animationDelay: "160ms" }} />
-              </div>
-              {/* Location Button */}
-              <div className="absolute bottom-24 lg:bottom-6 left-4 lg:left-6 z-10">
-                <div className="w-12 h-12 lg:w-44 lg:h-14 bg-white rounded-full lg:rounded-2xl shadow-lg skeleton-shimmer" style={{ animationDelay: "240ms" }} />
-              </div>
-              {/* Fake map markers */}
-              {[
-                { top: "30%", left: "45%" },
-                { top: "50%", left: "55%" },
-                { top: "40%", left: "35%" },
-                { top: "60%", left: "48%" },
-                { top: "25%", left: "60%" },
-              ].map((pos, i) => (
-                <div key={i} className="absolute w-6 h-8 z-10" style={{ top: pos.top, left: pos.left }}>
-                  <div className="w-full h-full bg-gray-300/60 rounded-t-full rounded-b-sm skeleton-shimmer" style={{ animationDelay: `${i * 100 + 300}ms` }} />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Sidebar Skeleton */}
-          <div className="absolute bottom-0 left-0 right-0 lg:relative lg:bottom-auto lg:left-auto lg:right-auto w-full lg:w-[340px] xl:w-[380px] bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.15)] lg:shadow-[-10px_0_30px_rgba(0,0,0,0.05)] z-10 flex flex-col translate-y-[calc(100%-40px)] lg:translate-y-0 h-[80vh] lg:h-full rounded-t-3xl lg:rounded-none">
-            <div className="w-full flex justify-center pt-4 pb-3 lg:hidden bg-white shrink-0">
-              <div className="w-12 h-1.5 rounded-full bg-gray-200" />
-            </div>
-            <div className="px-5 pt-0 pb-4 lg:p-6 border-b border-gray-100 shrink-0 bg-white">
-              <div className="mb-4 lg:mb-6">
-                <div className="h-7 w-52 bg-gray-200 rounded-lg mb-2 skeleton-shimmer" />
-                <div className="hidden lg:block h-4 w-72 bg-gray-100 rounded-md skeleton-shimmer" style={{ animationDelay: "80ms" }} />
-              </div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="h-3 w-28 bg-gray-200 rounded skeleton-shimmer" style={{ animationDelay: "160ms" }} />
-                <div className="h-5 w-8 bg-gray-100 rounded-full skeleton-shimmer" style={{ animationDelay: "200ms" }} />
-              </div>
-              <div className="h-12 w-full bg-gray-50 border border-gray-200 rounded-xl skeleton-shimmer" style={{ animationDelay: "240ms" }} />
-            </div>
-            <div className="flex-1 overflow-hidden p-4 space-y-3">
-              {[0, 1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="w-full p-4 rounded-2xl border border-gray-100 bg-white">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <div className="h-4 w-36 bg-gray-200 rounded-md mb-1.5 skeleton-shimmer" style={{ animationDelay: `${i * 60}ms` }} />
-                      <div className="h-2.5 w-20 bg-gray-100 rounded skeleton-shimmer" style={{ animationDelay: `${i * 60 + 30}ms` }} />
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <div className="h-3 w-full bg-gray-100 rounded mb-1.5 skeleton-shimmer" style={{ animationDelay: `${i * 60 + 60}ms` }} />
-                    <div className="h-3 w-4/5 bg-gray-100 rounded skeleton-shimmer" style={{ animationDelay: `${i * 60 + 90}ms` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </main>
-      </div>
-    );
+  if (!markets || markets.length === 0 || isTransitioning) {
+    return <MapSkeleton />;
   }
 
   return (

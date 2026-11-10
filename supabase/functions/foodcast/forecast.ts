@@ -87,6 +87,9 @@ export function addUtcDays(date: string, days: number): string {
 export function resolveForecastOrigin(lastActualDate: string, savedOrigin?: string | null): string {
   const actual = dateOnly(lastActualDate);
   const saved = dateOnly(String(savedOrigin || ""));
+  if (isIsoDate(actual) && isIsoDate(saved)) {
+    return actual > saved ? actual : saved;
+  }
   return isIsoDate(saved) ? saved : actual;
 }
 

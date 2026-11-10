@@ -14,11 +14,20 @@ REQUIRED_FILES = {
     "validation_forecasts.csv", "test_forecasts.csv", "metadata.json",
 }
 OPTIONAL_RUNTIME_FILES = {"validation_forecasts.csv", "test_forecasts.csv"}
-OPTIONAL_BUNDLE_FILES = {"validation_paths.csv", "test_paths.csv"}
+SOURCE_SNAPSHOT_FILES = {"source_snapshot.json.gz", "source_snapshot_manifest.json"}
+OPTIONAL_BUNDLE_FILES = {
+    "validation_paths.csv", "test_paths.csv",
+} | SOURCE_SNAPSHOT_FILES
 HASHED_REQUIRED_FILES = REQUIRED_FILES - {"metadata.json"}
 
 
 class ModelStore:
+    @staticmethod
+    def _require_complete_snapshot(names):
+        archived = SOURCE_SNAPSHOT_FILES & set(names)
+        if archived and archived != SOURCE_SNAPSHOT_FILES:
+            raise ValueError("Incomplete source snapshot file pair")
+
     def __init__(self, root=None):
         self.root = Path(root or get_settings().artifacts_dir)
         self.runs = self.root / "runs"
@@ -40,7 +49,7 @@ class ModelStore:
         return digest.hexdigest()
 
     def finalize(self, run_dir, metrics, split, data_fingerprint, activate=True,
-                 model_configuration=None):
+                 model_configuration=None, preprocessing_contract=None):
         run_dir = Path(run_dir)
         metadata = {
             "schema_version": 2,
@@ -52,11 +61,14 @@ class ModelStore:
         }
         if model_configuration is not None:
             metadata["model_configuration"] = model_configuration
+        if preprocessing_contract is not None:
+            metadata["preprocessing_contract"] = preprocessing_contract
         (run_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
         missing = REQUIRED_FILES - {p.name for p in run_dir.iterdir() if p.is_file()}
         if missing:
             raise ValueError(f"Incomplete model bundle: {sorted(missing)}")
         present = {p.name for p in run_dir.iterdir() if p.is_file()}
+        self._require_complete_snapshot(present)
         metadata["sha256"] = {
             name: self._digest(run_dir / name)
             for name in sorted(HASHED_REQUIRED_FILES | (OPTIONAL_BUNDLE_FILES & present))
@@ -72,6 +84,7 @@ class ModelStore:
             raise FileNotFoundError(run_id)
         metadata = json.loads((path / "metadata.json").read_text(encoding="utf-8"))
         hashes = set(metadata.get("sha256", {}))
+        self._require_complete_snapshot(hashes)
         if (metadata.get("run_id") != run_id
                 or not HASHED_REQUIRED_FILES.issubset(hashes)
                 or hashes - HASHED_REQUIRED_FILES - OPTIONAL_BUNDLE_FILES):
@@ -81,7 +94,11 @@ class ModelStore:
                 raise ValueError(f"Hash mismatch in {name}")
         if evidence_dir is None:
             raise ValueError("Reviewed final-holdout evidence is required for activation")
-        from evaluation.promotion import verify_promotion_evidence
+        review = json.loads((Path(evidence_dir) / "promotion_review.json").read_text(encoding="utf-8"))
+        if review.get("promotion_policy_version") == 12:
+            from evaluation.prospective_promotion import verify_promotion_evidence
+        else:
+            from evaluation.promotion import verify_promotion_evidence
         evidence = verify_promotion_evidence(path, evidence_dir)
         payload = {"schema_version": 2, "active_run": run_id,
                    "promotion_evidence": evidence,
@@ -100,6 +117,7 @@ class ModelStore:
             raise FileNotFoundError(f"Active bundle is missing: {path}")
         metadata = json.loads((path / "metadata.json").read_text(encoding="utf-8"))
         hashes = set(metadata.get("sha256", {}))
+        self._require_complete_snapshot(hashes)
         if (metadata.get("run_id") != path.name
                 or not HASHED_REQUIRED_FILES.issubset(hashes)
                 or hashes - HASHED_REQUIRED_FILES - OPTIONAL_BUNDLE_FILES):

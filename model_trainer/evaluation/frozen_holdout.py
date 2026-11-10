@@ -19,7 +19,10 @@ from statistics import mean
 PHILIPPINE_TIME = timezone(timedelta(hours=8))
 METRICS = ("mae", "rmse", "mape")
 PERCENTAGE_ACTUAL_FLOOR = 1e-8
-WITHIN_10_TARGET_PERCENT = 90.0
+WITHIN_5_PHP_TARGET_PERCENT = 95.0
+MAPE_TARGET_PERCENT = 5.0
+PRICE_ERROR_TARGET_PHP = 5.0
+WITHIN_5_PHP_TOLERANCE = 5.0
 
 
 def digest(data):
@@ -128,20 +131,42 @@ def load_contract(path):
 def error_metrics(rows, column="prediction"):
     if not rows:
         return {"n": 0, "percentage_n": 0, "excluded_near_zero": 0,
+                "accuracy_100_minus_mape_pct": None,
+                "within_5_php_count": 0, "within_5_php_tolerance": WITHIN_5_PHP_TOLERANCE,
+                "within_5_php_sample_count": 0, "within_5_php_accuracy_pct": None,
+                "within_5_percent_count": 0, "within_5_percent_accuracy_pct": None,
+                "within_5_percent_sample_count": 0,
+                "within_5_percent_excluded_zero_or_near_zero": 0,
                 "within_10_count": 0, "within_10_accuracy_pct": None,
                 "mae": None, "rmse": None, "mape": None}
     errors = [abs(row[column] - row["actual"]) for row in rows]
+    within_5_count = sum(error <= WITHIN_5_PHP_TOLERANCE for error in errors)
     percentage_rows = [row for row in rows
                        if row["actual"] >= PERCENTAGE_ACTUAL_FLOOR]
     percentage_errors = [abs(row[column] - row["actual"]) / row["actual"]
                          for row in percentage_rows]
+    within_5_percent_count = sum(error <= 0.05 for error in percentage_errors)
     within_10_count = sum(error <= 0.10 for error in percentage_errors)
     metrics = {"n": len(rows), "mae": math.fsum(errors) / len(rows),
                "rmse": math.hypot(*errors) / math.sqrt(len(rows)),
                "mape": (math.fsum(percentage_errors) * 100 / len(percentage_errors)
                         if percentage_errors else None),
+               "accuracy_100_minus_mape_pct": (
+                   100 - math.fsum(percentage_errors) * 100 / len(percentage_errors)
+                   if percentage_errors else None),
                "percentage_n": len(percentage_rows),
                "excluded_near_zero": len(rows) - len(percentage_rows),
+               "within_5_php_count": within_5_count,
+               "within_5_php_tolerance": WITHIN_5_PHP_TOLERANCE,
+               "within_5_php_sample_count": len(rows),
+               "within_5_php_accuracy_pct": within_5_count * 100 / len(rows),
+               "within_5_percent_count": within_5_percent_count,
+               "within_5_percent_accuracy_pct": (
+                   within_5_percent_count * 100 / len(percentage_rows)
+                   if percentage_rows else None),
+               "within_5_percent_sample_count": len(percentage_rows),
+               "within_5_percent_excluded_zero_or_near_zero": (
+                   len(rows) - len(percentage_rows)),
                "within_10_count": within_10_count,
                "within_10_accuracy_pct": (
                    within_10_count * 100 / len(percentage_rows) if percentage_rows else None)}
@@ -227,10 +252,14 @@ def _timeframe_rows(forecasts, actuals):
 
 
 def _targets_met(metrics):
+    mape = metrics["mape"]
+    within_5_accuracy = metrics["within_5_php_accuracy_pct"]
     return (
-        metrics["within_10_accuracy_pct"] is not None
-        and metrics["within_10_accuracy_pct"] >= WITHIN_10_TARGET_PERCENT
-        and all(metrics[name] is not None and metrics[name] <= 5 for name in METRICS)
+        mape is not None and mape <= MAPE_TARGET_PERCENT
+        and within_5_accuracy is not None
+        and within_5_accuracy >= WITHIN_5_PHP_TARGET_PERCENT
+        and all(metrics[name] is not None and metrics[name] <= PRICE_ERROR_TARGET_PHP
+                for name in ("mae", "rmse"))
     )
 
 
@@ -338,8 +367,12 @@ def score(contract_path, actuals_manifest_path, *, now=None):
     timeframes = {name: _timeframe_report(rows) for name, rows in timeframe_rows.items()}
     combined_published_rows = [row for rows in timeframe_rows.values()
                                for row in rows if row["actual"] is not None]
-    metric_pass = all(report["metric_target_met_on_scored_rows"]
-                      for report in timeframes.values())
+    published_overall = summarize(combined_published_rows)
+    published_persistence = error_metrics(combined_published_rows, "anchor")
+    metric_pass = (
+        _targets_met(published_overall)
+        and all(report["metric_target_met_on_scored_rows"]
+                for report in timeframes.values()))
     full_scope = (integrity["forecast_series"] == integrity["total_input_series"]
                   and not missing_forecasts and not unscored_series and not unknown
                   and not unobserved_count and len(matched) == len(forecasts))
@@ -360,10 +393,14 @@ def score(contract_path, actuals_manifest_path, *, now=None):
         "actuals_source": manifest["source"], "reconciled_through": manifest["reconciled_through"],
         "overall": overall,
         "overall_basis": "Daily frozen points across all 30 forecast steps.",
-        "published_outputs_overall": summarize(combined_published_rows),
+        "published_outputs_overall": published_overall,
+        "published_outputs_persistence": published_persistence,
         "persistence_on_same_rows": error_metrics(matched, "anchor"),
-        "thresholds": {"within_10_accuracy_pct_min": WITHIN_10_TARGET_PERCENT,
-                       **{key: 5 for key in METRICS}},
+        "thresholds": {"within_5_php_accuracy_pct_min": WITHIN_5_PHP_TARGET_PERCENT,
+                       "mape_pct_max": MAPE_TARGET_PERCENT,
+                       "mae_php_max": PRICE_ERROR_TARGET_PHP,
+                       "rmse_php_max": PRICE_ERROR_TARGET_PHP,
+                       "within_5_php_tolerance": WITHIN_5_PHP_TOLERANCE},
         "metric_target_met_on_scored_rows": metric_pass,
         "metric_target_met_by_timeframe": {
             name: report["metric_target_met_on_scored_rows"]
@@ -387,8 +424,11 @@ def score(contract_path, actuals_manifest_path, *, now=None):
         "groups": {name: {label: summarize(rows) for label, rows in sorted(blocks.items())}
                    for name, blocks in groups.items()},
         "interpretation": (
-            "Within-10 accuracy and MAPE exclude actual prices below 1e-8 PHP and report "
-            "that count; MAE/RMSE retain all observed nonnegative actuals. Weekly/monthly "
+            "Within-5-PHP accuracy uses every observed nonnegative actual and counts a hit "
+            "when absolute error is at most PHP 5. Within-5% accuracy, "
+            "Within-10 accuracy, and MAPE exclude "
+            "actual prices below 1e-8 PHP and report that count; MAE/RMSE retain all "
+            "observed nonnegative actuals. Weekly/monthly "
             "metrics aggregate the frozen daily path using the publisher's rounding rules."
         ),
         "promotion_decision": "Not determined: scores do not establish model-selection independence or sufficient scope by themselves.",

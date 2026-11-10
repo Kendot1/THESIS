@@ -1,9 +1,15 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  // Isolate only the dedicated local rolling preview; normal dev/build unchanged.
-  distDir: process.env.FOODCAST_LOCAL_RESEARCH === "rolling-research" ? ".next-rolling-research" : ".next",
+const nextConfig = (phase: string): NextConfig => ({
+  // Never let a development server replace a running production build's assets.
+  distDir: process.env.FOODCAST_LOCAL_RESEARCH === "rolling-research"
+    ? ".next-rolling-research"
+    : phase === "phase-development-server" ? ".next-development" : ".next",
   reactCompiler: true,
+  outputFileTracingIncludes: {
+    '/api/forecast/confidence': ['./artifacts/picp/**/*'],
+    '/*': ['./artifacts/accuracy/saved_predictions.csv'],
+  },
   experimental: {
     optimizePackageImports: ["lucide-react", "recharts", "@base-ui/react"],
   },
@@ -26,6 +32,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-};
+});
 
 export default nextConfig;
