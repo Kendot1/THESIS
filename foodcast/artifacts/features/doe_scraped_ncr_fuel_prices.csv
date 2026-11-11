@@ -1,0 +1,34 @@
+report_title,date,diesel_low_php,diesel_high_php,diesel_common_php,gasoline_ron91_common_php,source_url
+October 27 to November 2,,90.0,97.7,95.2,86.9,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%20for%2027%20October%20to%202%20November%202026.pdf?prefix=dev%2Fmedia
+November 3 to 9,,89.0,97.2,95.4,84.9,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%20for%203%20to%209%20November%202026.pdf?prefix=dev%2Fmedia
+September 29 to October 5,,85.0,98.2,96.4,90.6,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Liquid%20Fuel%20Price%20Monitoring%2029%20Sep%20to%205%20Oct%202026.pdf?prefix=dev%2Fmedia
+October 6 to 12,2026-10-06,86.7,96.9,93.7,88.3,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%2010062026.pdf?prefix=dev%2Fmedia
+October 13 to 19,2026-10-13,86.62,93.9,92.1,93.0,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%2010132026.pdf?prefix=dev%2Fmedia
+October 20 to 26,2026-10-20,88.0,96.5,95.8,81.7,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%2010202026.pdf?prefix=dev%2Fmedia
+September 1 to 7,2026-09-07,79.2,92.5,81.2,69.9,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%20Sep%201-7%202026.pdf?prefix=dev%2Fmedia
+September 8 to 14,,85.0,93.8,92.4,80.4,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%208-14%20Sep%202026.pdf?prefix=dev%2Fmedia
+September 15 to 21,,87.71,97.0,94.5,85.8,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%2015-21%20September%202026.pdf?prefix=dev%2Fmedia
+July 28 to August 3,,81.85,95.7,90.9,85.6,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-07282026-pdf
+August 4 to 10,,80.0,93.9,89.8,77.8,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-08042026-pdf
+August 11 to 17,,76.6,88.1,85.5,73.1,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-08112026-pdf
+August 18 to 24,,77.0,90.64,89.4,78.8,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-08182026-pdf
+August 25 to 31,,82.3,96.3,87.4,77.3,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/List%20of%20NCR%20Pump%20Prices%20for%2025%20to%2031%20August%202026.pdf?prefix=dev%2Fmedia
+June 30 to July 6,,63.0,70.4,70.4,76.9,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-for-june-30-july-6-2026-pdf
+July 7 to 13,,66.5,73.7,71.3,67.2,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-07072026-pdf
+July 14 to 20,,71.0,78.3,75.9,77.6,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-07142026-pdf
+July 21 to 27,,79.0,88.6,83.6,70.3,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-07212026-pdf
+May 26 to June 1,,79.0,85.5,79.0,89.8,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-05262026-pdf
+June 2 to 8,,68.94,78.0,76.4,73.74,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-for-june-2-8-2026-pdf-1
+June 9 to 15,,77.89,82.5,82.3,73.0,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-06092026-pdf
+June 16 to 22,,73.0,78.8,78.7,81.5,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-06162026-pdf
+June 23 to 29,,64.5,69.6,69.6,69.2,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-06232026-pdf
+April 28 to May 4,,79.16,92.0,79.3,71.0,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-04282026-pdf
+May 5 to 11,,80.96,90.6,82.0,84.5,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-05052026-pdf
+May 12 to 18,,71.43,80.7,76.4,75.17,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-05122026-pdf
+May 19 to 25,,79.0,87.2,80.3,84.6,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-05192026-pdf
+February 24 to March 2,,48.0,60.69,48.0,53.2,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-02242026-pdf
+March 3 to 9,,49.0,61.5,60.5,52.1,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-03032026-pdf
+March 10 to 16,,70.95,91.0,80.0,68.3,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-03102026n-pdf
+February 3 to 9,,48.0,59.1,58.95,52.1,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-02032026-pdf
+February 10-16,,48.0,60.1,51.84,50.9,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-02102026-1-pdf
+February 17-23,,48.0,60.7,48.0,51.4,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-02172026-pdf
