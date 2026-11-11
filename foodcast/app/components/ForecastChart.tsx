@@ -200,16 +200,11 @@ const ForecastChart = ({
       selected,
       forecastContract,
     );
-    const selectedForecastByDate = new Map(selectedForecasts.map(point => [`${point.horizon ?? selected}:${point.date}`, point]));
-    const chartInput = data.filter(point => (point.horizon ?? "daily") !== selected
-      || point.actual != null
-      || selectedForecastByDate.has(`${point.horizon ?? selected}:${point.date}`));
-    const dailyActuals = chartInput.filter(point => (point.horizon ?? "daily") === "daily"
+
+    // 1. All real actual prices (the black line that really exists)
+    const dailyActuals = data.filter(point => (point.horizon ?? "daily") === "daily"
       && point.actual != null && Number.isFinite(point.actual));
-    // Derive every view from the same causal daily observations, never from
-    // precomputed period records (which can belong to a different origin).
     const observations = [...new Map(dailyActuals
-      .filter(point => !forecastOriginDate || point.date <= forecastOriginDate)
       .map(point => [point.date, point])).values()]
       .sort((left, right) => left.date.localeCompare(right.date));
     const latest = observations[observations.length - 1];
@@ -242,33 +237,28 @@ const ForecastChart = ({
         .map(([end, bucket]) => ({ time: end as Time, value: bucket.sum / bucket.count, periodStart: bucket.start }));
       actuals.push({ time: latest.date as Time, value: latest.actual! });
     }
-    const forecastPoints = selectedForecasts;
-    const predictions = forecastPoints.map(point => ({ time: point.date as Time, value: point.predicted! }));
+    // 2. All saved forecasts to compare with that day (plus future forecast horizon)
+    const predictionsMap = new Map<string, number>();
+    data.forEach(p => {
+      if ((p.horizon ?? "daily") === selected && p.predicted != null && Number.isFinite(p.predicted) && p.predicted > 0) {
+        predictionsMap.set(p.date, p.predicted);
+      }
+    });
+    selectedForecasts.forEach(p => {
+      if (p.predicted != null && Number.isFinite(p.predicted) && p.predicted > 0) {
+        predictionsMap.set(p.date, p.predicted);
+      }
+    });
 
-    // Start the forecast line at the latest observed price. Without this
-    // shared anchor, the actual and forecast series render as disconnected
-    // segments even though they describe one continuous price timeline.
-    const latestActual = actuals[actuals.length - 1];
-    const firstPrediction = predictions[0];
-    const connectedPredictions = latestActual && firstPrediction
-      && String(latestActual.time) < String(firstPrediction.time)
-      ? [{ time: latestActual.time, value: latestActual.value }, ...predictions]
-      : predictions;
+    const predictions = [...predictionsMap.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, val]) => ({ time: date as Time, value: val }));
 
-    return { actualData: actuals, predictedData: connectedPredictions, forecastPoints };
+    return { actualData: actuals, predictedData: predictions, forecastPoints: selectedForecasts };
   }, [data, period, forecastOriginDate, forecastContract]);
 
-  const forecastRising = useMemo(() => {
-    const latestActual = actualData[actualData.length - 1]?.value;
-    const finalForecast = predictedData[predictedData.length - 1]?.value;
-    return latestActual !== undefined && finalForecast !== undefined
-      ? finalForecast >= latestActual
-      : true;
-  }, [actualData, predictedData]);
-  const forecastColor = forecastRising ? "#C62828" : "#2E7D32";
-  const forecastFill = forecastRising
-    ? "rgba(198, 40, 40, 0.12)"
-    : "rgba(46, 125, 50, 0.12)";
+  const forecastColor = "#10B981"; // Emerald green line for predicted price
+  const forecastFill = "rgba(16, 185, 129, 0.10)";
 
   // Create chart
   useEffect(() => {
@@ -324,40 +314,33 @@ const ForecastChart = ({
       height: height || 380,
     });
 
-    // Actual prices use a neutral near-black line so they cannot be confused
-    // with the green forecast.
+    // Actual prices use a solid black line (the price that really exists)
     const actualSeries = chart.addSeries(AreaSeries, {
-      lineColor: "#111827",
-      topColor: "rgba(17, 24, 39, 0.18)",
-      bottomColor: "rgba(17, 24, 39, 0.02)",
+      lineColor: "#000000",
+      topColor: "rgba(0, 0, 0, 0.08)",
+      bottomColor: "rgba(0, 0, 0, 0.00)",
       lineWidth: 2,
       priceFormat: { type: "custom", formatter: (p: number) => `₱${p.toFixed(2)}` },
       crosshairMarkerRadius: 5,
-      crosshairMarkerBorderColor: "#111827",
+      crosshairMarkerBorderColor: "#000000",
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
       lastValueVisible: true,
     });
 
-    // Keep actuals neutral; forecast color communicates direction.
+    // Predicted prices use an emerald green line to compare
     const predictedSeries = chart.addSeries(AreaSeries, {
       lineColor: forecastColor,
       topColor: forecastFill,
-      bottomColor: forecastRising
-        ? "rgba(198, 40, 40, 0.01)"
-        : "rgba(46, 125, 50, 0.01)",
-      lineWidth: 3,
-      lineStyle: LineStyle.Dashed,
-      // Use explicit markers below so the shared anchor can be shown only for
-      // weekly and monthly views.
-      pointMarkersVisible: false,
-      priceLineVisible: false,
+      bottomColor: "rgba(16, 185, 129, 0.00)",
+      lineWidth: 2,
+      lineStyle: LineStyle.Solid,
       priceFormat: { type: "custom", formatter: (p: number) => `₱${p.toFixed(2)}` },
-      crosshairMarkerRadius: 1,
+      crosshairMarkerRadius: 4,
       crosshairMarkerBorderColor: forecastColor,
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
-      lastValueVisible: false,
+      lastValueVisible: true,
     });
 
     chartRef.current = chart;
@@ -404,9 +387,39 @@ const ForecastChart = ({
           ? `${formatDate(periodStart)} – ${formatDate(dateStr)}`
           : formatDate(dateStr);
 
-        const priceRow = actualValue !== undefined
-          ? `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:#111827"></span><b>${tRef.current("actualPrice")}:</b><strong>₱${actualValue.toFixed(2)}</strong></div>`
-          : `<div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${forecastColor}"></span><b>${tRef.current("predictedPrice")}:</b><strong>₱${predictedValue!.toFixed(2)}</strong></div>`;
+        const hasActual = actualValue !== undefined && Number.isFinite(actualValue);
+        const hasPredicted = predictedValue !== undefined && Number.isFinite(predictedValue);
+        let rowsHtml = "";
+        if (hasActual) {
+          rowsHtml += `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:3px">
+            <span style="display:flex;align-items:center;gap:6px">
+              <span style="width:8px;height:8px;border-radius:50%;background:#000000;display:inline-block"></span>
+              <b>${tRef.current("actualPrice")}:</b>
+            </span>
+            <strong style="color:#000000;font-family:monospace">₱${actualValue.toFixed(2)}</strong>
+          </div>`;
+        }
+        if (hasPredicted) {
+          rowsHtml += `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:3px">
+            <span style="display:flex;align-items:center;gap:6px">
+              <span style="width:8px;height:8px;border-radius:50%;background:${forecastColor};display:inline-block"></span>
+              <b>${tRef.current("predictedPrice")}:</b>
+            </span>
+            <strong style="color:${forecastColor};font-family:monospace">₱${predictedValue!.toFixed(2)}</strong>
+          </div>`;
+        }
+        if (hasActual && hasPredicted) {
+          const delta = predictedValue! - actualValue;
+          const deltaPct = actualValue > 0 ? ((delta / actualValue) * 100).toFixed(1) : "0.0";
+          const sign = delta >= 0 ? "+" : "";
+          rowsHtml += `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:4px;margin-top:2px;border-top:1px dashed #e2e8f0;font-size:10px;color:#64748b">
+            <span>Variance:</span>
+            <strong style="color:${Math.abs(delta) <= 5 ? '#10B981' : '#f59e0b'};font-family:monospace">
+              ${sign}₱${delta.toFixed(2)} (${sign}${deltaPct}%)
+            </strong>
+          </div>`;
+        }
+
         const confidence = tooltipConfidenceRef.current[dateStr];
         const confidenceLabels: Record<string, string> = {
           "Very High": "confidenceVeryHigh", High: "confidenceHigh", Moderate: "confidenceModerate",
@@ -418,7 +431,7 @@ const ForecastChart = ({
         const confidenceRow = confidence?.score != null && predictedValue !== undefined
           ? `<div style="margin-top:4px"><b>${tRef.current("confidence")}:</b> ${confidenceText}</div>`
           : "";
-        tooltip.innerHTML = `<div style="font-size:10px;font-weight:700;color:#9CA3AF;margin-bottom:4px">${formattedDate}</div>${priceRow}${confidenceRow}`;
+        tooltip.innerHTML = `<div style="font-size:10px;font-weight:700;color:#9CA3AF;margin-bottom:4px">${formattedDate}</div>${rowsHtml}${confidenceRow}`;
 
         // Position tooltip
         let left = param.point.x + 15;
@@ -462,7 +475,7 @@ const ForecastChart = ({
       predictedSeriesRef.current = null;
       predictedMarkersRef.current = null;
     };
-  }, [showGrid, height, forecastColor, forecastFill, forecastRising]);
+  }, [showGrid, height, forecastColor, forecastFill]);
 
   // Each view fits its own observed cadence plus the unchanged forecast targets.
   const applyRelevantRange = useCallback(() => {
@@ -563,12 +576,12 @@ const ForecastChart = ({
       {showLegend && (
         <div className="flex items-center gap-6 mt-3 -mb-1 ml-2">
           <div className="flex items-center gap-2">
-            <div className="h-0 w-4 border-t-2 border-[#111827]" />
-            <span className="text-[10px] font-medium text-gray-900">{t("actualPrice")}</span>
+            <div className="h-0 w-4 border-t-[3px] border-black" />
+            <span className="text-xs font-semibold text-gray-900">{t("actualPrice")}</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-0 w-4 border-t-[3px] border-dashed" style={{ borderColor: forecastColor }} />
-            <span className="text-[10px] font-medium text-gray-900">{t("predictedPrice")}</span>
+            <div className="h-0 w-4 border-t-[3px] border-[#10B981]" />
+            <span className="text-xs font-semibold text-emerald-700">{t("predictedPrice")}</span>
           </div>
         </div>
       )}

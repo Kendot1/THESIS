@@ -206,8 +206,26 @@ function PredictContent({ initialProducts }: PredictProps) {
     if (!featuredProduct) return;
     let cancelled = false;
     const productId = featuredProduct.id;
-    fetchProductPriceHistory(featuredProduct)
-      .then(points => { if (!cancelled) setFeaturedHistory({ productId, points }); })
+    Promise.all([
+      fetchProductPriceHistory(featuredProduct),
+      fetch(`/api/forecast/saved-history?name=${encodeURIComponent(featuredProduct.name)}&variant=${encodeURIComponent(featuredProduct.variant || '')}`)
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null)
+    ])
+      .then(([points, savedHistory]) => {
+        if (cancelled) return;
+        const savedMap = new Map<string, number>();
+        if (savedHistory && Array.isArray(savedHistory.points)) {
+          savedHistory.points.forEach((p: { date: string; predicted: number }) => {
+            if (p.date && p.predicted != null) savedMap.set(p.date, p.predicted);
+          });
+        }
+        const merged = (points || []).map(pt => ({
+          ...pt,
+          predicted: pt.predicted ?? savedMap.get(pt.date) ?? null,
+        }));
+        setFeaturedHistory({ productId, points: merged });
+      })
       .catch(() => { if (!cancelled) setFeaturedHistory(null); });
     return () => { cancelled = true; };
   }, [featuredProduct]);
@@ -215,12 +233,16 @@ function PredictContent({ initialProducts }: PredictProps) {
     const saved = featuredProduct?.forecastData ?? [];
     const history = featuredHistory?.productId === featuredProductId ? featuredHistory?.points ?? [] : [];
     const byPeriod = new Map<string, ForecastDataPoint>();
-    history.filter(point => (point.horizon ?? "daily") === "daily" && point.actual != null && Number.isFinite(point.actual))
-      .forEach(point => byPeriod.set(`daily:${point.date}`, { ...point, predicted: null }));
+    history.forEach(point => byPeriod.set(`${point.horizon ?? "daily"}:${point.date}`, point));
     saved.forEach(point => {
       const key = `${point.horizon ?? "daily"}:${point.date}`;
       const observed = byPeriod.get(key);
-      byPeriod.set(key, { ...point, actual: observed?.actual ?? point.actual });
+      byPeriod.set(key, {
+        ...(observed ?? {}),
+        ...point,
+        actual: observed?.actual ?? point.actual,
+        predicted: point.predicted ?? observed?.predicted ?? null,
+      });
     });
     return [...byPeriod.values()].sort((a, b) => a.date.localeCompare(b.date));
   }, [featuredProduct, featuredProductId, featuredHistory]);

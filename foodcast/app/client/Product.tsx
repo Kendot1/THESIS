@@ -247,9 +247,32 @@ export default function Product({
 
     let cancelled = false;
     const currentProductId = product.id;
-    fetchProductPriceHistory(product)
-      .then(points => {
-        if (!cancelled) setChartHistory({ productId: currentProductId, points });
+    
+    // Fetch both historical DA prices and saved model forecast history to compare
+    Promise.all([
+      fetchProductPriceHistory(product),
+      fetch(`/api/forecast/saved-history?name=${encodeURIComponent(product.name)}&variant=${encodeURIComponent(product.variant || '')}`)
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null)
+    ])
+      .then(([pricePoints, savedHistory]) => {
+        if (cancelled) return;
+        const savedMap = new Map<string, number>();
+        if (savedHistory && Array.isArray(savedHistory.points)) {
+          savedHistory.points.forEach((p: { date: string; predicted: number }) => {
+            if (p.date && p.predicted != null) {
+              savedMap.set(p.date, p.predicted);
+            }
+          });
+        }
+        
+        // Merge saved predictions into the price history points
+        const merged = (pricePoints || []).map(pt => ({
+          ...pt,
+          predicted: pt.predicted ?? savedMap.get(pt.date) ?? null,
+        }));
+        
+        setChartHistory({ productId: currentProductId, points: merged });
       })
       .catch(error => {
         if (!cancelled) console.error("Failed to fetch full product price history:", error);
