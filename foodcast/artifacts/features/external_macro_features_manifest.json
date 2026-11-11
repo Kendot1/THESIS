@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-11T12:38:38.053458+00:00",
+  "date_range": [
+    "2019-01-01",
+    "2026-11-05"
+  ],
+  "total_days": 2866,
+  "weather_locations": [
+    "ncr",
+    "benguet",
+    "necija"
+  ],
+  "features": [
+    "ncr_rain_mm",
+    "ncr_temp_max_c",
+    "ncr_temp_min_c",
+    "ncr_wind_max_kmh",
+    "ncr_rain_3d_accum",
+    "ncr_rain_7d_accum",
+    "ncr_heavy_rain_flag",
+    "ncr_typhoon_wind_flag",
+    "benguet_rain_mm",
+    "benguet_temp_max_c",
+    "benguet_temp_min_c",
+    "benguet_wind_max_kmh",
+    "benguet_rain_3d_accum",
+    "benguet_rain_7d_accum",
+    "benguet_heavy_rain_flag",
+    "benguet_typhoon_wind_flag",
+    "necija_rain_mm",
+    "necija_temp_max_c",
+    "necija_temp_min_c",
+    "necija_wind_max_kmh",
+    "necija_rain_3d_accum",
+    "necija_rain_7d_accum",
+    "necija_heavy_rain_flag",
+    "necija_typhoon_wind_flag",
+    "brent_crude_usd",
+    "diesel_estimated_php",
+    "diesel_change_7d_php",
+    "diesel_rolling_mean_30d",
+    "fuel_hike_shock_flag"
+  ],
+  "summary": {
+    "max_benguet_rain_7d": 881.1,
+    "max_ncr_wind_gust": 71.2,
+    "avg_diesel_price": 56.93016748080949,
+    "fuel_hike_days_count": 423
+  }
+}
