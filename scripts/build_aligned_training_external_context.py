@@ -45,14 +45,14 @@ def build_aligned_training_context():
     weather_df = weather_df.rename(columns={"date": "report_date"})
     df = df.merge(weather_df, on="report_date", how="left")
     
-    # Merge DOE scraped primary ground-truth diesel prices
+    # Merge DOE scraped primary ground-truth diesel prices (Whole Market NCR Average & Range)
     if not doe_df.empty:
-        doe_clean = doe_df[['report_date', 'diesel_prevailing_php', 'diesel_low_php', 'diesel_high_php']].dropna().drop_duplicates('report_date')
+        doe_clean = doe_df[['report_date', 'diesel_average_php', 'diesel_common_php', 'diesel_low_php', 'diesel_high_php', 'diesel_spread_php']].dropna(subset=['report_date']).drop_duplicates('report_date')
         df = df.merge(doe_clean, on="report_date", how="left")
         # Forward fill the weekly DOE pump prices across consecutive daily calendar steps
-        df['diesel_prevailing_php'] = df['diesel_prevailing_php'].ffill().bfill()
-        df['diesel_low_php'] = df['diesel_low_php'].ffill().bfill()
-        df['diesel_high_php'] = df['diesel_high_php'].ffill().bfill()
+        for col in ['diesel_average_php', 'diesel_common_php', 'diesel_low_php', 'diesel_high_php', 'diesel_spread_php']:
+            if col in df.columns:
+                df[col] = df[col].ffill().bfill()
     
     # Merge energy / international benchmark
     energy_df = energy_df.rename(columns={"date": "report_date"})
@@ -81,11 +81,12 @@ def build_aligned_training_context():
         df[f"{loc}_typhoon_warning_flag"] = (df[f"{loc}_wind_max_lag1d"] >= 45.0).astype(int)
         df[f"{loc}_heavy_precipitation_flag"] = (df[f"{loc}_rain_lag1d"] >= 30.0).astype(int)
 
-    # Energy / Transportation Features
-    df["diesel_price_php"] = df["diesel_estimated_php"].shift(1).bfill().round(2)
-    df["diesel_return_7d"] = df["diesel_change_7d_php"].shift(1).fillna(0.0).round(2)
-    df["diesel_rolling_mean_14d"] = df["diesel_price_php"].rolling(14, min_periods=1).mean().round(2)
-    df["diesel_freight_shock_flag"] = (df["diesel_return_7d"] >= 1.50).astype(int)
+    # Energy / Transportation Features (Causal Lag 1D)
+    df["diesel_market_average_php"] = df["diesel_average_php"].shift(1).bfill().round(2)
+    df["diesel_common_price_php"] = df["diesel_common_php"].shift(1).bfill().round(2)
+    df["diesel_market_change_7d"] = df["diesel_market_average_php"].diff(7).fillna(0.0).round(2)
+    df["diesel_market_rolling_14d"] = df["diesel_market_average_php"].rolling(14, min_periods=1).mean().round(2)
+    df["diesel_freight_shock_flag"] = (df["diesel_market_change_7d"] >= 1.50).astype(int)
 
     print("\n4. Running validation checks against model_trainer assert_daily contract...")
     # Check 1: No duplicated dates

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "contract": "FOODCAST_EXTERNAL_TRAINING_CONTEXT_V1",
-  "generated_at": "2026-11-11T14:46:26.100360+00:00",
+  "generated_at": "2026-11-11T15:45:46.927147+00:00",
   "start_date": "2019-10-10",
   "end_date": "2026-11-11",
   "total_calendar_days": 2590,
@@ -35,15 +35,18 @@
       "necija_heavy_precipitation_flag"
     ],
     "transportation_fuel": [
-      "diesel_prevailing_php",
+      "diesel_average_php",
+      "diesel_common_php",
       "diesel_low_php",
       "diesel_high_php",
+      "diesel_spread_php",
       "diesel_estimated_php",
       "diesel_change_7d_php",
       "diesel_rolling_mean_30d",
-      "diesel_price_php",
-      "diesel_return_7d",
-      "diesel_rolling_mean_14d",
+      "diesel_market_average_php",
+      "diesel_common_price_php",
+      "diesel_market_change_7d",
+      "diesel_market_rolling_14d",
       "diesel_freight_shock_flag"
     ]
   },

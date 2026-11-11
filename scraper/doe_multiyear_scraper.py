@@ -66,31 +66,52 @@ def resolve_exact_doe_date(label: str, url: str, pdf_text: str, table_year: int)
     return ""
 
 def parse_doe_pdf(pdf_bytes: bytes, label: str, url: str, default_year: int) -> dict:
-    """Extract exact date, Diesel and Gasoline prices from a DOE PDF."""
+    """Extract exact date, whole-market NCR average, low, high, and common prices from all districts."""
     pdf = pypdf.PdfReader(io.BytesIO(pdf_bytes))
-    p1 = pdf.pages[0].extract_text()
+    full_text = "\n".join(p.extract_text() or "" for p in pdf.pages)
     
-    exact_date = resolve_exact_doe_date(label, url, p1[:600], default_year)
+    exact_date = resolve_exact_doe_date(label, url, full_text[:600], default_year)
     if not exact_date:
         return {}
 
-    # Extract DIESEL line: e.g. DIESEL ... 53.69 - 62.35 61.25
-    d_match = re.search(r'\bDIESEL\b.*?([0-9]{2}\.[0-9]{2})\s*-\s*([0-9]{2}\.[0-9]{2})\s+([0-9]{2}\.[0-9]{2})', p1)
+    # Extract all individual city/district DIESEL lines across all pages
+    district_lows, district_highs, district_commons = [], [], []
+    for line in full_text.split('\n'):
+        if re.search(r'\bDIESEL\b', line, re.IGNORECASE) and not re.search(r'DIESEL PLUS', line, re.IGNORECASE):
+            m = re.search(r'([0-9]{2}\.[0-9]{2})\s*-\s*([0-9]{2}\.[0-9]{2})\s+([0-9]{2}\.[0-9]{2}|#N/A)', line)
+            if m:
+                l, h, c = m.groups()
+                district_lows.append(float(l))
+                district_highs.append(float(h))
+                if c != '#N/A':
+                    district_commons.append(float(c))
+
+    # Look for the Master NCR Summary Table at the end
+    summary_match = re.search(r'\bDiesel\b\s+([0-9]{2}\.[0-9]{2})\s*(?:-|\s)\s*([0-9]{2}\.[0-9]{2})\s+([0-9]{2}\.[0-9]{2})', full_text, re.IGNORECASE)
     
-    # Extract RON 91 Gasoline
-    g_match = re.search(r'\bRON\s*91\b.*?([0-9]{2}\.[0-9]{2})\s*-\s*([0-9]{2}\.[0-9]{2})\s+([0-9]{2}\.[0-9]{2})', p1)
-    
-    if d_match:
-        d_low, d_high, d_prev = float(d_match.group(1)), float(d_match.group(2)), float(d_match.group(3))
-        g_prev = float(g_match.group(3)) if g_match else None
-        return {
-            'report_date': exact_date,
-            'diesel_low_php': d_low,
-            'diesel_high_php': d_high,
-            'diesel_prevailing_php': d_prev,
-            'gasoline_ron91_prevailing_php': g_prev,
-        }
-    return {}
+    if summary_match:
+        s_low, s_high, s_common = map(float, summary_match.groups())
+    elif district_lows:
+        s_low = min(district_lows)
+        s_high = max(district_highs)
+        s_common = float(pd.Series(district_commons).median()) if district_commons else (s_low + s_high) / 2
+    else:
+        return {}
+
+    # Calculate whole-market average across all sampled NCR cities/districts
+    district_mids = [(l + h) / 2 for l, h in zip(district_lows, district_highs)] if district_lows else [(s_low + s_high) / 2]
+    ncr_average_price = round(float(sum(district_mids) / len(district_mids)), 2)
+
+    return {
+        'report_date': exact_date,
+        'diesel_low_php': s_low,
+        'diesel_high_php': s_high,
+        'diesel_common_php': s_common,
+        'diesel_prevailing_php': s_common,
+        'diesel_average_php': ncr_average_price,
+        'diesel_spread_php': round(s_high - s_low, 2),
+        'districts_count': len(district_lows),
+    }
 
 def scrape_all_years(target_years = ['2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'], samples_per_year: int = 15) -> pd.DataFrame:
     ctx = ssl.create_default_context()
@@ -133,7 +154,7 @@ def scrape_all_years(target_years = ['2019', '2020', '2021', '2022', '2023', '20
                         res['bulletin_label'] = label
                         res['year'] = int(y)
                         records.append(res)
-                        print(f"   [{idx:02d}/{len(sampled)}] Exact Date: {res['report_date']} | Diesel: ₱{res['diesel_prevailing_php']:.2f}/L (Low: ₱{res['diesel_low_php']:.2f}, High: ₱{res['diesel_high_php']:.2f}) [Label: {label[:20]}]")
+                        print(f"   [{idx:02d}/{len(sampled)}] Exact Date: {res['report_date']} | Common: ₱{res['diesel_common_php']:.2f} | Whole NCR Avg: ₱{res['diesel_average_php']:.2f} (Low: ₱{res['diesel_low_php']:.2f}, High: ₱{res['diesel_high_php']:.2f}) across {res['districts_count']} districts [Label: {label[:20]}]")
             except Exception as e:
                 print(f"   [{idx:02d}/{len(sampled)}] Failed {label}: {e}")
 
