@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "contract": "FOODCAST_EXTERNAL_TRAINING_CONTEXT_V1",
-  "generated_at": "2026-11-11T13:55:08.432511+00:00",
+  "generated_at": "2026-11-11T14:19:10.300624+00:00",
   "start_date": "2019-10-10",
   "end_date": "2026-11-11",
   "total_calendar_days": 2590,
@@ -35,6 +35,9 @@
       "necija_heavy_precipitation_flag"
     ],
     "transportation_fuel": [
+      "diesel_prevailing_php",
+      "diesel_low_php",
+      "diesel_high_php",
       "diesel_estimated_php",
       "diesel_change_7d_php",
       "diesel_rolling_mean_30d",

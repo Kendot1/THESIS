@@ -21,7 +21,9 @@ def build_aligned_training_context():
     print("1. Loading raw scraped DOE fuel records and weather series...")
     weather_csv = feat_dir / "external_weather_daily.csv"
     energy_csv = feat_dir / "external_fuel_energy_daily.csv"
-    doe_scraped_csv = feat_dir / "doe_scraped_ncr_fuel_prices.csv"
+    doe_scraped_csv = feat_dir / "doe_historical_retail_diesel_2019_2026.csv"
+    if not doe_scraped_csv.exists():
+        doe_scraped_csv = feat_dir / "doe_scraped_ncr_fuel_prices.csv"
     
     if not weather_csv.exists() or not energy_csv.exists():
         raise FileNotFoundError("Prerequisite external datasets missing. Run fetch_external_features.py first.")
@@ -33,7 +35,7 @@ def build_aligned_training_context():
     print(f"   Weather records: {len(weather_df)} days ({weather_df['date'].min()} to {weather_df['date'].max()})")
     print(f"   Energy records: {len(energy_df)} days ({energy_df['date'].min()} to {energy_df['date'].max()})")
     if not doe_df.empty:
-        print(f"   DOE scraped bulletins: {len(doe_df)} weekly reports")
+        print(f"   DOE scraped multi-year bulletins: {len(doe_df)} reports ({doe_df['report_date'].min()} to {doe_df['report_date'].max()})")
 
     print("\n2. Aligning daily calendar index (2019-10-10 to 2026-11-11)...")
     full_dates = pd.date_range(start="2019-10-10", end="2026-11-11", freq="D").strftime("%Y-%m-%d")
@@ -43,7 +45,16 @@ def build_aligned_training_context():
     weather_df = weather_df.rename(columns={"date": "report_date"})
     df = df.merge(weather_df, on="report_date", how="left")
     
-    # Merge energy
+    # Merge DOE scraped primary ground-truth diesel prices
+    if not doe_df.empty:
+        doe_clean = doe_df[['report_date', 'diesel_prevailing_php', 'diesel_low_php', 'diesel_high_php']].dropna().drop_duplicates('report_date')
+        df = df.merge(doe_clean, on="report_date", how="left")
+        # Forward fill the weekly DOE pump prices across consecutive daily calendar steps
+        df['diesel_prevailing_php'] = df['diesel_prevailing_php'].ffill().bfill()
+        df['diesel_low_php'] = df['diesel_low_php'].ffill().bfill()
+        df['diesel_high_php'] = df['diesel_high_php'].ffill().bfill()
+    
+    # Merge energy / international benchmark
     energy_df = energy_df.rename(columns={"date": "report_date"})
     df = df.merge(energy_df, on="report_date", how="left")
     
