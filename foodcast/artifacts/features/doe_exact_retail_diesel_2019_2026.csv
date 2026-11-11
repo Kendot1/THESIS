@@ -1,6 +1,4 @@
 report_date,source_section,diesel_low_php,diesel_high_php,diesel_prevailing_php,diesel_common_php,diesel_average_php,diesel_spread_php,districts_count,source_url,bulletin_label,year
-2019-02-07,OFFICIAL_NCR_SUMMARY_TABLE,39.94,42.82,39.54,39.54,41.38,2.88,16,http://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_february_07,February 7,2019
-2019-03-07,OFFICIAL_NCR_SUMMARY_TABLE,42.07,44.99,41.89,41.89,43.53,2.92,16,http://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_march_07_0,March 7,2019
 2019-08-27,CROSS_DISTRICT_AGGREGATED_SUMMARY,37.05,45.74,41.18,41.18,41.39,8.69,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_august_27-pdf,August 27,2019
 2019-09-24,CROSS_DISTRICT_AGGREGATED_SUMMARY,38.9,48.19,43.63,43.63,43.55,9.29,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_september_26-pdf,September 26,2019
 2019-10-01,CROSS_DISTRICT_AGGREGATED_SUMMARY,38.3,47.59,40.0,40.0,42.95,9.29,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_october_02-pdf,October 2,2019

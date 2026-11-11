@@ -74,17 +74,20 @@ def parse_doe_pdf(pdf_bytes: bytes, label: str, url: str, default_year: int) -> 
     if not exact_date:
         return {}
 
-    # 1. Target the exact official summary section:
-    # 'PREVAILING RETAIL PRICES OF PETROLEUM PRODUCTS IN METRO MANILA' or 'NCR'
+    # Primary Focus: The Official NCR Master Summary Table
+    # Pattern: PREVAILING RETAIL PRICES OF PETROLEUM PRODUCTS NCR
+    # followed by:
+    # Product              Overall Range        Common Price
+    # Gasoline (RON97/100) ...
+    # Diesel               <low> <high>         <common>
     m_section = re.search(
-        r'PREVAILING RETAIL PRICES\s*(?:OF PETROLEUM PRODUCTS)?(?:\s*(?:IN\s*METRO\s*MANILA|NCR))?.*?(?=Note|\Z)',
+        r'PREVAILING RETAIL PRICES\s*(?:OF PETROLEUM PRODUCTS)?\s*NCR.*?(?=Note|\Z)',
         full_text,
         re.DOTALL | re.IGNORECASE
     )
     
     if m_section:
         sec_text = m_section.group(0)
-        # Match 'Diesel <Low> <High> <Common>' or 'Diesel <Low> - <High> <Common>'
         m_diesel = re.search(
             r'\bDiesel\b\s+([0-9]{2}\.[0-9]{2})\s*(?:-|\s)\s*([0-9]{2}\.[0-9]{2})\s+([0-9]{2}\.[0-9]{2})',
             sec_text,
@@ -104,8 +107,8 @@ def parse_doe_pdf(pdf_bytes: bytes, label: str, url: str, default_year: int) -> 
                 'districts_count': 16,
             }
 
-    # 2. For earlier PDF bulletins (2019-2021) without the bottom summary table:
-    # Extract all city/district tables across the full document to compute the identical NCR Overall Range and Common Price
+    # Deterministic fallback for pre-2022 documents where the summary table was formatted across pages:
+    # Aggregates all district tables across the entire bulletin to compute the exact identical Overall Range and Common Price
     district_data = []
     for line in full_text.split('\n'):
         if re.search(r'\bDIESEL\b', line, re.IGNORECASE) and not re.search(r'DIESEL PLUS', line, re.IGNORECASE):
