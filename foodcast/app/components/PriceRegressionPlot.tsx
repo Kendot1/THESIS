@@ -140,10 +140,10 @@ export default function PriceRegressionPlot({
           </div>
           <h3 className="text-lg md:text-xl font-bold text-slate-100 flex items-center gap-2 mt-1">
             <BarChart3 className="w-5 h-5 text-emerald-400" />
-            Price Prediction Regression & Accuracy
+            Overall Price Prediction Regression & Accuracy
           </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Scatter distribution of actual retail prices versus model-predicted values with linear fit.
+            Scatter distribution of actual retail prices versus overall model predictions (used to generate weekly and monthly forecasts).
           </p>
         </div>
 
