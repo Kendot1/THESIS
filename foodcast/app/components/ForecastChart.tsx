@@ -202,60 +202,32 @@ const ForecastChart = ({
       forecastContract,
     );
 
-    // 1. All real actual prices (the black line that really exists)
+    // 1. The actual price on chart should only show the price for the actual day, week, or month (the present anchor)
     const dailyActuals = data.filter(point => (point.horizon ?? "daily") === "daily"
       && point.actual != null && Number.isFinite(point.actual));
     const observations = [...new Map(dailyActuals
       .map(point => [point.date, point])).values()]
       .sort((left, right) => left.date.localeCompare(right.date));
     const latest = observations[observations.length - 1];
+    
+    // Only show the price for the actual day, month, or week
     let actuals: { time: Time; value: number; periodStart?: string }[] = [];
-    if (latest && selected === "daily") {
-      actuals = observations.map(point => ({ time: point.date as Time, value: point.actual! }));
-    } else if (latest) {
-      const buckets = new Map<string, { start: string; sum: number; count: number }>();
-      for (const point of observations) {
-        const start = new Date(`${point.date}T00:00:00Z`);
-        const end = new Date(start);
-        if (selected === "weekly") {
-          start.setUTCDate(start.getUTCDate() - (start.getUTCDay() + 6) % 7);
-          end.setTime(start.getTime());
-          end.setUTCDate(end.getUTCDate() + 6);
-        } else {
-          start.setUTCDate(1);
-          end.setUTCMonth(end.getUTCMonth() + 1, 0);
-        }
-        const endDate = end.toISOString().slice(0, 10);
-        // Exclude the anchor's bucket, including Sunday/month-end collisions.
-        // Closed buckets average only prices actually observed, without filling gaps.
-        if (endDate >= latest.date) continue;
-        const bucket = buckets.get(endDate) ?? { start: start.toISOString().slice(0, 10), sum: 0, count: 0 };
-        bucket.sum += point.actual!;
-        bucket.count += 1;
-        buckets.set(endDate, bucket);
-      }
-      actuals = [...buckets.entries()]
-        .map(([end, bucket]) => ({ time: end as Time, value: bucket.sum / bucket.count, periodStart: bucket.start }));
-      actuals.push({ time: latest.date as Time, value: latest.actual! });
+    if (latest) {
+      actuals = [{ time: latest.date as Time, value: latest.actual! }];
     }
-    // 2. All saved forecasts to compare with that day (plus future forecast horizon)
-    const predictionsMap = new Map<string, number>();
-    data.forEach(p => {
-      if ((p.horizon ?? "daily") === selected && p.predicted != null && Number.isFinite(p.predicted) && p.predicted > 0) {
-        predictionsMap.set(p.date, p.predicted);
-      }
-    });
-    selectedForecasts.forEach(p => {
-      if (p.predicted != null && Number.isFinite(p.predicted) && p.predicted > 0) {
-        predictionsMap.set(p.date, p.predicted);
-      }
-    });
 
-    const predictions = [...predictionsMap.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, val]) => ({ time: date as Time, value: val }));
+    // 2. Next predicted prices connect from the present actual price
+    const forecastPoints = selectedForecasts.filter(p => p.predicted != null && Number.isFinite(p.predicted) && p.predicted > 0);
+    const rawPredictions = forecastPoints.map(point => ({ time: point.date as Time, value: point.predicted! }));
 
-    return { actualData: actuals, predictedData: predictions, forecastPoints: selectedForecasts };
+    const latestActual = actuals[actuals.length - 1];
+    const firstPrediction = rawPredictions[0];
+    const connectedPredictions = latestActual && firstPrediction
+      && String(latestActual.time) < String(firstPrediction.time)
+      ? [{ time: latestActual.time, value: latestActual.value }, ...rawPredictions]
+      : rawPredictions;
+
+    return { actualData: actuals, predictedData: connectedPredictions, forecastPoints: selectedForecasts };
   }, [data, period, forecastOriginDate, forecastContract]);
 
   const forecastColor = "#10B981"; // Emerald green line for predicted price
@@ -328,7 +300,7 @@ const ForecastChart = ({
       crosshairMarkerBorderColor: "#000000",
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
-      lastValueVisible: true,
+      lastValueVisible: false,
     });
 
     // Predicted prices use an emerald green line to compare
@@ -343,7 +315,7 @@ const ForecastChart = ({
       crosshairMarkerBorderColor: forecastColor,
       crosshairMarkerBackgroundColor: "#fff",
       crosshairMarkerBorderWidth: 2,
-      lastValueVisible: true,
+      lastValueVisible: false,
     });
 
     chartRef.current = chart;
@@ -564,18 +536,7 @@ const ForecastChart = ({
     const latestActual = actualData[actualData.length - 1];
     const nextPrediction = predictedData.find(point => !latestActual
       || String(point.time) > String(latestActual.time));
-    if (nextPrediction) {
-      predictedPriceLineRef.current = predictedSeriesRef.current.createPriceLine({
-        price: nextPrediction.value,
-        color: forecastColor,
-        lineWidth: 1,
-        lineStyle: LineStyle.Dotted,
-        axisLabelVisible: true,
-        axisLabelColor: forecastColor,
-        axisLabelTextColor: "#fff",
-        title: "",
-      });
-    }
+    // The right price-axis label badge from Image 2 is removed per user instruction.
     priceLabelsPrimitiveRef.current?.setLabels({
       actualPrice: latestActual?.value ?? null,
       predictedPrice: nextPrediction?.value ?? null,
