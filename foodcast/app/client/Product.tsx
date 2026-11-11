@@ -35,6 +35,12 @@ const ForecastChart = dynamic(() => import("../components/ForecastChart"), {
     </div>
   ),
 });
+const PriceRegressionPlot = dynamic(() => import("../components/PriceRegressionPlot"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-80 bg-slate-900/40 rounded-2xl animate-pulse" aria-hidden="true" />
+  ),
+});
 import ProductCard, { ProductCardSkeleton } from "../components/ProductCard";
 import ScrollReveal from "../components/ScrollReveal";
 import ConfidenceGauge from "../components/ConfidenceGauge";
@@ -1047,7 +1053,13 @@ export default function Product({
                   </div>
                 </ScrollReveal>
 
-
+                {/* Price Prediction Regression, Scatter & Accuracy Evaluation */}
+                <ScrollReveal delay={120}>
+                  <PriceRegressionPlot
+                    productName={product.name}
+                    categoryName={product.category}
+                  />
+                </ScrollReveal>
 
                 {/* AI Market Analysis */}
                 <ScrollReveal delay={150}>
