@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "contract": "FOODCAST_EXTERNAL_TRAINING_CONTEXT_V1",
+  "generated_at": "2026-11-11T13:55:08.432511+00:00",
+  "start_date": "2019-10-10",
+  "end_date": "2026-11-11",
+  "total_calendar_days": 2590,
+  "sampling_rate": "1D (consecutive calendar steps)",
+  "spatial_coverage": {
+    "NCR_terminal": "14.5995 N, 120.9842 E (Manila)",
+    "CAR_highland_supply": "16.4023 N, 120.5960 E (Baguio / Benguet)",
+    "Region_III_lowland_supply": "15.4865 N, 120.9674 E (Nueva Ecija)"
+  },
+  "feature_groups": {
+    "weather_rainfall_accumulation": [
+      "ncr_rain_accum_3d",
+      "ncr_rain_accum_7d",
+      "ncr_rain_accum_14d",
+      "benguet_rain_accum_3d",
+      "benguet_rain_accum_7d",
+      "benguet_rain_accum_14d",
+      "necija_rain_accum_3d",
+      "necija_rain_accum_7d",
+      "necija_rain_accum_14d"
+    ],
+    "weather_typhoon_shocks": [
+      "ncr_typhoon_wind_flag",
+      "benguet_typhoon_wind_flag",
+      "necija_typhoon_wind_flag",
+      "ncr_typhoon_warning_flag",
+      "ncr_heavy_precipitation_flag",
+      "benguet_typhoon_warning_flag",
+      "benguet_heavy_precipitation_flag",
+      "necija_typhoon_warning_flag",
+      "necija_heavy_precipitation_flag"
+    ],
+    "transportation_fuel": [
+      "diesel_estimated_php",
+      "diesel_change_7d_php",
+      "diesel_rolling_mean_30d",
+      "diesel_price_php",
+      "diesel_return_7d",
+      "diesel_rolling_mean_14d",
+      "diesel_freight_shock_flag"
+    ]
+  },
+  "validation_passed": true,
+  "causal_guarantee": "All features strictly lagged (shift >= 1) relative to forecast origin T."
+}
