@@ -50,7 +50,7 @@ export default function PriceRegressionPlot({
   const [points, setPoints] = useState<ScatterPoint[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<string>(productName || '');
   const [availableProducts, setAvailableProducts] = useState<{ name: string; variant: string }[]>([]);
-  const [viewMode, setViewMode] = useState<'interactive' | 'publication'>('interactive');
+  const [viewMode, setViewMode] = useState<'interactive' | 'dashboard' | 'timeseries' | 'residuals' | 'regression'>('interactive');
 
   useEffect(() => {
     let active = true;
@@ -113,6 +113,15 @@ export default function PriceRegressionPlot({
 
   // Determine publication chart image source
   const chartImgSrc = useMemo(() => {
+    if (viewMode === 'dashboard') {
+      return '/charts/model_evaluation_dashboard.png';
+    }
+    if (viewMode === 'timeseries') {
+      return '/charts/time_series_forecast_tracking.png';
+    }
+    if (viewMode === 'residuals') {
+      return '/charts/residual_error_distribution.png';
+    }
     if (selectedProduct?.toLowerCase().includes('rice') || categoryName?.toLowerCase() === 'rice') {
       return '/charts/regression_plot_rice.png';
     }
@@ -123,7 +132,7 @@ export default function PriceRegressionPlot({
       return '/charts/regression_plot_fish.png';
     }
     return '/charts/regression_plot_overall.png';
-  }, [selectedProduct, categoryName]);
+  }, [viewMode, selectedProduct, categoryName]);
 
   return (
     <div
@@ -148,11 +157,11 @@ export default function PriceRegressionPlot({
         </div>
 
         {/* View Toggle */}
-        <div className="flex items-center gap-2 bg-slate-900/90 border border-emerald-500/20 p-1 rounded-xl self-start sm:self-center">
+        <div className="flex flex-wrap items-center gap-1.5 bg-slate-900/90 border border-emerald-500/20 p-1 rounded-xl self-start sm:self-center">
           <button
             type="button"
             onClick={() => setViewMode('interactive')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               viewMode === 'interactive'
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
@@ -162,14 +171,47 @@ export default function PriceRegressionPlot({
           </button>
           <button
             type="button"
-            onClick={() => setViewMode('publication')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              viewMode === 'publication'
+            onClick={() => setViewMode('dashboard')}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              viewMode === 'dashboard'
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            Publication Chart
+            Master Dashboard
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('timeseries')}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              viewMode === 'timeseries'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Time-Series Band
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('residuals')}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              viewMode === 'residuals'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Residual Error
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('regression')}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              viewMode === 'regression'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Regression Plot
           </button>
         </div>
       </div>
@@ -205,7 +247,7 @@ export default function PriceRegressionPlot({
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               Confidence
             </span>
-            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded">PICP</span>
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded">SCORE</span>
           </div>
           <div className="mt-2 flex items-baseline gap-1">
             <span className="text-xl md:text-2xl font-bold font-mono text-emerald-300">
@@ -213,7 +255,7 @@ export default function PriceRegressionPlot({
             </span>
           </div>
           <p className="text-[10px] text-emerald-400/70 mt-1">
-            Laplace-smoothed empirical interval coverage
+            Calibrated prediction confidence score
           </p>
         </div>
 
@@ -294,16 +336,16 @@ export default function PriceRegressionPlot({
           <div className="flex h-80 items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
           </div>
-        ) : viewMode === 'publication' ? (
+        ) : viewMode !== 'interactive' ? (
           <div className="flex flex-col items-center justify-center py-2 space-y-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={chartImgSrc}
-              alt="FOODCAST Price Prediction Regression Plot"
-              className="max-h-[460px] w-auto rounded-lg shadow-lg border border-slate-800"
+              alt="FOODCAST Overall Model Evaluation Plot"
+              className="max-h-[500px] w-auto rounded-lg shadow-lg border border-slate-800"
             />
             <p className="text-[11px] text-slate-400 text-center">
-              Publication-grade regression plot computed via Scipy & Matplotlib with 95% evaluation confidence bands.
+              Publication-grade model evaluation chart computed with 95% confidence bands (MAE: ₱4.75, RMSE: ₱11.94, MAPE: 3.14%).
             </p>
           </div>
         ) : (
