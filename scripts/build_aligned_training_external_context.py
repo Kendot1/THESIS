@@ -21,9 +21,9 @@ def build_aligned_training_context():
     print("1. Loading raw scraped DOE fuel records and weather series...")
     weather_csv = feat_dir / "external_weather_daily.csv"
     energy_csv = feat_dir / "external_fuel_energy_daily.csv"
-    doe_scraped_csv = feat_dir / "doe_historical_retail_diesel_2019_2026.csv"
+    doe_scraped_csv = feat_dir / "doe_exact_retail_diesel_2019_2026.csv"
     if not doe_scraped_csv.exists():
-        doe_scraped_csv = feat_dir / "doe_scraped_ncr_fuel_prices.csv"
+        doe_scraped_csv = feat_dir / "doe_historical_retail_diesel_2019_2026.csv"
     
     if not weather_csv.exists() or not energy_csv.exists():
         raise FileNotFoundError("Prerequisite external datasets missing. Run fetch_external_features.py first.")

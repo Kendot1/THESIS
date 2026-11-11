@@ -15,47 +15,66 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import pypdf
 
-def extract_dates_from_header(header_text: str, default_year: int = 2024) -> str:
-    """Extract effectivity or monitoring date from PDF header."""
-    months = 'january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec'
-    
-    # Check for "Date of Effectivity : Month DD, YYYY"
-    m_eff = re.search(r'Date of Effectivity\s*:\s*(' + months + r')\s+(\d{1,2}),?\s*(\d{4})', header_text, re.IGNORECASE)
+MONTH_MAP = {
+    'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
+    'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12,
+    'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+    'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+}
+
+def resolve_exact_doe_date(label: str, url: str, pdf_text: str, table_year: int) -> str:
+    """Extract exact calendar date of price effectivity or monitoring week start."""
+    # 1. Search PDF text for explicit Date of Effectivity
+    m_eff = re.search(r'Date of Effectivity\s*:\s*([A-Za-z]+)\s+(\d{1,2}),?\s*(\d{4})', pdf_text, re.IGNORECASE)
     if m_eff:
         mo, da, yr = m_eff.groups()
-        try:
-            return datetime.strptime(f"{mo[:3]} {da} {yr}", "%b %d %Y").strftime("%Y-%m-%d")
-        except Exception:
-            pass
+        mo_num = MONTH_MAP.get(mo.lower()[:3])
+        if mo_num and 1 <= int(da) <= 31:
+            return f"{int(yr):04d}-{mo_num:02d}-{int(da):02d}"
 
-    # Check for "as of Month DD, YYYY"
-    m_asof = re.search(r'as of\s+(' + months + r')\s+(\d{1,2}),?\s*(\d{4})', header_text, re.IGNORECASE)
+    # 2. Search PDF text for 'as of Month DD, YYYY'
+    m_asof = re.search(r'as of\s+([A-Za-z]+)\s+(\d{1,2}),?\s*(\d{4})', pdf_text, re.IGNORECASE)
     if m_asof:
         mo, da, yr = m_asof.groups()
-        try:
-            return datetime.strptime(f"{mo[:3]} {da} {yr}", "%b %d %Y").strftime("%Y-%m-%d")
-        except Exception:
-            pass
+        mo_num = MONTH_MAP.get(mo.lower()[:3])
+        if mo_num and 1 <= int(da) <= 31:
+            return f"{int(yr):04d}-{mo_num:02d}-{int(da):02d}"
 
-    # Fallback: search anywhere for Month DD, YYYY
-    m_any = re.search(r'(' + months + r')\s+(\d{1,2}),?\s*(20\d{2})', header_text, re.IGNORECASE)
-    if m_any:
-        mo, da, yr = m_any.groups()
-        try:
-            return datetime.strptime(f"{mo[:3]} {da} {yr}", "%b %d %Y").strftime("%Y-%m-%d")
-        except Exception:
-            pass
+    # 3. Search URL for MMDDYYYY (e.g. ncr-price-monitoring-12022025-pdf or 10062026)
+    m_url = re.search(r'(\d{2})(\d{2})(20\d{2})', url)
+    if m_url:
+        mo, da, yr = m_url.groups()
+        if 1 <= int(mo) <= 12 and 1 <= int(da) <= 31:
+            return f"{int(yr):04d}-{int(mo):02d}-{int(da):02d}"
+
+    # 4. Search label (e.g. 'October 27 to November 2', 'November 3 to 9', 'December 7', 'Nov 26 to Dec 2')
+    m_label = re.search(r'([A-Za-z]+)\s+(\d{1,2})', label)
+    if m_label:
+        mo, da = m_label.groups()
+        mo_num = MONTH_MAP.get(mo.lower()[:3])
+        if mo_num and 1 <= int(da) <= 31:
+            return f"{table_year:04d}-{mo_num:02d}-{int(da):02d}"
+
+    # 5. Search URL slug for month-day (e.g. petro_ncr_2023-dec-07-pdf or petro_mm_2019_december_05)
+    m_slug = re.search(r'(20\d{2})[-_]([A-Za-z]{3,9})[-_](\d{1,2})', url)
+    if m_slug:
+        yr, mo, da = m_slug.groups()
+        mo_num = MONTH_MAP.get(mo.lower()[:3])
+        if mo_num and 1 <= int(da) <= 31:
+            return f"{int(yr):04d}-{mo_num:02d}-{int(da):02d}"
 
     return ""
 
-def parse_doe_pdf(pdf_bytes: bytes, default_year: int) -> dict:
-    """Extract Diesel and Gasoline prices from a DOE PDF."""
+def parse_doe_pdf(pdf_bytes: bytes, label: str, url: str, default_year: int) -> dict:
+    """Extract exact date, Diesel and Gasoline prices from a DOE PDF."""
     pdf = pypdf.PdfReader(io.BytesIO(pdf_bytes))
     p1 = pdf.pages[0].extract_text()
     
-    rep_date = extract_dates_from_header(p1[:500], default_year)
-    
-    # Extract DIESEL line: e.g. DIESEL 41.29 43.14 ... 36.80 - 43.44 42.10
+    exact_date = resolve_exact_doe_date(label, url, p1[:600], default_year)
+    if not exact_date:
+        return {}
+
+    # Extract DIESEL line: e.g. DIESEL ... 53.69 - 62.35 61.25
     d_match = re.search(r'\bDIESEL\b.*?([0-9]{2}\.[0-9]{2})\s*-\s*([0-9]{2}\.[0-9]{2})\s+([0-9]{2}\.[0-9]{2})', p1)
     
     # Extract RON 91 Gasoline
@@ -65,7 +84,7 @@ def parse_doe_pdf(pdf_bytes: bytes, default_year: int) -> dict:
         d_low, d_high, d_prev = float(d_match.group(1)), float(d_match.group(2)), float(d_match.group(3))
         g_prev = float(g_match.group(3)) if g_match else None
         return {
-            'report_date': rep_date,
+            'report_date': exact_date,
             'diesel_low_php': d_low,
             'diesel_high_php': d_high,
             'diesel_prevailing_php': d_prev,
@@ -108,17 +127,13 @@ def scrape_all_years(target_years = ['2019', '2020', '2021', '2022', '2023', '20
             try:
                 pdf_req = urllib.request.Request(pdf_url, headers=headers)
                 with urllib.request.urlopen(pdf_req, timeout=20, context=ctx) as r:
-                    res = parse_doe_pdf(r.read(), int(y))
-                    if res and res.get('diesel_prevailing_php'):
-                        if not res.get('report_date'):
-                            # Fallback date from year + index
-                            approx_month = min(12, (idx * 12) // len(sampled) + 1)
-                            res['report_date'] = f"{y}-{approx_month:02d}-15"
-                            
+                    res = parse_doe_pdf(r.read(), label, pdf_url, int(y))
+                    if res and res.get('report_date') and res.get('diesel_prevailing_php'):
                         res['source_url'] = pdf_url
+                        res['bulletin_label'] = label
                         res['year'] = int(y)
                         records.append(res)
-                        print(f"   [{idx:02d}/{len(sampled)}] {res['report_date']} | Diesel: ₱{res['diesel_prevailing_php']:.2f}/L (Low: ₱{res['diesel_low_php']:.2f}, High: ₱{res['diesel_high_php']:.2f})")
+                        print(f"   [{idx:02d}/{len(sampled)}] Exact Date: {res['report_date']} | Diesel: ₱{res['diesel_prevailing_php']:.2f}/L (Low: ₱{res['diesel_low_php']:.2f}, High: ₱{res['diesel_high_php']:.2f}) [Label: {label[:20]}]")
             except Exception as e:
                 print(f"   [{idx:02d}/{len(sampled)}] Failed {label}: {e}")
 
@@ -134,7 +149,7 @@ def main():
     df = scrape_all_years(samples_per_year=12)
     if not df.empty:
         df = df.dropna(subset=['diesel_prevailing_php']).drop_duplicates('report_date').sort_values('report_date')
-        out_csv = feat_dir / "doe_historical_retail_diesel_2019_2026.csv"
+        out_csv = feat_dir / "doe_exact_retail_diesel_2019_2026.csv"
         df.to_csv(out_csv, index=False)
         print(f"\nSuccessfully compiled {len(df)} multi-year DOE retail fuel reports!")
         print(f"Date range: {df['report_date'].min()} to {df['report_date'].max()}")
