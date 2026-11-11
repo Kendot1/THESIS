@@ -75,7 +75,7 @@ def fetch_official(url):
     errors = []
     for candidate in (url, alternate):
         try:
-            response = requests.get(candidate, headers={'User-Agent': USER_AGENT}, timeout=(5, 30))
+            response = requests.get(candidate, headers={'User-Agent': USER_AGENT}, timeout=(20, 45))
             response.raise_for_status()
             final = urlparse(getattr(response, 'url', candidate))
             if final.scheme != 'https' or final.hostname not in {'www.da.gov.ph', 'da.gov.ph'}:

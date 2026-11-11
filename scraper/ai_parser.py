@@ -76,6 +76,9 @@ RULES:
 # Use an explicit API version; preview models are not necessarily served on v1.
 # Construct lazily so offline validation does not require credentials.
 def _get_client():
+    from pathlib import Path
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
     return genai.Client(
         api_key=os.environ["GEMINI_API_KEY_DA_PARSER"],
         http_options=genai.types.HttpOptions(api_version="v1beta"),
