@@ -1,90 +1,89 @@
-report_date,diesel_low_php,diesel_high_php,diesel_common_php,diesel_prevailing_php,diesel_average_php,diesel_spread_php,districts_count,source_url,bulletin_label,year
-2019-02-07,39.94,42.82,39.54,39.54,41.38,2.88,0,http://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_february_07,February 7,2019
-2019-03-07,42.07,44.99,41.89,41.89,43.53,2.92,0,http://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_march_07_0,March 7,2019
-2019-08-27,42.03,42.74,41.39,41.39,41.61,0.71,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_august_27-pdf,August 27,2019
-2019-09-24,43.34,45.19,43.84,43.84,43.81,1.85,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_september_26-pdf,September 26,2019
-2019-10-01,42.74,44.59,42.3,42.3,43.22,1.85,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_october_02-pdf,October 2,2019
-2019-10-29,41.44,42.64,39.7,39.7,41.97,1.2,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_october_30-pdf,October 30,2019
-2019-11-05,41.19,43.04,39.45,39.45,41.71,1.85,8,http://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_november_06-pdf,November 6,2019
-2019-12-03,41.29,43.14,39.6,39.6,41.8,1.85,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2019_december_05-pdf,December 5,2019
-2020-02-04,39.34,40.54,39.43,39.43,40.43,1.2,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_february_05,February 5,2020
-2020-03-03,37.24,38.44,37.33,37.33,38.35,1.2,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_march_05,March 5,2020
-2020-04-07,30.97,32.17,28.23,28.23,30.57,1.2,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_april_08_0,April 8,2020
-2020-05-12,29.97,31.17,27.33,27.33,30.57,1.2,0,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_may_14-pdf,May 14,2020
-2020-06-09,33.97,35.8,31.58,31.58,33.46,1.83,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_june_11,June 11,2020
-2020-07-14,39.27,39.32,35.75,35.75,36.75,0.05,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_july_16-pdf,July 16,2020
-2020-08-18,35.28,37.96,35.6,35.6,36.05,2.68,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_aug_20-pdf,August 20,2020
-2020-09-15,32.98,35.22,30.25,30.25,33.33,2.24,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr__2020_sep_17-pdf,September 17,2020
-2020-10-20,30.25,36.17,31.2,31.2,33.64,5.92,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_oct_22-pdf,October 22,2020
-2020-11-24,35.08,37.16,32.35,32.35,34.26,2.08,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_nov_26-pdf,November 26,2020
-2020-12-01,32.74,38.26,33.45,33.45,35.36,5.52,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_dec_03-pdf,December 3,2020
-2020-12-29,32.95,37.8,34.79,34.79,36.25,4.85,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_dec_30,December 30,2020
-2021-02-23,39.4,39.8,39.45,39.45,40.16,0.4,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-feb-25,February 25,2021
-2021-03-23,37.95,40.85,40.5,40.5,40.87,2.9,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-mar-25,March 25,2021
-2021-04-13,36.7,39.6,39.25,39.25,39.75,2.9,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-apr-15,April 15,2021
-2021-05-18,38.98,41.9,41.44,41.44,41.62,2.92,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-may-20-pdf,May 20,2021
-2021-06-15,41.2,44.05,43.04,43.04,43.27,2.85,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-june-17-pdf,June 17,2021
-2021-07-20,43.55,46.4,45.38,45.38,44.93,2.85,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-jul-22-pdf,July 22,2021
-2021-08-24,42.0,44.85,43.95,43.95,43.31,2.85,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-aug-26-pdf,August 26,2021
-2021-08-31,42.6,45.45,44.55,44.55,43.81,2.85,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-sept-02_0-pdf,September 2,2021
-2021-09-28,45.5,48.7,47.55,47.55,46.16,3.2,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-sep-30-pdf,September 30,2021
-2021-10-05,47.28,50.75,49.6,49.6,48.31,3.47,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-oct-07-pdf,October 7,2021
-2021-11-02,50.38,53.85,52.59,52.59,51.25,3.47,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr-2021-nov-04-pdf,November 4,2021
-2021-11-30,48.6,51.45,50.3,50.3,48.79,2.85,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-nov-30-dec-1-pdf,December 1,2021
-2022-02-01,52.6,54.3,53.6,53.6,54.45,1.7,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-feb-03-pdf,February 3,2022
-2022-03-08,62.15,64.85,62.8,62.8,63.53,2.7,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-mar-10-pdf,March 10,2022
-2022-04-12,70.35,73.0,70.95,70.95,70.24,2.65,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-apr-15,April 15,2022
-2022-05-10,79.15,81.85,79.8,79.8,78.73,2.7,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-may-12,May 12,2022
-2022-06-14,84.2,88.51,84.7,84.7,85.22,4.31,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-jun-14-pdf,June 14,2022
-2022-07-19,77.85,80.45,78.35,78.35,78.49,2.6,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-jul-21-pdf,July 21,2022
-2022-08-16,72.15,74.75,72.25,72.25,72.39,2.6,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-aug-18-pdf,August 18,2022
-2022-09-20,72.0,75.3,72.0,72.0,73.19,3.3,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-sep-23-pdf,September 23,2022
-2022-10-25,76.0,80.29,76.35,76.35,78.5,4.29,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-10-27-pdf,October 27,2022
-2022-11-22,71.1,73.8,71.1,71.1,74.1,2.7,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-nov-26-pdf,November 26,2022
-2022-11-29,66.35,69.65,67.15,67.15,69.98,3.3,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-dec-03,December 3,2022
-2022-12-27,61.85,67.05,63.24,63.24,66.48,5.2,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-dec-29-pdf,December 29,2022
-2023-01-31,63.45,68.04,63.95,63.95,67.33,4.59,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-feb-03,February 3,2023
-2023-03-07,58.05,59.85,59.23,59.23,60.76,1.8,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-mar-10-pdf,March 10,2023
-2023-04-11,54.25,56.87,58.1,58.1,58.55,2.62,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-apr-13,April 13,2023
-2023-05-09,49.15,51.6,48.95,48.95,52.86,2.45,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-may-12,May 12,2023
-2023-06-13,51.4,54.25,52.35,52.35,54.83,2.85,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-jun-15,June 15,2023
-2023-07-18,53.45,55.8,53.78,53.78,56.66,2.35,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-jul-21-pdf,July 21,2023
-2023-08-22,63.35,64.55,63.43,63.43,65.36,1.2,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-aug-24-pdf,August 24,2023
-2023-09-28,67.5,69.05,67.9,67.9,68.76,1.55,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-sep-28-pdf,September 28,2023
-2023-10-24,64.25,65.8,64.1,64.1,66.0,1.55,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-oct-26-pdf,October 26,2023
-2023-10-31,62.06,64.35,62.85,62.85,64.99,2.29,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-nov-03-pdf,November 3,2023
-2023-11-28,56.35,60.55,57.4,57.4,60.05,4.2,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-nov-30-pdf,November 30,2023
-2023-12-05,56.05,59.5,57.1,57.1,59.65,3.45,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-dec-07-pdf,December 7,2023
-2024-03-05,56.95,61.6,58.35,58.35,59.94,4.65,9,https://prod-cms.doe.gov.ph/documents/d/lfo/petro_ncr_2024-mar-05,March 5 to 11,2024
-2024-04-02,58.1,62.05,58.8,58.8,59.52,3.95,9,https://prod-cms.doe.gov.ph/documents/d/lfo/petro_ncr_2024-apr-2-8,April 2 to 8,2024
-2024-05-07,55.75,58.3,57.8,57.8,58.82,2.55,8,https://prod-cms.doe.gov.ph/documents/d/lfo/petro_ncr_2024-may-7-13-pdf,May 7 to 13,2024
-2024-06-11,55.18,57.85,56.35,56.35,57.95,2.67,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-jun-11-17-pdf,June 11 to 17,2024
-2024-07-16,56.85,60.4,59.35,59.35,60.59,3.55,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-jul-16-22_0-pdf,July 16 to 22,2024
-2024-08-13,52.25,62.45,55.1,55.1,56.51,10.2,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-aug-13-19-pdf,August 13 to 19,2024
-2024-09-17,49.25,52.55,52.15,52.15,52.11,3.3,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-sep-17-23-pdf,September 17 to 23,2024
-2024-10-22,52.1,53.15,53.85,53.85,54.98,1.05,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-oct-22-28-pdf,October 22 to 28,2024
-2024-11-19,51.7,55.75,54.95,54.95,56.26,4.05,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-nov-19-nov-25-pdf,November 19 to 25,2024
-2024-11-26,52.8,56.85,56.05,56.05,56.97,4.05,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-nov-26-dec-2-pdf,November 26 to December 2,2024
-2024-12-24,53.6,57.1,56.45,56.45,57.56,3.5,9,https://prod-cms.doe.gov.ph/documents/d/guest/petro_ncr_2024-dec-24-30-pdf,December 24 to 30,2024
-2025-02-18,55.25,59.45,57.66,57.66,58.89,4.2,9,https://prod-cms.doe.gov.ph/documents/d/guest/petro_ncr_2025_feb-18-24-pdf,February 18 to 24,2025
-2025-03-18,52.2,54.8,56.03,56.03,55.89,2.6,9,https://prod-cms.doe.gov.ph/documents/d/guest/petro_ncr_2025_mar-18-24-pdf,March 18 to 24,2025
-2025-04-15,50.5,53.4,52.05,52.05,53.22,2.9,8,https://prod-cms.doe.gov.ph/documents/d/oimb/ncr-price-monitoring-04152025-pdf,April 15 to 21,2025
-2025-05-13,48.25,51.25,50.73,50.73,52.54,3.0,8,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-05132025-pdf,May 13 to 19,2025
-2025-06-17,50.85,54.0,54.29,54.29,53.76,3.15,7,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-06172025-pdf,June 17 to 23,2025
-2025-07-15,54.39,55.9,55.84,55.84,56.75,1.51,9,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-07152025-pdf,July 15 to 21,2025
-2025-08-19,52.4,56.5,54.54,54.54,55.42,4.1,5,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-08192025-pdf,August 19 to 25,2025
-2025-09-16,52.85,57.85,56.17,56.17,56.08,5.0,8,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-09162025-pdf,September 16 to 22,2025
-2025-10-14,53.9,60.35,57.43,57.43,57.41,6.45,8,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-10142025-pdf,October 14 to 20,2025
-2025-11-18,54.5,58.05,61.1,61.1,60.5,3.55,7,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-11182025-pdf,November 18 to 24,2025
-2025-12-02,53.8,62.2,57.35,57.35,58.18,8.4,7,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-12022025-pdf,December 2 to 8,2025
-2025-12-30,51.75,57.25,54.27,54.27,56.25,5.5,7,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-12302025-pdf,"December 30, 2025 to January 5, 2026",2025
-2026-03-03,56.7,60.19,59.15,59.15,57.95,3.49,7,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-03032026-pdf,March 3 to 9,2026
-2026-04-28,79.3,83.2,84.7,84.7,86.8,3.9,12,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-04282026-pdf,April 28 to May 4,2026
-2026-05-19,79.3,81.1,80.5,80.5,82.39,1.8,12,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-05192026-pdf,May 19 to 25,2026
-2026-06-09,81.3,82.3,82.2,82.2,81.82,1.0,12,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-06092026-pdf,June 9 to 15,2026
-2026-06-30,69.8,70.4,70.1,70.1,69.67,0.6,12,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-for-june-30-july-6-2026-pdf,June 30 to July 6,2026
-2026-07-21,83.6,87.2,87.3,87.3,84.91,3.6,12,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-07212026-pdf,July 21 to 27,2026
-2026-08-11,84.1,88.1,84.6,84.6,85.61,4.0,12,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-08112026-pdf,August 11 to 17,2026
-2026-09-01,84.6,88.6,85.6,85.6,85.73,4.0,12,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%20Sep%201-7%202026.pdf?prefix=dev%2Fmedia,September 1 to 7,2026
-2026-10-06,93.0,96.9,95.1,95.1,93.49,3.9,12,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%2010062026.pdf?prefix=dev%2Fmedia,October 6 to 12,2026
-2026-10-27,93.8,97.7,95.8,95.8,94.68,3.9,12,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%20for%2027%20October%20to%202%20November%202026.pdf?prefix=dev%2Fmedia,October 27 to November 2,2026
+report_date,source_section,diesel_low_php,diesel_high_php,diesel_prevailing_php,diesel_common_php,diesel_average_php,diesel_spread_php,districts_count,source_url,bulletin_label,year
+2019-02-07,OFFICIAL_NCR_SUMMARY_TABLE,39.94,42.82,39.54,39.54,41.38,2.88,16,http://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_february_07,February 7,2019
+2019-03-07,OFFICIAL_NCR_SUMMARY_TABLE,42.07,44.99,41.89,41.89,43.53,2.92,16,http://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_march_07_0,March 7,2019
+2019-08-27,CROSS_DISTRICT_AGGREGATED_SUMMARY,37.05,45.74,41.18,41.18,41.39,8.69,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_august_27-pdf,August 27,2019
+2019-09-24,CROSS_DISTRICT_AGGREGATED_SUMMARY,38.9,48.19,43.63,43.63,43.55,9.29,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_september_26-pdf,September 26,2019
+2019-10-01,CROSS_DISTRICT_AGGREGATED_SUMMARY,38.3,47.59,40.0,40.0,42.95,9.29,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_october_02-pdf,October 2,2019
+2019-10-29,CROSS_DISTRICT_AGGREGATED_SUMMARY,37.0,46.29,38.7,38.7,41.64,9.29,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_october_30-pdf,October 30,2019
+2019-11-05,CROSS_DISTRICT_AGGREGATED_SUMMARY,36.75,46.04,38.45,38.45,41.39,9.29,8,http://prod-cms.doe.gov.ph/documents/d/oimb/petro_mm_2019_november_06-pdf,November 6,2019
+2019-12-03,CROSS_DISTRICT_AGGREGATED_SUMMARY,36.8,46.14,38.55,38.55,41.47,9.34,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2019_december_05-pdf,December 5,2019
+2020-02-04,CROSS_DISTRICT_AGGREGATED_SUMMARY,36.1,45.87,36.6,36.6,40.98,9.77,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_february_05,February 5,2020
+2020-03-03,CROSS_DISTRICT_AGGREGATED_SUMMARY,34.1,43.97,38.29,38.29,39.03,9.87,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_march_05,March 5,2020
+2020-04-07,CROSS_DISTRICT_AGGREGATED_SUMMARY,25.9,34.27,29.24,29.24,30.09,8.37,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_april_08_0,April 8,2020
+2020-06-09,CROSS_DISTRICT_AGGREGATED_SUMMARY,27.9,39.57,31.23,31.23,33.73,11.67,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_june_11,June 11,2020
+2020-07-14,CROSS_DISTRICT_AGGREGATED_SUMMARY,30.0,42.87,38.72,38.72,36.44,12.87,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_july_16-pdf,July 16,2020
+2020-08-18,CROSS_DISTRICT_AGGREGATED_SUMMARY,30.0,42.72,34.1,34.1,36.36,12.72,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_aug_20-pdf,August 20,2020
+2020-09-15,CROSS_DISTRICT_AGGREGATED_SUMMARY,27.58,40.42,32.56,32.56,34.0,12.84,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr__2020_sep_17-pdf,September 17,2020
+2020-10-20,CROSS_DISTRICT_AGGREGATED_SUMMARY,27.78,41.37,30.15,30.15,34.58,13.59,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_oct_22-pdf,October 22,2020
+2020-11-24,CROSS_DISTRICT_AGGREGATED_SUMMARY,25.9,42.52,31.3,31.3,34.21,16.62,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_nov_26-pdf,November 26,2020
+2020-12-01,CROSS_DISTRICT_AGGREGATED_SUMMARY,27.6,43.62,32.4,32.4,35.61,16.02,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_dec_03-pdf,December 3,2020
+2020-12-29,CROSS_DISTRICT_AGGREGATED_SUMMARY,29.35,43.04,32.7,32.7,36.2,13.69,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2020_dec_30,December 30,2020
+2021-02-23,CROSS_DISTRICT_AGGREGATED_SUMMARY,33.5,47.89,34.15,34.15,40.7,14.39,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-feb-25,February 25,2021
+2021-03-23,CROSS_DISTRICT_AGGREGATED_SUMMARY,34.79,47.99,38.55,38.55,41.39,13.2,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-mar-25,March 25,2021
+2021-04-13,CROSS_DISTRICT_AGGREGATED_SUMMARY,33.65,46.74,37.3,37.3,40.2,13.09,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-apr-15,April 15,2021
+2021-05-18,CROSS_DISTRICT_AGGREGATED_SUMMARY,34.6,50.04,39.6,39.6,42.32,15.44,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-may-20-pdf,May 20,2021
+2021-06-15,CROSS_DISTRICT_AGGREGATED_SUMMARY,36.4,51.54,40.65,40.65,43.97,15.14,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-june-17-pdf,June 17,2021
+2021-07-20,CROSS_DISTRICT_AGGREGATED_SUMMARY,37.8,53.19,45.85,45.85,45.49,15.39,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-jul-22-pdf,July 22,2021
+2021-08-24,CROSS_DISTRICT_AGGREGATED_SUMMARY,36.6,51.64,40.85,40.85,44.12,15.04,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-aug-26-pdf,August 26,2021
+2021-08-31,CROSS_DISTRICT_AGGREGATED_SUMMARY,37.55,52.24,41.45,41.45,44.89,14.69,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-sept-02_0-pdf,September 2,2021
+2021-09-28,CROSS_DISTRICT_AGGREGATED_SUMMARY,40.0,54.34,44.7,44.7,47.17,14.34,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-sep-30-pdf,September 30,2021
+2021-10-05,CROSS_DISTRICT_AGGREGATED_SUMMARY,42.15,56.39,42.75,42.75,49.27,14.24,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-oct-07-pdf,October 7,2021
+2021-11-02,CROSS_DISTRICT_AGGREGATED_SUMMARY,45.6,55.77,48.25,48.25,50.69,10.17,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr-2021-nov-04-pdf,November 4,2021
+2021-11-30,CROSS_DISTRICT_AGGREGATED_SUMMARY,43.61,54.32,47.45,47.45,48.97,10.71,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2021-nov-30-dec-1-pdf,December 1,2021
+2022-02-01,CROSS_DISTRICT_AGGREGATED_SUMMARY,48.21,59.92,54.95,54.95,54.06,11.71,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-feb-03-pdf,February 3,2022
+2022-03-08,CROSS_DISTRICT_AGGREGATED_SUMMARY,55.2,69.25,64.5,64.5,62.23,14.05,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-mar-10-pdf,March 10,2022
+2022-04-12,CROSS_DISTRICT_AGGREGATED_SUMMARY,63.0,74.59,70.45,70.45,68.8,11.59,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-apr-15,April 15,2022
+2022-05-10,CROSS_DISTRICT_AGGREGATED_SUMMARY,71.95,85.45,79.3,79.3,78.7,13.5,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-may-12,May 12,2022
+2022-06-14,CROSS_DISTRICT_AGGREGATED_SUMMARY,77.4,92.1,85.95,85.95,84.75,14.7,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-jun-14-pdf,June 14,2022
+2022-07-19,CROSS_DISTRICT_AGGREGATED_SUMMARY,73.3,84.1,79.8,79.8,78.7,10.8,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-jul-21-pdf,July 21,2022
+2022-08-16,CROSS_DISTRICT_AGGREGATED_SUMMARY,66.55,78.4,73.9,73.9,72.47,11.85,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-aug-18-pdf,August 18,2022
+2022-09-20,CROSS_DISTRICT_AGGREGATED_SUMMARY,64.0,80.64,75.65,75.65,72.32,16.64,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-sep-23-pdf,September 23,2022
+2022-10-25,CROSS_DISTRICT_AGGREGATED_SUMMARY,70.0,87.39,78.89,78.89,78.69,17.39,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-10-27-pdf,October 27,2022
+2022-11-22,CROSS_DISTRICT_AGGREGATED_SUMMARY,67.0,83.84,71.83,71.83,75.42,16.84,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-nov-26-pdf,November 26,2022
+2022-11-29,CROSS_DISTRICT_AGGREGATED_SUMMARY,62.0,79.89,65.88,65.88,70.94,17.89,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-dec-03,December 3,2022
+2022-12-27,CROSS_DISTRICT_AGGREGATED_SUMMARY,58.0,77.29,63.2,63.2,67.65,19.29,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2022-dec-29-pdf,December 29,2022
+2023-01-31,CROSS_DISTRICT_AGGREGATED_SUMMARY,59.65,80.34,64.25,64.25,70.0,20.69,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-feb-03,February 3,2023
+2023-03-07,CROSS_DISTRICT_AGGREGATED_SUMMARY,54.1,67.55,58.05,58.05,60.83,13.45,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-mar-10-pdf,March 10,2023
+2023-04-11,CROSS_DISTRICT_AGGREGATED_SUMMARY,51.95,65.68,55.95,55.95,58.82,13.73,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-apr-13,April 13,2023
+2023-05-09,CROSS_DISTRICT_AGGREGATED_SUMMARY,46.95,60.58,47.5,47.5,53.77,13.63,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-may-12,May 12,2023
+2023-06-13,CROSS_DISTRICT_AGGREGATED_SUMMARY,48.0,63.68,51.4,51.4,55.84,15.68,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-jun-15,June 15,2023
+2023-07-18,CROSS_DISTRICT_AGGREGATED_SUMMARY,49.5,66.78,52.55,52.55,58.14,17.28,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-jul-21-pdf,July 21,2023
+2023-08-22,CROSS_DISTRICT_AGGREGATED_SUMMARY,58.95,72.2,61.89,61.89,65.58,13.25,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-aug-24-pdf,August 24,2023
+2023-09-28,CROSS_DISTRICT_AGGREGATED_SUMMARY,62.6,73.75,68.45,68.45,68.17,11.15,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-sep-28-pdf,September 28,2023
+2023-10-24,CROSS_DISTRICT_AGGREGATED_SUMMARY,59.0,72.05,63.8,63.8,65.53,13.05,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-oct-26-pdf,October 26,2023
+2023-10-31,CROSS_DISTRICT_AGGREGATED_SUMMARY,58.25,70.9,62.85,62.85,64.58,12.65,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-nov-03-pdf,November 3,2023
+2023-11-28,CROSS_DISTRICT_AGGREGATED_SUMMARY,53.6,66.35,59.65,59.65,59.97,12.75,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-nov-30-pdf,November 30,2023
+2023-12-05,CROSS_DISTRICT_AGGREGATED_SUMMARY,52.7,66.05,59.35,59.35,59.38,13.35,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2023-dec-07-pdf,December 7,2023
+2024-03-05,CROSS_DISTRICT_AGGREGATED_SUMMARY,52.75,66.55,58.95,58.95,59.65,13.8,9,https://prod-cms.doe.gov.ph/documents/d/lfo/petro_ncr_2024-mar-05,March 5 to 11,2024
+2024-04-02,CROSS_DISTRICT_AGGREGATED_SUMMARY,53.15,67.0,55.9,55.9,60.08,13.85,9,https://prod-cms.doe.gov.ph/documents/d/lfo/petro_ncr_2024-apr-2-8,April 2 to 8,2024
+2024-05-07,OFFICIAL_NCR_SUMMARY_TABLE,51.99,67.2,61.05,61.05,59.59,15.21,16,https://prod-cms.doe.gov.ph/documents/d/lfo/petro_ncr_2024-may-7-13-pdf,May 7 to 13,2024
+2024-06-11,OFFICIAL_NCR_SUMMARY_TABLE,50.94,66.75,56.7,56.7,58.84,15.81,16,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-jun-11-17-pdf,June 11 to 17,2024
+2024-07-16,CROSS_DISTRICT_AGGREGATED_SUMMARY,52.0,70.6,60.4,60.4,61.3,18.6,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-jul-16-22_0-pdf,July 16 to 22,2024
+2024-08-13,OFFICIAL_NCR_SUMMARY_TABLE,49.0,63.2,54.5,54.5,56.1,14.2,16,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-aug-13-19-pdf,August 13 to 19,2024
+2024-09-17,CROSS_DISTRICT_AGGREGATED_SUMMARY,45.44,60.2,49.2,49.2,52.82,14.76,8,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-sep-17-23-pdf,September 17 to 23,2024
+2024-10-22,OFFICIAL_NCR_SUMMARY_TABLE,46.9,62.1,51.6,51.6,54.5,15.2,16,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-oct-22-28-pdf,October 22 to 28,2024
+2024-11-19,CROSS_DISTRICT_AGGREGATED_SUMMARY,47.9,64.59,52.0,52.0,56.25,16.69,9,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-nov-19-nov-25-pdf,November 19 to 25,2024
+2024-11-26,OFFICIAL_NCR_SUMMARY_TABLE,48.97,65.69,54.5,54.5,57.33,16.72,16,https://prod-cms.doe.gov.ph/documents/d/oimb/petro_ncr_2024-nov-26-dec-2-pdf,November 26 to December 2,2024
+2024-12-24,CROSS_DISTRICT_AGGREGATED_SUMMARY,49.0,67.24,55.35,55.35,58.12,18.24,9,https://prod-cms.doe.gov.ph/documents/d/guest/petro_ncr_2024-dec-24-30-pdf,December 24 to 30,2024
+2025-02-18,CROSS_DISTRICT_AGGREGATED_SUMMARY,50.0,65.1,57.5,57.5,57.55,15.1,9,https://prod-cms.doe.gov.ph/documents/d/guest/petro_ncr_2025_feb-18-24-pdf,February 18 to 24,2025
+2025-03-18,OFFICIAL_NCR_SUMMARY_TABLE,49.0,63.6,50.8,50.8,56.3,14.6,16,https://prod-cms.doe.gov.ph/documents/d/guest/petro_ncr_2025_mar-18-24-pdf,March 18 to 24,2025
+2025-04-15,CROSS_DISTRICT_AGGREGATED_SUMMARY,46.0,62.3,49.1,49.1,54.15,16.3,8,https://prod-cms.doe.gov.ph/documents/d/oimb/ncr-price-monitoring-04152025-pdf,April 15 to 21,2025
+2025-05-13,OFFICIAL_NCR_SUMMARY_TABLE,43.0,61.45,49.75,49.75,52.23,18.45,16,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-05132025-pdf,May 13 to 19,2025
+2025-06-17,OFFICIAL_NCR_SUMMARY_TABLE,46.0,63.5,53.25,53.25,54.75,17.5,16,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-06172025-pdf,June 17 to 23,2025
+2025-07-15,CROSS_DISTRICT_AGGREGATED_SUMMARY,49.0,64.8,52.0,52.0,56.9,15.8,9,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-07152025-pdf,July 15 to 21,2025
+2025-08-19,CROSS_DISTRICT_AGGREGATED_SUMMARY,50.69,61.29,50.8,50.8,55.99,10.6,5,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-08192025-pdf,August 19 to 25,2025
+2025-09-16,OFFICIAL_NCR_SUMMARY_TABLE,49.0,63.7,55.2,55.2,56.35,14.7,16,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-09162025-pdf,September 16 to 22,2025
+2025-10-14,CROSS_DISTRICT_AGGREGATED_SUMMARY,49.2,66.2,52.4,52.4,57.7,17.0,8,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-10142025-pdf,October 14 to 20,2025
+2025-11-18,OFFICIAL_NCR_SUMMARY_TABLE,49.0,71.1,57.95,57.95,60.05,22.1,16,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-11182025-pdf,November 18 to 24,2025
+2025-12-02,CROSS_DISTRICT_AGGREGATED_SUMMARY,49.47,68.8,52.65,52.65,59.13,19.33,7,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-12022025-pdf,December 2 to 8,2025
+2025-12-30,OFFICIAL_NCR_SUMMARY_TABLE,47.77,67.9,56.3,56.3,57.84,20.13,16,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-12302025-pdf,"December 30, 2025 to January 5, 2026",2025
+2026-03-03,CROSS_DISTRICT_AGGREGATED_SUMMARY,49.0,66.59,54.8,54.8,57.8,17.59,7,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-03032026-pdf,March 3 to 9,2026
+2026-04-28,CROSS_DISTRICT_AGGREGATED_SUMMARY,76.96,99.5,85.0,85.0,88.23,22.54,12,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-04282026-pdf,April 28 to May 4,2026
+2026-05-19,CROSS_DISTRICT_AGGREGATED_SUMMARY,72.2,92.73,80.3,80.3,82.47,20.53,12,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-05192026-pdf,May 19 to 25,2026
+2026-06-09,CROSS_DISTRICT_AGGREGATED_SUMMARY,74.6,93.3,82.1,82.1,83.95,18.7,12,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-06092026-pdf,June 9 to 15,2026
+2026-06-30,CROSS_DISTRICT_AGGREGATED_SUMMARY,62.95,79.99,69.8,69.8,71.47,17.04,12,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-for-june-30-july-6-2026-pdf,June 30 to July 6,2026
+2026-07-21,CROSS_DISTRICT_AGGREGATED_SUMMARY,79.0,91.5,86.6,86.6,85.25,12.5,12,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-07212026-pdf,July 21 to 27,2026
+2026-08-11,CROSS_DISTRICT_AGGREGATED_SUMMARY,76.6,93.9,81.3,81.3,85.25,17.3,12,https://prod-cms.doe.gov.ph/documents/d/guest/ncr-price-monitoring-08112026-pdf,August 11 to 17,2026
+2026-09-01,CROSS_DISTRICT_AGGREGATED_SUMMARY,75.0,94.22,81.02,81.02,84.61,19.22,12,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%20Sep%201-7%202026.pdf?prefix=dev%2Fmedia,September 1 to 7,2026
+2026-10-06,CROSS_DISTRICT_AGGREGATED_SUMMARY,83.0,99.4,93.7,93.7,91.2,16.4,12,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%2010062026.pdf?prefix=dev%2Fmedia,October 6 to 12,2026
+2026-10-27,CROSS_DISTRICT_AGGREGATED_SUMMARY,89.9,99.3,94.5,94.5,94.6,9.4,12,https://d24qbtp4vooyzi.cloudfront.net/api/media/file/NCR%20Price%20Monitoring%20for%2027%20October%20to%202%20November%202026.pdf?prefix=dev%2Fmedia,October 27 to November 2,2026

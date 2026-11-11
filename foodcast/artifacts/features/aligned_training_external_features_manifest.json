@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "contract": "FOODCAST_EXTERNAL_TRAINING_CONTEXT_V1",
-  "generated_at": "2026-11-11T15:45:46.927147+00:00",
+  "generated_at": "2026-11-11T15:55:23.204402+00:00",
   "start_date": "2019-10-10",
   "end_date": "2026-11-11",
   "total_calendar_days": 2590,
