@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useEffect, useMemo, useCallback } from "react";
+import { useRef, useEffect, useMemo, useCallback, useState } from "react";
 import {
   createChart,
   createSeriesMarkers,
@@ -166,6 +166,7 @@ const ForecastChart = ({
   const priceLabelsPrimitiveRef = useRef<ForecastPriceLabelsPrimitive | null>(null);
   const predictedMarkersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const { t } = useLanguage();
+  const [zoomRange, setZoomRange] = useState<"30d" | "60d" | "all">("60d");
   // Keep a ref to t so the chart creation effect doesn't need t as a dependency
   const tRef = useRef(t);
   useEffect(() => {
@@ -304,12 +305,14 @@ const ForecastChart = ({
       timeScale: {
         borderVisible: false,
         timeVisible: false,
-        fixLeftEdge: true,
+        fixLeftEdge: false,
         fixRightEdge: true,
-        rightOffset: 30,
+        rightOffset: 15,
+        barSpacing: 14,
+        minBarSpacing: 3,
       },
-      handleScroll: { vertTouchDrag: false },
-      handleScale: { axisPressedMouseMove: true },
+      handleScroll: { vertTouchDrag: false, horzTouchDrag: true, mouseWheel: true, pressedMouseMove: true },
+      handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
       width: container.clientWidth,
       height: height || 380,
     });
@@ -478,7 +481,7 @@ const ForecastChart = ({
   }, [showGrid, height, forecastColor, forecastFill]);
 
   // Each view fits its own observed cadence plus the unchanged forecast targets.
-  const applyRelevantRange = useCallback(() => {
+  const applyRelevantRange = useCallback((rangeOverride?: "30d" | "60d" | "all") => {
     if (!chartRef.current) return;
     const selected = period.toLowerCase();
     chartRef.current.applyOptions({ timeScale: {
@@ -489,20 +492,51 @@ const ForecastChart = ({
         return date.toLocaleDateString("en-US", selected === "monthly"
           ? { month: "short", timeZone: "UTC" }
           : selected === "weekly" ? { month: "short", day: "numeric", timeZone: "UTC" }
-          : { day: "numeric", timeZone: "UTC" });
+          : { month: "short", day: "numeric", timeZone: "UTC" });
       },
     } });
-    const first = actualData[0]?.time
-      ?? predictedData[0]?.time;
-    const last = predictedData[predictedData.length - 1]?.time
-      ?? actualData[actualData.length - 1]?.time;
-    if (!first || !last) return;
+
+    const allTimes = [
+      ...actualData.map(p => String(p.time)),
+      ...predictedData.map(p => String(p.time))
+    ].filter(Boolean).sort();
+
+    if (allTimes.length === 0) return;
+
+    const last = allTimes[allTimes.length - 1] as Time;
+    const activeRange = rangeOverride ?? zoomRange;
+
+    if (activeRange === "all") {
+      const first = allTimes[0] as Time;
+      try {
+        chartRef.current.timeScale().setVisibleRange({ from: first, to: last });
+      } catch {
+        chartRef.current.timeScale().fitContent();
+      }
+      return;
+    }
+
+    // Default zoom window: 60 days (or 30 days) to make the comparison clear and readable
+    const windowDays = activeRange === "30d" ? 30 : 60;
+    const lastDate = new Date(`${String(last)}T00:00:00Z`);
+    const fromDate = new Date(lastDate);
+    fromDate.setUTCDate(fromDate.getUTCDate() - windowDays);
+    const fromStr = fromDate.toISOString().slice(0, 10);
+
+    const fromCandidate = allTimes.find(t => t >= fromStr) ?? allTimes[Math.max(0, allTimes.length - windowDays)];
+    const from = (fromCandidate || allTimes[0]) as Time;
+
     try {
-      chartRef.current.timeScale().setVisibleRange({ from: first, to: last });
+      chartRef.current.timeScale().setVisibleRange({ from, to: last });
     } catch {
       chartRef.current.timeScale().fitContent();
     }
-  }, [actualData, predictedData, period]);
+  }, [actualData, predictedData, period, zoomRange]);
+
+  const handleRangeChange = (range: "30d" | "60d" | "all") => {
+    setZoomRange(range);
+    applyRelevantRange(range);
+  };
 
   // Update data when it changes
   useEffect(() => {
@@ -573,18 +607,55 @@ const ForecastChart = ({
           style={{ minHeight: height || 380 }}
         />
       </div>
-      {showLegend && (
-        <div className="flex items-center gap-6 mt-3 -mb-1 ml-2">
-          <div className="flex items-center gap-2">
-            <div className="h-0 w-4 border-t-[3px] border-black" />
-            <span className="text-xs font-semibold text-gray-900">{t("actualPrice")}</span>
+      <div className="flex flex-wrap items-center justify-between gap-3 mt-3 -mb-1 ml-2">
+        {showLegend && (
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <div className="h-0 w-4 border-t-[3px] border-black" />
+              <span className="text-xs font-semibold text-gray-900">{t("actualPrice")}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-0 w-4 border-t-[3px] border-[#10B981]" />
+              <span className="text-xs font-semibold text-emerald-700">{t("predictedPrice")}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-0 w-4 border-t-[3px] border-[#10B981]" />
-            <span className="text-xs font-semibold text-emerald-700">{t("predictedPrice")}</span>
-          </div>
+        )}
+        <div className="flex items-center gap-1.5 bg-gray-100/80 p-1 rounded-xl border border-gray-200/60 ml-auto">
+          <button
+            type="button"
+            onClick={() => handleRangeChange("30d")}
+            className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all ${
+              zoomRange === "30d"
+                ? "bg-white text-gray-900 shadow-xs border border-gray-200"
+                : "text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            30 Days
+          </button>
+          <button
+            type="button"
+            onClick={() => handleRangeChange("60d")}
+            className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all ${
+              zoomRange === "60d"
+                ? "bg-white text-emerald-700 shadow-xs border border-emerald-200"
+                : "text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            60 Days (Default)
+          </button>
+          <button
+            type="button"
+            onClick={() => handleRangeChange("all")}
+            className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-all ${
+              zoomRange === "all"
+                ? "bg-white text-gray-900 shadow-xs border border-gray-200"
+                : "text-gray-500 hover:text-gray-900"
+            }`}
+          >
+            All History
+          </button>
         </div>
-      )}
+      </div>
       {predictedData.length === 0 && <p className="mt-1 ml-2 text-xs text-gray-500">{t("forecastPeriodUnavailable")}</p>}
     </div>
   );
